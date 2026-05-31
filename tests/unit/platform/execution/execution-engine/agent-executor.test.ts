@@ -151,10 +151,7 @@ test("AgentExecutor with null loop detection disables loop detection [agent-exec
 });
 
 test("AgentExecutor with logger option [agent-executor]", () => {
-  const logger = (code: string, msg: string, ctx: unknown) => {
-    // Simple logger implementation
-    console.log(`[${code}] ${msg}`);
-  };
+  const logger = (_code: string, _msg: string, _ctx: unknown) => undefined;
   const executor = new AgentExecutor({ logger });
   assert.ok(executor instanceof AgentExecutor, "AgentExecutor should be instantiable with logger");
 });

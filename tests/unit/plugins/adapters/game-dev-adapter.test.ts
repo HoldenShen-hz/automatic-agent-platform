@@ -67,8 +67,10 @@ test("GameDevAdapter.authenticate throws on invalid credentials type", async () 
 });
 
 test("GameDevAdapter.authenticate accepts valid token", async () => {
-  const adapter = createGameDevAdapterPlugin();
-  await adapter.authenticate({ token: "valid_unity_token_12345" });
+  await assert.doesNotReject(async () => {
+    const adapter = createGameDevAdapterPlugin();
+    await adapter.authenticate({ token: "valid_unity_token_12345" });
+  });
 });
 
 test("GameDevAdapter.execute throws when not authenticated", async () => {

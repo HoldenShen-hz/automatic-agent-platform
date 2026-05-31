@@ -1600,29 +1600,31 @@ test("RuntimeRepairService.apply handles reconcile_dispatch_ticket with invalida
 });
 
 test("parseJsonArray handles valid JSON array [runtime-repair-service]", () => {
-  const db = createMockDb();
-  const store = createMockStore({});
-  const service = new RuntimeRepairService(db, store);
+  assert.doesNotThrow(() => {
+    const db = createMockDb();
+    const store = createMockStore({});
+    const service = new RuntimeRepairService(db, store);
 
-  // Access the parseJsonArray function through apply (indirect test)
-  // The function is private but we test its behavior through requeue_execution
-  const report: StartupConsistencyReport = {
-    checkedAt: new Date().toISOString(),
-    status: "repairable",
-    findings: [],
-    repairActions: [
-      {
-        action: "requeue_execution",
-        reasonCode: "stale_execution",
-        targetType: "execution",
-        targetId: "exec-1",
-      },
-    ],
-  };
+    // Access the parseJsonArray function through apply (indirect test)
+    // The function is private but we test its behavior through requeue_execution
+    const report: StartupConsistencyReport = {
+      checkedAt: new Date().toISOString(),
+      status: "repairable",
+      findings: [],
+      repairActions: [
+        {
+          action: "requeue_execution",
+          reasonCode: "stale_execution",
+          targetType: "execution",
+          targetId: "exec-1",
+        },
+      ],
+    };
 
-  // This test verifies that parseJsonArray doesn't throw on valid input
-  service.apply(report).catch(() => {
-    // Expected to fail due to missing mock data, but parseJsonArray should not throw
+    // This test verifies that parseJsonArray doesn't throw on valid input
+    service.apply(report).catch(() => {
+      // Expected to fail due to missing mock data, but parseJsonArray should not throw
+    });
   });
 });
 

@@ -1,4 +1,5 @@
 import { useQueuesQuery } from "@aa/shared-state";
+import { translateMessage } from "@aa/shared-i18n";
 import type { QueueDTO } from "@aa/shared-types";
 
 export interface QueuesVm {
@@ -8,10 +9,10 @@ export interface QueuesVm {
 export function mapQueuesToVm(queues: readonly QueueDTO[]): QueuesVm {
   return {
     metrics: [
-      { label: "Ready", value: queues.reduce((total, queue) => total + queue.ready, 0) },
-      { label: "In Flight", value: queues.reduce((total, queue) => total + queue.inFlight, 0) },
-      { label: "Retries", value: queues.reduce((total, queue) => total + queue.retries, 0) },
-      { label: "DLQ", value: queues.reduce((total, queue) => total + queue.dlq, 0) },
+      { label: translateMessage("ui.queues.metric.ready"), value: queues.reduce((total, queue) => total + queue.ready, 0) },
+      { label: translateMessage("ui.queues.metric.inFlight"), value: queues.reduce((total, queue) => total + queue.inFlight, 0) },
+      { label: translateMessage("ui.queues.metric.retries"), value: queues.reduce((total, queue) => total + queue.retries, 0) },
+      { label: translateMessage("ui.queues.metric.dlq"), value: queues.reduce((total, queue) => total + queue.dlq, 0) },
     ],
   };
 }

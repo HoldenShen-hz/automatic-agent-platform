@@ -424,9 +424,11 @@ test("ReadReplicaService: includes audit trail in decision [read-replica-service
 });
 
 test("ReadReplicaService: records write for read-after-write tracking [read-replica-service]", () => {
-  const service = new ReadReplicaService("us-east-1");
-  // Should not throw
-  service.recordWriteForReadAfterWrite("op-1", "aggregate-123", 100, ["us-west-1", "eu-west-1"]);
+  assert.doesNotThrow(() => {
+    const service = new ReadReplicaService("us-east-1");
+    // Should not throw
+    service.recordWriteForReadAfterWrite("op-1", "aggregate-123", 100, ["us-west-1", "eu-west-1"]);
+  });
 });
 
 test("ReadReplicaService: returns true for healthy replica with acceptable lag [read-replica-service]", () => {

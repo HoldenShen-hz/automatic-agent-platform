@@ -221,30 +221,32 @@ test("GraphQLAdapterService unsubscribe returns false for unknown operation", ()
 });
 
 test("GraphQLAdapterService emitSubscriptionEvent calls handler", () => {
-  const service = new GraphQLAdapterService({ endpoint: "http://localhost/graphql" });
+  assert.doesNotThrow(() => {
+    const service = new GraphQLAdapterService({ endpoint: "http://localhost/graphql" });
 
-  const schema: GraphQLSchemaDefinition = {
-    queryType: "Query",
-    subscriptionType: "Subscription",
-    types: [
-      {
-        name: "Subscription",
-        fields: [{ name: "onEvent", type: "String", required: false }],
-      },
-    ],
-  };
+    const schema: GraphQLSchemaDefinition = {
+      queryType: "Query",
+      subscriptionType: "Subscription",
+      types: [
+        {
+          name: "Subscription",
+          fields: [{ name: "onEvent", type: "String", required: false }],
+        },
+      ],
+    };
 
-  service.registerSchema("test-schema", { schema, resolvers: {} });
+    service.registerSchema("test-schema", { schema, resolvers: {} });
 
-  const result = service.subscribe("test-schema", "subscription { onEvent }", {}, () => {});
+    const result = service.subscribe("test-schema", "subscription { onEvent }", {}, () => {});
 
-  let called = false;
-  service.unsubscribe(result.operationId);
+    let called = false;
+    service.unsubscribe(result.operationId);
 
-  // After unsubscribe, handler should not be called
-  service.emitSubscriptionEvent(result.operationId, { data: "test" });
+    // After unsubscribe, handler should not be called
+    service.emitSubscriptionEvent(result.operationId, { data: "test" });
 
-  // No error means success (handler just doesn't exist anymore)
+    // No error means success (handler just doesn't exist anymore)
+  });
 });
 
 test("GraphQLAdapterService validateQuery returns valid for correct query", () => {

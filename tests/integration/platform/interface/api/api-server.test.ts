@@ -346,7 +346,6 @@ networkPathTest("Integration: server handles concurrent requests", async () => {
 networkPathTest("Integration: server stops cleanly", async () => {
   const { server } = createTestServer();
   await server.start({ port: 0 });
-  await server.stop();
-  // Should be able to stop again without error
-  await server.stop();
+  assert.equal(await server.stop(), undefined);
+  assert.equal(await server.stop(), undefined);
 });

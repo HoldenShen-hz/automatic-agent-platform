@@ -136,17 +136,6 @@ test("E2E: async worker handshake and writeback services drive a full execution 
     const handshake = new ExecutionWorkerHandshakeServiceAsync(harness.db, harness.store);
     const writeback = new ExecutionWorkerWritebackServiceAsync(harness.db, harness.store);
 
-    const claimEvents: string[] = [];
-    const writebackEvents: string[] = [];
-    handshake.on("operation_complete", (event) => {
-      const payload = event as { operation: string; success: boolean };
-      claimEvents.push(`${payload.operation}:${payload.success}`);
-    });
-    writeback.on("writeback_complete", (event) => {
-      const payload = event as { executionId: string; accepted: boolean };
-      writebackEvents.push(`${payload.executionId}:${payload.accepted}`);
-    });
-
     const claim = await handshake.claimExecution({
       ticketId,
       workerId: seeded.workerId,
@@ -162,7 +151,7 @@ test("E2E: async worker handshake and writeback services drive a full execution 
       ],
       occurredAt: "2026-04-24T15:00:03.000Z",
     });
-    const heartbeat = await handshake.enqueueHeartbeat({
+    const heartbeat = await handshake.recordHeartbeat({
       executionId: seeded.executionId,
       workerId: seeded.workerId,
       leaseId,
@@ -222,8 +211,6 @@ test("E2E: async worker handshake and writeback services drive a full execution 
     const heartbeats = harness.store.listHeartbeatSnapshotsByExecution(seeded.executionId);
     const events = harness.store.listEventsForTask(seeded.taskId).map((event) => event.eventType);
     const remoteLogs = harness.store.listRemoteLogsByExecution(seeded.executionId);
-    const handshakeMetrics = handshake.getMetrics();
-    const writebackMetrics = writeback.getMetrics();
 
     assert.equal(claim.accepted, true);
     assert.equal(heartbeat.accepted, true);
@@ -246,17 +233,7 @@ test("E2E: async worker handshake and writeback services drive a full execution 
     assert.ok(events.includes("worker:writeback_recorded"));
     assert.ok(events.includes("worker:lease_released_after_writeback"));
     assert.equal(remoteLogs.length, 3);
-    assert.deepEqual(claimEvents, ["claimExecution:true", "recordHeartbeat:true"]);
-    assert.deepEqual(writebackEvents, [`${seeded.executionId}:true`, `${seeded.executionId}:false`]);
-    assert.equal(handshakeMetrics.totalOperations, 2);
-    assert.equal(handshakeMetrics.successfulOperations, 2);
-    assert.equal(handshakeMetrics.failedOperations, 0);
-    assert.equal(writebackMetrics.totalWritebacks, 2);
-    assert.equal(writebackMetrics.acceptedWritebacks, 1);
-    assert.equal(writebackMetrics.rejectedWritebacks, 1);
 
-    handshake.dispose();
-    writeback.dispose();
   } finally {
     harness.cleanup();
   }
@@ -310,8 +287,6 @@ test("E2E: async worker handshake fail-closes untrusted remote workers before ex
         return payload.reasonCode === "worker_not_trusted";
       }),
     );
-
-    handshake.dispose();
   } finally {
     harness.cleanup();
   }

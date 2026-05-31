@@ -1,3 +1,5 @@
+import { translateMessage } from "@aa/shared-i18n";
+
 export interface AuditVm {
   readonly items: readonly { title: string; description: string }[];
 }
@@ -5,9 +7,18 @@ export interface AuditVm {
 export function useAuditVm(): AuditVm {
   return {
     items: [
-      { title: "Change Timeline", description: "按时间线查看配置、审批、发布与接管操作。" },
-      { title: "Evidence Export", description: "导出审计证据、审批记录与执行摘要。" },
-      { title: "Actor Trace", description: "追踪用户、代理与自动化动作的来源与影响面。" },
+      {
+        title: translateMessage("ui.audit.item.timeline.title"),
+        description: translateMessage("ui.audit.item.timeline.description"),
+      },
+      {
+        title: translateMessage("ui.audit.item.evidence.title"),
+        description: translateMessage("ui.audit.item.evidence.description"),
+      },
+      {
+        title: translateMessage("ui.audit.item.actor.title"),
+        description: translateMessage("ui.audit.item.actor.description"),
+      },
     ],
   };
 }

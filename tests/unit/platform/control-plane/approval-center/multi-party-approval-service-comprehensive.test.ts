@@ -4,6 +4,7 @@
  */
 
 import { describe, it, beforeEach, mock } from "node:test";
+import assert from "node:assert/strict";
 import assert from "node:assert";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
@@ -257,41 +258,43 @@ describe("MultiPartyApprovalService", () => {
     });
 
     it("should be idempotent for already finalized approval", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
+      assert.doesNotThrow(() => {
+        const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
-      const request = {
-        taskId: "task-123",
-        executionId: null,
-        sourceAgentId: "agent-1",
-        reason: "Need approval",
-        riskLevel: "high" as const,
-        options: ["yes", "no"] as const,
-        context: {},
-        timeoutPolicy: "reject" as const,
-      };
+        const request = {
+          taskId: "task-123",
+          executionId: null,
+          sourceAgentId: "agent-1",
+          reason: "Need approval",
+          riskLevel: "high" as const,
+          options: ["yes", "no"] as const,
+          context: {},
+          timeoutPolicy: "reject" as const,
+        };
 
-      const created = service.createMultiPartyRequest(request);
+        const created = service.createMultiPartyRequest(request);
 
-      mockRepository.getApproval.mock.mockImplementation(() => ({
-        id: created.approvalId,
-        taskId: "task-123",
-        executionId: null,
-        status: "approved",
-        requestJson: JSON.stringify({
-          ...request,
+        mockRepository.getApproval.mock.mockImplementation(() => ({
+          id: created.approvalId,
+          taskId: "task-123",
+          executionId: null,
+          status: "approved",
+          requestJson: JSON.stringify({
+            ...request,
+            approvalId: created.approvalId,
+            requiredApprovals: 2,
+          }),
+          responseJson: JSON.stringify({ decisionType: "confirmed" }),
+        }));
+
+        // Should not throw
+        service.applyDecision({
           approvalId: created.approvalId,
-          requiredApprovals: 2,
-        }),
-        responseJson: JSON.stringify({ decisionType: "confirmed" }),
-      }));
-
-      // Should not throw
-      service.applyDecision({
-        approvalId: created.approvalId,
-        decisionType: "confirmed",
-        confirmed: true,
-        respondedBy: "user-1",
-        respondedAt: nowIso(),
+          decisionType: "confirmed",
+          confirmed: true,
+          respondedBy: "user-1",
+          respondedAt: nowIso(),
+        });
       });
     });
   });

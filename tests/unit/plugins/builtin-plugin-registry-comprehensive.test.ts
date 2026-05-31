@@ -361,16 +361,18 @@ test("hasDataTaintLabel checks for specific label", () => {
 });
 
 test("PluginMarketplaceRegistry registers loader", () => {
-  const registry = new PluginMarketplaceRegistry();
+  assert.doesNotThrow(() => {
+    const registry = new PluginMarketplaceRegistry();
 
-  const mockLoader: DynamicPluginLoader = {
-    loadFromSource: async () => null,
-    supportsSource: (source) => source.startsWith("test:"),
-  };
+    const mockLoader: DynamicPluginLoader = {
+      loadFromSource: async () => null,
+      supportsSource: (source) => source.startsWith("test:"),
+    };
 
-  registry.registerLoader("test", mockLoader);
+    registry.registerLoader("test", mockLoader);
 
-  // Loader should be registered (no error thrown)
+    // Loader should be registered (no error thrown)
+  });
 });
 
 test("PluginMarketplaceRegistry.registerMarketplaceEntry adds entry", () => {

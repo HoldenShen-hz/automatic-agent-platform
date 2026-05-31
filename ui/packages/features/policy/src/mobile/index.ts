@@ -1,9 +1,19 @@
 import { createMobileFeatureCard } from "@aa/ui-mobile";
+import { translateMessage } from "@aa/shared-i18n";
 
 export function createPolicyMobileCards() {
   return [
-    createMobileFeatureCard("Approval", "Risk-based approval gates"),
-    createMobileFeatureCard("Action", "Confirm / deny action policy"),
-    createMobileFeatureCard("Visibility", "Role and domain visibility control"),
+    createMobileFeatureCard(
+      translateMessage("ui.policy.mobile.approval.title"),
+      translateMessage("ui.policy.mobile.approval.description"),
+    ),
+    createMobileFeatureCard(
+      translateMessage("ui.policy.mobile.action.title"),
+      translateMessage("ui.policy.mobile.action.description"),
+    ),
+    createMobileFeatureCard(
+      translateMessage("ui.policy.mobile.visibility.title"),
+      translateMessage("ui.policy.mobile.visibility.description"),
+    ),
   ] as const;
 }

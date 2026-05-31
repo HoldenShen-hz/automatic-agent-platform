@@ -27,8 +27,10 @@ test("SqliteDatabaseWrapper filePath uses postgres schema", () => {
 });
 
 test("SqliteDatabaseWrapper migrate is a no-op", () => {
-  const wrapper = new SqliteDatabaseWrapper({ exec: () => {}, prepare: () => ({ all: () => [], run: () => {} }) });
-  wrapper.migrate(); // Should not throw
+  assert.doesNotThrow(() => {
+    const wrapper = new SqliteDatabaseWrapper({ exec: () => {}, prepare: () => ({ all: () => [], run: () => {} }) });
+    wrapper.migrate(); // Should not throw
+  });
 });
 
 test("SqliteDatabaseWrapper getSchemaStatus returns compatible structure", () => {
@@ -58,8 +60,10 @@ test("SqliteDatabaseWrapper healthCheck returns true when SELECT 1 succeeds", as
 });
 
 test("SqliteDatabaseWrapper close is a no-op", () => {
-  const wrapper = new SqliteDatabaseWrapper({ exec: () => {}, prepare: () => ({ all: () => [], run: () => {} }) });
-  wrapper.close(); // Should not throw
+  assert.doesNotThrow(() => {
+    const wrapper = new SqliteDatabaseWrapper({ exec: () => {}, prepare: () => ({ all: () => [], run: () => {} }) });
+    wrapper.close(); // Should not throw
+  });
 });
 
 test("SqliteDatabaseWrapper prepare.get falls back to the first row", () => {

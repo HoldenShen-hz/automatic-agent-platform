@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useWorkflowDebuggerVm } from "../hooks";
 
 export function WorkflowDebuggerWebView(): ReactElement {
+  const featureCopy = translateFeatureCopy("workflow-debugger");
   const vm = useWorkflowDebuggerVm();
   return (
-    <FeatureScaffold title="Workflow Debugger" summary="调试器、时间线和数据流回放" status="Planned">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[

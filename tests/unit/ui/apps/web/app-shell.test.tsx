@@ -11,7 +11,9 @@ const source = fs.readFileSync(
 test("WebAppShell no longer defines a hardcoded demo guard context", () => {
   assert.equal(source.includes("const demoGuardContext"), false);
   assert.ok(source.includes("createFeatureGuardContext"));
-  assert.ok(source.includes("const resolvedAuthenticated = authContext?.authenticated ?? locationAuthContext.authenticated ?? false;"));
+  assert.ok(source.includes("const inferredAuthenticated = authContext?.userId != null"));
+  assert.ok(source.includes("const resolvedAuthenticated = authContext?.authenticated"));
+  assert.ok(source.includes("?? (inferredAuthenticated || locationAuthContext.authenticated || false);"));
   assert.ok(source.includes("...createFeatureGuardContext({"));
   assert.ok(source.includes("...locationAuthContext,"));
   assert.ok(source.includes("...authContext,"));

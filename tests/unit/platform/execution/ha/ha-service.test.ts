@@ -355,14 +355,16 @@ test("LeaderElectionService - start() transitions to starting then candidate/lea
 });
 
 test("LeaderElectionService - start() is idempotent when already started [ha-service]", async () => {
-  const coordinator = createMockCoordinator();
-  const service = createService(coordinator);
+  await assert.doesNotReject(async () => {
+    const coordinator = createMockCoordinator();
+    const service = createService(coordinator);
 
-  await service.start();
-  await service.start(); // Should not throw
+    await service.start();
+    await service.start(); // Should not throw
 
-  await service.stop();
-  service.dispose();
+    await service.stop();
+    service.dispose();
+  });
 });
 
 test("LeaderElectionService - start() throws if disposed [ha-service]", async () => {
@@ -391,14 +393,16 @@ test("LeaderElectionService - stop() transitions to shutdown then stopped [ha-se
 });
 
 test("LeaderElectionService - stop() is idempotent [ha-service]", async () => {
-  const coordinator = createMockCoordinator();
-  const service = createService(coordinator, { haLevel: "HA_1" });
+  await assert.doesNotReject(async () => {
+    const coordinator = createMockCoordinator();
+    const service = createService(coordinator, { haLevel: "HA_1" });
 
-  await service.start();
-  await service.stop();
-  await service.stop(); // Should not throw
+    await service.start();
+    await service.stop();
+    await service.stop(); // Should not throw
 
-  service.dispose();
+    service.dispose();
+  });
 });
 
 test("LeaderElectionService - dispose() clears state [ha-service]", async () => {
@@ -638,14 +642,16 @@ test("LeaderElectionService - custom haConfig overrides HA level defaults [ha-se
 });
 
 test("LeaderElectionService - nodeMetadata is passed to coordinator [ha-service]", () => {
-  const coordinator = createMockCoordinator();
-  const service = createService(coordinator, {
-    nodeMetadata: { version: "1.0", region: "us-east-1" },
-  });
+  assert.doesNotThrow(() => {
+    const coordinator = createMockCoordinator();
+    const service = createService(coordinator, {
+      nodeMetadata: { version: "1.0", region: "us-east-1" },
+    });
 
-  // start() calls registerNode
-  // We just verify no error is thrown during construction
-  service.dispose();
+    // start() calls registerNode
+    // We just verify no error is thrown during construction
+    service.dispose();
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -832,25 +838,27 @@ test("LeaderElectionService - start fails on coordinator error [ha-service]", as
 });
 
 test("LeaderElectionService - maxElectionAttempts limits retry count [ha-service]", async () => {
-  const coordinator = createMockCoordinator();
+  await assert.doesNotReject(async () => {
+    const coordinator = createMockCoordinator();
 
-  // Make sure there's no existing leader so election keeps failing
-  coordinator.mockState.leaderNodeId = "some-other-leader";
-  coordinator.mockState.isExpired = false;
-  coordinator.mockState.expiresAt = new Date(Date.now() + 60_000).toISOString();
+    // Make sure there's no existing leader so election keeps failing
+    coordinator.mockState.leaderNodeId = "some-other-leader";
+    coordinator.mockState.isExpired = false;
+    coordinator.mockState.expiresAt = new Date(Date.now() + 60_000).toISOString();
 
-  const service = createService(coordinator, {
-    haLevel: "HA_2",
-    maxElectionAttempts: 2,
+    const service = createService(coordinator, {
+      haLevel: "HA_2",
+      maxElectionAttempts: 2,
+    });
+
+    await service.start();
+
+    // The service should attempt election but not infinitely
+    // After max attempts, it stays in follower state
+
+    await service.stop();
+    service.dispose();
   });
-
-  await service.start();
-
-  // The service should attempt election but not infinitely
-  // After max attempts, it stays in follower state
-
-  await service.stop();
-  service.dispose();
 });
 
 test("LeaderElectionService - dispose stops heartbeat interval [ha-service]", async () => {

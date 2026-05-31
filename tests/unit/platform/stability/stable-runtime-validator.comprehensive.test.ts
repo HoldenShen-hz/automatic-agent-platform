@@ -18,7 +18,7 @@ import type { GoldenTaskCase } from "../../../../src/platform/stability/golden-t
 
 describe("stable-runtime-validator comprehensive", () => {
   describe("summarizeStableValidationRuns", () => {
-    test("returns empty array for empty input", () => {
+    test("validateRuntimeGaps returns empty array for empty input", () => {
       const result = summarizeStableValidationRuns([]);
       assert.equal(result.length, 0);
     });

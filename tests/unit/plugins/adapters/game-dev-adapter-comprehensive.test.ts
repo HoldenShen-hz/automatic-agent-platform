@@ -44,13 +44,17 @@ test.describe("GameDevAdapter Plugin", () => {
 
 test.describe("GameDevAdapter authenticate", () => {
   test("authenticate stores credential fingerprint", async () => {
-    const adapter = createGameDevAdapterPlugin();
-    await adapter.authenticate({ token: "unity_token_abc12345" });
+    await assert.doesNotReject(async () => {
+      const adapter = createGameDevAdapterPlugin();
+      await adapter.authenticate({ token: "unity_token_abc12345" });
+    });
   });
 
   test("authenticate accepts managedSecretRef format", async () => {
-    const adapter = createGameDevAdapterPlugin();
-    await adapter.authenticate({ managedSecretRef: "secret://unity-token" });
+    await assert.doesNotReject(async () => {
+      const adapter = createGameDevAdapterPlugin();
+      await adapter.authenticate({ managedSecretRef: "secret://unity-token" });
+    });
   });
 
   test("authenticate throws on missing credentials", async () => {
@@ -86,13 +90,17 @@ test.describe("GameDevAdapter authenticate", () => {
   });
 
   test("authenticate accepts credentials and derives a stable hashed fingerprint", async () => {
-    const adapter = createGameDevAdapterPlugin();
-    await adapter.authenticate({ token: "test_unity_token_value" });
+    await assert.doesNotReject(async () => {
+      const adapter = createGameDevAdapterPlugin();
+      await adapter.authenticate({ token: "test_unity_token_value" });
+    });
   });
 
   test("authenticate does not depend on raw token prefix semantics", async () => {
-    const adapter = createGameDevAdapterPlugin();
-    await adapter.authenticate({ token: "abcdefghijklmnop" });
+    await assert.doesNotReject(async () => {
+      const adapter = createGameDevAdapterPlugin();
+      await adapter.authenticate({ token: "abcdefghijklmnop" });
+    });
   });
 });
 

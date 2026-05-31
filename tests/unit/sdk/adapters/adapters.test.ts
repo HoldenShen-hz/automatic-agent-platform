@@ -69,23 +69,27 @@ test("CRM adapter execute checks egress policy (issue #2008)", async () => {
 });
 
 test("CRM adapter authenticate stores credential fingerprint (issue #2008)", async () => {
-  const adapter = createCrmAdapterPlugin();
+  await assert.doesNotReject(async () => {
+    const adapter = createCrmAdapterPlugin();
 
-  await adapter.authenticate({ token: "my-secret-token" });
+    await adapter.authenticate({ token: "my-secret-token" });
 
-  // The adapter should store the credential fingerprint
-  // Issue #2008 notes that authenticate stores fingerprint but execute is stubbed
-  // This is a known limitation
+    // The adapter should store the credential fingerprint
+    // Issue #2008 notes that authenticate stores fingerprint but execute is stubbed
+    // This is a known limitation
+  });
 });
 
 test("Game Dev adapter authenticate is a no-op (issue #2014)", async () => {
-  const adapter = createGameDevAdapterPlugin();
+  await assert.doesNotReject(async () => {
+    const adapter = createGameDevAdapterPlugin();
 
-  // Issue #2014: authenticate is a no-op that doesn't actually validate credentials
-  // This test documents the current behavior
-  await adapter.authenticate({ token: "test-creds" });
+    // Issue #2014: authenticate is a no-op that doesn't actually validate credentials
+    // This test documents the current behavior
+    await adapter.authenticate({ token: "test-creds" });
 
-  // No error means authenticate completed (even though it's a no-op)
+    // No error means authenticate completed (even though it's a no-op)
+  });
 });
 
 test("Game Dev adapter execute returns hardcoded mock (issue #2014)", async () => {

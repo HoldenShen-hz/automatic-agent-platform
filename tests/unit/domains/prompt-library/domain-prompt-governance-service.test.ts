@@ -194,9 +194,27 @@ test("DomainPromptGovernanceService.activate promotes approved release to active
 });
 
 test("DomainPromptGovernanceService.activate throws for non-approved release", () => {
-  // Cannot create a non-approved release via proposeRelease - all are approved
-  // Skipping this test as there's no API to create a non-approved release
-  // The rollout_mode_inactive test covers the activation rejection scenario
+  const service = new DomainPromptGovernanceService();
+  const library = createTestLibrary();
+
+  const approved = service.proposeRelease(library, {
+    promptId: "prompt_execute",
+    owner: "admin",
+    rolloutScope: ["coding"],
+    rolloutMode: "suggest",
+    lintEvidence: ["lint_passed"],
+    evalEvidence: ["eval_passed"],
+  });
+
+  (service as { releases: Map<string, unknown> }).releases.set(approved.releaseId, {
+    ...approved,
+    status: "draft",
+  });
+
+  assert.throws(
+    () => service.activate(approved.releaseId),
+    /prompt_governance\.release_not_approved/,
+  );
 });
 
 test("DomainPromptGovernanceService.activate throws when rollout mode is off", () => {

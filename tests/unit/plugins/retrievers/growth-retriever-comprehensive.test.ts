@@ -12,7 +12,7 @@ test.describe("GrowthRetriever comprehensive tests", () => {
     assert.equal(plugin.spiType, "retriever");
   });
 
-  test("capabilityIds includes expected capabilities", () => {
+  test("capabilityIds includes expected capabilities [growth]", () => {
     const plugin = createGrowthRetrieverPlugin();
     assert.deepEqual(plugin.capabilityIds, [
       "knowledge.retrieve",
@@ -21,7 +21,7 @@ test.describe("GrowthRetriever comprehensive tests", () => {
     ]);
   });
 
-  test("initialize is a no-op", async () => {
+  test("initialize is a no-op [growth]", async () => {
     const plugin = createGrowthRetrieverPlugin();
     let initialized = false;
     plugin.initialize = async () => {
@@ -41,7 +41,7 @@ test.describe("GrowthRetriever comprehensive tests", () => {
     assert.equal(result, true);
   });
 
-  test("shutdown returns undefined", async () => {
+  test("shutdown returns undefined [growth]", async () => {
     const plugin = createGrowthRetrieverPlugin();
     assert.ok(plugin.shutdown);
     const result = await plugin.shutdown();
@@ -49,7 +49,7 @@ test.describe("GrowthRetriever comprehensive tests", () => {
   });
 
   test.describe("retrieve behavior", () => {
-    test("returns results for basic query", async () => {
+    test("returns results for basic query [growth]", async () => {
       const plugin = createGrowthRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_basic",
@@ -62,7 +62,7 @@ test.describe("GrowthRetriever comprehensive tests", () => {
       assert.ok(results.length >= 2);
     });
 
-    test("returns results with all required fields", async () => {
+    test("returns results with all required fields [growth]", async () => {
       const plugin = createGrowthRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_fields",
@@ -153,7 +153,7 @@ test.describe("GrowthRetriever comprehensive tests", () => {
       assert.ok(results.length > 0);
     });
 
-    test("returns results with correct namespaces", async () => {
+    test("returns results with correct namespaces [growth]", async () => {
       const plugin = createGrowthRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_ns",
@@ -172,7 +172,7 @@ test.describe("GrowthRetriever comprehensive tests", () => {
       }
     });
 
-    test("returns results with different matchTypes", async () => {
+    test("returns results with different matchTypes [growth]", async () => {
       const plugin = createGrowthRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_match",
@@ -191,7 +191,7 @@ test.describe("GrowthRetriever comprehensive tests", () => {
       }
     });
 
-    test("returns results with scores between 0 and 1", async () => {
+    test("returns results with scores between 0 and 1 [growth]", async () => {
       const plugin = createGrowthRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_scores",
@@ -224,7 +224,7 @@ test.describe("GrowthRetriever comprehensive tests", () => {
       }
     });
 
-    test("handles empty context gracefully", async () => {
+    test("handles empty context gracefully [growth]", async () => {
       const plugin = createGrowthRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_empty",
@@ -237,7 +237,7 @@ test.describe("GrowthRetriever comprehensive tests", () => {
       assert.ok(results.length >= 2);
     });
 
-    test("handles very long intent gracefully", async () => {
+    test("handles very long intent gracefully [growth]", async () => {
       const plugin = createGrowthRetrieverPlugin();
       const longIntent = "a".repeat(500);
       const results = await plugin.retrieve({

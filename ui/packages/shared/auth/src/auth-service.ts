@@ -53,7 +53,7 @@ export class AuthService {
     const roles = params.get("roles");
     const permissions = params.get("permissions");
     return {
-      locale: params.get("locale") ?? "en-US",
+      locale: params.get("locale") ?? "zh-CN",
       displayName: params.get("display_name") ?? "Platform Operator",
       userId: params.get("user_id") ?? "platform-operator",
       tenantId: params.get("tenant_id") ?? "default-tenant",

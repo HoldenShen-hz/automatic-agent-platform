@@ -22,4 +22,4 @@ for file in "${TEST_FILES[@]}"; do
   fi
 done
 
-"${REPO_ROOT}/node_modules/.bin/tsx" --test "${TEST_FILES[@]}"
+node --import tsx --test "${TEST_FILES[@]}"

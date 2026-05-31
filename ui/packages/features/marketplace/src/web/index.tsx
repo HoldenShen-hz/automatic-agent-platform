@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useMarketplaceVm } from "../hooks";
 
 export function MarketplaceWebView(): ReactElement {
   const vm = useMarketplaceVm();
+  const featureCopy = translateFeatureCopy("marketplace");
   return (
-    <FeatureScaffold title="Marketplace" summary="Marketplace 列表、详情和安装流程" status="Planned">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[

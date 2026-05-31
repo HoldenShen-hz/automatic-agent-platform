@@ -10,7 +10,15 @@
       "./five-plane-interface/webhook/webhook-outbox-dispatch-service.js",
       "./model-gateway/model-gateway-bootstrap.js",
       "./five-plane-orchestration/harness/index.js",
-      "./prompt-engine/registry/index.js"
+      "./prompt-engine/registry/index.js",
+      "./architecture/implementation-consistency-closure.js",
+      "./architecture/invariant-registry.js",
+      "./architecture/risk-register.js"
+    ],
+    "src/index.ts": [
+      "./sdk/cli/cli-exit.js",
+      "./platform/five-plane-startup-plan.js",
+      "./platform/shared/observability/lazy-structured-logger.js"
     ],
     "src/sdk/index.ts": [
       "./client-sdk/api-client.js"

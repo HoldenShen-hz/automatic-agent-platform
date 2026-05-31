@@ -296,11 +296,13 @@ test("recordSteadyStateResult uses tolerance from hypothesis", () => {
 });
 
 test("recordSteadyStateResult does nothing for unknown experiment", () => {
-  const scheduler = createScheduler();
-  scheduler.scheduleExperiment(makeExperimentInput());
+  assert.doesNotThrow(() => {
+    const scheduler = createScheduler();
+    scheduler.scheduleExperiment(makeExperimentInput());
 
-  // Should not throw
-  scheduler.recordSteadyStateResult("unknown_id", "h1", 0.01, true, "test");
+    // Should not throw
+    scheduler.recordSteadyStateResult("unknown_id", "h1", 0.01, true, "test");
+  });
 });
 
 test("recordSteadyStateResult does nothing for non-running experiment", () => {

@@ -22,18 +22,24 @@ test("planner re-exports buildStepOutput function [planner]", async () => {
 });
 
 test("planner re-exports AgentRoundLoopInput interface [planner]", () => {
-  // AgentRoundLoopInput is a TypeScript interface - verify it exists as a type export
-  type _ = AgentRoundLoopInput;
+  assert.doesNotThrow(() => {
+    // AgentRoundLoopInput is a TypeScript interface - verify it exists as a type export
+    type _ = AgentRoundLoopInput;
+  });
 });
 
 test("planner re-exports AgentRoundLoopResult interface [planner]", () => {
-  // AgentRoundLoopResult is a TypeScript interface - verify it exists as a type export
-  type _ = AgentRoundLoopResult;
+  assert.doesNotThrow(() => {
+    // AgentRoundLoopResult is a TypeScript interface - verify it exists as a type export
+    type _ = AgentRoundLoopResult;
+  });
 });
 
 test("planner re-exports ToolCallResult interface [planner]", () => {
-  // ToolCallResult is a TypeScript interface - verify it exists as a type export
-  type _ = ToolCallResult;
+  assert.doesNotThrow(() => {
+    // ToolCallResult is a TypeScript interface - verify it exists as a type export
+    type _ = ToolCallResult;
+  });
 });
 
 test("planner exports are functions or interfaces [planner]", async () => {

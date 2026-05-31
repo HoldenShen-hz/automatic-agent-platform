@@ -81,7 +81,7 @@ test.describe("DurableEventBus integration tests", () => {
       payload: { toStatus: "running" },
     });
 
-    // Wait for async dispatch
+    // timing-contract: delivery path relies on async outbox polling.
     await new Promise(resolve => setTimeout(resolve, 50));
 
     const delivered = await bus.deliverPending("consumer-deliver");
@@ -99,7 +99,7 @@ test.describe("DurableEventBus integration tests", () => {
       payload: { toStatus: "completed" },
     });
 
-    // Wait for dispatch
+    // timing-contract: ack state is produced by async outbox polling.
     await new Promise(resolve => setTimeout(resolve, 50));
 
     await bus.deliverPending("consumer-ack");
@@ -128,6 +128,7 @@ test.describe("DurableEventBus integration tests", () => {
 
     // Trigger delivery multiple times
     for (let i = 0; i < 5; i++) {
+      // timing-contract: retry backoff needs real time to advance.
       await new Promise(resolve => setTimeout(resolve, 200));
       await bus.deliverPending("consumer-retry");
       if (attempts >= 3) break;
@@ -152,6 +153,7 @@ test.describe("DurableEventBus integration tests", () => {
 
     // Wait for retry exhaustion
     for (let i = 0; i < 10; i++) {
+      // timing-contract: dead-letter retry exhaustion needs real time to advance.
       await new Promise(resolve => setTimeout(resolve, 150));
       try {
         await bus.deliverPending("consumer-dl");

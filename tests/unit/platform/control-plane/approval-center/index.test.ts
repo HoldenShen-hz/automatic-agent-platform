@@ -60,7 +60,7 @@ import {
 // Quorum Calculator Tests
 // ============================================
 
-test("createInitialQuorumStatus returns correct initial state", () => {
+test("createInitialQuorumStatus returns correct initial state [approval-center-index]", () => {
   const status = createInitialQuorumStatus();
   assert.equal(status.isQuorumMet, false);
   assert.equal(status.isDenied, false);
@@ -392,7 +392,7 @@ test("validateApprovalDecision passes for rejected", () => {
   assert.doesNotThrow(() => validateApprovalDecision(decision));
 });
 
-test("validateApprovalDecision throws for option_selected without selectedOptionId", () => {
+test("validateApprovalDecision throws for option_selected without selectedOptionId [approval-center-index]", () => {
   const decision = {
     approvalId: "approval_1",
     decisionType: "option_selected",

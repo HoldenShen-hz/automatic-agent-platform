@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from "node:fs";
+import { join, resolve } from "node:path";
 
-const goldenTestsDir = join(process.cwd(), "tests", "golden");
+const testsDir = join(process.cwd(), "tests");
+const goldenTestsDir = join(testsDir, "golden");
 const snapshotsDir = join(goldenTestsDir, "snapshots");
 const goldenCallPattern = /\bassertGolden(?:Contains|Matches)?\(\s*"([^"]+)"/g;
+const explicitSnapshotPathPattern = /tests\/golden\/snapshots\/([^"'`]+\.golden)/g;
 const nonDeterministicTimePatterns = [
   /\bDate\.now\s*\(/,
   /\bnew Date\s*\(\s*\)/,
@@ -14,13 +16,21 @@ const referencedSnapshots = new Set();
 const missingSnapshots = [];
 const nondeterministicGoldenTests = [];
 
-function walkGoldenTests(directory) {
+function walkTestFiles(directory, visited = new Set()) {
+  const realDirectory = realpathSync(directory);
+  if (visited.has(realDirectory)) {
+    return [];
+  }
+  visited.add(realDirectory);
   const files = [];
   for (const entry of readdirSync(directory)) {
     const filePath = join(directory, entry);
-    const stat = statSync(filePath);
+    const stat = lstatSync(filePath);
+    if (stat.isSymbolicLink()) {
+      continue;
+    }
     if (stat.isDirectory()) {
-      files.push(...walkGoldenTests(filePath));
+      files.push(...walkTestFiles(filePath, visited));
       continue;
     }
     if (entry.endsWith(".test.ts")) {
@@ -30,10 +40,10 @@ function walkGoldenTests(directory) {
   return files;
 }
 
-for (const filePath of walkGoldenTests(goldenTestsDir)) {
+for (const filePath of walkTestFiles(testsDir)) {
   const content = readFileSync(filePath, "utf8");
   for (const pattern of nonDeterministicTimePatterns) {
-    if (pattern.test(content)) {
+    if (filePath.startsWith(goldenTestsDir) && pattern.test(content)) {
       nondeterministicGoldenTests.push(filePath);
       break;
     }
@@ -44,6 +54,17 @@ for (const filePath of walkGoldenTests(goldenTestsDir)) {
     const snapshotPath = join(snapshotsDir, snapshotName);
     if (!existsSync(snapshotPath)) {
       missingSnapshots.push(`${filePath}: ${match[1]}`);
+    }
+  }
+  for (const match of content.matchAll(explicitSnapshotPathPattern)) {
+    const snapshotName = resolve(snapshotsDir, match[1]).startsWith(snapshotsDir) ? match[1] : null;
+    if (snapshotName == null) {
+      continue;
+    }
+    referencedSnapshots.add(snapshotName);
+    const snapshotPath = join(snapshotsDir, snapshotName);
+    if (!existsSync(snapshotPath)) {
+      missingSnapshots.push(`${filePath}: ${snapshotName}`);
     }
   }
 }

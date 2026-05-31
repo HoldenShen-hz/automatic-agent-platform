@@ -413,7 +413,7 @@ function createBasicValidatorPluginInternal(
     const contract = (input.contract as BasicEvaluationContract | undefined) ?? {};
     return evaluateWithLegacyScoring(input.machineOutput.payload ?? {}, contract, scoringConfig);
   };
-  const plugin = {
+  const plugin: DomainValidatorPlugin & Partial<Pick<ExtendedEvaluatorPlugin, "evaluate" | "produceHarnessDecision">> = {
     pluginId,
     domainId: "core",
     spiType: "validator",
@@ -459,7 +459,7 @@ function createBasicValidatorPluginInternal(
     } satisfies Pick<ExtendedEvaluatorPlugin, "evaluate" | "produceHarnessDecision">);
   }
 
-  return plugin as unknown as ExtendedEvaluatorPlugin;
+  return plugin;
 }
 
 export function createBasicValidatorPlugin(): DomainValidatorPlugin {

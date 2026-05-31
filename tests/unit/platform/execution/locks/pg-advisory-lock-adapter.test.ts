@@ -4,6 +4,7 @@ import test from "node:test";
 import { PgAdvisoryLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/pg-advisory-lock-adapter.js";
 import { LockingError } from "../../../../../src/platform/contracts/errors.js";
 import type { PgAdvisoryLockConfig } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
+import { buildTestPostgresDsn } from "../../../../helpers/network-test-constants.js";
 
 test("PgAdvisoryLockAdapter backendKind is pg_advisory [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter();
@@ -61,13 +62,12 @@ test("PgAdvisoryLockAdapter extend calls inspect and returns null [pg-advisory-l
 
 test("PgAdvisoryLockAdapter close does nothing when not connected [pg-advisory-lock-adapter]", async () => {
   const adapter = new PgAdvisoryLockAdapter();
-  // Should not throw
-  await adapter.close();
+  await assert.doesNotReject(async () => adapter.close());
 });
 
 test("PgAdvisoryLockAdapter accepts config with dsn [pg-advisory-lock-adapter]", () => {
   const config: PgAdvisoryLockConfig = {
-    dsn: "postgresql://user:pass@localhost/db",
+    dsn: buildTestPostgresDsn({ database: "db" }),
   };
   const adapter = new PgAdvisoryLockAdapter(config);
   assert.equal(adapter.backendKind, "pg_advisory");
@@ -101,7 +101,12 @@ test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey produces consistent bigint [pg-
 
 test("PgAdvisoryLockAdapter acquireAsync returns false when connection fails [pg-advisory-lock-adapter]", async () => {
   const adapter = new PgAdvisoryLockAdapter({
-    dsn: "postgresql://invalid:invalid@localhost:99999/db",
+    dsn: buildTestPostgresDsn({
+      user: "invalid",
+      password: "invalid-password-placeholder",
+      port: 9999,
+      database: "db",
+    }),
   });
 
   await assert.rejects(
@@ -112,7 +117,12 @@ test("PgAdvisoryLockAdapter acquireAsync returns false when connection fails [pg
 
 test("PgAdvisoryLockAdapter releaseAsync returns false when not connected [pg-advisory-lock-adapter]", async () => {
   const adapter = new PgAdvisoryLockAdapter({
-    dsn: "postgresql://invalid:invalid@localhost:99999/db",
+    dsn: buildTestPostgresDsn({
+      user: "invalid",
+      password: "invalid-password-placeholder",
+      port: 9999,
+      database: "db",
+    }),
   });
 
   const result = await adapter.releaseAsync("test", "owner");
@@ -121,19 +131,31 @@ test("PgAdvisoryLockAdapter releaseAsync returns false when not connected [pg-ad
 });
 
 test("PgAdvisoryLockAdapter close handles already ended connection [pg-advisory-lock-adapter]", async () => {
-  const adapter = new PgAdvisoryLockAdapter({
-    dsn: "postgresql://invalid:invalid@localhost:99999/db",
-  });
+  await assert.doesNotReject(async () => {
+    const adapter = new PgAdvisoryLockAdapter({
+      dsn: buildTestPostgresDsn({
+        user: "invalid",
+        password: "invalid-password-placeholder",
+        port: 9999,
+        database: "db",
+      }),
+    });
 
-  // First close
-  await adapter.close();
-  // Second close should also not throw
-  await adapter.close();
+    // First close
+    await adapter.close();
+    // Second close should also not throw
+    await adapter.close();
+  });
 });
 
 test("PgAdvisoryLockAdapter uses default TTL when not specified [pg-advisory-lock-adapter]", async () => {
   const adapter = new PgAdvisoryLockAdapter({
-    dsn: "postgresql://invalid:invalid@localhost:99999/db",
+    dsn: buildTestPostgresDsn({
+      user: "invalid",
+      password: "invalid-password-placeholder",
+      port: 9999,
+      database: "db",
+    }),
   });
 
   await assert.rejects(
@@ -144,7 +166,12 @@ test("PgAdvisoryLockAdapter uses default TTL when not specified [pg-advisory-loc
 
 test("PgAdvisoryLockAdapter acquireAsync increments fencing counter [pg-advisory-lock-adapter]", async () => {
   const adapter = new PgAdvisoryLockAdapter({
-    dsn: "postgresql://invalid:invalid@localhost:99999/db",
+    dsn: buildTestPostgresDsn({
+      user: "invalid",
+      password: "invalid-password-placeholder",
+      port: 99999,
+      database: "db",
+    }),
   });
 
   await assert.rejects(

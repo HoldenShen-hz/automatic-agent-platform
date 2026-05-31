@@ -301,8 +301,31 @@ test("AdmissionController decision includes snapshot in response", () => {
 });
 
 test("AdmissionController evaluate uses backpressureSnapshot when provided", () => {
-  // This test is skipped because it requires a more complex setup
-  // with a backpressureSnapshot function
+  const ctx = createIntegrationContext("aa-admission-backpressure-");
+  try {
+    const snapshot = {
+      status: "degraded",
+      degradationMode: "queue_only",
+      queueGovernance: {
+        backlogSize: 4,
+        dispatchableBacklogSize: 3,
+        claimedBacklogSize: 1,
+        oldestWaitSeconds: 12,
+        oldestClaimAgeSeconds: 5,
+        queueNames: ["default"],
+        starvationDetected: false,
+      },
+      findings: ["queue_backpressure"],
+    } as const;
+
+    const controller = new AdmissionController(ctx.store, undefined, () => snapshot);
+    const decision = controller.evaluate({ priority: "normal" });
+
+    assert.equal(decision.reasonCode, "admission.queue_backpressure");
+    assert.deepEqual(decision.backpressure, snapshot);
+  } finally {
+    ctx.cleanup();
+  }
 });
 
 test("AdmissionController low priority task rejected when queue saturated", () => {

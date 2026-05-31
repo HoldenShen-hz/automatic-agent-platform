@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DistributedRateLimiter } from "../../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
+import { installMockDateNow } from "../../../../helpers/time.js";
 
 test("DistributedRateLimiter uses in-memory fallback when no Redis configured", async () => {
   const limiter = new DistributedRateLimiter({
@@ -23,6 +24,8 @@ test("DistributedRateLimiter uses in-memory fallback when no Redis configured", 
 });
 
 test("DistributedRateLimiter resets after window expires", async () => {
+  const clock = installMockDateNow(0);
+  try {
   const limiter = new DistributedRateLimiter({
     maxCalls: 2,
     windowMs: 50,
@@ -32,10 +35,12 @@ test("DistributedRateLimiter resets after window expires", async () => {
   assert.equal((await limiter.checkAndConsume("key1")).allowed, true);
   assert.equal((await limiter.checkAndConsume("key1")).allowed, false);
 
-  // Wait for window to expire
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  clock.advance(60);
 
   assert.equal((await limiter.checkAndConsume("key1")).allowed, true);
+  } finally {
+    clock.restore();
+  }
 });
 
 test("DistributedRateLimiter tracks separate keys independently", async () => {
@@ -131,6 +136,8 @@ test("DistributedRateLimiter handles large maxCalls", async () => {
 });
 
 test("DistributedRateLimiter window expiration resets count correctly", async () => {
+  const clock = installMockDateNow(0);
+  try {
   const limiter = new DistributedRateLimiter({
     maxCalls: 2,
     windowMs: 50,
@@ -140,14 +147,19 @@ test("DistributedRateLimiter window expiration resets count correctly", async ()
   assert.equal((await limiter.checkAndConsume("key")).allowed, true);
   assert.equal((await limiter.checkAndConsume("key")).allowed, false);
 
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  clock.advance(60);
 
   const afterExpiry = await limiter.checkAndConsume("key");
   assert.equal(afterExpiry.allowed, true);
   assert.equal(afterExpiry.remaining, 1);
+  } finally {
+    clock.restore();
+  }
 });
 
 test("DistributedRateLimiter multiple keys independent expiration", async () => {
+  const clock = installMockDateNow(0);
+  try {
   const limiter = new DistributedRateLimiter({
     maxCalls: 1,
     windowMs: 50,
@@ -156,13 +168,16 @@ test("DistributedRateLimiter multiple keys independent expiration", async () => 
   await limiter.checkAndConsume("key1");
   assert.equal((await limiter.checkAndConsume("key1")).allowed, false);
 
-  await new Promise((resolve) => setTimeout(resolve, 30));
+  clock.advance(30);
   await limiter.checkAndConsume("key2");
   assert.equal((await limiter.checkAndConsume("key2")).allowed, false);
 
-  await new Promise((resolve) => setTimeout(resolve, 30));
+  clock.advance(30);
   const key1After = await limiter.checkAndConsume("key1");
   assert.equal(key1After.allowed, true);
+  } finally {
+    clock.restore();
+  }
 });
 
 test("DistributedRateLimiter allowed requests do not have retryAfterMs", async () => {

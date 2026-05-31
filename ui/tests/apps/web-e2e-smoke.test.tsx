@@ -51,6 +51,8 @@ vi.mock("@aa/ui-core", () => ({
       <div>{right}</div>
     </div>
   ),
+  Stack: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  Inline: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   MetricGrid: ({ metrics }: { metrics: readonly { label: string; value: string | number }[] }) => (
     <div>
       {metrics.map((metric) => (
@@ -118,7 +120,7 @@ describe("web app interaction smoke", () => {
   it("loads approval view and allows operator decisions", async () => {
     render(<ApprovalWebView />);
 
-    expect(await screen.findByText("Approval Center")).toBeInTheDocument();
+    expect(await screen.findByText("审批中心")).toBeInTheDocument();
     fireEvent.click(await screen.findByRole("button", { name: /task-2/i }));
     fireEvent.click(screen.getByRole("button", { name: "批准" }));
     expect(mockApproveApproval).toHaveBeenCalledWith(mockRestClient, "approval-2");

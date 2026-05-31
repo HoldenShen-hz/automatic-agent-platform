@@ -273,12 +273,14 @@ test("routeRead audit trail includes consistency and routing mode [read-replica-
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("recordWriteForReadAfterWrite stores pending read entry [read-replica-service]", () => {
-  const service = new ReadReplicaService("us-east-1");
-  service.registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true }));
+  assert.doesNotThrow(() => {
+    const service = new ReadReplicaService("us-east-1");
+    service.registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true }));
 
-  service.recordWriteForReadAfterWrite("op-1", "task-123", 100, ["us-west-2"], 30000);
+    service.recordWriteForReadAfterWrite("op-1", "task-123", 100, ["us-west-2"], 30000);
 
-  // Internal state is not directly accessible, but we can verify via waitForReadAfterWrite behavior
+    // Internal state is not directly accessible, but we can verify via waitForReadAfterWrite behavior
+  });
 });
 
 test("isReplicaHealthyForRead handles null lagMs [read-replica-service]", () => {

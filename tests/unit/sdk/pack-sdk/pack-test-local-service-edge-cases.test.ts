@@ -96,9 +96,11 @@ test("PackTestLocalService.test reports coverage below threshold finding", async
 });
 
 test("PackTestLocalService.loadFixtures handles empty fixtures", () => {
-  const service = new PackTestLocalService();
-  service.loadFixtures({});
-  // No error means success
+  assert.doesNotThrow(() => {
+    const service = new PackTestLocalService();
+    service.loadFixtures({});
+    // No error means success
+  });
 });
 
 test("PackTestLocalService.loadFixtures overwrites existing fixture", () => {
@@ -229,10 +231,12 @@ test("PackTestLocalService.test rejects negative timeout", async () => {
 });
 
 test("PackTestLocalService.configureMockLlm can be called multiple times", () => {
-  const service = new PackTestLocalService();
-  service.configureMockLlm({ responses: [{ content: "first" }] });
-  service.configureMockLlm({ responses: [{ content: "second" }] });
-  // No error means success
+  assert.doesNotThrow(() => {
+    const service = new PackTestLocalService();
+    service.configureMockLlm({ responses: [{ content: "first" }] });
+    service.configureMockLlm({ responses: [{ content: "second" }] });
+    // No error means success
+  });
 });
 
 test("PackTestLocalService handles fixture with missing required tools", async () => {

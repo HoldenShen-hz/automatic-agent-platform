@@ -292,17 +292,19 @@ test("EventSubscription has required readonly properties", () => {
 // ============================================================================
 
 test("RetryableApiClient.initialize without performVersionHandshakeOnInit does nothing", async () => {
-  const config: ApiClientConfig = {
-    baseUrl: "https://api.example.com",
-    apiVersion: "v1",
-    bearerToken: "test-token",
-    performVersionHandshakeOnInit: false,
-  };
+  await assert.doesNotReject(async () => {
+    const config: ApiClientConfig = {
+      baseUrl: "https://api.example.com",
+      apiVersion: "v1",
+      bearerToken: "test-token",
+      performVersionHandshakeOnInit: false,
+    };
 
-  const client = new RetryableApiClient(config);
+    const client = new RetryableApiClient(config);
 
-  // Should not throw
-  await client.initialize();
+    // Should not throw
+    await client.initialize();
+  });
 });
 
 test("RetryableApiClient.performVersionHandshake calls /version endpoint", async () => {

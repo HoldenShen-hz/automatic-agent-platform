@@ -311,6 +311,7 @@ test("ProviderCredentialPool.selectCredential after cooldown returns credential"
   assert.equal(selection1, null);
 
   // Wait for cooldown to expire
+  // timing-contract: cooldown recovery is based on elapsed wall-clock time.
   await new Promise(resolve => setTimeout(resolve, 100));
 
   // Now should work

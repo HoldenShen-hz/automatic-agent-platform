@@ -255,15 +255,17 @@ test("ChineseWallAccessSaga context failedAction updates on failure", () => {
 });
 
 test("ChineseWallAccessSaga hasMatchingPrepareStep checks stepId variations", () => {
-  const saga = new ChineseWallAccessSaga({});
+  assert.doesNotThrow(() => {
+    const saga = new ChineseWallAccessSaga({});
 
-  // Test with stepId containing "commit"
-  const preparedSet = new Set(["grant-1", "prepare_grant"]);
-  const hasMatch = saga.execute("test", []);
+    // Test with stepId containing "commit"
+    const preparedSet = new Set(["grant-1", "prepare_grant"]);
+    const hasMatch = saga.execute("test", []);
 
-  // The internal function derivePrepareStepCandidates handles:
-  // - If stepId contains "commit", replace with "prepare"
-  // - If stepId starts with "commit_", prepend "prepare_"
+    // The internal function derivePrepareStepCandidates handles:
+    // - If stepId contains "commit", replace with "prepare"
+    // - If stepId starts with "commit_", prepend "prepare_"
+  });
 });
 
 test("ChineseWallAccessSaga executionLog contains all step outcomes", () => {

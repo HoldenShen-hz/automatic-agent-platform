@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useQueuesVm } from "../hooks";
 
 export function QueuesWebView(): ReactElement {
   const vm = useQueuesVm();
+  const featureCopy = translateFeatureCopy("queues");
   return (
-    <FeatureScaffold title="Queues" summary="队列与 DLQ 监控面板" status="Implemented/Internal">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
       <FeatureWorkbenchPanel
         metrics={vm.metrics}
         actions={[

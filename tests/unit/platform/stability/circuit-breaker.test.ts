@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { installMockDateNow } from "../../../helpers/time.js";
 
 import {
   CircuitBreaker,
@@ -80,6 +81,8 @@ test("CircuitBreaker OPEN state rejects calls immediately", async () => {
 });
 
 test("CircuitBreaker transitions to HALF_OPEN after resetTimeout", async () => {
+  const clock = installMockDateNow(0);
+  try {
   const breaker = new CircuitBreaker({
     failureThreshold: 1,
     resetTimeout: 50,
@@ -92,13 +95,18 @@ test("CircuitBreaker transitions to HALF_OPEN after resetTimeout", async () => {
 
   assert.equal(breaker.getState(), CircuitState.OPEN);
 
-  await new Promise((r) => setTimeout(r, 60));
+  clock.advance(60);
 
   const result = await breaker.execute(async () => "half-open-test");
   assert.equal(result, "half-open-test");
+  } finally {
+    clock.restore();
+  }
 });
 
 test("CircuitBreaker HALF_OPEN to CLOSED on success threshold", async () => {
+  const clock = installMockDateNow(0);
+  try {
   const breaker = new CircuitBreaker({
     failureThreshold: 1,
     successThreshold: 2,
@@ -110,15 +118,20 @@ test("CircuitBreaker HALF_OPEN to CLOSED on success threshold", async () => {
     Error,
   );
 
-  await new Promise((r) => setTimeout(r, 60));
+  clock.advance(60);
 
   await breaker.execute(async () => "success1");
   await breaker.execute(async () => "success2");
 
   assert.equal(breaker.getState(), CircuitState.CLOSED);
+  } finally {
+    clock.restore();
+  }
 });
 
 test("CircuitBreaker HALF_OPEN to OPEN on failure", async () => {
+  const clock = installMockDateNow(0);
+  try {
   const breaker = new CircuitBreaker({
     failureThreshold: 1,
     successThreshold: 5,
@@ -132,7 +145,7 @@ test("CircuitBreaker HALF_OPEN to OPEN on failure", async () => {
   );
 
   // Wait for reset timeout and trigger half-open
-  await new Promise((r) => setTimeout(r, 60));
+  clock.advance(60);
 
   // Execute a failing call in half-open state - should transition back to OPEN
   await assert.rejects(
@@ -141,9 +154,14 @@ test("CircuitBreaker HALF_OPEN to OPEN on failure", async () => {
   );
 
   assert.equal(breaker.getState(), CircuitState.OPEN);
+  } finally {
+    clock.restore();
+  }
 });
 
 test("CircuitBreaker HALF_OPEN failure exposes retryAfterMs to caller", async () => {
+  const clock = installMockDateNow(0);
+  try {
   const breaker = new CircuitBreaker({
     name: "probe-breaker",
     failureThreshold: 1,
@@ -155,7 +173,7 @@ test("CircuitBreaker HALF_OPEN failure exposes retryAfterMs to caller", async ()
     Error,
   );
 
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  clock.advance(60);
 
   await assert.rejects(
     async () => breaker.execute(async () => { throw new Error("probe failed"); }),
@@ -167,6 +185,9 @@ test("CircuitBreaker HALF_OPEN failure exposes retryAfterMs to caller", async ()
       return true;
     },
   );
+  } finally {
+    clock.restore();
+  }
 });
 
 test("CircuitBreaker timeout throws CircuitBreakerTimeoutError", async () => {
@@ -174,6 +195,7 @@ test("CircuitBreaker timeout throws CircuitBreakerTimeoutError", async () => {
 
   await assert.rejects(
     async () => breaker.execute(async () => {
+      // timing-contract: verifies timeout path raises CircuitBreakerTimeoutError.
       await new Promise((r) => setTimeout(r, 100));
       return "too slow";
     }),
@@ -182,6 +204,8 @@ test("CircuitBreaker timeout throws CircuitBreakerTimeoutError", async () => {
 });
 
 test("CircuitBreaker HALF_OPEN timeout exposes retryAfterMs to caller", async () => {
+  const clock = installMockDateNow(0);
+  try {
   const breaker = new CircuitBreaker({
     name: "timeout-breaker",
     failureThreshold: 1,
@@ -194,10 +218,11 @@ test("CircuitBreaker HALF_OPEN timeout exposes retryAfterMs to caller", async ()
     Error,
   );
 
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  clock.advance(60);
 
   await assert.rejects(
     async () => breaker.execute(async () => {
+      // timing-contract: verifies timeout path while probing HALF_OPEN.
       await new Promise((resolve) => setTimeout(resolve, 100));
       return "too slow";
     }),
@@ -208,6 +233,9 @@ test("CircuitBreaker HALF_OPEN timeout exposes retryAfterMs to caller", async ()
       return true;
     },
   );
+  } finally {
+    clock.restore();
+  }
 });
 
 test("CircuitBreaker getStats returns correct structure", async () => {

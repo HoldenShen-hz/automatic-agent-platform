@@ -16,7 +16,7 @@ import {
 
 describe("Fair Queue", () => {
   describe("orderFairQueue", () => {
-    it("returns empty array for empty input", () => {
+    it("orderFairQueue returns empty array for empty input", () => {
       const result = orderFairQueue([]);
       assert.equal(result.length, 0);
     });

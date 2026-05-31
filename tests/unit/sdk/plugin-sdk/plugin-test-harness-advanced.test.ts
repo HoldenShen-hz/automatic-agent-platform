@@ -443,58 +443,62 @@ test("PluginTestHarness report results contain duration", async () => {
 });
 
 test("PluginTestHarness configureMockLlm with multiple responses", () => {
-  const plugin = defineTool({
-    pluginId: "multi-response-tool",
-    name: "Multi Response Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  assert.doesNotThrow(() => {
+    const plugin = defineTool({
+      pluginId: "multi-response-tool",
+      name: "Multi Response Tool",
+      version: "1.0.0",
+      capabilities: [{
+        name: "execute",
+        description: "Execute",
+        inputSchema: { type: "object" },
+        outputSchema: { type: "object" },
+      }],
+    });
 
-  const harness = new PluginTestHarness({ plugin });
-  harness.configureMockLlm({
-    responses: [
-      { content: "first response" },
-      { content: "second response" },
-    ],
-    delayMs: 10,
-  });
+    const harness = new PluginTestHarness({ plugin });
+    harness.configureMockLlm({
+      responses: [
+        { content: "first response" },
+        { content: "second response" },
+      ],
+      delayMs: 10,
+    });
 
-  // No error means success
+    // No error means success
+  });
 });
 
 test("PluginTestHarness addMockToolResult updates existing tool", () => {
-  const plugin = defineTool({
-    pluginId: "update-tool",
-    name: "Update Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  assert.doesNotThrow(() => {
+    const plugin = defineTool({
+      pluginId: "update-tool",
+      name: "Update Tool",
+      version: "1.0.0",
+      capabilities: [{
+        name: "execute",
+        description: "Execute",
+        inputSchema: { type: "object" },
+        outputSchema: { type: "object" },
+      }],
+    });
 
-  const harness = new PluginTestHarness({ plugin });
-  harness.addMockToolResult({
-    toolId: "new-tool",
-    success: true,
-    output: { updated: true },
-    durationMs: 1,
-  });
+    const harness = new PluginTestHarness({ plugin });
+    harness.addMockToolResult({
+      toolId: "new-tool",
+      success: true,
+      output: { updated: true },
+      durationMs: 1,
+    });
 
-  // Adding same toolId again updates
-  harness.addMockToolResult({
-    toolId: "new-tool",
-    success: false,
-    output: { error: true },
-    durationMs: 2,
-  });
+    // Adding same toolId again updates
+    harness.addMockToolResult({
+      toolId: "new-tool",
+      success: false,
+      output: { error: true },
+      durationMs: 2,
+    });
 
-  // No error means both operations succeeded
+    // No error means both operations succeeded
+  });
 });

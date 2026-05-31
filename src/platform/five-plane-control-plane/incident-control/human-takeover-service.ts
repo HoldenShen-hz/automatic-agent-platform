@@ -16,7 +16,7 @@
 
 import type { ExecutionRecord, OperatorActionType, StepOutputRecord, TaskSnapshot, TakeoverSessionRecord } from "../../contracts/types/domain.js";
 
-import { getWorkflowDefinition } from "../../five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
+import { getWorkflowDefinition } from "../../workflow-definition-catalog.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";

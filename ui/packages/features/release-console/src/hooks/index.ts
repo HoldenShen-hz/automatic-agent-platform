@@ -1,3 +1,5 @@
+import { translateMessage } from "@aa/shared-i18n";
+
 export interface ReleaseConsoleVm {
   readonly items: readonly { title: string; description: string }[];
 }
@@ -5,9 +7,18 @@ export interface ReleaseConsoleVm {
 export function useReleaseConsoleVm(): ReleaseConsoleVm {
   return {
     items: [
-      { title: "Manifest Draft Queue", description: "查看待发布 artifact 的 manifest、依赖和回滚计划状态。" },
-      { title: "Stable Gate Verdict", description: "聚合 release gate、evidence bundle 和 rollback readiness。" },
-      { title: "Promotion Timeline", description: "追踪 canary / tenant gray / production promotion 进度。" },
+      {
+        title: translateMessage("ui.releaseConsole.item.manifest.title"),
+        description: translateMessage("ui.releaseConsole.item.manifest.description"),
+      },
+      {
+        title: translateMessage("ui.releaseConsole.item.stableGate.title"),
+        description: translateMessage("ui.releaseConsole.item.stableGate.description"),
+      },
+      {
+        title: translateMessage("ui.releaseConsole.item.promotion.title"),
+        description: translateMessage("ui.releaseConsole.item.promotion.description"),
+      },
     ],
   };
 }

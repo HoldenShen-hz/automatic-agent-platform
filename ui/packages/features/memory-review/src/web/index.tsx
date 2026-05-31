@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useMemoryReviewVm } from "../hooks";
 
 export function MemoryReviewWebView(): ReactElement {
   const vm = useMemoryReviewVm();
+  const featureCopy = translateFeatureCopy("memory-review");
   return (
-    <FeatureScaffold title="Memory Review Console" summary="高层记忆审核、撤销和证据追溯" status="Planned">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[

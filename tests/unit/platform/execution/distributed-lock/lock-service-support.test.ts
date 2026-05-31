@@ -58,30 +58,36 @@ test("defaultPostgresFactory is a function [lock-service-support]", () => {
 });
 
 test("lockLogger.log can be called with data object [lock-service-support]", () => {
-  // This should not throw
-  lockLogger.log({
-    level: "info",
-    message: "test message",
-    data: { key: "value" },
+  assert.doesNotThrow(() => {
+    // This should not throw
+    lockLogger.log({
+      level: "info",
+      message: "test message",
+      data: { key: "value" },
+    });
   });
 });
 
 test("lockLogger.log can be called with string data [lock-service-support]", () => {
-  // This should not throw
-  lockLogger.log({
-    level: "warn",
-    message: "test warning",
-    data: "string data",
+  assert.doesNotThrow(() => {
+    // This should not throw
+    lockLogger.log({
+      level: "warn",
+      message: "test warning",
+      data: "string data",
+    });
   });
 });
 
 test("lockLogger.log can be called with error [lock-service-support]", () => {
-  const error = new Error("test error");
-  // This should not throw
-  lockLogger.log({
-    level: "error",
-    message: "test error",
-    data: { error },
+  assert.doesNotThrow(() => {
+    const error = new Error("test error");
+    // This should not throw
+    lockLogger.log({
+      level: "error",
+      message: "test error",
+      data: { error },
+    });
   });
 });
 
@@ -101,28 +107,34 @@ test("inferPgSslFromDsn handles sslmode with special characters [lock-service-su
 });
 
 test("lockLogger.log at debug level [lock-service-support]", () => {
-  // This should not throw
-  lockLogger.log({
-    level: "debug",
-    message: "debug message",
-    data: { debugData: true },
+  assert.doesNotThrow(() => {
+    // This should not throw
+    lockLogger.log({
+      level: "debug",
+      message: "debug message",
+      data: { debugData: true },
+    });
   });
 });
 
 test("lockLogger.log at info level [lock-service-support]", () => {
-  // This should not throw
-  lockLogger.log({
-    level: "info",
-    message: "info message",
-    data: { infoData: true },
+  assert.doesNotThrow(() => {
+    // This should not throw
+    lockLogger.log({
+      level: "info",
+      message: "info message",
+      data: { infoData: true },
+    });
   });
 });
 
 test("lockLogger.log at error level [lock-service-support]", () => {
-  // This should not throw
-  lockLogger.log({
-    level: "error",
-    message: "error message",
-    data: { errorData: true },
+  assert.doesNotThrow(() => {
+    // This should not throw
+    lockLogger.log({
+      level: "error",
+      message: "error message",
+      data: { errorData: true },
+    });
   });
 });

@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { FeatureScaffold, Inline, Stack } from "@aa/ui-core";
+import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
 import { useDomainWizardVm, type DataClassification, type DomainWizardStepId, type RiskLevel } from "../hooks";
 
 const stepHeadings: Record<DomainWizardStepId, string> = {
@@ -10,13 +11,15 @@ const stepHeadings: Record<DomainWizardStepId, string> = {
 };
 
 export function DomainWizardWebView(): ReactElement {
+  const featureCopy = translateFeatureCopy("domain-wizard");
   const vm = useDomainWizardVm();
   const items = vm.items ?? vm.catalogItems ?? [];
   const previewRows = vm.previewRows ?? [];
   const validationErrors = vm.validationErrors ?? [];
+  const currentStepLabel = vm.steps.find((step) => step.id === vm.currentStep)?.label ?? stepHeadings[vm.currentStep];
 
   return (
-    <FeatureScaffold title="Domain Wizard" summary="领域接入向导和 DomainUIConfig 驱动页面。" status="Implemented/Internal">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -40,7 +43,7 @@ export function DomainWizardWebView(): ReactElement {
         </ol>
 
         <section>
-          <h3>{stepHeadings[vm.currentStep]}</h3>
+          <h3>{currentStepLabel}</h3>
           <div style={{ display: "grid", gap: 12 }}>
             {items.map((item) => (
               <button
@@ -58,7 +61,7 @@ export function DomainWizardWebView(): ReactElement {
 
         <section style={{ display: "grid", gap: 12 }}>
           <label>
-            Risk level
+            {translateMessage("ui.domainWizard.form.riskLevel")}
             <select
               onChange={(event) => vm.riskProfile.setRiskLevel(event.target.value as RiskLevel)}
               value={vm.riskProfile.riskLevel}
@@ -70,7 +73,7 @@ export function DomainWizardWebView(): ReactElement {
             </select>
           </label>
           <label>
-            Data classification
+            {translateMessage("ui.domainWizard.form.dataClassification")}
             <select
               onChange={(event) => vm.riskProfile.setDataClassification(event.target.value as DataClassification)}
               value={vm.riskProfile.dataClassification}
@@ -87,10 +90,10 @@ export function DomainWizardWebView(): ReactElement {
               onChange={(event) => vm.riskProfile.setHasExternalIntegration(event.target.checked)}
               type="checkbox"
             />
-            External integrations enabled
+            {translateMessage("ui.domainWizard.form.externalIntegrations")}
           </label>
           <label>
-            Max concurrent tasks
+            {translateMessage("ui.domainWizard.form.maxConcurrentTasks")}
             <input
               min={1}
               onChange={(event) => vm.capabilityConfig.setMaxConcurrentTasks(Number(event.target.value))}
@@ -99,7 +102,7 @@ export function DomainWizardWebView(): ReactElement {
             />
           </label>
           <label>
-            Allowed drill depth
+            {translateMessage("ui.domainWizard.form.allowedDrillDepth")}
             <input
               max={5}
               min={1}
@@ -114,7 +117,7 @@ export function DomainWizardWebView(): ReactElement {
               onChange={(event) => vm.capabilityConfig.setEnableAutoRollback(event.target.checked)}
               type="checkbox"
             />
-            Enable auto rollback
+            {translateMessage("ui.domainWizard.form.autoRollback")}
           </label>
         </section>
 
@@ -125,7 +128,7 @@ export function DomainWizardWebView(): ReactElement {
         </section>
 
         {validationErrors.length > 0 ? (
-          <section aria-label="Validation errors">
+          <section aria-label={translateMessage("ui.domainWizard.validation.sectionLabel")}>
             {validationErrors.map((error) => (
               <div key={error}>{error}</div>
             ))}
@@ -139,8 +142,8 @@ export function DomainWizardWebView(): ReactElement {
         )}
 
         <Inline>
-          <button disabled={!vm.canGoBack} onClick={vm.goBack} type="button">Back</button>
-          <button disabled={!vm.canGoNext} type="submit">{vm.currentStep === "review" ? "Submit" : "Next"}</button>
+          <button disabled={!vm.canGoBack} onClick={vm.goBack} type="button">{translateMessage("ui.domainWizard.back")}</button>
+          <button disabled={!vm.canGoNext} type="submit">{vm.currentStep === "review" ? translateMessage("ui.domainWizard.submit") : translateMessage("ui.domainWizard.next")}</button>
         </Inline>
       </Stack>
       </form>

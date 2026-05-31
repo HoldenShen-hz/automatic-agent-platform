@@ -88,7 +88,7 @@ test("validateApprovalDecision passes for valid text_input decision", () => {
   assert.doesNotThrow(() => validateApprovalDecision(decision));
 });
 
-test("validateApprovalDecision throws for option_selected without selectedOptionId", () => {
+test("validateApprovalDecision throws for option_selected without selectedOptionId [control-plane-approval-center]", () => {
   const decision = {
     approvalId: "approval_123",
     decisionType: "option_selected" as const,

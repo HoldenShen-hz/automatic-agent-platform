@@ -183,24 +183,26 @@ test("collectAllSlis handles case when SLOs not initialized (graceful no-op)", (
 });
 
 test("start and stop collection loop", () => {
-  const h = createHarness();
-  try {
-    h.collectionService.initializeDefaultSlos();
+  assert.doesNotThrow(() => {
+    const h = createHarness();
+    try {
+      h.collectionService.initializeDefaultSlos();
 
-    // Start should set an interval
-    h.collectionService.start();
-    // Second start is no-op
-    h.collectionService.start();
+      // Start should set an interval
+      h.collectionService.start();
+      // Second start is no-op
+      h.collectionService.start();
 
-    // Stop should clear the interval
-    h.collectionService.stop();
-    // Second stop is no-op
-    h.collectionService.stop();
-  } finally {
-    h.collectionService.stop();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
+      // Stop should clear the interval
+      h.collectionService.stop();
+      // Second stop is no-op
+      h.collectionService.stop();
+    } finally {
+      h.collectionService.stop();
+      h.db.close();
+      cleanupPath(h.workspace);
+    }
+  });
 });
 
 test("autoStart option begins collection immediately", async () => {

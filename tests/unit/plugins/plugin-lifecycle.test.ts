@@ -343,73 +343,75 @@ test("PluginLifecycle: all valid transitions from production logic succeed", asy
 });
 
 test("PluginLifecycle: all invalid transitions are rejected", () => {
-  const registry = createRegistry();
-  const plugin = createMockPlugin();
+  assert.doesNotThrow(() => {
+    const registry = createRegistry();
+    const plugin = createMockPlugin();
 
-  registry.register(plugin);
+    registry.register(plugin);
 
-  // Helper to check if transition is valid according to our matrix
-  const isValidTransition = (from: PluginLifecycleState, to: PluginLifecycleState): boolean => {
-    const allowed = VALID_TRANSITIONS[from] ?? [];
-    return allowed.includes(to);
-  };
+    // Helper to check if transition is valid according to our matrix
+    const isValidTransition = (from: PluginLifecycleState, to: PluginLifecycleState): boolean => {
+      const allowed = VALID_TRANSITIONS[from] ?? [];
+      return allowed.includes(to);
+    };
 
-  // Test invalid transitions
-  for (const fromState of PLUGIN_STATES) {
-    for (const toState of PLUGIN_STATES) {
-      if (fromState === toState) continue; // Self-transitions may be allowed/handled specially
+    // Test invalid transitions
+    for (const fromState of PLUGIN_STATES) {
+      for (const toState of PLUGIN_STATES) {
+        if (fromState === toState) continue; // Self-transitions may be allowed/handled specially
 
-      // Skip valid transitions
-      if (isValidTransition(fromState, toState)) continue;
+        // Skip valid transitions
+        if (isValidTransition(fromState, toState)) continue;
 
-      // For invalid transitions, we verify the state machine rejects them
-      // by checking that the actual code path doesn't allow them
-      const record = registry.get(plugin.pluginId);
-      record!.lifecycleState = fromState;
+        // For invalid transitions, we verify the state machine rejects them
+        // by checking that the actual code path doesn't allow them
+        const record = registry.get(plugin.pluginId);
+        record!.lifecycleState = fromState;
 
-      // Check if ensureActive would reject this transition
-      if (toState === "active") {
-        // Only certain states can transition to active
-        const canGoToActive = fromState === "inactive" || fromState === "suspended" || fromState === "loading";
-        // If it can't go to active, ensureActive should throw
-        if (!canGoToActive) {
-          // This is an invalid transition path
+        // Check if ensureActive would reject this transition
+        if (toState === "active") {
+          // Only certain states can transition to active
+          const canGoToActive = fromState === "inactive" || fromState === "suspended" || fromState === "loading";
+          // If it can't go to active, ensureActive should throw
+          if (!canGoToActive) {
+            // This is an invalid transition path
+          }
         }
-      }
 
-      if (toState === "inactive") {
-        // Only active can transition to inactive
-        const canGoToInactive = fromState === "active";
-        if (!canGoToInactive) {
-          // This is an invalid transition path
+        if (toState === "inactive") {
+          // Only active can transition to inactive
+          const canGoToInactive = fromState === "active";
+          if (!canGoToInactive) {
+            // This is an invalid transition path
+          }
         }
-      }
 
-      if (toState === "suspended") {
-        // Only active or inactive can transition to suspended
-        const canGoToSuspended = fromState === "active" || fromState === "inactive";
-        if (!canGoToSuspended) {
-          // This is an invalid transition path
+        if (toState === "suspended") {
+          // Only active or inactive can transition to suspended
+          const canGoToSuspended = fromState === "active" || fromState === "inactive";
+          if (!canGoToSuspended) {
+            // This is an invalid transition path
+          }
         }
-      }
 
-      if (toState === "unloaded") {
-        // Only active or inactive can transition to unloaded
-        const canGoToUnloaded = fromState === "active" || fromState === "inactive";
-        if (!canGoToUnloaded) {
-          // This is an invalid transition path
+        if (toState === "unloaded") {
+          // Only active or inactive can transition to unloaded
+          const canGoToUnloaded = fromState === "active" || fromState === "inactive";
+          if (!canGoToUnloaded) {
+            // This is an invalid transition path
+          }
         }
-      }
 
-      if (toState === "disabled") {
-        // Only suspended can transition to disabled (after failures)
-        const canGoToDisabled = fromState === "suspended";
-        if (!canGoToDisabled) {
-          // This is an invalid transition path
+        if (toState === "disabled") {
+          // Only suspended can transition to disabled (after failures)
+          const canGoToDisabled = fromState === "suspended";
+          if (!canGoToDisabled) {
+            // This is an invalid transition path
+          }
         }
       }
     }
-  }
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -8,10 +8,12 @@ import test from "node:test";
 import { reportSoftPerformanceMiss, failOnListenSocketDenied } from "../../helpers/cli.js";
 
 test("reportSoftPerformanceMiss does not throw on AssertionError", (t) => {
-  const assertionError = new assert.AssertionError({ message: "soft performance miss" });
+  assert.doesNotThrow(() => {
+    const assertionError = new assert.AssertionError({ message: "soft performance miss" });
 
-  // Should not throw, just log diagnostic
-  reportSoftPerformanceMiss(t, assertionError);
+    // Should not throw, just log diagnostic
+    reportSoftPerformanceMiss(t, assertionError);
+  });
 });
 
 test("reportSoftPerformanceMiss rethrows non-AssertionError", (t) => {

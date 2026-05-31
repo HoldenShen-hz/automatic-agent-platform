@@ -1,4 +1,5 @@
 import { describe, it, beforeEach } from "node:test";
+import assert from "node:assert/strict";
 import assert from "node:assert";
 import { spawn } from "node:child_process";
 import { createProcessGuard, withProcessGuard } from "../../../../helpers/process-guard.js";
@@ -67,19 +68,21 @@ describe("withProcessGuard", () => {
   });
 
   it("runs function and asserts no leaks", async () => {
-    const wrapped = withProcessGuard(async () => {
-      const tracker = getProcessTracker();
-      const proc = spawn("sleep", ["0.1"], { detached: false });
-      tracker.register(proc, "bash-tool", "sleep", ["0.1"]);
-      await waitForCondition(() => tracker.getActiveCount() === 0, {
-        timeoutMs: 1_000,
-        intervalMs: 20,
-        description: "wrapped tracked process cleanup",
+    await assert.doesNotReject(async () => {
+      const wrapped = withProcessGuard(async () => {
+        const tracker = getProcessTracker();
+        const proc = spawn("sleep", ["0.1"], { detached: false });
+        tracker.register(proc, "bash-tool", "sleep", ["0.1"]);
+        await waitForCondition(() => tracker.getActiveCount() === 0, {
+          timeoutMs: 1_000,
+          intervalMs: 20,
+          description: "wrapped tracked process cleanup",
+        });
       });
-    });
 
-    // Should not throw
-    await wrapped();
+      // Should not throw
+      await wrapped();
+    });
   });
 
   it("throws when process leaks", async () => {

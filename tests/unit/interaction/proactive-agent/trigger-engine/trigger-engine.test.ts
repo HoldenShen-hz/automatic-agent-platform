@@ -7,7 +7,7 @@ import test from "node:test";
 import { resolveTriggerActionMode } from "../../../../../src/interaction/proactive-agent/trigger-engine/index.js";
 import { ProactiveAgentService } from "../../../../../src/interaction/proactive-agent/index.js";
 
-test("resolveTriggerActionMode returns suggest when requireConfirmation is true", () => {
+test("resolveTriggerActionMode returns suggest when requireConfirmation is true [trigger-engine-module]", () => {
   assert.equal(resolveTriggerActionMode(true, "low"), "suggest");
   assert.equal(resolveTriggerActionMode(true, "medium"), "suggest");
   assert.equal(resolveTriggerActionMode(true, "high"), "suggest");

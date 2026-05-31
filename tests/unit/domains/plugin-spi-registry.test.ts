@@ -294,17 +294,21 @@ test("PluginSpiRegistry.invokeAdapterExecute throws for non-adapter plugin", asy
 });
 
 test("PluginSpiRegistry.deactivate handles non-active plugin gracefully", async () => {
-  const registry = new PluginSpiRegistry();
-  registry.register(makeMinimalPlugin("inactive_plugin"));
+  await assert.doesNotReject(async () => {
+    const registry = new PluginSpiRegistry();
+    registry.register(makeMinimalPlugin("inactive_plugin"));
 
-  await registry.deactivate("inactive_plugin");
-  // Should not throw
+    await registry.deactivate("inactive_plugin");
+    // Should not throw
+  });
 });
 
 test("PluginSpiRegistry.suspend handles non-active plugin gracefully", async () => {
-  const registry = new PluginSpiRegistry();
-  registry.register(makeMinimalPlugin("suspend_inactive_plugin"));
+  await assert.doesNotReject(async () => {
+    const registry = new PluginSpiRegistry();
+    registry.register(makeMinimalPlugin("suspend_inactive_plugin"));
 
-  await registry.suspend("suspend_inactive_plugin", "reason");
-  // Should not throw
+    await registry.suspend("suspend_inactive_plugin", "reason");
+    // Should not throw
+  });
 });

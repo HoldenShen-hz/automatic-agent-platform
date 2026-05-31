@@ -66,19 +66,23 @@ test("ChannelGatewayRetryExecutor returns busy result if already running", async
 });
 
 test("ChannelGatewayRetryExecutor starts and stops polling", () => {
-  const mockService = createMockGatewayService();
-  const executor = new ChannelGatewayRetryExecutor(mockService as any, { pollIntervalMs: 60000 });
-  executor.start();
-  executor.stop();
+  assert.doesNotThrow(() => {
+    const mockService = createMockGatewayService();
+    const executor = new ChannelGatewayRetryExecutor(mockService as any, { pollIntervalMs: 60000 });
+    executor.start();
+    executor.stop();
+  });
 });
 
 test("ChannelGatewayRetryExecutor does not start multiple intervals", () => {
-  const mockService = createMockGatewayService();
-  const executor = new ChannelGatewayRetryExecutor(mockService as any, { pollIntervalMs: 60000 });
-  executor.start();
-  executor.start();
-  executor.start();
-  executor.stop();
+  assert.doesNotThrow(() => {
+    const mockService = createMockGatewayService();
+    const executor = new ChannelGatewayRetryExecutor(mockService as any, { pollIntervalMs: 60000 });
+    executor.start();
+    executor.start();
+    executor.start();
+    executor.stop();
+  });
 });
 
 test("ChannelGatewayRetryExecutor handles errors gracefully", async () => {

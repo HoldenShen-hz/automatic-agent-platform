@@ -153,30 +153,32 @@ test("DurableEventBusAsync.dispose clears subscribers", async () => {
 });
 
 test("DurableEventBusAsync.pendingForConsumer returns pending events", async () => {
-  const workspace = createTempWorkspace("aa-async-bus-pending-");
-  try {
-    const { bus, db, store } = createTestBus(workspace);
-    seedTaskAndExecution(db, store, { taskId: "task-pending", executionId: "exec-pending", traceId: "trace-pending" });
+  await assert.doesNotReject(async () => {
+    const workspace = createTempWorkspace("aa-async-bus-pending-");
+    try {
+      const { bus, db, store } = createTestBus(workspace);
+      seedTaskAndExecution(db, store, { taskId: "task-pending", executionId: "exec-pending", traceId: "trace-pending" });
 
-    bus.subscribe("pending_consumer", async () => undefined);
+      bus.subscribe("pending_consumer", async () => undefined);
 
-    await bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-pending",
-      executionId: "exec-pending",
-      traceId: "trace-pending",
-      payload: { fromStatus: "queued", toStatus: "in_progress" },
-    });
+      await bus.publish({
+        eventType: "task:status_changed",
+        taskId: "task-pending",
+        executionId: "exec-pending",
+        traceId: "trace-pending",
+        payload: { fromStatus: "queued", toStatus: "in_progress" },
+      });
 
-    // For tier_1 events, we need to check pending after subscribe
-    // The pendingForConsumer returns the internal state
-    const pending = bus.pendingForConsumer("pending_consumer");
-    // After subscription and publish, the event should be tracked
+      // For tier_1 events, we need to check pending after subscribe
+      // The pendingForConsumer returns the internal state
+      const pending = bus.pendingForConsumer("pending_consumer");
+      // After subscription and publish, the event should be tracked
 
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+      db.close();
+    } finally {
+      cleanupPath(workspace);
+    }
+  });
 });
 
 test("DurableEventBusAsync.pendingForConsumerAsync returns Promise", async () => {

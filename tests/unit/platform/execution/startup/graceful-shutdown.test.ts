@@ -73,16 +73,18 @@ test("GracefulShutdown - creation with custom options [graceful-shutdown]", () =
 });
 
 test("GracefulShutdown - addHandler adds to the list [graceful-shutdown]", () => {
-  const shutdown = new GracefulShutdown();
+  assert.doesNotThrow(() => {
+    const shutdown = new GracefulShutdown();
 
-  const handler: ShutdownHandler = {
-    name: "test-handler",
-    handler: noopHandler("test-handler"),
-  };
+    const handler: ShutdownHandler = {
+      name: "test-handler",
+      handler: noopHandler("test-handler"),
+    };
 
-  shutdown.addHandler(handler);
-  // Adding handler doesn't throw
-  shutdown.reset();
+    shutdown.addHandler(handler);
+    // Adding handler doesn't throw
+    shutdown.reset();
+  });
 });
 
 test("GracefulShutdown - addHandler throws while shutting down [graceful-shutdown]", () => {

@@ -171,7 +171,7 @@ test("buildCapabilityEntry uses domainId as bundleId fallback when no bundles", 
   assert.equal(entry.bundleId, "no_bundle.default");
 });
 
-test("buildCapabilityEntry throws for unknown domain", () => {
+test("buildCapabilityEntry throws for unknown domain [domain-onboarding]", () => {
   const service = new DomainRegistryService();
   assert.throws(() => service.buildCapabilityEntry("does_not_exist"), (err: unknown) => {
     return err instanceof ValidationError && err.code === "domain_registry.domain_not_found";

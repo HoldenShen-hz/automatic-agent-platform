@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "maximumLines": 1000,
+  "trackedLargeSources": [
+    {
+      "path": "src/platform/five-plane-control-plane/mission/index.ts",
+      "maxLines": 1642
+    },
+    {
+      "path": "src/platform/five-plane-interface/api/http-api-server.ts",
+      "maxLines": 1303
+    },
+    {
+      "path": "src/scale-ecosystem/multi-region/cdc-replication-service.ts",
+      "maxLines": 1209
+    },
+    {
+      "path": "src/platform/five-plane-state-evidence/events/event-registry.ts",
+      "maxLines": 1181
+    },
+    {
+      "path": "src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts",
+      "maxLines": 1122
+    },
+    {
+      "path": "src/platform/five-plane-execution/dispatcher/execution-dispatch-service.ts",
+      "maxLines": 1106
+    },
+    {
+      "path": "src/platform/five-plane-state-evidence/events/durable-event-bus.ts",
+      "maxLines": 1085
+    },
+    {
+      "path": "src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-core.ts",
+      "maxLines": 1062
+    },
+    {
+      "path": "src/domains/registry/plugin-spi-registry.ts",
+      "maxLines": 1054
+    },
+    {
+      "path": "src/platform/five-plane-orchestration/agent-delegation/delegation-manager.service.ts",
+      "maxLines": 1042
+    },
+    {
+      "path": "src/sdk/client-sdk/api-client.ts",
+      "maxLines": 1041
+    },
+    {
+      "path": "src/org-governance/sso-scim/scim-sync/scim-service.ts",
+      "maxLines": 1038
+    },
+    {
+      "path": "src/platform/shared/observability/slo-alerting-service.ts",
+      "maxLines": 1030
+    },
+    {
+      "path": "src/platform/five-plane-execution/queue/redis-queue-adapter.ts",
+      "maxLines": 1027
+    },
+    {
+      "path": "src/platform/five-plane-control-plane/iam/secret-management-service.ts",
+      "maxLines": 1017
+    },
+    {
+      "path": "src/scale-ecosystem/billing/billing-service.ts",
+      "maxLines": 1017
+    },
+    {
+      "path": "src/platform/five-plane-control-plane/config-center/config-audit-service.ts",
+      "maxLines": 1015
+    },
+    {
+      "path": "src/scale-ecosystem/tenant-platform/tenant-platform-service.ts",
+      "maxLines": 1004
+    }
+  ]
+}

@@ -57,7 +57,7 @@ describe("integration-context", () => {
       }
     });
 
-    it("should cleanup remove workspace", () => {
+    it("createIntegrationContext cleanup should remove workspace", () => {
       const ctx = createIntegrationContext("integration-cleanup-");
       const workspace = ctx.workspace;
       ctx.cleanup();
@@ -194,7 +194,7 @@ describe("integration-context", () => {
       }
     });
 
-    it("should cleanup remove workspace", () => {
+    it("createSeededIntegrationContext cleanup should remove workspace", () => {
       const ctx = createSeededIntegrationContext("seeded-cleanup-");
       const workspace = ctx.workspace;
       ctx.cleanup();

@@ -165,7 +165,7 @@ test("resolveControlPlaneCapabilityBaseline throws for invalid capability id", (
   );
 });
 
-test("capability baselines have required fields", () => {
+test("capability baselines have required fields [five-plane-control-plane]", () => {
   for (const baseline of CONTROL_PLANE_CAPABILITY_BASELINES) {
     assert.ok(typeof baseline.capabilityId === "string", "capabilityId should be string");
     assert.ok(typeof baseline.entryModule === "string", "entryModule should be string");

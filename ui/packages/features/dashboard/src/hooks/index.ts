@@ -381,14 +381,14 @@ export function mapDashboardSnapshotToVm(
       snapshot == null
         ? []
         : [
-            { label: "Overall Health", value: snapshot.overallHealth },
+            { label: translateMessage("ui.dashboard.metric.overallHealth"), value: snapshot.overallHealth },
             {
-              label: "Success Rate",
+              label: translateMessage("ui.dashboard.metric.successRate"),
               value: formatPercent(snapshot.successRate),
             },
-            { label: "Queue Depth", value: snapshot.queueDepth },
-            { label: "Active Executions", value: snapshot.activeExecutions },
-            { label: "Approval Backlog", value: snapshot.approvalBacklog },
+            { label: translateMessage("ui.dashboard.metric.queueDepth"), value: snapshot.queueDepth },
+            { label: translateMessage("ui.dashboard.metric.activeExecutions"), value: snapshot.activeExecutions },
+            { label: translateMessage("ui.dashboard.metric.approvalBacklog"), value: snapshot.approvalBacklog },
           ],
     panelGroups:
       snapshot == null

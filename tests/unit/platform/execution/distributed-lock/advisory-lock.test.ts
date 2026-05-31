@@ -300,10 +300,12 @@ test("PgAdvisoryLockAdapter: close calls sql.end() when connected [advisory-lock
 });
 
 test("PgAdvisoryLockAdapter: close does not throw when not connected [advisory-lock]", async () => {
-  const adapter = new PgAdvisoryLockAdapter({ dsn: "postgresql://test:test@localhost/test" });
+  await assert.doesNotReject(async () => {
+    const adapter = new PgAdvisoryLockAdapter({ dsn: "postgresql://test:test@localhost/test" });
 
-  // sql is null, connected is false - should not throw
-  await adapter.close();
+    // sql is null, connected is false - should not throw
+    await adapter.close();
+  });
 });
 
 // ---------------------------------------------------------------------------

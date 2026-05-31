@@ -40,7 +40,7 @@ import type { ApprovalRequest } from "../../../../../src/platform/five-plane-con
 // Quorum Calculator Tests
 // ============================================================================
 
-test("createInitialQuorumStatus returns correct initial state", () => {
+test("createInitialQuorumStatus returns correct initial state [approval-flow-engine]", () => {
   const status = createInitialQuorumStatus();
 
   assert.strictEqual(status.isQuorumMet, false);

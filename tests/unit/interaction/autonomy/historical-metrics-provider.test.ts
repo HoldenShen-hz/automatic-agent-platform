@@ -106,14 +106,16 @@ test("SqlExecutionMetricsProvider captures latest failed execution timestamp as 
 });
 
 test("SqlExecutionMetricsProvider uses windowDays to filter by date", async () => {
-  const db = createMockDb([
-    { status: "succeeded", requires_approval: 0, last_error_code: null, created_at: "2026-04-01T00:00:00Z" },
-  ]);
-  const provider = new SqlExecutionMetricsProvider(db);
-  await provider.fetchMetrics(makeInput({ windowDays: 30 }));
+  await assert.doesNotReject(async () => {
+    const db = createMockDb([
+      { status: "succeeded", requires_approval: 0, last_error_code: null, created_at: "2026-04-01T00:00:00Z" },
+    ]);
+    const provider = new SqlExecutionMetricsProvider(db);
+    await provider.fetchMetrics(makeInput({ windowDays: 30 }));
 
-  // The SQL query uses parameterized window start date
-  // We verify the method doesn't throw and returns expected structure
+    // The SQL query uses parameterized window start date
+    // We verify the method doesn't throw and returns expected structure
+  });
 });
 
 test("toCapabilityTrustScore maps metrics to trust score structure", () => {

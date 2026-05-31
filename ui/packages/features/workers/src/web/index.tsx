@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useWorkersVm } from "../hooks";
 
 export function WorkersWebView(): ReactElement {
   const vm = useWorkersVm();
+  const featureCopy = translateFeatureCopy("workers");
   return (
-    <FeatureScaffold title="Workers" summary="执行 Worker 运行面板" status="Implemented/Internal">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
       <FeatureWorkbenchPanel
         metrics={vm.metrics}
         actions={[

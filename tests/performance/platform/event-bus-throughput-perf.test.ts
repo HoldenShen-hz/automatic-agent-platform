@@ -679,35 +679,37 @@ test("performance: concurrent publish from 5 producers >15000 ops/sec", async (t
 // ============================================================================
 
 test("performance: memory stable during sustained publish", (t) => {
-  const db = createTempDb();
-  const store = new AuthoritativeTaskStoreFacade(db);
-  const bus = new DurableEventBus(db, store);
+  assert.doesNotThrow(() => {
+    const db = createTempDb();
+    const store = new AuthoritativeTaskStoreFacade(db);
+    const bus = new DurableEventBus(db, store);
 
-  try {
-    const iterations = 1000;
-    const batchSize = 100;
+    try {
+      const iterations = 1000;
+      const batchSize = 100;
 
-    // Perform repeated batch publish cycles
-    for (let i = 0; i < iterations; i++) {
-      const events = [];
-      for (let j = 0; j < batchSize; j++) {
-        events.push({
-          eventType: "perf:memory",
-          taskId: null,
-          payload: createTestPayload(i * batchSize + j),
-        });
+      // Perform repeated batch publish cycles
+      for (let i = 0; i < iterations; i++) {
+        const events = [];
+        for (let j = 0; j < batchSize; j++) {
+          events.push({
+            eventType: "perf:memory",
+            taskId: null,
+            payload: createTestPayload(i * batchSize + j),
+          });
+        }
+        bus.publishBatch(events);
       }
-      bus.publishBatch(events);
-    }
 
-    // Verify bus is still functional
-    bus.publish({
-      eventType: "perf:verify",
-      taskId: null,
-      payload: { verify: true },
-    });
-  } finally {
-    bus.dispose();
-    cleanupDb(db);
-  }
+      // Verify bus is still functional
+      bus.publish({
+        eventType: "perf:verify",
+        taskId: null,
+        payload: { verify: true },
+      });
+    } finally {
+      bus.dispose();
+      cleanupDb(db);
+    }
+  });
 });

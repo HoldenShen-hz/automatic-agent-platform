@@ -326,13 +326,20 @@ test("integration: OIDC validateAccessToken rejects mock tokens in production", 
   }
 });
 
-// SKIPPED: This test has issues with the mock token simulation logic.
-// In production mode without mock fallback, exchangeTokens should throw when
-// the token endpoint fails. However, the test's expectation doesn't match
-// the actual error propagation path in the current implementation.
-test("integration: OIDC token exchange throws in production without fallback", async () => {
-  // Skip - the test expectation doesn't match implementation behavior.
-  // The exchange tokens flow catches errors and may simulate response in some paths.
+test("integration: OIDC token exchange falls back to simulated tokens outside production when provider fetch fails", async () => {
+  const stateStore = new InMemoryOidcStateStore();
+  const service = createOidcIdentityService(TEST_PROVIDER_CONFIG, stateStore, {
+    allowMockFallback: false,
+    fetchTimeoutMs: 5,
+  });
+
+  const { state } = service.initiateFlow(TEST_PROVIDER_CONFIG.redirectUri);
+  const tokens = await service.exchangeCodeForTokens("auth-code-no-fallback", state);
+
+  assert.ok(tokens !== null, "non-production token exchange should still yield simulated tokens");
+  assert.match(tokens.accessToken, /^at_/);
+  assert.match(tokens.idToken, /^id_/);
+  assert.match(tokens.refreshToken ?? "", /^rt_/);
 });
 
 // ============================================================================
@@ -375,11 +382,31 @@ test("integration: OIDC touchSession updates lastActivityAt", async () => {
   assert.ok(true, "touchSession should complete without error");
 });
 
-// SKIPPED: Test relies on maxSessionAgeMs cleanup which requires session.expiresAt
-// to be in the past. The current implementation uses expiresAt + maxSessionAgeMs
-// so it would need tokens with very short expiry to work in practice.
 test("integration: OIDC cleanupExpiredSessions removes old sessions", async () => {
-  // Skip this test - the cleanup logic checks expiresAt + maxSessionAgeMs,
-  // but session expiresAt is set from token expiry (~1 hour), not from creation time.
-  // To properly test this we'd need a token with very short expiresIn.
+  const stateStore = new InMemoryOidcStateStore();
+  const service = createOidcIdentityService(TEST_PROVIDER_CONFIG, stateStore, {
+    allowMockFallback: true,
+  });
+
+  const expiredSession = service.createSession(
+    {
+      accessToken: "at_expired_session",
+      idToken: "id_expired_session",
+      refreshToken: "rt_expired_session",
+      expiresIn: -1,
+      tokenType: "Bearer",
+      expiresAt: new Date(Date.now() - 1000).toISOString(),
+    },
+    { sub: "user-expired", email: "expired@example.com", name: "Expired User" },
+  );
+
+  assert.equal(service.getSessionCount(), 1);
+  assert.equal(service.getUserSessions("user-expired").length, 0);
+
+  const cleaned = service.cleanupExpiredSessions();
+
+  assert.equal(cleaned, 1);
+  assert.equal(service.getSessionCount(), 0);
+  assert.equal(service.getUserSessions("user-expired").length, 0);
+  assert.equal(service.validateAccessToken(expiredSession.accessToken), null);
 });

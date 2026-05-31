@@ -1,10 +1,11 @@
 import { useId, useState, type ReactElement } from "react";
 import { FeatureScaffold, Inline, KeyValueTable, ListCard, Stack, ThreePaneLayout, designTokens } from "@aa/ui-core";
-import { translateMessage } from "@aa/shared-i18n";
+import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
 import { useApprovalCenterVm } from "../hooks";
 
 export function ApprovalWebView(): ReactElement {
   const vm = useApprovalCenterVm();
+  const featureCopy = translateFeatureCopy("approval");
   const [delegateTarget, setDelegateTarget] = useState("domain-admin");
   const selectedApproval = vm.selectedApproval;
   const delegateInputId = useId();
@@ -12,7 +13,7 @@ export function ApprovalWebView(): ReactElement {
   const delegateActionDescriptionId = useId();
 
   return (
-    <FeatureScaffold title="Approval Center" summary="审批队列、委派与恢复动作闭环" status="Implemented/Contracted">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Contracted">
       <ThreePaneLayout
         left={(
           <div>
@@ -48,13 +49,13 @@ export function ApprovalWebView(): ReactElement {
             </p>
             <KeyValueTable
               rows={[
-                { key: "Task", value: selectedApproval.taskId },
-                { key: "Risk", value: selectedApproval.riskLevel },
-                { key: "Reason", value: selectedApproval.reasonSummary },
-                { key: "Deadline", value: selectedApproval.deadline ?? translateMessage("ui.approval.notAvailable") },
-                { key: "Policy Source", value: selectedApproval.policySource ?? translateMessage("ui.approval.notAvailable") },
-                { key: "Recommended Option", value: selectedApproval.recommendedOption ?? translateMessage("ui.approval.notAvailable") },
-                { key: "Approval Level", value: selectedApproval.currentLevel != null && selectedApproval.totalLevels != null ? `${selectedApproval.currentLevel}/${selectedApproval.totalLevels}` : translateMessage("ui.approval.singleLevel") },
+                { key: translateMessage("ui.approval.field.task"), value: selectedApproval.taskId },
+                { key: translateMessage("ui.approval.field.risk"), value: selectedApproval.riskLevel },
+                { key: translateMessage("ui.approval.field.reason"), value: selectedApproval.reasonSummary },
+                { key: translateMessage("ui.approval.field.deadline"), value: selectedApproval.deadline ?? translateMessage("ui.approval.notAvailable") },
+                { key: translateMessage("ui.approval.field.policySource"), value: selectedApproval.policySource ?? translateMessage("ui.approval.notAvailable") },
+                { key: translateMessage("ui.approval.field.recommendedOption"), value: selectedApproval.recommendedOption ?? translateMessage("ui.approval.notAvailable") },
+                { key: translateMessage("ui.approval.field.approvalLevel"), value: selectedApproval.currentLevel != null && selectedApproval.totalLevels != null ? `${selectedApproval.currentLevel}/${selectedApproval.totalLevels}` : translateMessage("ui.approval.singleLevel") },
               ]}
             />
             <Inline>

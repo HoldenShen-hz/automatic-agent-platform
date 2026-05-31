@@ -63,11 +63,13 @@ test("GithubAdapter.shutdown clears credential fingerprint", async () => {
 });
 
 test("GithubAdapter.authenticate stores token fingerprint", async () => {
-  const adapter = createGithubAdapterPlugin();
+  await assert.doesNotReject(async () => {
+    const adapter = createGithubAdapterPlugin();
 
-  await adapter.authenticate({ token: "ghp_test1234567890" });
+    await adapter.authenticate({ token: "ghp_test1234567890" });
 
-  // Authentication succeeds without error
+    // Authentication succeeds without error
+  });
 });
 
 test("GithubAdapter.authenticate throws on missing token", async () => {

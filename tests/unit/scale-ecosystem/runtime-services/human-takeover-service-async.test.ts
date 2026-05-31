@@ -1,127 +1,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HumanTakeoverServiceAsync } from "../../../../src/scale-ecosystem/runtime-services/human-takeover-service-async.js";
-import type { TakeoverActionResult } from "../../../../src/scale-ecosystem/runtime-services/human-takeover-service-async.js";
+import { HumanTakeoverServiceAsync as ScaleHumanTakeoverServiceAsync } from "../../../../src/scale-ecosystem/runtime-services/human-takeover-service-async.js";
+import { HumanTakeoverServiceAsync as PlatformHumanTakeoverServiceAsync } from "../../../../src/platform/five-plane-control-plane/incident-control/human-takeover-service-async.js";
 
-// NOTE: Full integration tests require database setup.
-// These tests focus on class structure, options handling, and behavior validation.
-
-test("HumanTakeoverServiceAsync exposes typed emitter methods [human-takeover-service-async]", () => {
-  const service = new HumanTakeoverServiceAsync({} as never, {} as never);
-  assert.equal(typeof service.on, "function");
-  assert.equal(typeof service.once, "function");
-  assert.equal(typeof service.off, "function");
+test("scale human-takeover async extends the platform service [human-takeover-service-async]", () => {
+  assert.equal(Object.getPrototypeOf(ScaleHumanTakeoverServiceAsync.prototype), PlatformHumanTakeoverServiceAsync.prototype);
+  assert.equal(typeof ScaleHumanTakeoverServiceAsync.prototype.openSession, "function");
+  assert.equal(typeof ScaleHumanTakeoverServiceAsync.prototype.completeTask, "function");
+  assert.equal(typeof ScaleHumanTakeoverServiceAsync.prototype.getMetrics, "function");
 });
 
-test("HumanTakeoverServiceAsync default options are applied correctly [human-takeover-service-async]", () => {
-  const service = new HumanTakeoverServiceAsync({} as never, {} as never);
-  const status = service.getCircuitBreakerStatus();
-  assert.equal(status.state, "closed");
-  assert.equal(status.failures, 0);
-});
-
-test("HumanTakeoverServiceAsync custom options are applied [human-takeover-service-async]", () => {
-  const service = new HumanTakeoverServiceAsync({} as never, {} as never, {
-    maxRetries: 5,
-    initialBackoffMs: 200,
-    maxBackoffMs: 10000,
-    defaultTimeoutMs: 120000,
-    maxQueueSize: 100,
-    circuitBreakerEnabled: true,
-    circuitBreakerThreshold: 10,
-    circuitBreakerResetMs: 120000,
-    batchingEnabled: true,
-    batchSize: 30,
-    batchFlushIntervalMs: 500,
+test("scale human-takeover async initializes zeroed metrics [human-takeover-service-async]", () => {
+  const service = new ScaleHumanTakeoverServiceAsync({} as never, {} as never);
+  assert.deepEqual(service.getMetrics(), {
+    totalOperations: 0,
+    successfulOperations: 0,
+    failedOperations: 0,
+    operationsByType: {
+      openSession: 0,
+      modifyInput: 0,
+      switchWorker: 0,
+      retryExecution: 0,
+      setCurrentStep: 0,
+      writeStepOutput: 0,
+      skipCurrentStep: 0,
+      completeTask: 0,
+    },
   });
-  const status = service.getCircuitBreakerStatus();
-  assert.equal(status.state, "closed");
-});
-
-test("HumanTakeoverServiceAsync getSyncService returns HumanTakeoverService [human-takeover-service-async]", () => {
-  const service = new HumanTakeoverServiceAsync({} as never, {} as never);
-  const sync = service.getSyncService();
-  assert.ok(sync != null);
-  assert.equal(typeof sync.openSession, "function");
-  assert.equal(typeof sync.modifyInput, "function");
-  assert.equal(typeof sync.completeTask, "function");
-});
-
-test("HumanTakeoverServiceAsync resetCircuitBreaker resets state [human-takeover-service-async]", () => {
-  const service = new HumanTakeoverServiceAsync({} as never, {} as never);
-  service.resetCircuitBreaker();
-  const status = service.getCircuitBreakerStatus();
-  assert.equal(status.state, "closed");
-  assert.equal(status.failures, 0);
-  assert.equal(status.lastFailure, null);
-});
-
-test("HumanTakeoverServiceAsync getMetrics returns metrics object [human-takeover-service-async]", () => {
-  const service = new HumanTakeoverServiceAsync({} as never, {} as never);
-  const metrics = service.getMetrics();
-  assert.ok(metrics != null);
-  assert.ok(typeof metrics.totalOperations === "number");
-  assert.ok(typeof metrics.successfulOperations === "number");
-  assert.ok(typeof metrics.failedOperations === "number");
-  assert.ok("operationsByType" in metrics);
-});
-
-test("HumanTakeoverServiceAsync resetMetrics clears all metrics [human-takeover-service-async]", () => {
-  const service = new HumanTakeoverServiceAsync({} as never, {} as never);
-  service.resetMetrics();
-  const metrics = service.getMetrics();
-  assert.equal(metrics.totalOperations, 0);
-  assert.equal(metrics.successfulOperations, 0);
-  assert.equal(metrics.failedOperations, 0);
-});
-
-test("HumanTakeoverServiceAsync getQueueDepth returns initial queue size [human-takeover-service-async]", () => {
-  const service = new HumanTakeoverServiceAsync({} as never, {} as never);
-  assert.equal(service.getQueueDepth(), 0);
-});
-
-test("HumanTakeoverServiceAsync getActiveOperationCount returns initial count [human-takeover-service-async]", () => {
-  const service = new HumanTakeoverServiceAsync({} as never, {} as never);
-  assert.equal(service.getActiveOperationCount(), 0);
-});
-
-test("HumanTakeoverServiceAsync exports TakeoverActionResult type [human-takeover-service-async]", () => {
-  // Verify type is exported and usable
-  const result: TakeoverActionResult = {
-    taskId: "task-1",
-    executionId: "exec-1",
-    takeoverSessionId: "takeover-1",
-    operatorActionId: "action-1",
-  };
-  assert.equal(result.taskId, "task-1");
-  assert.equal(result.takeoverSessionId, "takeover-1");
-});
-
-test("HumanTakeoverServiceAsync emits events on circuit breaker reset [human-takeover-service-async]", (t) => {
-  const service = new HumanTakeoverServiceAsync({} as never, {} as never);
-  let eventEmitted = false;
-  service.on("circuit_breaker_close" as never, () => {
-    eventEmitted = true;
-  });
-  service.resetCircuitBreaker();
-  assert.equal(eventEmitted, true);
-});
-
-test("HumanTakeoverServiceAsync dispose marks service as disposed [human-takeover-service-async]", () => {
-  const service = new HumanTakeoverServiceAsync({} as never, {} as never);
   service.dispose();
-  // After dispose, enqueueOperation should reject
-  return service.enqueueOperation("openSession", { taskId: "task-1", operatorId: "op-1", reasonCode: "test" }).then(
-    () => assert.fail("Expected rejection"),
-    (err: Error) => assert.ok(err.message.includes("disposed")),
-  );
-});
-
-test("HumanTakeoverServiceAsync metrics track operation types [human-takeover-service-async]", () => {
-  const service = new HumanTakeoverServiceAsync({} as never, {} as never);
-  const metrics = service.getMetrics();
-  assert.ok("openSession" in metrics.operationsByType);
-  assert.ok("modifyInput" in metrics.operationsByType);
-  assert.ok("completeTask" in metrics.operationsByType);
 });

@@ -1,4 +1,5 @@
 import { describe, it, mock, beforeEach } from "node:test";
+import assert from "node:assert/strict";
 import assert, { strictEqual, deepStrictEqual, throws, ok } from "node:assert";
 import {
   CorsMiddleware,
@@ -144,15 +145,17 @@ describe("CorsMiddleware", () => {
 
 describe("validateCorsConfig", () => {
   it("should not throw for valid config without wildcard", () => {
-    const config: CorsConfig = {
-      allowedOrigins: ["https://a.com", "https://b.com"],
-      allowedMethods: ["GET", "POST"],
-      allowedHeaders: ["Content-Type"],
-      allowCredentials: true,
-      maxAgeSeconds: 3600,
-      exposeTraceId: false,
-    };
-    validateCorsConfig(config);
+    assert.doesNotThrow(() => {
+      const config: CorsConfig = {
+        allowedOrigins: ["https://a.com", "https://b.com"],
+        allowedMethods: ["GET", "POST"],
+        allowedHeaders: ["Content-Type"],
+        allowCredentials: true,
+        maxAgeSeconds: 3600,
+        exposeTraceId: false,
+      };
+      validateCorsConfig(config);
+    });
   });
 
   it("should throw for wildcard origin with credentials", () => {
@@ -168,15 +171,17 @@ describe("validateCorsConfig", () => {
   });
 
   it("should not throw for wildcard without credentials", () => {
-    const config: CorsConfig = {
-      allowedOrigins: ["*"],
-      allowedMethods: ["GET", "POST"],
-      allowedHeaders: ["Content-Type"],
-      allowCredentials: false,
-      maxAgeSeconds: 3600,
-      exposeTraceId: false,
-    };
-    validateCorsConfig(config);
+    assert.doesNotThrow(() => {
+      const config: CorsConfig = {
+        allowedOrigins: ["*"],
+        allowedMethods: ["GET", "POST"],
+        allowedHeaders: ["Content-Type"],
+        allowCredentials: false,
+        maxAgeSeconds: 3600,
+        exposeTraceId: false,
+      };
+      validateCorsConfig(config);
+    });
   });
 });
 

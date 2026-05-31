@@ -238,13 +238,15 @@ test("execution-plane-bootstrap - bootstrap catalog includes all major capabilit
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("execution-plane-bootstrap - calling register twice does not throw [execution-plane-bootstrap]", async () => {
-  const registry = ServiceRegistry.getInstance();
-  try {
-    registerExecutionPlaneBootstrap(registry);
-    registerExecutionPlaneBootstrap(registry); // Should not throw
-  } finally {
-    await registry.reset();
-  }
+  await assert.doesNotReject(async () => {
+    const registry = ServiceRegistry.getInstance();
+    try {
+      registerExecutionPlaneBootstrap(registry);
+      registerExecutionPlaneBootstrap(registry); // Should not throw
+    } finally {
+      await registry.reset();
+    }
+  });
 });
 
 test("execution-plane-bootstrap - bootstrap is immutable [execution-plane-bootstrap]", async () => {

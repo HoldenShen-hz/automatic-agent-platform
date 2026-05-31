@@ -1,15 +1,16 @@
 import type { ReactElement } from "react";
 import { FeatureScaffold, KeyValueTable, ListCard, designTokens } from "@aa/ui-core";
-import { translateMessage } from "@aa/shared-i18n";
+import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
 import { useWorkflowCockpitVm } from "../hooks";
 import { DAGViewer } from "./dag-viewer";
 
 export function WorkflowCockpitWebView(): ReactElement {
+  const featureCopy = translateFeatureCopy("workflow-cockpit");
   const vm = useWorkflowCockpitVm();
   const selectedWorkflow = vm.selectedWorkflow;
 
   return (
-    <FeatureScaffold title="Workflow Cockpit" summary="工作流 DAG、步骤和恢复基线视图" status="Implemented/Internal">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
       <div style={{ display: "grid", gap: 24 }}>
         <div>
           <h3>{translateMessage("ui.workflowCockpit.listTitle")}</h3>
@@ -41,13 +42,13 @@ export function WorkflowCockpitWebView(): ReactElement {
             <h3>{translateMessage("ui.workflowCockpit.dagDetailTitle")}</h3>
             <KeyValueTable
               rows={[
-                { key: "Workflow", value: selectedWorkflow.title },
-                { key: "Owner", value: selectedWorkflow.owner },
-                { key: "Status", value: selectedWorkflow.status },
-                { key: "Stage", value: selectedWorkflow.currentStage },
-                { key: "Steps", value: String(selectedWorkflow.steps.length) },
-                { key: "Approval Count", value: String(selectedWorkflow.approvalNodes?.length ?? 0) },
-                { key: "Evidence Count", value: String(selectedWorkflow.evidenceRefs?.length ?? 0) },
+                { key: translateMessage("ui.workflowCockpit.field.workflow"), value: selectedWorkflow.title },
+                { key: translateMessage("ui.workflowCockpit.field.owner"), value: selectedWorkflow.owner },
+                { key: translateMessage("ui.workflowCockpit.field.status"), value: selectedWorkflow.status },
+                { key: translateMessage("ui.workflowCockpit.field.stage"), value: selectedWorkflow.currentStage },
+                { key: translateMessage("ui.workflowCockpit.field.steps"), value: String(selectedWorkflow.steps.length) },
+                { key: translateMessage("ui.workflowCockpit.field.approvalCount"), value: String(selectedWorkflow.approvalNodes?.length ?? 0) },
+                { key: translateMessage("ui.workflowCockpit.field.evidenceCount"), value: String(selectedWorkflow.evidenceRefs?.length ?? 0) },
               ]}
             />
             <DAGViewer currentStage={selectedWorkflow.currentStage} steps={selectedWorkflow.steps} />

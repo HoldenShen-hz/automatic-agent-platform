@@ -80,30 +80,32 @@ test("AgentExecutor sandbox: loop detection escalation", async () => {
 });
 
 test("AgentExecutor sandbox: isolation between executor instances", async () => {
-  resetMiddleware();
+  await assert.doesNotReject(async () => {
+    resetMiddleware();
 
-  const executor1 = createAgentExecutor({ loopDetection: null });
-  const executor2 = createAgentExecutor({ loopDetection: null });
+    const executor1 = createAgentExecutor({ loopDetection: null });
+    const executor2 = createAgentExecutor({ loopDetection: null });
 
-  await executor1.executeAgentRound(
-    {
-      request: "executor1",
-      history: [],
-      messages: [],
-      context: createTestContext(),
-    },
-    async () => "executor1_response",
-  );
+    await executor1.executeAgentRound(
+      {
+        request: "executor1",
+        history: [],
+        messages: [],
+        context: createTestContext(),
+      },
+      async () => "executor1_response",
+    );
 
-  await executor2.executeAgentRound(
-    {
-      request: "executor2",
-      history: [],
-      messages: [],
-      context: createTestContext(),
-    },
-    async () => "executor2_response",
-  );
+    await executor2.executeAgentRound(
+      {
+        request: "executor2",
+        history: [],
+        messages: [],
+        context: createTestContext(),
+      },
+      async () => "executor2_response",
+    );
+  });
 });
 
 test("AgentExecutor sandbox: singleton context is shared", () => {

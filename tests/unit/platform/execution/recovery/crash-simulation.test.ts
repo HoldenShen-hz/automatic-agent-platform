@@ -27,20 +27,26 @@ function makeCrashContext(
 }
 
 test("maybeInjectWorkflowCrash does not throw when injection is undefined [crash-simulation]", () => {
-  const context = makeCrashContext();
-  maybeInjectWorkflowCrash(undefined, context);
+  assert.doesNotThrow(() => {
+    const context = makeCrashContext();
+    maybeInjectWorkflowCrash(undefined, context);
+  });
 });
 
 test("maybeInjectWorkflowCrash does not throw when point does not match [crash-simulation]", () => {
-  const context = makeCrashContext("step_started");
-  const injection: WorkflowCrashInjection = { point: "tool_completed" };
-  maybeInjectWorkflowCrash(injection, context);
+  assert.doesNotThrow(() => {
+    const context = makeCrashContext("step_started");
+    const injection: WorkflowCrashInjection = { point: "tool_completed" };
+    maybeInjectWorkflowCrash(injection, context);
+  });
 });
 
 test("maybeInjectWorkflowCrash does not throw when stepId does not match [crash-simulation]", () => {
-  const context = makeCrashContext("step_started");
-  const injection: WorkflowCrashInjection = { point: "step_started", stepId: "different-step" };
-  maybeInjectWorkflowCrash(injection, context);
+  assert.doesNotThrow(() => {
+    const context = makeCrashContext("step_started");
+    const injection: WorkflowCrashInjection = { point: "step_started", stepId: "different-step" };
+    maybeInjectWorkflowCrash(injection, context);
+  });
 });
 
 test("maybeInjectWorkflowCrash throws when point and stepId match [crash-simulation]", () => {

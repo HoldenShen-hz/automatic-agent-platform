@@ -21,13 +21,13 @@ test("aggregateCostAttribution returns empty object for empty input", () => {
   assert.deepStrictEqual(result, {});
 });
 
-test("aggregateCostAttribution handles single entry", () => {
+test("aggregateCostAttribution handles single entry [ops-maturity-attribution-engine-index]", () => {
   const entries = [{ subjectId: "agent-x", llmCostUsd: 42.99, toolCostUsd: 0, computeCostUsd: 0, storageCostUsd: 0, egressCostUsd: 0, humanReviewCostUsd: 0 }];
   const result = aggregateCostAttribution(entries);
   assert.equal(result["agent-x"], 42.99);
 });
 
-test("aggregateCostAttribution rounds to 4 decimal places", () => {
+test("aggregateCostAttribution rounds to 4 decimal places [ops-maturity-attribution-engine-index]", () => {
   const entries = [
     { subjectId: "agent-y", llmCostUsd: 0.12345, toolCostUsd: 0, computeCostUsd: 0, storageCostUsd: 0, egressCostUsd: 0, humanReviewCostUsd: 0 },
     { subjectId: "agent-y", llmCostUsd: 0.6789, toolCostUsd: 0, computeCostUsd: 0, storageCostUsd: 0, egressCostUsd: 0, humanReviewCostUsd: 0 },
@@ -36,7 +36,7 @@ test("aggregateCostAttribution rounds to 4 decimal places", () => {
   assert.equal(result["agent-y"], 0.8024);
 });
 
-test("aggregateCostAttribution handles many entries for same subject", () => {
+test("aggregateCostAttribution handles many entries for same subject [ops-maturity-attribution-engine-index]", () => {
   const entries = [
     { subjectId: "agent-z", llmCostUsd: 1, toolCostUsd: 0, computeCostUsd: 0, storageCostUsd: 0, egressCostUsd: 0, humanReviewCostUsd: 0 },
     { subjectId: "agent-z", llmCostUsd: 2, toolCostUsd: 0, computeCostUsd: 0, storageCostUsd: 0, egressCostUsd: 0, humanReviewCostUsd: 0 },

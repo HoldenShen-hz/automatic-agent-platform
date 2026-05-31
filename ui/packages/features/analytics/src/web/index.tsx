@@ -49,7 +49,7 @@ export function AnalyticsWebView(): ReactElement {
       <MetricGrid metrics={vm.metrics} />
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 16 }}>
         <label style={{ display: "grid", gap: 4 }}>
-          <span style={{ color: designTokens.color.subtle, fontSize: 12 }}>Start</span>
+          <span style={{ color: designTokens.color.subtle, fontSize: 12 }}>{translateMessage("ui.analytics.filter.start")}</span>
           <input
             type="date"
             value={vm.dateRange.startDate}
@@ -57,55 +57,55 @@ export function AnalyticsWebView(): ReactElement {
           />
         </label>
         <label style={{ display: "grid", gap: 4 }}>
-          <span style={{ color: designTokens.color.subtle, fontSize: 12 }}>End</span>
+          <span style={{ color: designTokens.color.subtle, fontSize: 12 }}>{translateMessage("ui.analytics.filter.end")}</span>
           <input
             type="date"
             value={vm.dateRange.endDate}
             onChange={(event) => vm.setDateRange(vm.dateRange.startDate, event.currentTarget.value)}
           />
         </label>
-        <button type="button" onClick={() => vm.exportData("csv")}>Export CSV</button>
-        <button type="button" onClick={() => vm.exportData("json")}>Export JSON</button>
+        <button type="button" onClick={() => vm.exportData("csv")}>{translateMessage("ui.analytics.export.csv")}</button>
+        <button type="button" onClick={() => vm.exportData("json")}>{translateMessage("ui.analytics.export.json")}</button>
       </div>
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", marginTop: 16 }}>
         <article style={createPanelStyle(designTokens.color.border)}>
-          <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>Line</div>
+          <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>{translateMessage("ui.analytics.chart.line")}</div>
           <div style={{ marginTop: 12 }}>
-            <EChartSurface title="Analytics Trend" values={vm.trendSummary} showTableFallback theme={theme} />
+            <EChartSurface title={translateMessage("ui.analytics.trendTitle")} values={vm.trendSummary} showTableFallback theme={theme} />
           </div>
         </article>
         <article style={createPanelStyle(designTokens.color.border)}>
-          <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>Sparkline</div>
+          <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>{translateMessage("ui.analytics.chart.sparkline")}</div>
           <div style={{ marginTop: 12 }}>
             <MiniTrendBars values={vm.trendSummary} />
           </div>
         </article>
         <article style={createPanelStyle(designTokens.color.border)}>
-          <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>Bar</div>
+          <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>{translateMessage("ui.analytics.chart.bar")}</div>
           <div style={{ marginTop: 12 }}>
             <BarChart points={layerGroups.map((group) => ({ label: group.label, value: group.value }))} />
           </div>
         </article>
         <article style={createPanelStyle(designTokens.color.border)}>
-          <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>Scatter</div>
+          <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>{translateMessage("ui.analytics.chart.scatter")}</div>
           <div style={{ marginTop: 12 }}>
             <ScatterPlot points={scatterPoints} />
           </div>
         </article>
         <article style={createPanelStyle(designTokens.color.border)}>
-          <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>Gauge</div>
+          <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>{translateMessage("ui.analytics.chart.gauge")}</div>
           <div style={{ marginTop: 12 }}>
-            <GaugeChart label="Portfolio Coverage" value={numericMetricTotal} max={Math.max(numericMetricTotal, 1)} />
+            <GaugeChart label={translateMessage("ui.analytics.chart.gaugeLabel")} value={numericMetricTotal} max={Math.max(numericMetricTotal, 1)} />
           </div>
         </article>
         <article style={createPanelStyle(designTokens.color.border)}>
-          <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>Heatmap</div>
+          <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>{translateMessage("ui.analytics.chart.heatmap")}</div>
           <div style={{ marginTop: 12 }}>
             <HeatmapGrid rows={heatmapRows} columns={heatmapColumns} values={heatmapValues} />
           </div>
         </article>
         <article style={createPanelStyle(designTokens.color.border)}>
-          <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>Pie</div>
+          <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>{translateMessage("ui.analytics.chart.pie")}</div>
           <div style={{ marginTop: 12 }}>
             <PieChart slices={layerGroups.map((group) => ({ label: group.label, value: group.value }))} />
           </div>
@@ -114,7 +114,7 @@ export function AnalyticsWebView(): ReactElement {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             {breakdowns.map((breakdown) => (
               <button key={breakdown.dimension} type="button" onClick={() => setSelectedDimension(breakdown.dimension)}>
-                {breakdown.dimension}
+                {translateMessage(`ui.analytics.dimension.${breakdown.dimension}`)}
               </button>
             ))}
           </div>

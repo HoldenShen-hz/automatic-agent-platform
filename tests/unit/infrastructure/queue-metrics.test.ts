@@ -6,6 +6,7 @@
  */
 
 import { describe, it, beforeEach } from "node:test";
+import assert from "node:assert/strict";
 import assert from "node:assert";
 
 import {
@@ -70,14 +71,16 @@ describe("QueueMetricCollector", () => {
     });
 
     it("evicts old entries based on ttl", () => {
-      const shortTtl = new QueueMetricCollector("ttl-test", { ttlMs: 1 });
-      shortTtl.recordFailed("old");
-      // Wait a tiny bit for eviction
-      setTimeoutSync(() => {
-        shortTtl.evictExpiredWaitTimes();
-      }, 5);
-      shortTtl.recordFailed("new");
-      // old should be filtered out by ttl
+      assert.doesNotThrow(() => {
+        const shortTtl = new QueueMetricCollector("ttl-test", { ttlMs: 1 });
+        shortTtl.recordFailed("old");
+        // Wait a tiny bit for eviction
+        setTimeoutSync(() => {
+          shortTtl.evictExpiredWaitTimes();
+        }, 5);
+        shortTtl.recordFailed("new");
+        // old should be filtered out by ttl
+      });
     });
   });
 

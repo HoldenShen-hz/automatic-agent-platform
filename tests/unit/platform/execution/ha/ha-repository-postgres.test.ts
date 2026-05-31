@@ -339,21 +339,23 @@ test("PostgresHaRepository.getLeaseByNodeId returns lease for node [ha-repositor
 });
 
 test("PostgresHaRepository.recordActionAudit inserts audit entry [ha-repository-postgres]", async () => {
-  const mockDb = createMockAsyncDb() as any;
-  const repo = new PostgresHaRepository(mockDb, "test-coordinator") as any;
+  await assert.doesNotReject(async () => {
+    const mockDb = createMockAsyncDb() as any;
+    const repo = new PostgresHaRepository(mockDb, "test-coordinator") as any;
 
-  const entry = {
-    id: "audit-1",
-    actionType: "leader_action",
-    requestingNodeId: "node-1",
-    leaderNodeId: "node-2",
-    epoch: 1,
-    fencingToken: 1,
-    authorized: true,
-    reasonCode: "authorized",
-    performedAt: new Date().toISOString(),
-  };
+    const entry = {
+      id: "audit-1",
+      actionType: "leader_action",
+      requestingNodeId: "node-1",
+      leaderNodeId: "node-2",
+      epoch: 1,
+      fencingToken: 1,
+      authorized: true,
+      reasonCode: "authorized",
+      performedAt: new Date().toISOString(),
+    };
 
-  // Should not throw
-  await repo.recordActionAudit(entry);
+    // Should not throw
+    await repo.recordActionAudit(entry);
+  });
 });

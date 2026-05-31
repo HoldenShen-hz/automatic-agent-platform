@@ -667,14 +667,16 @@ test("snapshot returns all aggregates and events", () => {
 });
 
 test("snapshot returns readonly arrays", () => {
-  const repository = new RuntimeTruthRepository();
-  const snapshot = repository.snapshot();
+  assert.doesNotThrow(() => {
+    const repository = new RuntimeTruthRepository();
+    const snapshot = repository.snapshot();
 
-  // Verify readonly nature by checking they have readonly modifiers
-  type IsReadonlyArray<T> = readonly T[] extends T[] ? false : true;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _check: IsReadonlyArray<typeof snapshot.harnessRuns> = true;
-  void _check;
+    // Verify readonly nature by checking they have readonly modifiers
+    type IsReadonlyArray<T> = readonly T[] extends T[] ? false : true;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _check: IsReadonlyArray<typeof snapshot.harnessRuns> = true;
+    void _check;
+  });
 });
 
 test("snapshot arrays are independent from subsequent mutations", () => {

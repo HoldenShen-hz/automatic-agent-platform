@@ -164,10 +164,12 @@ test("UnifiedChatProvider accepts region for minimax (global)", () => {
 // ============================================================================
 
 test("UnifiedChatProvider dispose is idempotent", () => {
-  const provider = createProvider();
-  provider.dispose();
-  provider.dispose(); // Should not throw
-  provider.dispose();
+  assert.doesNotThrow(() => {
+    const provider = createProvider();
+    provider.dispose();
+    provider.dispose(); // Should not throw
+    provider.dispose();
+  });
 });
 
 test("UnifiedChatProvider multiple dispose calls keep hasProvider false", () => {

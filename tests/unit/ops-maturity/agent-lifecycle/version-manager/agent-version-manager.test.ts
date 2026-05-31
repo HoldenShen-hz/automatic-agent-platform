@@ -200,9 +200,11 @@ test("AgentVersionManager.updateMetrics handles partial updates", () => {
 });
 
 test("AgentVersionManager.updateMetrics handles unknown agent gracefully", () => {
-  const manager = new AgentVersionManager();
-  manager.updateMetrics("nonexistent", "any_id", { totalExecutions: 10 });
-  // No throw
+  assert.doesNotThrow(() => {
+    const manager = new AgentVersionManager();
+    manager.updateMetrics("nonexistent", "any_id", { totalExecutions: 10 });
+    // No throw
+  });
 });
 
 test("AgentVersionManager.registerVersion applies default values", () => {

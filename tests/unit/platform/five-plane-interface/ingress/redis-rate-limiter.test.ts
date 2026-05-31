@@ -124,33 +124,39 @@ test("RateLimitResult interface allows retryAfterMs field", () => {
 });
 
 test("RedisRateLimiter close handles wait status gracefully", async () => {
-  const limiter = new RedisRateLimiter({
-    host: "localhost",
-    port: 6379,
-  });
+  await assert.doesNotReject(async () => {
+    const limiter = new RedisRateLimiter({
+      host: "localhost",
+      port: 6379,
+    });
 
-  // close() should not throw when status is "wait"
-  await limiter.close();
+    // close() should not throw when status is "wait"
+    await limiter.close();
+  });
 });
 
 test("RedisRateLimiter close handles connecting status gracefully", async () => {
-  const limiter = new RedisRateLimiter({
-    host: "localhost",
-    port: 6379,
-  });
+  await assert.doesNotReject(async () => {
+    const limiter = new RedisRateLimiter({
+      host: "localhost",
+      port: 6379,
+    });
 
-  // close() should not throw when status is "connecting"
-  await limiter.close();
+    // close() should not throw when status is "connecting"
+    await limiter.close();
+  });
 });
 
 test("RedisRateLimiter close handles end status gracefully", async () => {
-  const limiter = new RedisRateLimiter({
-    host: "localhost",
-    port: 6379,
-  });
+  await assert.doesNotReject(async () => {
+    const limiter = new RedisRateLimiter({
+      host: "localhost",
+      port: 6379,
+    });
 
-  // close() should not throw when status is "end"
-  await limiter.close();
+    // close() should not throw when status is "end"
+    await limiter.close();
+  });
 });
 
 test("RedisRateLimiter config accepts maxRetriesPerRequest option", () => {

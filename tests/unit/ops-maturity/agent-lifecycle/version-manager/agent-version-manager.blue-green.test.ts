@@ -91,16 +91,20 @@ test("revokeSlot only affects the specific version's slot", () => {
 });
 
 test("revokeSlot handles unknown agent gracefully (no throw)", () => {
-  const manager = new AgentVersionManager();
-  manager.revokeSlot("nonexistent", "any_version_id");
+  assert.doesNotThrow(() => {
+    const manager = new AgentVersionManager();
+    manager.revokeSlot("nonexistent", "any_version_id");
+  });
 });
 
 test("revokeSlot handles unknown version gracefully (no throw)", () => {
-  const manager = new AgentVersionManager();
-  const v1 = manager.registerVersion(makeVersion({ version: "1.0.0" }));
-  manager.assignDeploymentSlot("agent_bg", v1.versionId, "blue");
+  assert.doesNotThrow(() => {
+    const manager = new AgentVersionManager();
+    const v1 = manager.registerVersion(makeVersion({ version: "1.0.0" }));
+    manager.assignDeploymentSlot("agent_bg", v1.versionId, "blue");
 
-  manager.revokeSlot("agent_bg", "unknown_version_id");
+    manager.revokeSlot("agent_bg", "unknown_version_id");
+  });
 });
 
 test("revokeSlot on unslotted version is no-op", () => {

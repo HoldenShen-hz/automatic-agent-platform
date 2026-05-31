@@ -12,7 +12,7 @@ test.describe("LivestreamRetriever comprehensive tests", () => {
     assert.equal(plugin.spiType, "retriever");
   });
 
-  test("capabilityIds includes expected capabilities", () => {
+  test("capabilityIds includes expected capabilities [livestream]", () => {
     const plugin = createLivestreamRetrieverPlugin();
     assert.deepEqual(plugin.capabilityIds, [
       "knowledge.retrieve",
@@ -21,7 +21,7 @@ test.describe("LivestreamRetriever comprehensive tests", () => {
     ]);
   });
 
-  test("initialize is a no-op", async () => {
+  test("initialize is a no-op [livestream]", async () => {
     const plugin = createLivestreamRetrieverPlugin();
     let initialized = false;
     plugin.initialize = async () => {
@@ -41,7 +41,7 @@ test.describe("LivestreamRetriever comprehensive tests", () => {
     assert.equal(await plugin.healthCheck(), true);
   });
 
-  test("shutdown returns undefined", async () => {
+  test("shutdown returns undefined [livestream]", async () => {
     const plugin = createLivestreamRetrieverPlugin();
     assert.ok(plugin.shutdown);
     const result = await plugin.shutdown();
@@ -49,7 +49,7 @@ test.describe("LivestreamRetriever comprehensive tests", () => {
   });
 
   test.describe("retrieve behavior", () => {
-    test("returns results for basic query", async () => {
+    test("returns results for basic query [livestream]", async () => {
       const plugin = createLivestreamRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_basic",
@@ -62,7 +62,7 @@ test.describe("LivestreamRetriever comprehensive tests", () => {
       assert.ok(results.length >= 2);
     });
 
-    test("returns results with all required fields", async () => {
+    test("returns results with all required fields [livestream]", async () => {
       const plugin = createLivestreamRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_fields",
@@ -165,7 +165,7 @@ test.describe("LivestreamRetriever comprehensive tests", () => {
       assert.ok(results.length > 0);
     });
 
-    test("returns results with correct namespaces", async () => {
+    test("returns results with correct namespaces [livestream]", async () => {
       const plugin = createLivestreamRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_ns",
@@ -184,7 +184,7 @@ test.describe("LivestreamRetriever comprehensive tests", () => {
       }
     });
 
-    test("returns results with different matchTypes", async () => {
+    test("returns results with different matchTypes [livestream]", async () => {
       const plugin = createLivestreamRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_match",
@@ -203,7 +203,7 @@ test.describe("LivestreamRetriever comprehensive tests", () => {
       }
     });
 
-    test("returns results with scores between 0 and 1", async () => {
+    test("returns results with scores between 0 and 1 [livestream]", async () => {
       const plugin = createLivestreamRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_scores",
@@ -236,7 +236,7 @@ test.describe("LivestreamRetriever comprehensive tests", () => {
       }
     });
 
-    test("handles empty context gracefully", async () => {
+    test("handles empty context gracefully [livestream]", async () => {
       const plugin = createLivestreamRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_empty",
@@ -249,7 +249,7 @@ test.describe("LivestreamRetriever comprehensive tests", () => {
       assert.ok(results.length >= 2);
     });
 
-    test("handles very long intent gracefully", async () => {
+    test("handles very long intent gracefully [livestream]", async () => {
       const plugin = createLivestreamRetrieverPlugin();
       const longIntent = "a".repeat(500);
       const results = await plugin.retrieve({

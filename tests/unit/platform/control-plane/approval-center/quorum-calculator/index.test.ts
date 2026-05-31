@@ -20,7 +20,7 @@ import {
   QuorumCalculator,
 } from "../../../../../../src/platform/five-plane-control-plane/approval-center/quorum-calculator.js";
 
-test("createInitialQuorumStatus returns correct initial state", () => {
+test("createInitialQuorumStatus returns correct initial state [quorum-calculator-index]", () => {
   const status = createInitialQuorumStatus();
   assert.equal(status.isQuorumMet, false);
   assert.equal(status.isDenied, false);

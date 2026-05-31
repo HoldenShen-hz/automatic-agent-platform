@@ -27,7 +27,7 @@ describe("EvidenceCollector", () => {
       assert.deepEqual(ids, ["ev-1", "ev-2", "ev-3"]);
     });
 
-    test("returns empty array for empty input", () => {
+    test("collectEvidence returns empty array for empty input", () => {
       const ids = collectExplanationEvidenceIds([]);
       assert.deepEqual(ids, []);
     });

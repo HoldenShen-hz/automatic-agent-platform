@@ -287,7 +287,7 @@ test("aggregateCostAttribution sums amounts for same subject", () => {
   assert.equal(result["task_b"], 0.15);
 });
 
-test("aggregateCostAttribution rounds to 4 decimal places", () => {
+test("aggregateCostAttribution rounds to 4 decimal places [platform-cost-management]", () => {
   const entries = [
     { subjectId: "task_a", amountUsd: 0.123456789 },
     { subjectId: "task_a", amountUsd: 0.123456789 },
@@ -304,7 +304,7 @@ test("aggregateCostAttribution handles empty array", () => {
   assert.deepEqual(result, {});
 });
 
-test("aggregateCostAttribution handles single entry", () => {
+test("aggregateCostAttribution handles single entry [platform-cost-management]", () => {
   const entries = [{ subjectId: "task_single", amountUsd: 0.50 }];
 
   const result = aggregateCostAttribution(entries);

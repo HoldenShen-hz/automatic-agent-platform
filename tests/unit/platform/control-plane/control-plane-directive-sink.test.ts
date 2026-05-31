@@ -35,27 +35,25 @@ test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink implements Con
 
 test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink.emitOperationalDirective does nothing", () => {
   const sink = new NoOpControlPlaneDirectiveSink();
-  sink.emitOperationalDirective(createOperationalDirective({
+  assert.doesNotThrow(() => sink.emitOperationalDirective(createOperationalDirective({
     type: "pause",
     scope: { tenantId: "tenant-1" },
     issuedBy: { principalId: "ops-1", tenantId: "tenant-1", roles: ["operator"] },
     reason: "freeze rollout",
     params: { action: "freeze" },
-  }));
-  // No error thrown, nothing happens
+  })));
 });
 
 test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink.emitDecisionDirective does nothing", () => {
   const sink = new NoOpControlPlaneDirectiveSink();
-  sink.emitDecisionDirective(createDecisionDirective({
+  assert.doesNotThrow(() => sink.emitDecisionDirective(createDecisionDirective({
     type: "approve",
     scope: { tenantId: "tenant-1" },
     issuedBy: { principalId: "ops-1", tenantId: "tenant-1", roles: ["approver"] },
     targetRef: "task://task-1",
     payload: { taskId: "task-1" },
     reason: "approved by test",
-  }));
-  // No error thrown, nothing happens
+  })));
 });
 
 test("control-plane-directive-sink: createNoOpDirectiveSink returns NoOpControlPlaneDirectiveSink instance", () => {
@@ -105,36 +103,34 @@ test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink can be used in
   }
 
   for (const sink of sinks) {
-    sink.emitOperationalDirective(createOperationalDirective({
+    assert.doesNotThrow(() => sink.emitOperationalDirective(createOperationalDirective({
       type: "resume",
       scope: { tenantId: "tenant-1" },
       issuedBy: { principalId: "ops-loop", tenantId: "tenant-1", roles: ["operator"] },
       reason: "loop safety",
-    }));
-    sink.emitDecisionDirective(createDecisionDirective({
+    })));
+    assert.doesNotThrow(() => sink.emitDecisionDirective(createDecisionDirective({
       type: "approve",
       scope: { tenantId: "tenant-1" },
       issuedBy: { principalId: "ops-loop", tenantId: "tenant-1", roles: ["approver"] },
       targetRef: "task://loop",
       payload: {},
       reason: "loop safety",
-    }));
+    })));
   }
-  // No errors thrown
+  assert.equal(sinks.length, 10);
 });
 
 test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink multiple calls don't cause issues", () => {
   const sink = createNoOpDirectiveSink();
 
   for (let i = 0; i < 100; i++) {
-    sink.emitOperationalDirective(createOperationalDirective({
+    assert.doesNotThrow(() => sink.emitOperationalDirective(createOperationalDirective({
       type: "quota_adjust",
       scope: { tenantId: "tenant-1" },
       issuedBy: { principalId: "ops-stress", tenantId: "tenant-1", roles: ["operator"] },
       reason: "stress test",
       params: { iteration: i },
-    }));
+    })));
   }
-
-  // No errors, all calls are no-ops
 });

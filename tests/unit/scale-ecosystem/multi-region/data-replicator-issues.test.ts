@@ -223,38 +223,40 @@ test("data-replicator-2197: checkpoint pendingCount calculation is incorrect [da
 });
 
 test("data-replicator-2197: pendingCount should track in-flight events [data-replicator-issues]", async () => {
-  const replicator = new DataReplicatorService({
-    sourceRegionId: "us-east-1",
-    targetRegionIds: ["us-west-2"],
-    policy: {
+  await assert.doesNotReject(async () => {
+    const replicator = new DataReplicatorService({
       sourceRegionId: "us-east-1",
       targetRegionIds: ["us-west-2"],
-      residencyMode: "allowed_cross_border",
-    },
-    batchSize: 100,
-    flushIntervalMs: 5000,
-    retryAttempts: 3,
-    checksumAlgorithm: "sha256",
+      policy: {
+        sourceRegionId: "us-east-1",
+        targetRegionIds: ["us-west-2"],
+        residencyMode: "allowed_cross_border",
+      },
+      batchSize: 100,
+      flushIntervalMs: 5000,
+      retryAttempts: 3,
+      checksumAlgorithm: "sha256",
+    });
+
+    // Add handler that delays
+    let pendingCount = 0;
+    replicator.onEvent("us-west-2", async (event) => {
+      pendingCount++;
+      // Simulate async work
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      pendingCount--;
+    });
+
+    replicator.recordEvent("us-west-2", "Task", "task-1", { data: "test" });
+    replicator.recordEvent("us-west-2", "Task", "task-2", { data: "test" });
+
+    const checkpoint = replicator.getCheckpoint("us-west-2");
+
+    // Issue #2197: pendingCount should reflect events not yet acknowledged
+    // Current code uses errors.length which is wrong
+
+    // pendingCount tracks events in flight, not errors
   });
-
-  // Add handler that delays
-  let pendingCount = 0;
-  replicator.onEvent("us-west-2", async (event) => {
-    pendingCount++;
-    // Simulate async work
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    pendingCount--;
-  });
-
-  replicator.recordEvent("us-west-2", "Task", "task-1", { data: "test" });
-  replicator.recordEvent("us-west-2", "Task", "task-2", { data: "test" });
-
-  const checkpoint = replicator.getCheckpoint("us-west-2");
-
-  // Issue #2197: pendingCount should reflect events not yet acknowledged
-  // Current code uses errors.length which is wrong
-
-  // pendingCount tracks events in flight, not errors
 });
 
 test("data-replicator-2197: pendingCount reflects only events that remain unconfirmed [data-replicator-issues]", async () => {

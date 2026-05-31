@@ -192,6 +192,7 @@ export class CrossRegionRoutingService {
       inferredPrimaryRegionId,
       candidateRegionIds: failoverCandidates,
       preferredFailoverRegionId: failover.targetRegionId ?? null,
+      selectedRegionId: selectedRegion?.regionId ?? null,
     });
 
     const crossBorderClass = request.policy.crossBorderTransferClass ?? (request.policy.allowCrossBorder === false ? "local_only" : "free_transfer");
@@ -353,6 +354,7 @@ export class CrossRegionRoutingService {
     inferredPrimaryRegionId: string | null;
     candidateRegionIds: readonly string[];
     preferredFailoverRegionId: string | null;
+    selectedRegionId: string | null;
   }): string | null {
     if (input.request.primaryRegionHealthy) {
       return null;
@@ -364,6 +366,9 @@ export class CrossRegionRoutingService {
     const preferred = input.preferredFailoverRegionId;
     if (preferred != null && input.candidateRegionIds.includes(preferred) && !excluded.has(preferred)) {
       return preferred;
+    }
+    if (input.selectedRegionId != null && !excluded.has(input.selectedRegionId)) {
+      return input.selectedRegionId;
     }
     return input.candidateRegionIds.find((regionId) => !excluded.has(regionId)) ?? null;
   }

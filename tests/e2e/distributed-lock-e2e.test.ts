@@ -172,7 +172,7 @@ test("E2E Distributed Lock: force steal removes existing lock", () => {
     h.adapter.acquire({ lockKey: "contested-lock", owner: "worker-1" });
 
     // Worker 2 steals the lock
-    const stolen = h.adapter.forceSteal("contested-lock", "worker-2", "Worker 1 unresponsive");
+    const stolen = h.adapter.forceSteal("contested-lock", "worker-2", "stale_owner_recovery");
 
     assert.equal(stolen.owner, "worker-2", "New owner should be worker-2");
     assert.equal(stolen.lockKey, "contested-lock", "Lock key should match");
@@ -191,7 +191,7 @@ test("E2E Distributed Lock: force steal increments fencing token", () => {
     const token1 = result1.lock!.fencingToken;
 
     // Worker 2 steals
-    const stolen = h.adapter.forceSteal("steal-fencing-lock", "worker-2", "Takeover");
+    const stolen = h.adapter.forceSteal("steal-fencing-lock", "worker-2", "operator_override");
 
     assert.ok(stolen.fencingToken > token1, "Stolen lock should have higher fencing token");
   } finally {
@@ -204,7 +204,7 @@ test("E2E Distributed Lock: force steal on non-existent lock succeeds", () => {
 
   try {
     // Steal a lock that doesn't exist - should create it
-    const stolen = h.adapter.forceSteal("nonexistent-lock", "worker-1", "Initial claim");
+    const stolen = h.adapter.forceSteal("nonexistent-lock", "worker-1", "incident_mitigation");
 
     assert.equal(stolen.owner, "worker-1", "Should be owned by claiming worker");
     assert.equal(stolen.status, "held", "Should have held status");
@@ -399,11 +399,11 @@ test("E2E Distributed Lock: force steal records reason in metadata", () => {
   const h = createLockHarness("e2e-lock-metadata-");
 
   try {
-    const stolen = h.adapter.forceSteal("metadata-lock", "worker-2", "Worker 1 failed heartbeat");
+    const stolen = h.adapter.forceSteal("metadata-lock", "worker-2", "stale_owner_recovery");
 
     assert.ok(stolen.metadata, "Should have metadata");
     assert.ok(stolen.metadata!.includes("forceStealReason"), "Should include reason field");
-    assert.ok(stolen.metadata!.includes("Worker 1 failed heartbeat"), "Should include actual reason");
+    assert.ok(stolen.metadata!.includes("stale_owner_recovery"), "Should include actual reason");
   } finally {
     h.cleanup();
   }
@@ -469,7 +469,7 @@ test("E2E Distributed Lock: failover scenario with force steal", () => {
     assert.equal(worker2Acquire.acquired, false, "Worker 2 should be blocked");
 
     // 5. After timeout considerations, Worker 2 force-steals
-    const stolen = h.adapter.forceSteal(lockKey, "worker-2", "Worker 1 heartbeat timeout");
+    const stolen = h.adapter.forceSteal(lockKey, "worker-2", "stale_owner_recovery");
     assert.equal(stolen.owner, "worker-2", "Worker 2 should now own lock");
     assert.ok(stolen.fencingToken > worker1Token, "New fencing token should be higher");
 

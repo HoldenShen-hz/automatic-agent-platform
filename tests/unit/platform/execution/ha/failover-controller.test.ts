@@ -881,23 +881,25 @@ test("FailoverController - different causes produce valid decisions [failover-co
 });
 
 test("FailoverController - multiple sequential failovers produce unique decisionIds [failover-controller]", () => {
-  const controller = new FailoverController();
+  assert.doesNotThrow(() => {
+    const controller = new FailoverController();
 
-  const candidates: CoordinatorNode[] = [
-    {
-      nodeId: "node-2",
-      region: "us-east-1",
-      status: "active",
-      isLeader: false,
-      leadershipEpoch: 0,
-      lastHeartbeatAt: nowIso(),
-      metadata: null,
-    },
-  ];
+    const candidates: CoordinatorNode[] = [
+      {
+        nodeId: "node-2",
+        region: "us-east-1",
+        status: "active",
+        isLeader: false,
+        leadershipEpoch: 0,
+        lastHeartbeatAt: nowIso(),
+        metadata: null,
+      },
+    ];
 
-  // After first failover, state is not idle so we can't do second
-  // Just verify decisionId format
-  controller.dispose();
+    // After first failover, state is not idle so we can't do second
+    // Just verify decisionId format
+    controller.dispose();
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

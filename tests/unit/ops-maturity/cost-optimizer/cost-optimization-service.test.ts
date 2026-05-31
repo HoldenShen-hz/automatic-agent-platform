@@ -195,12 +195,12 @@ test("CostOptimizationService.aggregate returns empty when no records match filt
   assert.deepEqual(result, {});
 });
 
-test("buildCostOptimizationRecommendation returns null when cost < 10", () => {
+test("buildCostOptimizationRecommendation returns null when cost < 10 [ops-maturity-cost-optimization-service]", () => {
   const result = buildCostOptimizationRecommendation("cheap_task", 9.99);
   assert.equal(result, null);
 });
 
-test("buildCostOptimizationRecommendation returns recommendation when cost >= 10", () => {
+test("buildCostOptimizationRecommendation returns recommendation when cost >= 10 [ops-maturity-cost-optimization-service]", () => {
   const result = buildCostOptimizationRecommendation("normal_task", 50);
   assert.ok(result != null);
   assert.equal(result.subjectId, "normal_task");

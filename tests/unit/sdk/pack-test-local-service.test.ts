@@ -17,35 +17,41 @@ import {
 } from "../../../src/sdk/pack-sdk/pack-test-local-service.js";
 
 test("PackTestLocalService configureMockLlm stores config", () => {
-  const service = new PackTestLocalService();
-  const config: MockLlmConfig = {
-    responses: [{ content: "test response" }],
-    delayMs: 100,
-  };
+  assert.doesNotThrow(() => {
+    const service = new PackTestLocalService();
+    const config: MockLlmConfig = {
+      responses: [{ content: "test response" }],
+      delayMs: 100,
+    };
 
-  service.configureMockLlm(config);
+    service.configureMockLlm(config);
+  });
 });
 
 test("PackTestLocalService addMockToolResult stores result", () => {
-  const service = new PackTestLocalService();
-  const result: MockToolResult = {
-    toolId: "tool-1",
-    success: true,
-    output: { result: "ok" },
-    durationMs: 50,
-  };
+  assert.doesNotThrow(() => {
+    const service = new PackTestLocalService();
+    const result: MockToolResult = {
+      toolId: "tool-1",
+      success: true,
+      output: { result: "ok" },
+      durationMs: 50,
+    };
 
-  service.addMockToolResult(result);
+    service.addMockToolResult(result);
+  });
 });
 
 test("PackTestLocalService loadFixtures stores fixtures", () => {
-  const service = new PackTestLocalService();
-  const fixtures = {
-    "unit:test-case-1": { passed: true, caseId: "case-1" },
-    "integration:test-case-2": { passed: false, caseId: "case-2" },
-  };
+  assert.doesNotThrow(() => {
+    const service = new PackTestLocalService();
+    const fixtures = {
+      "unit:test-case-1": { passed: true, caseId: "case-1" },
+      "integration:test-case-2": { passed: false, caseId: "case-2" },
+    };
 
-  service.loadFixtures(fixtures);
+    service.loadFixtures(fixtures);
+  });
 });
 
 test("PackTestLocalService.test validates empty packId", async () => {

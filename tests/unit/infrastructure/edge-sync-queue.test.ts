@@ -20,7 +20,7 @@ import {
 
 describe("Edge Sync Queue - Ordering", () => {
   describe("orderEdgeSyncQueue", () => {
-    it("returns empty array for empty input", () => {
+    it("dequeueReady returns empty array for empty input", () => {
       const result = orderEdgeSyncQueue([]);
       assert.equal(result.length, 0);
     });
@@ -106,7 +106,7 @@ describe("Edge Sync Queue - Ordering", () => {
 
 describe("Edge Sync Queue - Deduplication", () => {
   describe("dedupeEdgeSyncQueue", () => {
-    it("returns empty array for empty input", () => {
+    it("dequeueByPriority returns empty array for empty input", () => {
       const result = dedupeEdgeSyncQueue([]);
       assert.equal(result.length, 0);
     });

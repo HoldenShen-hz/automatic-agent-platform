@@ -351,7 +351,7 @@ test("buildCapabilityEntry returns capability entry for registered domain", () =
   assert.ok(Array.isArray(entry.pluginIds));
 });
 
-test("buildCapabilityEntry throws for unknown domain", () => {
+test("buildCapabilityEntry throws for unknown domain [domain-registry-methods]", () => {
   const service = new DomainRegistryService();
 
   assert.throws(

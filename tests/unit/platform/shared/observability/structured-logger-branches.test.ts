@@ -50,17 +50,19 @@ test("StructuredLogger.log uses telemetry context when available", async () => {
 
 // Test writeToTransports with synchronous transport that returns value
 test("StructuredLogger.writeToTransports handles sync return value", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  const transport = {
-    name: "sync-transport",
-    write: (entry: StructuredLogEntry) => {
-      return "sync result"; // Return a non-Promise value
-    },
-  };
+  assert.doesNotThrow(() => {
+    const logger = new StructuredLogger({ retentionLimit: 10 });
+    const transport = {
+      name: "sync-transport",
+      write: (entry: StructuredLogEntry) => {
+        return "sync result"; // Return a non-Promise value
+      },
+    };
 
-  StructuredLogger.addTransport(transport as any);
-  logger.log({ level: "info", message: "sync test" });
-  StructuredLogger.removeTransport("sync-transport");
+    StructuredLogger.addTransport(transport as any);
+    logger.log({ level: "info", message: "sync test" });
+    StructuredLogger.removeTransport("sync-transport");
+  });
 });
 
 // Test writeToTransports with transport that throws during write

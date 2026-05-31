@@ -94,32 +94,34 @@ test("BudgetReallocationService.reallocate - throws on duplicate idempotency key
 });
 
 test("BudgetReallocationService.reallocate - prunes expired idempotency keys [budget-reallocation-service]", () => {
-  const service = new BudgetReallocationService({ idempotencyKeyTtlMs: 1 });
-  (service as any).balances.set("acc_source", {
-    accountId: "acc_source",
-    outstandingUsd: 0,
-    creditUsd: 1000,
-    version: 1,
-  });
+  assert.doesNotThrow(() => {
+    const service = new BudgetReallocationService({ idempotencyKeyTtlMs: 1 });
+    (service as any).balances.set("acc_source", {
+      accountId: "acc_source",
+      outstandingUsd: 0,
+      creditUsd: 1000,
+      version: 1,
+    });
 
-  service.reallocate({
-    sourceAccountId: "acc_source",
-    targetAccountId: "acc_target",
-    amountUsd: 100,
-    reasonCode: "test",
-    idempotencyKey: "idem_expiring",
-    requestedBy: "admin@test.com",
-    requestedAt: "2026-01-01T00:00:00.000Z",
-  });
+    service.reallocate({
+      sourceAccountId: "acc_source",
+      targetAccountId: "acc_target",
+      amountUsd: 100,
+      reasonCode: "test",
+      idempotencyKey: "idem_expiring",
+      requestedBy: "admin@test.com",
+      requestedAt: "2026-01-01T00:00:00.000Z",
+    });
 
-  service.reallocate({
-    sourceAccountId: "acc_source",
-    targetAccountId: "acc_target",
-    amountUsd: 50,
-    reasonCode: "test",
-    idempotencyKey: "idem_expiring",
-    requestedBy: "admin@test.com",
-    requestedAt: "2026-01-02T00:00:00.000Z",
+    service.reallocate({
+      sourceAccountId: "acc_source",
+      targetAccountId: "acc_target",
+      amountUsd: 50,
+      reasonCode: "test",
+      idempotencyKey: "idem_expiring",
+      requestedBy: "admin@test.com",
+      requestedAt: "2026-01-02T00:00:00.000Z",
+    });
   });
 });
 

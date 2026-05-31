@@ -20,8 +20,7 @@ test("validateContentType allows application/json for POST requests", () => {
     method: "POST",
     headers: { "content-type": "application/json" },
   });
-  // Should not throw
-  validateContentType(request);
+  assert.doesNotThrow(() => validateContentType(request));
 });
 
 test("validateContentType allows application/json with charset for POST requests", () => {
@@ -29,8 +28,7 @@ test("validateContentType allows application/json with charset for POST requests
     method: "POST",
     headers: { "content-type": "application/json; charset=utf-8" },
   });
-  // Should not throw
-  validateContentType(request);
+  assert.doesNotThrow(() => validateContentType(request));
 });
 
 test("validateContentType rejects non-JSON content type for POST requests", () => {
@@ -70,8 +68,7 @@ test("validateContentType skips validation for GET requests", () => {
     method: "GET",
     headers: { "content-type": "text/html" },
   });
-  // Should not throw regardless of content type
-  validateContentType(request);
+  assert.doesNotThrow(() => validateContentType(request));
 });
 
 test("validateContentType skips validation for HEAD requests", () => {
@@ -79,8 +76,7 @@ test("validateContentType skips validation for HEAD requests", () => {
     method: "HEAD",
     headers: { "content-type": "text/html" },
   });
-  // Should not throw regardless of content type
-  validateContentType(request);
+  assert.doesNotThrow(() => validateContentType(request));
 });
 
 test("validateContentType skips validation for OPTIONS requests", () => {
@@ -88,8 +84,7 @@ test("validateContentType skips validation for OPTIONS requests", () => {
     method: "OPTIONS",
     headers: { "content-type": "text/html" },
   });
-  // Should not throw regardless of content type
-  validateContentType(request);
+  assert.doesNotThrow(() => validateContentType(request));
 });
 
 test("validateContentType skips validation for PUT requests", () => {
@@ -97,7 +92,7 @@ test("validateContentType skips validation for PUT requests", () => {
     method: "PUT",
     headers: { "content-type": "application/json" },
   });
-  validateContentType(request);
+  assert.doesNotThrow(() => validateContentType(request));
 });
 
 test("validateContentType skips validation for PATCH requests", () => {
@@ -105,7 +100,7 @@ test("validateContentType skips validation for PATCH requests", () => {
     method: "PATCH",
     headers: { "content-type": "application/json" },
   });
-  validateContentType(request);
+  assert.doesNotThrow(() => validateContentType(request));
 });
 
 test("validateContentType skips validation for DELETE requests", () => {
@@ -113,7 +108,7 @@ test("validateContentType skips validation for DELETE requests", () => {
     method: "DELETE",
     headers: { "content-type": "application/json" },
   });
-  validateContentType(request);
+  assert.doesNotThrow(() => validateContentType(request));
 });
 
 test("createContentTypeValidationMiddleware returns a function", () => {
@@ -140,8 +135,7 @@ test("createContentTypeValidationMiddleware middleware allows application/json",
     method: "POST",
     headers: { "content-type": "application/json; charset=utf-8" },
   });
-  // Should not throw
-  middleware(request);
+  assert.doesNotThrow(() => middleware(request));
 });
 
 test("validateContentType works with request without headers", () => {
@@ -149,7 +143,7 @@ test("validateContentType works with request without headers", () => {
     method: "GET",
     headers: {},
   });
-  validateContentType(request);
+  assert.doesNotThrow(() => validateContentType(request));
 });
 
 test("validateContentType works with request with undefined content-type header", () => {

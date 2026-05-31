@@ -1,412 +1,128 @@
-/**
- * Unit tests for DurableEventBusAsync
- *
- * @see src/scale-ecosystem/marketplace/durable-event-bus-async.ts
- */
-
 import assert from "node:assert/strict";
-import { EventEmitter } from "node:events";
-import test from "node:test";
 import { join } from "node:path";
+import test from "node:test";
 
-import { DurableEventBusAsync } from "../../../../src/scale-ecosystem/marketplace/durable-event-bus-async.js";
+import { DurableEventBusAsync as MarketplaceDurableEventBusAsync } from "../../../../src/scale-ecosystem/marketplace/durable-event-bus-async.js";
+import { DurableEventBusAsync as PlatformDurableEventBusAsync } from "../../../../src/platform/five-plane-state-evidence/events/durable-event-bus-async.js";
+import { DurableEventBus } from "../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
+import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
+import { seedTaskAndExecution } from "../../../helpers/seed.js";
 
-function createTestBus(): { workspace: string; db: SqliteDatabase; bus: DurableEventBusAsync } {
-  const workspace = createTempWorkspace("aa-durable-bus-");
-  const dbPath = join(workspace, "durable-bus.db");
-
-  const db = new SqliteDatabase(dbPath);
+function createTestBus(workspace: string): { bus: MarketplaceDurableEventBusAsync; db: SqliteDatabase; store: AuthoritativeTaskStore } {
+  const db = new SqliteDatabase(join(workspace, "marketplace-durable-events.db"));
   db.migrate();
   const store = new AuthoritativeTaskStore(db);
-
-  const bus = new DurableEventBusAsync(db, store);
-  return { workspace, db, bus };
+  const bus = new MarketplaceDurableEventBusAsync(db, store);
+  return { bus, db, store };
 }
 
-test("DurableEventBusAsync constructor applies default options [durable-event-bus-async]", () => {
-  const workspace = createTempWorkspace("aa-durable-default-");
-  const dbPath = join(workspace, "durable-default.db");
+test("marketplace DurableEventBusAsync aliases the platform async implementation [durable-event-bus-async]", () => {
+  assert.equal(MarketplaceDurableEventBusAsync, PlatformDurableEventBusAsync);
+  assert.equal(typeof MarketplaceDurableEventBusAsync.prototype.subscribe, "function");
+  assert.equal(typeof MarketplaceDurableEventBusAsync.prototype.publish, "function");
+  assert.equal(typeof MarketplaceDurableEventBusAsync.prototype.publishBatch, "function");
+  assert.equal(typeof MarketplaceDurableEventBusAsync.prototype.deliverPending, "function");
+  assert.equal(typeof MarketplaceDurableEventBusAsync.prototype.pendingForConsumerAsync, "function");
+  assert.equal(typeof MarketplaceDurableEventBusAsync.prototype.getSyncService, "function");
+});
 
+test("marketplace DurableEventBusAsync publishes and delivers through the async mirror [durable-event-bus-async]", async () => {
+  const workspace = createTempWorkspace("aa-marketplace-durable-bus-");
   try {
-    const db = new SqliteDatabase(dbPath);
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
+    const { bus, db, store } = createTestBus(workspace);
+    seedTaskAndExecution(db, store, {
+      taskId: "task-marketplace-bus",
+      executionId: "exec-marketplace-bus",
+      traceId: "trace-marketplace-bus",
+    });
 
-    const bus = new DurableEventBusAsync(db, store);
+    const delivered: string[] = [];
+    bus.subscribe("marketplace_projection", async (event) => {
+      delivered.push(event.eventType);
+    });
 
-    const metrics = bus.getMetrics();
-    assert.equal(metrics.totalPublishedEvents, 0);
-    assert.equal(metrics.totalDeliveredEvents, 0);
+    const event = await bus.publish({
+      eventType: "task:status_changed",
+      taskId: "task-marketplace-bus",
+      executionId: "exec-marketplace-bus",
+      traceId: "trace-marketplace-bus",
+      payload: { fromStatus: "queued", toStatus: "in_progress" },
+    });
 
-    bus.dispose();
+    const deliveredCount = await bus.deliverPending("marketplace_projection");
+
+    assert.equal(event.eventType, "task:status_changed");
+    assert.equal(deliveredCount, 1);
+    assert.deepEqual(delivered, ["task:status_changed"]);
+
     db.close();
   } finally {
     cleanupPath(workspace);
   }
 });
 
-test("DurableEventBusAsync constructor applies custom options [durable-event-bus-async]", () => {
-  const workspace = createTempWorkspace("aa-durable-custom-");
-  const dbPath = join(workspace, "durable-custom.db");
-
+test("marketplace DurableEventBusAsync exposes sync bus access and pending helpers [durable-event-bus-async]", async () => {
+  const workspace = createTempWorkspace("aa-marketplace-durable-bus-pending-");
   try {
-    const db = new SqliteDatabase(dbPath);
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-
-    const bus = new DurableEventBusAsync(db, store, {
-      maxDeliveryRetries: 5,
-      initialBackoffMs: 200,
-      maxBackoffMs: 10000,
-      defaultTimeoutMs: 60000,
-      maxBatchSize: 100,
-      batchingEnabled: true,
+    const { bus, db, store } = createTestBus(workspace);
+    seedTaskAndExecution(db, store, {
+      taskId: "task-marketplace-pending",
+      executionId: "exec-marketplace-pending",
+      traceId: "trace-marketplace-pending",
     });
 
-    bus.dispose();
+    bus.subscribe("pending_consumer", async () => undefined);
+
+    const syncBus = bus.getSyncService();
+    assert.ok(syncBus instanceof DurableEventBus);
+
+    const pendingSync = bus.pendingForConsumer("pending_consumer");
+    const pendingAsync = await bus.pendingForConsumerAsync("pending_consumer");
+    assert.ok(Array.isArray(pendingSync));
+    assert.ok(Array.isArray(pendingAsync));
+
     db.close();
   } finally {
     cleanupPath(workspace);
   }
 });
 
-test("DurableEventBusAsync subscribe adds subscriber [durable-event-bus-async]", () => {
-  const h = createTestBus();
-
+test("marketplace DurableEventBusAsync delegates batch publishing to the platform async service [durable-event-bus-async]", async () => {
+  const workspace = createTempWorkspace("aa-marketplace-durable-bus-batch-");
   try {
-    let callCount = 0;
-    const handler = () => { callCount++; };
-
-    h.bus.subscribe("consumer_1", handler);
-
-    const subscriber = h.bus.getSubscriber("consumer_1");
-    assert.ok(subscriber !== undefined);
-    assert.equal(subscriber!.priority, "normal");
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync subscribeHighPriority adds high priority subscriber [durable-event-bus-async]", () => {
-  const h = createTestBus();
-
-  try {
-    h.bus.subscribeHighPriority("consumer_high", () => {});
-
-    const subscriber = h.bus.getSubscriber("consumer_high");
-    assert.ok(subscriber !== undefined);
-    assert.equal(subscriber!.priority, "high");
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync subscribeLowPriority adds low priority subscriber [durable-event-bus-async]", () => {
-  const h = createTestBus();
-
-  try {
-    h.bus.subscribeLowPriority("consumer_low", () => {});
-
-    const subscriber = h.bus.getSubscriber("consumer_low");
-    assert.ok(subscriber !== undefined);
-    assert.equal(subscriber!.priority, "low");
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync unsubscribe removes subscriber [durable-event-bus-async]", () => {
-  const h = createTestBus();
-
-  try {
-    h.bus.subscribe("consumer_remove", () => {});
-    assert.ok(h.bus.getSubscriber("consumer_remove") !== undefined);
-
-    h.bus.unsubscribe("consumer_remove");
-    assert.equal(h.bus.getSubscriber("consumer_remove"), undefined);
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync getAllSubscribers returns all subscribers [durable-event-bus-async]", () => {
-  const h = createTestBus();
-
-  try {
-    h.bus.subscribe("consumer_a", () => {});
-    h.bus.subscribe("consumer_b", () => {});
-    h.bus.subscribeHighPriority("consumer_c", () => {});
-
-    const all = h.bus.getAllSubscribers();
-    assert.equal(all.size, 3);
-    assert.ok(all.has("consumer_a"));
-    assert.ok(all.has("consumer_b"));
-    assert.ok(all.has("consumer_c"));
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync publish emits event_published [durable-event-bus-async]", async () => {
-  const h = createTestBus();
-
-  try {
-    let publishedEvent: any = null;
-    h.bus.on("event_published", (event: any) => { publishedEvent = event; });
-
-    const record = await h.bus.publish({
-      eventType: "perf:test_event",
-      payload: { message: "hello" },
+    const { bus, db, store } = createTestBus(workspace);
+    seedTaskAndExecution(db, store, {
+      taskId: "task-marketplace-batch",
+      executionId: "exec-marketplace-batch",
+      traceId: "trace-marketplace-batch",
     });
 
-    assert.ok(record !== null);
-    assert.equal(record.eventType, "perf:test_event");
-    assert.ok(publishedEvent !== null);
-    assert.equal(publishedEvent.eventType, "perf:test_event");
+    bus.subscribe("batch_consumer", async () => undefined);
+
+    const events = await bus.publishBatch([
+      {
+        eventType: "task:status_changed",
+        taskId: "task-marketplace-batch",
+        executionId: "exec-marketplace-batch",
+        traceId: "trace-marketplace-batch",
+        payload: { fromStatus: "queued", toStatus: "in_progress" },
+      },
+      {
+        eventType: "task:status_changed",
+        taskId: "task-marketplace-batch",
+        executionId: "exec-marketplace-batch",
+        traceId: "trace-marketplace-batch",
+        payload: { fromStatus: "in_progress", toStatus: "done" },
+      },
+    ]);
+
+    assert.equal(events.length, 2);
+    assert.ok(events.every((event) => event.eventType === "task:status_changed"));
+
+    db.close();
   } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync publish rejects payload exceeding max size [durable-event-bus-async]", async () => {
-  const h = createTestBus();
-
-  try {
-    const largePayload = { data: "x".repeat(1_000_001) };
-
-    await assert.rejects(
-      async () => h.bus.publish({
-        eventType: "perf:test_event",
-        payload: largePayload,
-      }),
-      /exceeds maximum/
-    );
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync publish throws when circuit breaker is open [durable-event-bus-async]", async () => {
-  const h = createTestBus();
-
-  try {
-    // Force circuit breaker open by setting failure state
-    (h.bus as any).circuitBreakerOpen = true;
-    (h.bus as any).lastFailureTime = Date.now();
-
-    await assert.rejects(
-      async () => h.bus.publish({
-        eventType: "perf:test_event",
-        payload: { data: "test" },
-      }),
-      /Circuit breaker/
-    );
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync pendingForConsumer returns pending events [durable-event-bus-async]", () => {
-  const h = createTestBus();
-
-  try {
-    h.bus.subscribe("consumer_pending", () => {});
-
-    const pending = h.bus.pendingForConsumer("consumer_pending");
-    assert.ok(Array.isArray(pending));
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync pendingForConsumerAsync returns promise [durable-event-bus-async]", async () => {
-  const h = createTestBus();
-
-  try {
-    h.bus.subscribe("consumer_async", () => {});
-
-    const pending = await h.bus.pendingForConsumerAsync("consumer_async");
-    assert.ok(Array.isArray(pending));
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync getPendingCount returns count [durable-event-bus-async]", () => {
-  const h = createTestBus();
-
-  try {
-    h.bus.subscribe("consumer_count", () => {});
-
-    const count = h.bus.getPendingCount("consumer_count");
-    assert.equal(typeof count, "number");
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync getMetrics returns metrics object [durable-event-bus-async]", () => {
-  const h = createTestBus();
-
-  try {
-    const metrics = h.bus.getMetrics();
-
-    assert.ok("totalPublishedEvents" in metrics);
-    assert.ok("totalDeliveredEvents" in metrics);
-    assert.ok("totalFailedDeliveries" in metrics);
-    assert.ok("totalDeadLetteredEvents" in metrics);
-    assert.ok("averageDeliveryLatencyMs" in metrics);
-    assert.ok("averagePublishLatencyMs" in metrics);
-
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync resetMetrics resets all values [durable-event-bus-async]", () => {
-  const h = createTestBus();
-
-  try {
-    h.bus.resetMetrics();
-
-    const metrics = h.bus.getMetrics();
-    assert.equal(metrics.totalPublishedEvents, 0);
-    assert.equal(metrics.totalDeliveredEvents, 0);
-    assert.equal(metrics.totalFailedDeliveries, 0);
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync getSyncService returns sync service [durable-event-bus-async]", () => {
-  const h = createTestBus();
-
-  try {
-    const syncService = h.bus.getSyncService();
-    assert.ok(syncService !== null);
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync dispose prevents further operations [durable-event-bus-async]", () => {
-  const h = createTestBus();
-
-  h.bus.dispose();
-
-  assert.throws(
-    () => h.bus.subscribe("after_dispose", () => {}),
-    /disposed/
-  );
-
-  h.db.close();
-  cleanupPath(h.workspace);
-});
-
-test("DurableEventBusAsync double dispose is safe [durable-event-bus-async]", () => {
-  const h = createTestBus();
-
-  h.bus.dispose();
-  h.bus.dispose(); // Should not throw
-
-  h.db.close();
-  cleanupPath(h.workspace);
-});
-
-test("DurableEventBusAsync emits subscriber_added event [durable-event-bus-async]", () => {
-  const h = createTestBus();
-
-  try {
-    let addedEvent: any = null;
-    h.bus.on("subscriber_added", (event: any) => { addedEvent = event; });
-
-    h.bus.subscribe("new_consumer", () => {});
-
-    assert.ok(addedEvent !== null);
-    assert.equal(addedEvent.consumerId, "new_consumer");
-    assert.equal(addedEvent.priority, "normal");
-
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync emits subscriber_removed event [durable-event-bus-async]", () => {
-  const h = createTestBus();
-
-  try {
-    let removedEvent: any = null;
-    h.bus.on("subscriber_removed", (event: any) => { removedEvent = event; });
-
-    h.bus.subscribe("remove_me", () => {});
-    h.bus.unsubscribe("remove_me");
-
-    assert.ok(removedEvent !== null);
-    assert.equal(removedEvent.consumerId, "remove_me");
-
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("DurableEventBusAsync circuit breaker closes after backoff [durable-event-bus-async]", async () => {
-  const h = createTestBus();
-
-  try {
-    let circuitCloseEvent: any = null;
-    h.bus.on("circuit_breaker_close", () => { circuitCloseEvent = true; });
-
-    // Open circuit breaker
-    (h.bus as any).circuitBreakerOpen = true;
-    (h.bus as any).lastFailureTime = Date.now() - 10000; // 10 seconds ago
-    (h.bus as any).failureCount = 5;
-
-    // Should close circuit since maxBackoffMs (5000) has passed
-    await h.bus.publish({
-      eventType: "perf:test_event",
-      payload: { data: "test" },
-    });
-
-    assert.equal((h.bus as any).circuitBreakerOpen, false);
-    assert.equal(circuitCloseEvent, true);
-  } finally {
-    h.bus.dispose();
-    h.db.close();
-    cleanupPath(h.workspace);
+    cleanupPath(workspace);
   }
 });

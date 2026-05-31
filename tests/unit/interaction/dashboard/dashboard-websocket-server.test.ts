@@ -4,6 +4,10 @@ import test from "node:test";
 import { DashboardWebSocketServer, createDashboardWebSocketServer } from "../../../../src/interaction/dashboard/dashboard-websocket-server.js";
 import type { DashboardDelta } from "../../../../src/interaction/dashboard/dashboard-projection-service.js";
 
+type DashboardWebSocketServerPrivate = DashboardWebSocketServer & {
+  heartbeatTimer: ReturnType<typeof setInterval> | null;
+};
+
 function createDashboardDelta(overrides: Partial<DashboardDelta> = {}): DashboardDelta {
   return {
     deltaId: "delta-1",
@@ -188,12 +192,16 @@ test("DashboardWebSocketServer start and stop manage heartbeat", () => {
   const server = new DashboardWebSocketServer();
 
   server.start();
+  assert.ok((server as DashboardWebSocketServerPrivate).heartbeatTimer != null);
   // Start should be idempotent
   server.start();
+  assert.ok((server as DashboardWebSocketServerPrivate).heartbeatTimer != null);
 
   server.stop();
+  assert.equal((server as DashboardWebSocketServerPrivate).heartbeatTimer, null);
   // Stop should be idempotent
   server.stop();
+  assert.equal((server as DashboardWebSocketServerPrivate).heartbeatTimer, null);
 });
 
 test("DashboardWebSocketServer getClientCount returns correct count", () => {

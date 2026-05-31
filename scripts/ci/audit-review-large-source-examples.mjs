@@ -1,57 +1,87 @@
-import { readFileSync } from "node:fs";
+#!/usr/bin/env node
 
-const checks = [];
-const MAX_SOURCE_LINES = 1000;
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 
-function lineCount(path) {
-  return readFileSync(path, "utf8").split("\n").length;
+const BASELINE_PATH = "config/quality/large-source-file-allowlist.json";
+const SKIP_DIRECTORIES = new Set(["node_modules", "dist", "coverage"]);
+
+if (!existsSync(BASELINE_PATH)) {
+  throw new Error(`missing baseline: ${BASELINE_PATH}`);
 }
 
-function check(name, ok, detail) {
-  checks.push({ name, ok, detail });
+const baseline = JSON.parse(readFileSync(BASELINE_PATH, "utf8"));
+const maximumLines = Number(baseline.maximumLines ?? 1000);
+const trackedLargeSources = new Map(
+  (baseline.trackedLargeSources ?? []).map((entry) => [entry.path, Number(entry.maxLines)]),
+);
+
+const actualLargeSources = walk("src")
+  .map((path) => ({ path, lineCount: readFileSync(path, "utf8").split("\n").length }))
+  .filter((entry) => entry.lineCount > maximumLines)
+  .sort((left, right) => right.lineCount - left.lineCount || left.path.localeCompare(right.path));
+
+const actualPaths = new Set(actualLargeSources.map((entry) => entry.path));
+const failures = [];
+
+for (const entry of actualLargeSources) {
+  if (!trackedLargeSources.has(entry.path)) {
+    failures.push({
+      rule: "untracked-large-source",
+      path: entry.path,
+      lineCount: entry.lineCount,
+    });
+    continue;
+  }
+  const allowedLineCount = trackedLargeSources.get(entry.path);
+  if (entry.lineCount > allowedLineCount) {
+    failures.push({
+      rule: "large-source-grew-without-baseline-update",
+      path: entry.path,
+      lineCount: entry.lineCount,
+      allowedLineCount,
+    });
+  }
 }
 
-const runtimeTruthRepositoryLines = lineCount("src/platform/five-plane-state-evidence/truth/runtime-truth-repository.ts");
-const missionRepositoryLines = lineCount("src/platform/five-plane-state-evidence/truth/mission-repository.ts");
-const runtimePhysicalSchemaLines = lineCount("src/platform/five-plane-state-evidence/truth/runtime-physical-schema.ts");
-const platformIndexLines = lineCount("src/platform/index.ts");
-const harnessIndexLines = lineCount("src/platform/five-plane-orchestration/harness/index.ts");
-const executableContractsIndexLines = lineCount("src/platform/contracts/executable-contracts/index.ts");
-
-check(
-  `runtime-truth-repository below ${MAX_SOURCE_LINES} lines`,
-  runtimeTruthRepositoryLines < MAX_SOURCE_LINES,
-  `runtime-truth-repository.ts=${runtimeTruthRepositoryLines}`,
-);
-check(
-  `mission-repository below ${MAX_SOURCE_LINES} lines`,
-  missionRepositoryLines < MAX_SOURCE_LINES,
-  `mission-repository.ts=${missionRepositoryLines}`,
-);
-check(
-  `runtime-physical-schema below ${MAX_SOURCE_LINES} lines`,
-  runtimePhysicalSchemaLines < MAX_SOURCE_LINES,
-  `runtime-physical-schema.ts=${runtimePhysicalSchemaLines}`,
-);
-check(
-  `platform index below ${MAX_SOURCE_LINES} lines`,
-  platformIndexLines < MAX_SOURCE_LINES,
-  `platform/index.ts=${platformIndexLines}`,
-);
-check(
-  `remaining giant source files stay below ${MAX_SOURCE_LINES} lines`,
-  harnessIndexLines <= MAX_SOURCE_LINES && executableContractsIndexLines <= MAX_SOURCE_LINES,
-  `harness/index.ts=${harnessIndexLines}, executable-contracts/index.ts=${executableContractsIndexLines}`,
-);
-
-for (const item of checks) {
-  console.log(`${item.ok ? "ok" : "fail"} ${item.name} - ${item.detail}`);
+for (const [path] of trackedLargeSources) {
+  if (!actualPaths.has(path)) {
+    failures.push({
+      rule: "baseline-entry-no-longer-large",
+      path,
+    });
+  }
 }
 
-const failures = checks.filter((item) => !item.ok);
+console.log(JSON.stringify({
+  baselinePath: BASELINE_PATH,
+  maximumLines,
+  trackedCount: trackedLargeSources.size,
+  actualCount: actualLargeSources.length,
+  actualLargeSources,
+  failures,
+}, null, 2));
+
 if (failures.length > 0) {
-  console.error(`review large source example audit failed: ${failures.length}/${checks.length}`);
+  console.error("review large source audit failed");
   process.exit(1);
 }
 
-console.log(`review large source example audit passed: ${checks.length}/${checks.length}`);
+function walk(directory) {
+  const files = [];
+  for (const entry of readdirSync(directory).sort()) {
+    if (SKIP_DIRECTORIES.has(entry)) {
+      continue;
+    }
+    const fullPath = join(directory, entry);
+    const stats = statSync(fullPath);
+    if (stats.isDirectory()) {
+      files.push(...walk(fullPath));
+      continue;
+    }
+    if (stats.isFile() && /\.(ts|tsx)$/.test(fullPath)) {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}

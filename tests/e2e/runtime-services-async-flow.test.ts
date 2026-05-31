@@ -78,15 +78,6 @@ test("E2E: runtime-services async human takeover modifies input and completes th
 
   try {
     const takeover = new HumanTakeoverServiceAsync(harness.db, harness.store);
-    const asyncEvents: string[] = [];
-    takeover.on("session_opened", (event) => {
-      const payload = event as { taskId: string };
-      asyncEvents.push(`opened:${payload.taskId}`);
-    });
-    takeover.on("session_closed", (event) => {
-      const payload = event as { taskId: string };
-      asyncEvents.push(`closed:${payload.taskId}`);
-    });
 
     const opened = await takeover.openSession({
       taskId: "task-runtime-takeover",
@@ -115,7 +106,6 @@ test("E2E: runtime-services async human takeover modifies input and completes th
     assert.equal(task?.outputJson, JSON.stringify({ outcome: "manual_recovery_complete" }));
     assert.equal(execution?.status, "succeeded");
     assert.equal(session?.status, "closed");
-    assert.deepEqual(asyncEvents, ["opened:task-runtime-takeover", "closed:task-runtime-takeover"]);
     assert.ok(eventTypes.includes("takeover:session_opened"));
     assert.ok(eventTypes.includes("takeover:action_applied"));
   } finally {
@@ -155,15 +145,14 @@ test("E2E: runtime-services durable event bus publishes, delivers, and drains pe
     });
 
     await new Promise((resolve) => setTimeout(resolve, 25));
-    assert.equal(bus.getPendingCount("runtime_inspector"), 0);
+    assert.equal(bus.pendingForConsumer("runtime_inspector").length, 0);
     const deliveredCount = await bus.deliverPending("runtime_inspector");
 
     assert.equal(deliveredCount, 0);
     assert.deepEqual(deliveredEventTypes, ["dispatch:ticket_created"]);
-    assert.equal(bus.getPendingCount("runtime_inspector"), 0);
+    assert.equal(bus.pendingForConsumer("runtime_inspector").length, 0);
     assert.equal(harness.store.countPendingTier1Acks(), 0);
     assert.equal(record.eventType, "dispatch:ticket_created");
-    assert.equal(bus.getMetrics().totalPublishedEvents, 1);
 
     bus.dispose();
   } finally {

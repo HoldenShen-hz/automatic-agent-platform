@@ -408,7 +408,7 @@ test("buildCapabilityEntry returns domain capability summary", () => {
   assert.equal(entry.trustTier, "standard");
 });
 
-test("buildCapabilityEntry throws for unknown domain", () => {
+test("buildCapabilityEntry throws for unknown domain [domain-registry]", () => {
   const service = new DomainRegistryService();
   assert.throws(() => {
     service.buildCapabilityEntry("nonexistent");

@@ -84,47 +84,51 @@ test("PluginTestHarness creates with mock tools", () => {
 });
 
 test("PluginTestHarness.configureMockLlm updates mock config", () => {
-  const plugin = defineTool({
-    pluginId: "test.tool",
-    name: "Test Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  assert.doesNotThrow(() => {
+    const plugin = defineTool({
+      pluginId: "test.tool",
+      name: "Test Tool",
+      version: "1.0.0",
+      capabilities: [{
+        name: "execute",
+        description: "Execute",
+        inputSchema: { type: "object" },
+        outputSchema: { type: "object" },
+      }],
+    });
 
-  const harness = new PluginTestHarness({ plugin });
-  harness.configureMockLlm({
-    responses: [{ content: "new mock" }],
-    delayMs: 50,
+    const harness = new PluginTestHarness({ plugin });
+    harness.configureMockLlm({
+      responses: [{ content: "new mock" }],
+      delayMs: 50,
+    });
+    // No error means success
   });
-  // No error means success
 });
 
 test("PluginTestHarness.addMockToolResult adds tool result", () => {
-  const plugin = defineTool({
-    pluginId: "test.tool",
-    name: "Test Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  assert.doesNotThrow(() => {
+    const plugin = defineTool({
+      pluginId: "test.tool",
+      name: "Test Tool",
+      version: "1.0.0",
+      capabilities: [{
+        name: "execute",
+        description: "Execute",
+        inputSchema: { type: "object" },
+        outputSchema: { type: "object" },
+      }],
+    });
 
-  const harness = new PluginTestHarness({ plugin });
-  harness.addMockToolResult({
-    toolId: "another-tool",
-    success: true,
-    output: { result: "added" },
-    durationMs: 5,
+    const harness = new PluginTestHarness({ plugin });
+    harness.addMockToolResult({
+      toolId: "another-tool",
+      success: true,
+      output: { result: "added" },
+      durationMs: 5,
+    });
+    // No error means success
   });
-  // No error means success
 });
 
 test("PluginTestHarness.runCase executes and returns result", async () => {

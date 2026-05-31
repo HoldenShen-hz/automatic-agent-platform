@@ -308,63 +308,71 @@ test("PluginExecutorService calls onUnload hook during unregister [plugin-execut
 });
 
 test("PluginExecutorService handles missing onUnload gracefully [plugin-executor.service.extended]", async () => {
-  const service = new PluginExecutorService();
+  await assert.doesNotReject(async () => {
+    const service = new PluginExecutorService();
 
-  const manifest = createTestManifest();
-  const hooks = createTestHooks({
-    onUnload: undefined,
+    const manifest = createTestManifest();
+    const hooks = createTestHooks({
+      onUnload: undefined,
+    });
+
+    service.register(manifest, hooks);
+
+    // Should not throw
+    await service.unregister("test-plugin");
   });
-
-  service.register(manifest, hooks);
-
-  // Should not throw
-  await service.unregister("test-plugin");
 });
 
 test("PluginExecutorService handles missing onLoad gracefully [plugin-executor.service.extended]", async () => {
-  const service = new PluginExecutorService();
+  await assert.doesNotReject(async () => {
+    const service = new PluginExecutorService();
 
-  const manifest = createTestManifest();
-  const hooks = createTestHooks({
-    onLoad: undefined as any,
-    initialize: undefined,
+    const manifest = createTestManifest();
+    const hooks = createTestHooks({
+      onLoad: undefined as any,
+      initialize: undefined,
+    });
+
+    service.register(manifest, hooks);
+
+    // Should not throw
+    await service.load("test-plugin");
   });
-
-  service.register(manifest, hooks);
-
-  // Should not throw
-  await service.load("test-plugin");
 });
 
 test("PluginExecutorService handles missing onActivate gracefully [plugin-executor.service.extended]", async () => {
-  const service = new PluginExecutorService();
+  await assert.doesNotReject(async () => {
+    const service = new PluginExecutorService();
 
-  const manifest = createTestManifest();
-  const hooks = createTestHooks({
-    onActivate: undefined,
+    const manifest = createTestManifest();
+    const hooks = createTestHooks({
+      onActivate: undefined,
+    });
+
+    service.register(manifest, hooks);
+    await service.load("test-plugin");
+
+    // Should not throw
+    await service.activate("test-plugin");
   });
-
-  service.register(manifest, hooks);
-  await service.load("test-plugin");
-
-  // Should not throw
-  await service.activate("test-plugin");
 });
 
 test("PluginExecutorService handles missing onDeactivate gracefully [plugin-executor.service.extended]", async () => {
-  const service = new PluginExecutorService();
+  await assert.doesNotReject(async () => {
+    const service = new PluginExecutorService();
 
-  const manifest = createTestManifest();
-  const hooks = createTestHooks({
-    onDeactivate: undefined,
+    const manifest = createTestManifest();
+    const hooks = createTestHooks({
+      onDeactivate: undefined,
+    });
+
+    service.register(manifest, hooks);
+    await service.load("test-plugin");
+    await service.activate("test-plugin");
+
+    // Should not throw
+    await service.deactivate("test-plugin");
   });
-
-  service.register(manifest, hooks);
-  await service.load("test-plugin");
-  await service.activate("test-plugin");
-
-  // Should not throw
-  await service.deactivate("test-plugin");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

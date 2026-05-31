@@ -301,10 +301,12 @@ test("ImprovementProposal interface supports all status values", async () => {
 });
 
 test("SimpleProposalEngine.submitForApproval handles nonexistent proposal gracefully", async () => {
-  const engine = new SimpleProposalEngine();
-  // submitForApproval does not throw for nonexistent proposal - it silently does nothing
-  await engine.submitForApproval("nonexistent_proposal_id");
-  // No error means it succeeded silently - which is fine for this test
+  await assert.doesNotReject(async () => {
+    const engine = new SimpleProposalEngine();
+    // submitForApproval does not throw for nonexistent proposal - it silently does nothing
+    await engine.submitForApproval("nonexistent_proposal_id");
+    // No error means it succeeded silently - which is fine for this test
+  });
 });
 
 test("SimpleProposalEngine.listPending returns empty array when no proposals", async () => {

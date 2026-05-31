@@ -147,18 +147,20 @@ test("runStableMigrationCompatibilityRehearsal scenario 2 checks sqlite bootstra
 });
 
 test("writeStableMigrationCompatibilityRehearsalReport writes valid JSON", () => {
-  const report = {
-    startedAt: "2026-04-01T00:00:00.000Z",
-    finishedAt: "2026-04-01T00:01:00.000Z",
-    outputDir: "/tmp/test",
-    totalScenarios: 2,
-    passedScenarios: 2,
-    failedScenarios: 0,
-    scenarios: [],
-  };
+  assert.doesNotThrow(() => {
+    const report = {
+      startedAt: "2026-04-01T00:00:00.000Z",
+      finishedAt: "2026-04-01T00:01:00.000Z",
+      outputDir: "/tmp/test",
+      totalScenarios: 2,
+      passedScenarios: 2,
+      failedScenarios: 0,
+      scenarios: [],
+    };
 
-  // Should not throw
-  writeStableMigrationCompatibilityRehearsalReport("/tmp/test-migration-report-output.json", report);
+    // Should not throw
+    writeStableMigrationCompatibilityRehearsalReport("/tmp/test-migration-report-output.json", report);
+  });
 });
 
 test("compatible migrations have no issues", () => {

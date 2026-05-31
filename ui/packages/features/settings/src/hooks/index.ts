@@ -56,9 +56,9 @@ export function useSettingsVm(): SettingsVm {
   const centerRows = useMemo(() => preferences == null ? [] : [
     { key: translateMessage("ui.settings.locale.label"), value: draftLocale },
     { key: translateMessage("ui.settings.theme.label"), value: draftTheme },
-    { key: "Dashboard Panels", value: String(preferences.defaultDashboardLayout.length) },
-    { key: "Roles", value: roles.map((role) => `${role.name} (${role.userCount})`).join(", ") },
-    { key: "Flags", value: flags.map((flag) => `${flag.id}:${flag.rolloutPercentage}%`).join(", ") },
+    { key: translateMessage("ui.settings.center.dashboardPanels"), value: String(preferences.defaultDashboardLayout.length) },
+    { key: translateMessage("ui.settings.center.roles"), value: roles.map((role) => `${role.name} (${role.userCount})`).join(", ") },
+    { key: translateMessage("ui.settings.center.flags"), value: flags.map((flag) => `${flag.id}:${flag.rolloutPercentage}%`).join(", ") },
   ], [draftLocale, draftTheme, flags, preferences, roles]);
 
   const save = useCallback(async () => {
@@ -69,8 +69,8 @@ export function useSettingsVm(): SettingsVm {
       setSaveState("saved");
       setActivityItems((current) => [
         {
-          title: "Configuration saved",
-          description: `Preferences updated to ${draftLocale} / ${draftTheme}; flags, models, domains and tenants remain in sync.`,
+          title: translateMessage("ui.settings.activity.saved.title"),
+          description: translateMessage("ui.settings.activity.saved.description", { locale: draftLocale, theme: draftTheme }),
         },
         ...current,
       ]);
@@ -83,10 +83,10 @@ export function useSettingsVm(): SettingsVm {
   return {
     loading: preferences == null,
     metrics: [
-      { label: "Roles", value: roles.length },
-      { label: "Feature Flags", value: flags.length },
-      { label: "Models", value: models.length },
-      { label: "Tenants", value: tenants.length },
+      { label: translateMessage("ui.settings.metric.roles"), value: roles.length },
+      { label: translateMessage("ui.settings.metric.featureFlags"), value: flags.length },
+      { label: translateMessage("ui.settings.metric.models"), value: models.length },
+      { label: translateMessage("ui.settings.metric.tenants"), value: tenants.length },
     ],
     leftItems: [
       { title: translateMessage("ui.settings.preferences.title"), description: translateMessage("ui.settings.preferences.description") },

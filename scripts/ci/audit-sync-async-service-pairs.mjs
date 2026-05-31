@@ -8,21 +8,31 @@ const pairs = [
     name: "human-takeover-service",
     sync: "src/scale-ecosystem/runtime-services/human-takeover-service.ts",
     async: "src/scale-ecosystem/runtime-services/human-takeover-service-async.ts",
+    asyncMirrorNeedle: "PlatformHumanTakeoverServiceAsync",
   },
   {
     name: "execution-dispatch-service",
     sync: "src/scale-ecosystem/runtime-services/execution-dispatch-service.ts",
     async: "src/scale-ecosystem/runtime-services/execution-dispatch-service-async.ts",
+    asyncMirrorNeedle: "platform/five-plane-execution/dispatcher/execution-dispatch-service-async",
   },
   {
     name: "execution-worker-handshake-service",
     sync: "src/scale-ecosystem/runtime-services/execution-worker-handshake-service.ts",
     async: "src/scale-ecosystem/runtime-services/execution-worker-handshake-service-async.ts",
+    asyncMirrorNeedle: "platform/five-plane-execution/worker-pool/execution-worker-handshake-service-async",
   },
   {
     name: "execution-worker-writeback-service",
     sync: "src/scale-ecosystem/runtime-services/execution-worker-writeback-service.ts",
     async: "src/scale-ecosystem/runtime-services/execution-worker-writeback-service-async.ts",
+    asyncMirrorNeedle: "platform/five-plane-execution/worker-pool/execution-worker-writeback-service-async",
+  },
+  {
+    name: "durable-event-bus",
+    sync: "src/scale-ecosystem/runtime-services/durable-event-bus.ts",
+    async: "src/scale-ecosystem/runtime-services/durable-event-bus-async.ts",
+    asyncMirrorNeedle: "platform/five-plane-state-evidence/events/durable-event-bus-async",
   },
 ];
 
@@ -46,7 +56,7 @@ for (const pair of pairs) {
   const syncBase = pair.sync.split("/").at(-1)?.replace(".ts", "") ?? pair.sync;
   const asyncBase = pair.async.split("/").at(-1)?.replace(".ts", "") ?? pair.async;
 
-  check(`${pair.name} async wraps sync implementation`, asyncSource.includes(syncBase), pair.async);
+  check(`${pair.name} async stays a thin platform mirror`, asyncSource.includes(pair.asyncMirrorNeedle), pair.async);
   check(`${pair.name} sync remains referenced`, hasTrackedReference(pair.sync, syncBase), pair.sync);
   check(`${pair.name} async remains referenced`, hasTrackedReference(pair.async, asyncBase), pair.async);
   check(
@@ -58,6 +68,11 @@ for (const pair of pairs) {
     `${pair.name} sync implementation exports stable class/function surface`,
     /export class|export function|export\s*{[^}]+}\s*from/.test(syncSource),
     pair.sync,
+  );
+  check(
+    `${pair.name} async mirror stays small`,
+    asyncSource.split("\n").length <= 160,
+    pair.async,
   );
 }
 

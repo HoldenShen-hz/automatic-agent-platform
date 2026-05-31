@@ -209,45 +209,47 @@ test("approval center: applyDecision with text_input stores text response", () =
 });
 
 test("approval center: rejected decision cascades to sibling approvals in same session", () => {
-  const workspace = createTempWorkspace("ac-cascade-");
-  try {
-    const { db, store, service } = createApprovalService(workspace);
-    seedTaskAndExecution(db, store, { taskId: "task-cascade", executionId: "exec-cascade" });
-    const sessionId = "session-approval-cascade-1";
+  assert.doesNotThrow(() => {
+    const workspace = createTempWorkspace("ac-cascade-");
+    try {
+      const { db, store, service } = createApprovalService(workspace);
+      seedTaskAndExecution(db, store, { taskId: "task-cascade", executionId: "exec-cascade" });
+      const sessionId = "session-approval-cascade-1";
 
-    const approval1 = service.createRequest({
-      taskId: "task-cascade",
-      sourceAgentId: "agent-1",
-      reason: "First of cascade",
-      riskLevel: "high",
-      options: ["approve", "reject"],
-      context: { sessionId },
-      timeoutPolicy: "remain_pending",
-    });
+      const approval1 = service.createRequest({
+        taskId: "task-cascade",
+        sourceAgentId: "agent-1",
+        reason: "First of cascade",
+        riskLevel: "high",
+        options: ["approve", "reject"],
+        context: { sessionId },
+        timeoutPolicy: "remain_pending",
+      });
 
-    const approval2 = service.createRequest({
-      taskId: "task-cascade",
-      sourceAgentId: "agent-1",
-      reason: "Second of cascade",
-      riskLevel: "high",
-      options: ["approve", "reject"],
-      context: { sessionId },
-      timeoutPolicy: "remain_pending",
-    });
+      const approval2 = service.createRequest({
+        taskId: "task-cascade",
+        sourceAgentId: "agent-1",
+        reason: "Second of cascade",
+        riskLevel: "high",
+        options: ["approve", "reject"],
+        context: { sessionId },
+        timeoutPolicy: "remain_pending",
+      });
 
-    // Reject the first approval - should cascade to second
-    service.applyDecision({
-      approvalId: approval1.approvalId,
-      decisionType: "rejected",
-      respondedBy: "operator-1",
-      respondedAt: nowIso(),
-    });
+      // Reject the first approval - should cascade to second
+      service.applyDecision({
+        approvalId: approval1.approvalId,
+        decisionType: "rejected",
+        respondedBy: "operator-1",
+        respondedAt: nowIso(),
+      });
 
-    // Both approvals should be rejected (idempotent on already-resolved)
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+      // Both approvals should be rejected (idempotent on already-resolved)
+      db.close();
+    } finally {
+      cleanupPath(workspace);
+    }
+  });
 });
 
 test("approval center: applyDecision to non-existent approval throws", () => {

@@ -141,26 +141,28 @@ test("topology-validator: integration validates pack ID against allowed list", (
 });
 
 test("topology-validator: integration performs full topology validation", () => {
-  const ctx = createIntegrationContext("aa-topo-full-");
-  try {
-    const validator = createTopologyValidator({
-      maxDepth: 3,
-      maxFanout: 5,
-      allowedPackIds: ["pack-a", "pack-b"],
-    });
+  assert.doesNotThrow(() => {
+    const ctx = createIntegrationContext("aa-topo-full-");
+    try {
+      const validator = createTopologyValidator({
+        maxDepth: 3,
+        maxFanout: 5,
+        allowedPackIds: ["pack-a", "pack-b"],
+      });
 
-    // Valid topology - all constraints satisfied
-    validator.validate({
-      currentDepth: 1,
-      activeDelegations: 2,
-      targetPackId: "pack-a",
-      delegationChain: ["pack-root"],
-    });
+      // Valid topology - all constraints satisfied
+      validator.validate({
+        currentDepth: 1,
+        activeDelegations: 2,
+        targetPackId: "pack-a",
+        delegationChain: ["pack-root"],
+      });
 
-    // Should not throw
-  } finally {
-    ctx.cleanup();
-  }
+      // Should not throw
+    } finally {
+      ctx.cleanup();
+    }
+  });
 });
 
 test("topology-validator: integration fails on depth in full validation", () => {

@@ -321,9 +321,11 @@ test("assignDeploymentSlot allows blue and green to coexist on different version
 });
 
 test("assignDeploymentSlot ignores unknown agent", () => {
-  const mgr = new AgentVersionManager();
-  // Should not throw
-  mgr.assignDeploymentSlot("unknown-agent", "some-version-id", "blue");
+  assert.doesNotThrow(() => {
+    const mgr = new AgentVersionManager();
+    // Should not throw
+    mgr.assignDeploymentSlot("unknown-agent", "some-version-id", "blue");
+  });
 });
 
 test("assignDeploymentSlot ignores unknown version", () => {
@@ -572,25 +574,29 @@ test("updateMetrics merges metrics correctly", () => {
 });
 
 test("updateMetrics ignores unknown agent", () => {
-  const mgr = new AgentVersionManager();
-  // Should not throw
-  mgr.updateMetrics("unknown-agent", "some-id", { totalExecutions: 5 });
+  assert.doesNotThrow(() => {
+    const mgr = new AgentVersionManager();
+    // Should not throw
+    mgr.updateMetrics("unknown-agent", "some-id", { totalExecutions: 5 });
+  });
 });
 
 test("updateMetrics ignores unknown version", () => {
-  const mgr = new AgentVersionManager();
-  mgr.registerVersion({
-    agentId: "agent-u",
-    version: "1.0.0",
-    stage: "stable",
-    deprecatedAt: null,
-    stable: true,
-    deploymentSlot: null,
-    changelog: "",
-    metrics: emptyMetrics(),
+  assert.doesNotThrow(() => {
+    const mgr = new AgentVersionManager();
+    mgr.registerVersion({
+      agentId: "agent-u",
+      version: "1.0.0",
+      stage: "stable",
+      deprecatedAt: null,
+      stable: true,
+      deploymentSlot: null,
+      changelog: "",
+      metrics: emptyMetrics(),
+    });
+    // Should not throw
+    mgr.updateMetrics("agent-u", "unknown-id", { totalExecutions: 5 });
   });
-  // Should not throw
-  mgr.updateMetrics("agent-u", "unknown-id", { totalExecutions: 5 });
 });
 
 test("updateMetrics can set all metric fields at once", () => {

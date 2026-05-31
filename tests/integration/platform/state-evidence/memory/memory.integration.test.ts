@@ -104,7 +104,6 @@ test("Issue #2027: similar content keeps distinct full hashes", () => {
     const memory1 = service.remember({ scope: "project", content: content1 });
     const memory2 = service.remember({ scope: "project", content: content2 });
 
-    console.log(`Issue #2027 - Hash1: ${memory1.contentHash}, Hash2: ${memory2.contentHash}`);
     assert.equal(memory1.contentHash!.length, 64, "Issue #2027 regression: first hash should be full width");
     assert.equal(memory2.contentHash!.length, 64, "Issue #2027 regression: second hash should be full width");
     assert.notEqual(memory1.contentHash, memory2.contentHash, "Distinct content should keep distinct hashes");
@@ -135,8 +134,6 @@ test("Issue #2031: string length passes for emoji content that exceeds byte limi
 
     const charCount = emojiContent.length;
     const byteCount = Buffer.byteLength(emojiContent, "utf8");
-
-    console.log(`Issue #2031 - Char count: ${charCount}, Byte count: ${byteCount}`);
 
     // This content would pass the buggy length check but exceed byte limit
     assert.ok(charCount < byteCount, "Emoji content has more bytes than chars");
@@ -207,8 +204,6 @@ test("Issue #2028: project scope uses semantic decay config in real system", () 
     const projectFreshness = decayService.calculateFreshness(projectMemory, evaluatedAt);
     const semanticFreshness = decayService.calculateFreshness(semanticMemory, evaluatedAt);
 
-    console.log(`Issue #2028 - project freshness: ${projectFreshness}, semantic freshness: ${semanticFreshness}`);
-
     assert.ok(projectFreshness > 0.5, "Issue #2028 regression: project freshness should stay high after one day");
     assert.ok(Math.abs(projectFreshness - semanticFreshness) < 0.000001, "Project and semantic scopes should share the same decay profile");
 
@@ -223,42 +218,44 @@ test("Issue #2028: project scope uses semantic decay config in real system", () 
 // =============================================================================
 
 test("Issue #2037: unindexMemory with single quote in ID", () => {
-  const workspace = createTempWorkspace("aa-memory-retrieval-quote-");
-  let db: SqliteDatabase | undefined;
+  assert.doesNotThrow(() => {
+    const workspace = createTempWorkspace("aa-memory-retrieval-quote-");
+    let db: SqliteDatabase | undefined;
 
-  try {
-    db = new SqliteDatabase(join(workspace, "quote.db"));
-    db.migrate();
-    const store = createMemoryStore(db);
-    const memoryService = new MemoryService(store);
-    const retrievalService = new MemoryRetrievalService(store);
+    try {
+      db = new SqliteDatabase(join(workspace, "quote.db"));
+      db.migrate();
+      const store = createMemoryStore(db);
+      const memoryService = new MemoryService(store);
+      const retrievalService = new MemoryRetrievalService(store);
 
-    // Create a memory with quote in its ID
-    const memory = memoryService.remember({
-      taskId: "task-quote",
-      scope: "project",
-      content: "Memory with special ID content",
-    });
+      // Create a memory with quote in its ID
+      const memory = memoryService.remember({
+        taskId: "task-quote",
+        scope: "project",
+        content: "Memory with special ID content",
+      });
 
-    // Modify the memory ID to include a quote (simulating the issue)
-    // In practice, this could happen with certain ID generation patterns
-    const specialId = memory.id + "_with'quote";
+      // Modify the memory ID to include a quote (simulating the issue)
+      // In practice, this could happen with certain ID generation patterns
+      const specialId = memory.id + "_with'quote";
 
-    // Issue #2037: The manual escaping at line 288 is wrong for parameterized queries
-    // safeId = specialId.replace(/'/g, "''") -> double escaping
-    // When SQLite processes '', it treats '' as an escaped single quote
-    // But the parameterized query already handles escaping!
+      // Issue #2037: The manual escaping at line 288 is wrong for parameterized queries
+      // safeId = specialId.replace(/'/g, "''") -> double escaping
+      // When SQLite processes '', it treats '' as an escaped single quote
+      // But the parameterized query already handles escaping!
 
-    // This should not throw, but the DELETE may not work correctly
-    retrievalService.unindexMemory(specialId);
+      // This should not throw, but the DELETE may not work correctly
+      retrievalService.unindexMemory(specialId);
 
-    // The actual bug is that the DELETE becomes malformed due to double-escaping
-    // We can't directly observe the failed DELETE, but we document the issue
+      // The actual bug is that the DELETE becomes malformed due to double-escaping
+      // We can't directly observe the failed DELETE, but we document the issue
 
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+      db.close();
+    } finally {
+      cleanupPath(workspace);
+    }
+  });
 });
 
 // =============================================================================

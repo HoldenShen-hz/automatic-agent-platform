@@ -117,14 +117,16 @@ test("validateAccessToken rejects mock tokens via exception", () => {
 });
 
 test("validateAccessToken returns session for valid real tokens", () => {
-  const service = new OidcIdentityService(createOidcConfig());
-  const { state } = service.initiateFlow("https://app.example.com/callback");
+  assert.doesNotThrow(() => {
+    const service = new OidcIdentityService(createOidcConfig());
+    const { state } = service.initiateFlow("https://app.example.com/callback");
 
-  // Exchange code will use mock tokens in test environment
-  const tokensPromise = service.exchangeCodeForTokens("auth-code", state);
+    // Exchange code will use mock tokens in test environment
+    const tokensPromise = service.exchangeCodeForTokens("auth-code", state);
 
-  // Even with mock tokens, the session should be created
-  // and validateAccessToken should find it
+    // Even with mock tokens, the session should be created
+    // and validateAccessToken should find it
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

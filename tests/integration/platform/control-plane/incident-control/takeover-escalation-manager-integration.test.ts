@@ -60,56 +60,60 @@ function createTestConfig(overrides: Partial<TakeoverTimeoutConfig> = {}): Takeo
 // =============================================================================
 
 test("TakeoverEscalationManager integration: startSessionTracking initializes policy", () => {
-  const workspace = createTempWorkspace("aa-escalation-start-");
-  const dbPath = join(workspace, "escalation-start.db");
+  assert.doesNotThrow(() => {
+    const workspace = createTempWorkspace("aa-escalation-start-");
+    const dbPath = join(workspace, "escalation-start.db");
 
-  try {
-    const db = new SqliteDatabase(dbPath);
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    seedTaskAndExecution(db, store, {
-      taskId: "task-escalation-start",
-      executionId: "exec-escalation-start",
-      traceId: "trace-escalation-start",
-    });
+    try {
+      const db = new SqliteDatabase(dbPath);
+      db.migrate();
+      const store = new AuthoritativeTaskStore(db);
+      seedTaskAndExecution(db, store, {
+        taskId: "task-escalation-start",
+        executionId: "exec-escalation-start",
+        traceId: "trace-escalation-start",
+      });
 
-    const emitter = createTrackingEventEmitter();
-    const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+      const emitter = createTrackingEventEmitter();
+      const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
 
-    // Should not throw
-    manager.startSessionTracking("session-start-1", "task-escalation-start");
+      // Should not throw
+      manager.startSessionTracking("session-start-1", "task-escalation-start");
 
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+      db.close();
+    } finally {
+      cleanupPath(workspace);
+    }
+  });
 });
 
 test("TakeoverEscalationManager integration: stopSessionTracking clears all tracking state", () => {
-  const workspace = createTempWorkspace("aa-escalation-stop-");
-  const dbPath = join(workspace, "escalation-stop.db");
+  assert.doesNotThrow(() => {
+    const workspace = createTempWorkspace("aa-escalation-stop-");
+    const dbPath = join(workspace, "escalation-stop.db");
 
-  try {
-    const db = new SqliteDatabase(dbPath);
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    seedTaskAndExecution(db, store, {
-      taskId: "task-escalation-stop",
-      executionId: "exec-escalation-stop",
-      traceId: "trace-escalation-stop",
-    });
+    try {
+      const db = new SqliteDatabase(dbPath);
+      db.migrate();
+      const store = new AuthoritativeTaskStore(db);
+      seedTaskAndExecution(db, store, {
+        taskId: "task-escalation-stop",
+        executionId: "exec-escalation-stop",
+        traceId: "trace-escalation-stop",
+      });
 
-    const emitter = createTrackingEventEmitter();
-    const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+      const emitter = createTrackingEventEmitter();
+      const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
 
-    manager.startSessionTracking("session-stop-1", "task-escalation-stop");
-    manager.stopSessionTracking("session-stop-1");
+      manager.startSessionTracking("session-stop-1", "task-escalation-stop");
+      manager.stopSessionTracking("session-stop-1");
 
-    // Should not throw - verifies timers are cleared
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+      // Should not throw - verifies timers are cleared
+      db.close();
+    } finally {
+      cleanupPath(workspace);
+    }
+  });
 });
 
 test("TakeoverEscalationManager integration: acknowledgeSession emits acknowledged event", () => {
@@ -227,29 +231,31 @@ test("TakeoverEscalationManager integration: multiple sessions tracked independe
 });
 
 test("TakeoverEscalationManager integration: stopSessionTracking on unknown session is safe", () => {
-  const workspace = createTempWorkspace("aa-escalation-unknown-");
-  const dbPath = join(workspace, "escalation-unknown.db");
+  assert.doesNotThrow(() => {
+    const workspace = createTempWorkspace("aa-escalation-unknown-");
+    const dbPath = join(workspace, "escalation-unknown.db");
 
-  try {
-    const db = new SqliteDatabase(dbPath);
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    seedTaskAndExecution(db, store, {
-      taskId: "task-escalation-unknown",
-      executionId: "exec-escalation-unknown",
-      traceId: "trace-escalation-unknown",
-    });
+    try {
+      const db = new SqliteDatabase(dbPath);
+      db.migrate();
+      const store = new AuthoritativeTaskStore(db);
+      seedTaskAndExecution(db, store, {
+        taskId: "task-escalation-unknown",
+        executionId: "exec-escalation-unknown",
+        traceId: "trace-escalation-unknown",
+      });
 
-    const emitter = createTrackingEventEmitter();
-    const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+      const emitter = createTrackingEventEmitter();
+      const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
 
-    // Should not throw
-    manager.stopSessionTracking("non-existent-session");
+      // Should not throw
+      manager.stopSessionTracking("non-existent-session");
 
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+      db.close();
+    } finally {
+      cleanupPath(workspace);
+    }
+  });
 });
 
 test("TakeoverEscalationManager integration: auto-close handler is invoked at max escalation", async () => {

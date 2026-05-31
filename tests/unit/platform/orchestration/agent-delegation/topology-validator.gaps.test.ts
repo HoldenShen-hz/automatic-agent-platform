@@ -85,13 +85,13 @@ test("createTopologyValidator accepts partial config", () => {
 test("validateDepth allows depth 0", () => {
   const validator = createTopologyValidator({ maxDepth: 3 });
 
-  validator.validateDepth(0); // Should not throw
+  assert.doesNotThrow(() => validator.validateDepth(0));
 });
 
 test("validateDepth allows depth 1 when maxDepth is 2", () => {
   const validator = createTopologyValidator({ maxDepth: 2 });
 
-  validator.validateDepth(1); // Should not throw
+  assert.doesNotThrow(() => validator.validateDepth(1));
 });
 
 test("validateDepth throws at exactly maxDepth", () => {
@@ -115,8 +115,7 @@ test("validateDepth throws for depth greater than maxDepth", () => {
 test("validateDepth allows negative depth (no restriction on negative values)", () => {
   const validator = createTopologyValidator({ maxDepth: 3 });
 
-  // Implementation allows any depth < maxDepth, including negative
-  validator.validateDepth(-1); // Should not throw
+  assert.doesNotThrow(() => validator.validateDepth(-1));
 });
 
 test("DelegationDepthExceededError message includes current and max depth", () => {
@@ -134,13 +133,13 @@ test("DelegationDepthExceededError message includes current and max depth", () =
 test("validateFanout allows fanout 0", () => {
   const validator = createTopologyValidator({ maxFanout: 10 });
 
-  validator.validateFanout(0); // Should not throw
+  assert.doesNotThrow(() => validator.validateFanout(0));
 });
 
 test("validateFanout allows fanout less than maxFanout", () => {
   const validator = createTopologyValidator({ maxFanout: 10 });
 
-  validator.validateFanout(9); // Should not throw
+  assert.doesNotThrow(() => validator.validateFanout(9));
 });
 
 test("validateFanout throws at exactly maxFanout", () => {
@@ -164,8 +163,7 @@ test("validateFanout throws for fanout greater than maxFanout", () => {
 test("validateFanout allows negative fanout (no restriction on negative values)", () => {
   const validator = createTopologyValidator({ maxFanout: 10 });
 
-  // Implementation allows any fanout < maxFanout, including negative
-  validator.validateFanout(-1); // Should not throw
+  assert.doesNotThrow(() => validator.validateFanout(-1));
 });
 
 test("DelegationFanoutExceededError message includes current and max fanout", () => {
@@ -183,19 +181,19 @@ test("DelegationFanoutExceededError message includes current and max fanout", ()
 test("detectCycle allows empty chain", () => {
   const validator = createTopologyValidator();
 
-  validator.detectCycle("new-pack", []); // Should not throw
+  assert.doesNotThrow(() => validator.detectCycle("new-pack", []));
 });
 
 test("detectCycle allows single element different from target", () => {
   const validator = createTopologyValidator();
 
-  validator.detectCycle("new-pack", ["existing-pack"]); // Should not throw
+  assert.doesNotThrow(() => validator.detectCycle("new-pack", ["existing-pack"]));
 });
 
 test("detectCycle allows multiple elements all different from target", () => {
   const validator = createTopologyValidator();
 
-  validator.detectCycle("new-pack", ["pack-a", "pack-b", "pack-c"]); // Should not throw
+  assert.doesNotThrow(() => validator.detectCycle("new-pack", ["pack-a", "pack-b", "pack-c"]));
 });
 
 test("detectCycle throws when packId appears at start of chain", () => {
@@ -248,7 +246,7 @@ test("DelegationCycleDetectedError contains correct packId and chain", () => {
 test("validatePackId allows any pack when allowedPackIds is null", () => {
   const validator = createTopologyValidator(); // No allowedPackIds
 
-  validator.validatePackId("any-pack-id"); // Should not throw
+  assert.doesNotThrow(() => validator.validatePackId("any-pack-id"));
 });
 
 test("validatePackId allows pack in allowedPackIds", () => {
@@ -256,23 +254,27 @@ test("validatePackId allows pack in allowedPackIds", () => {
     allowedPackIds: ["allowed-1", "allowed-2", "allowed-3"],
   });
 
-  validator.validatePackId("allowed-2"); // Should not throw
+  assert.doesNotThrow(() => validator.validatePackId("allowed-2"));
 });
 
 test("validatePackId allows first pack in allowedPackIds", () => {
-  const validator = createTopologyValidator({
-    allowedPackIds: ["first-allowed", "second-allowed"],
-  });
+  assert.doesNotThrow(() => {
+    const validator = createTopologyValidator({
+      allowedPackIds: ["first-allowed", "second-allowed"],
+    });
 
-  validator.validatePackId("first-allowed"); // Should not throw
+    validator.validatePackId("first-allowed"); // Should not throw
+  });
 });
 
 test("validatePackId allows last pack in allowedPackIds", () => {
-  const validator = createTopologyValidator({
-    allowedPackIds: ["first-allowed", "last-allowed"],
-  });
+  assert.doesNotThrow(() => {
+    const validator = createTopologyValidator({
+      allowedPackIds: ["first-allowed", "last-allowed"],
+    });
 
-  validator.validatePackId("last-allowed"); // Should not throw
+    validator.validatePackId("last-allowed"); // Should not throw
+  });
 });
 
 test("validatePackId throws for pack not in allowedPackIds", () => {
@@ -326,18 +328,20 @@ test("validatePackId with single allowed pack", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("validate succeeds when all constraints are satisfied", () => {
-  const validator = createTopologyValidator({
-    maxDepth: 3,
-    maxFanout: 10,
-    allowedPackIds: ["pack-a", "pack-b"],
-  });
+  assert.doesNotThrow(() => {
+    const validator = createTopologyValidator({
+      maxDepth: 3,
+      maxFanout: 10,
+      allowedPackIds: ["pack-a", "pack-b"],
+    });
 
-  validator.validate({
-    currentDepth: 2,
-    activeDelegations: 5,
-    targetPackId: "pack-a",
-    delegationChain: [],
-  }); // Should not throw
+    validator.validate({
+      currentDepth: 2,
+      activeDelegations: 5,
+      targetPackId: "pack-a",
+      delegationChain: [],
+    }); // Should not throw
+  });
 });
 
 test("validate fails on depth even when packId is allowed", () => {
@@ -483,14 +487,16 @@ test("TopologyValidator handles undefined maxFanout in config", () => {
 });
 
 test("TopologyValidator handles null allowedPackIds", () => {
-  const validator = new TopologyValidator({
-    maxDepth: 5,
-    maxFanout: 10,
-    allowedPackIds: null,
-  });
+  assert.doesNotThrow(() => {
+    const validator = new TopologyValidator({
+      maxDepth: 5,
+      maxFanout: 10,
+      allowedPackIds: null,
+    });
 
-  // Should allow any pack (no restrictions)
-  validator.validatePackId("any-pack");
+    // Should allow any pack (no restrictions)
+    validator.validatePackId("any-pack");
+  });
 });
 
 test("createTopologyValidator preserves allowedPackIds from config", () => {

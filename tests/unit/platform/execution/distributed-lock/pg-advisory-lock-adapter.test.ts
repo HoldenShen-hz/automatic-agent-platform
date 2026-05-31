@@ -252,11 +252,13 @@ test("PgAdvisoryLockAdapter close calls sql.end() when connected [pg-advisory-lo
 });
 
 test("PgAdvisoryLockAdapter close does nothing when not connected [pg-advisory-lock-adapter]", async () => {
-  const adapter = new PgAdvisoryLockAdapter({ dsn: "postgresql://test:test@localhost/test" });
-  // sql is null, connected is false
+  await assert.doesNotReject(async () => {
+    const adapter = new PgAdvisoryLockAdapter({ dsn: "postgresql://test:test@localhost/test" });
+    // sql is null, connected is false
 
-  // Should not throw
-  await adapter.close();
+    // Should not throw
+    await adapter.close();
+  });
 });
 
 test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey produces consistent bigint [pg-advisory-lock-adapter]", () => {

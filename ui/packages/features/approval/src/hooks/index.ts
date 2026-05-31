@@ -7,6 +7,7 @@ import {
   rejectApproval,
   requestMoreContextApproval,
 } from "@aa/shared-api-client";
+import { translateMessage } from "@aa/shared-i18n";
 
 export interface ApprovalCenterVm {
   readonly approvals: readonly ApprovalDTO[];
@@ -108,8 +109,8 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
     const snapshotSelectedId = selectedApproval.approvalId;
     applyOptimisticRemoval(
       selectedApproval.approvalId,
-      `Approved · ${selectedApproval.taskId}`,
-      `${selectedApproval.riskLevel} risk request approved.`,
+      translateMessage("ui.approval.history.approved.title", { taskId: selectedApproval.taskId }),
+      translateMessage("ui.approval.history.approved.description", { riskLevel: selectedApproval.riskLevel }),
     );
     await withPending(async () => {
       try {
@@ -129,8 +130,8 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
     const snapshotSelectedId = selectedApproval.approvalId;
     applyOptimisticRemoval(
       selectedApproval.approvalId,
-      `Rejected · ${selectedApproval.taskId}`,
-      `${selectedApproval.riskLevel} risk request rejected.`,
+      translateMessage("ui.approval.history.rejected.title", { taskId: selectedApproval.taskId }),
+      translateMessage("ui.approval.history.rejected.description", { riskLevel: selectedApproval.riskLevel }),
     );
     await withPending(async () => {
       try {
@@ -150,8 +151,8 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
     const snapshotSelectedId = selectedApproval.approvalId;
     applyOptimisticRemoval(
       selectedApproval.approvalId,
-      `Delegated · ${selectedApproval.taskId}`,
-      `Approval was delegated to ${target} for supervised decision.`,
+      translateMessage("ui.approval.history.delegated.title", { taskId: selectedApproval.taskId }),
+      translateMessage("ui.approval.history.delegated.description", { target }),
     );
     await withPending(async () => {
       try {
@@ -171,8 +172,8 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
       await requestMoreContextApproval(client, selectedApproval.approvalId);
       setActionHistory((history) => [
         {
-          title: `Requested Context · ${selectedApproval.taskId}`,
-          description: "Reviewer requested more supporting evidence before decision.",
+          title: translateMessage("ui.approval.history.requestedContext.title", { taskId: selectedApproval.taskId }),
+          description: translateMessage("ui.approval.history.requestedContext.description"),
         },
         ...history,
       ]);

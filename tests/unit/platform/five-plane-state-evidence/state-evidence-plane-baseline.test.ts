@@ -129,7 +129,7 @@ test("resolveStateEvidenceCapabilityBaseline throws for invalid id", () => {
   );
 });
 
-test("capability baselines have required fields", () => {
+test("capability baselines have required fields [state-evidence-plane-baseline]", () => {
   for (const baseline of STATE_EVIDENCE_CAPABILITY_BASELINES) {
     assert.ok(typeof baseline.capabilityId === "string", `${baseline.capabilityId} should have capabilityId`);
     assert.ok(typeof baseline.entryModule === "string", `${baseline.capabilityId} should have entryModule`);

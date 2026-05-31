@@ -53,12 +53,14 @@ test("SplitBrainProtectionService.recordFencingEpoch stores epoch [split-brain-p
 });
 
 test("SplitBrainProtectionService.recordFencingEpoch ignores lower epoch [split-brain-protection]", () => {
-  const service = new SplitBrainProtectionService();
-  service.recordFencingEpoch("us-east", 5);
-  service.recordFencingEpoch("us-east", 3); // Lower epoch should be ignored
+  assert.doesNotThrow(() => {
+    const service = new SplitBrainProtectionService();
+    service.recordFencingEpoch("us-east", 5);
+    service.recordFencingEpoch("us-east", 3); // Lower epoch should be ignored
 
-  // The service tracks fencing epochs internally - no public getter
-  // but it should not throw
+    // The service tracks fencing epochs internally - no public getter
+    // but it should not throw
+  });
 });
 
 test("SplitBrainProtectionService.detectSplitBrain returns clear when no evidence [split-brain-protection]", () => {

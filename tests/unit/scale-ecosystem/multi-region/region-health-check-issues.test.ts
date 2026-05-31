@@ -326,30 +326,32 @@ test("region-health-2200: total latency is bounded by the slowest region, not by
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("region-health: shouldFailover returns true for unhealthy regions [region-health-check-issues]", async () => {
-  const service = new RegionHealthCheckService();
+  await assert.doesNotReject(async () => {
+    const service = new RegionHealthCheckService();
 
-  service.registerRegion({
-    regionId: "unhealthy-region",
-    endpoint: "https://unhealthy.example.com/health",
-    checkIntervalMs: 30000,
-    timeoutMs: 5000,
-    retryCount: 3,
-    thresholds: {
-      maxLatencyMs: 100,
-      maxErrorRate: 0.05,
-      maxCpuUsage: 0.8,
-      maxMemoryUsage: 0.85,
-    },
+    service.registerRegion({
+      regionId: "unhealthy-region",
+      endpoint: "https://unhealthy.example.com/health",
+      checkIntervalMs: 30000,
+      timeoutMs: 5000,
+      retryCount: 3,
+      thresholds: {
+        maxLatencyMs: 100,
+        maxErrorRate: 0.05,
+        maxCpuUsage: 0.8,
+        maxMemoryUsage: 0.85,
+      },
+    });
+
+    // Perform health check
+    await service.checkRegion("unhealthy-region");
+
+    // Check if should failover
+    const shouldFailover = service.shouldFailover("unhealthy-region");
+
+    // Note: retryCount is 3, so need 3 consecutive failures
+    // Just one check won't trigger failover unless it's a hard failure
   });
-
-  // Perform health check
-  await service.checkRegion("unhealthy-region");
-
-  // Check if should failover
-  const shouldFailover = service.shouldFailover("unhealthy-region");
-
-  // Note: retryCount is 3, so need 3 consecutive failures
-  // Just one check won't trigger failover unless it's a hard failure
 });
 
 test("region-health: getRegionsNeedingFailover returns correct regions [region-health-check-issues]", async () => {

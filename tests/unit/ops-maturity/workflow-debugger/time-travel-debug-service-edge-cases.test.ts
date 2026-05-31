@@ -76,8 +76,10 @@ describe("TimeTravelDebugService - Edge Cases", () => {
 
   describe("setBreakpoints", () => {
     test("setBreakpoints on unknown session does not throw", () => {
-      const service = createService();
-      service.setBreakpoints("unknown_session", ["step-1"]);
+      assert.doesNotThrow(() => {
+        const service = createService();
+        service.setBreakpoints("unknown_session", ["step-1"]);
+      });
     });
 
     test("setBreakpoints replaces previous breakpoints", () => {
@@ -396,8 +398,10 @@ describe("TimeTravelDebugService - Edge Cases", () => {
 
   describe("endSession", () => {
     test("endSession on unknown session does not throw", () => {
-      const service = createService();
-      service.endSession("nonexistent");
+      assert.doesNotThrow(() => {
+        const service = createService();
+        service.endSession("nonexistent");
+      });
     });
   });
 

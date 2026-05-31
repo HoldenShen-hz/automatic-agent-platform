@@ -177,6 +177,7 @@ test("StuckRunSweeperService onStuckRunDetected callback is called", async () =>
   service.trackRun("exec-1", "task-1", null);
   service.start();
   try {
+    // timing-contract: sweeper cadence test requires real delay between scans.
     await delay(50);
     assert.ok(callbackCalled, "onStuckRunDetected should be called");
   } finally {

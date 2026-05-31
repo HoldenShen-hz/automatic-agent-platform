@@ -319,26 +319,30 @@ test("PackTestLocalService.validateTestOptions rejects invalid mode", async () =
 });
 
 test("PackTestLocalService.configureMockLlm sets up mock responses", () => {
-  const service = new PackTestLocalService();
-  service.configureMockLlm({
-    responses: [
-      { content: "Mock response 1" },
-      { content: "Mock response 2" },
-    ],
-    delayMs: 100,
+  assert.doesNotThrow(() => {
+    const service = new PackTestLocalService();
+    service.configureMockLlm({
+      responses: [
+        { content: "Mock response 1" },
+        { content: "Mock response 2" },
+      ],
+      delayMs: 100,
+    });
+    // No error means success
   });
-  // No error means success
 });
 
 test("PackTestLocalService.addMockToolResult registers mock tool", () => {
-  const service = new PackTestLocalService();
-  service.addMockToolResult({
-    toolId: "test-tool",
-    success: true,
-    output: { result: "ok" },
-    durationMs: 10,
+  assert.doesNotThrow(() => {
+    const service = new PackTestLocalService();
+    service.addMockToolResult({
+      toolId: "test-tool",
+      success: true,
+      output: { result: "ok" },
+      durationMs: 10,
+    });
+    // No error means success
   });
-  // No error means success
 });
 
 test("PackTestLocalService uses fixture failures to drive report output", async () => {

@@ -466,15 +466,17 @@ test("SqliteQueueAdapter retryJob returns job for active job (no-op since not fa
 });
 
 test("SqliteQueueAdapter moveToDeadLetter handles nonexistent job gracefully [queue-adapter-edge-cases]", () => {
-  const harness = createSqliteHarness("aa-sqlite-move-dl-none-");
-  try {
-    const { adapter } = harness;
-    // Should not throw
-    adapter.moveToDeadLetter("nonexistent-id", "reason");
-  } finally {
-    harness.db.close();
-    cleanupPath(harness.workspace);
-  }
+  assert.doesNotThrow(() => {
+    const harness = createSqliteHarness("aa-sqlite-move-dl-none-");
+    try {
+      const { adapter } = harness;
+      // Should not throw
+      adapter.moveToDeadLetter("nonexistent-id", "reason");
+    } finally {
+      harness.db.close();
+      cleanupPath(harness.workspace);
+    }
+  });
 });
 
 test("SqliteQueueAdapter stats for multiple queues [queue-adapter-edge-cases]", () => {

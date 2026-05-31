@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { usePolicyVm } from "../hooks";
 
 export function PolicyWebView(): ReactElement {
   const vm = usePolicyVm();
+  const featureCopy = translateFeatureCopy("policy");
   return (
-    <FeatureScaffold title="Policy" summary="治理策略与风险门禁" status="Planned">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[

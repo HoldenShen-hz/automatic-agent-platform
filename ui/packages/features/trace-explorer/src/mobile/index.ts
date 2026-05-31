@@ -1,8 +1,9 @@
 import { createMobileFeatureCard } from "@aa/ui-mobile";
+import { translateMessage } from "@aa/shared-i18n";
 
 export function createTraceExplorerMobileCards() {
   return [
-    createMobileFeatureCard("Trace Explorer", "查看 trace 时间线和 receipt 关联"),
-    createMobileFeatureCard("Restricted Access", "检查受限 trace 的访问审计"),
+    createMobileFeatureCard(translateMessage("ui.traceExplorer.mobile.trace.title"), translateMessage("ui.traceExplorer.mobile.trace.description")),
+    createMobileFeatureCard(translateMessage("ui.traceExplorer.mobile.restricted.title"), translateMessage("ui.traceExplorer.mobile.restricted.description")),
   ];
 }

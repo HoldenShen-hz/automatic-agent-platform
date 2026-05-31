@@ -16,15 +16,17 @@ function createMockGatewayService(processResult: any = { scanned: 0, delivered: 
 }
 
 test("ChannelGatewayRetryExecutor with autoStart begins polling immediately", () => {
-  const mockService = createMockGatewayService();
-  // autoStart should call runOnce() and start() during construction
-  const executor = new ChannelGatewayRetryExecutor(mockService as any, {
-    pollIntervalMs: 60000,
-    autoStart: true,
-  });
+  assert.doesNotThrow(() => {
+    const mockService = createMockGatewayService();
+    // autoStart should call runOnce() and start() during construction
+    const executor = new ChannelGatewayRetryExecutor(mockService as any, {
+      pollIntervalMs: 60000,
+      autoStart: true,
+    });
 
-  // The executor should be running - verify stop cleans up
-  executor.stop();
+    // The executor should be running - verify stop cleans up
+    executor.stop();
+  });
 });
 
 test("ChannelGatewayRetryExecutor autoStart does not block constructor", () => {
@@ -52,16 +54,18 @@ test("ChannelGatewayRetryExecutor autoStart with custom batchSize", () => {
 });
 
 test("ChannelGatewayRetryExecutor autoStart and stop can be called multiple times", () => {
-  const mockService = createMockGatewayService();
-  const executor = new ChannelGatewayRetryExecutor(mockService as any, {
-    pollIntervalMs: 60000,
-    autoStart: true,
-  });
+  assert.doesNotThrow(() => {
+    const mockService = createMockGatewayService();
+    const executor = new ChannelGatewayRetryExecutor(mockService as any, {
+      pollIntervalMs: 60000,
+      autoStart: true,
+    });
 
-  // Multiple stops should be safe
-  executor.stop();
-  executor.stop();
-  executor.stop();
+    // Multiple stops should be safe
+    executor.stop();
+    executor.stop();
+    executor.stop();
+  });
 });
 
 test("ChannelGatewayRetryExecutor runOnce returns completedAt after startedAt", async () => {

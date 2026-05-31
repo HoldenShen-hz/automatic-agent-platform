@@ -379,13 +379,15 @@ test("EscalationManager escalate returns error when max depth exceeded", async (
 });
 
 test("EscalationManager notifyChannels does not throw for empty channels", async () => {
-  const manager = new EscalationManager();
+  await assert.doesNotReject(async () => {
+    const manager = new EscalationManager();
 
-  // Should not throw
-  await manager.notifyChannels([], {
-    title: "Test",
-    body: "Test body",
-    priority: NotificationPriority.NORMAL,
+    // Should not throw
+    await manager.notifyChannels([], {
+      title: "Test",
+      body: "Test body",
+      priority: NotificationPriority.NORMAL,
+    });
   });
 });
 

@@ -153,8 +153,6 @@ test("MemoryService size check uses byte count for multibyte content - Issue #20
   const byteCount = Buffer.byteLength(emojiContent, 'utf8');
 
   // With mixed ASCII and emoji, byte count >> char count
-  console.log(`Char count: ${charCount}, Byte count: ${byteCount}`);
-
   assert.ok(byteCount > charCount, "Emoji content has more bytes than characters");
   assert.throws(
     () => service.remember({ scope: "project", content: emojiContent }),

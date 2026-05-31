@@ -56,22 +56,26 @@ test("createMockCacheStore get returns not_found", async () => {
 });
 
 test("createMockCacheStore set does not throw", async () => {
-  const store = createMockCacheStore();
-  await store.set("namespace", "key", "value", {
-    ttlMs: 1000,
-    tags: [],
-    createdAt: Date.now(),
-    lastAccessedAt: Date.now(),
-    hitCount: 0,
-    sizeBytes: 100,
-    version: "1.0.0",
-    scope: "memory",
+  await assert.doesNotReject(async () => {
+    const store = createMockCacheStore();
+    await store.set("namespace", "key", "value", {
+      ttlMs: 1000,
+      tags: [],
+      createdAt: Date.now(),
+      lastAccessedAt: Date.now(),
+      hitCount: 0,
+      sizeBytes: 100,
+      version: "1.0.0",
+      scope: "memory",
+    });
   });
 });
 
 test("createMockCacheStore delete does not throw", async () => {
-  const store = createMockCacheStore();
-  await store.delete("namespace", "key");
+  await assert.doesNotReject(async () => {
+    const store = createMockCacheStore();
+    await store.delete("namespace", "key");
+  });
 });
 
 test("createMockCacheStore invalidateByTag returns 0", async () => {

@@ -328,34 +328,38 @@ test("configuration drift detection handles missing both fingerprints", () => {
 });
 
 test("configuration drift detection handles missing only slot fingerprint", () => {
-  const slot = createGlobalSingletonSlot<unknown>();
+  assert.doesNotThrow(() => {
+    const slot = createGlobalSingletonSlot<unknown>();
 
-  // Request has fingerprint but slot doesn't
-  getOrCreateGlobalSingleton(slot, () => ({}), {
-    name: "only-request-has",
-    configurationFingerprint: "{\"env\":\"dev\"}",
-  });
+    // Request has fingerprint but slot doesn't
+    getOrCreateGlobalSingleton(slot, () => ({}), {
+      name: "only-request-has",
+      configurationFingerprint: "{\"env\":\"dev\"}",
+    });
 
-  // Second call with same fingerprint should work (no drift)
-  getOrCreateGlobalSingleton(slot, () => ({}), {
-    name: "only-request-has",
-    configurationFingerprint: "{\"env\":\"dev\"}",
+    // Second call with same fingerprint should work (no drift)
+    getOrCreateGlobalSingleton(slot, () => ({}), {
+      name: "only-request-has",
+      configurationFingerprint: "{\"env\":\"dev\"}",
+    });
   });
 });
 
 test("configuration drift detection handles missing only request fingerprint", () => {
-  const slot = createGlobalSingletonSlot<unknown>();
+  assert.doesNotThrow(() => {
+    const slot = createGlobalSingletonSlot<unknown>();
 
-  // Slot has fingerprint but request doesn't
-  getOrCreateGlobalSingleton(slot, () => ({}), {
-    name: "only-slot-has",
-    configurationFingerprint: "{\"env\":\"prod\"}",
-  });
+    // Slot has fingerprint but request doesn't
+    getOrCreateGlobalSingleton(slot, () => ({}), {
+      name: "only-slot-has",
+      configurationFingerprint: "{\"env\":\"prod\"}",
+    });
 
-  // Second call with null fingerprint - should be allowed
-  getOrCreateGlobalSingleton(slot, () => ({}), {
-    name: "only-slot-has",
-    configurationFingerprint: null,
+    // Second call with null fingerprint - should be allowed
+    getOrCreateGlobalSingleton(slot, () => ({}), {
+      name: "only-slot-has",
+      configurationFingerprint: null,
+    });
   });
 });
 

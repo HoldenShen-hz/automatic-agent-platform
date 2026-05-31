@@ -37,7 +37,7 @@ test("aggregateCostAttribution returns empty object for empty array", () => {
   assert.deepStrictEqual(result, {});
 });
 
-test("aggregateCostAttribution rounds to 4 decimal places", () => {
+test("aggregateCostAttribution rounds to 4 decimal places [platform-cost-optimizer]", () => {
   const entries: CostAttributionEntry[] = [
     { subjectId: "agent-1", amountUsd: 0.1 },
     { subjectId: "agent-1", amountUsd: 0.2 },
@@ -59,7 +59,7 @@ test("aggregateCostAttribution handles very small amounts", () => {
   assert.strictEqual(result["agent-1"], 0.0003);
 });
 
-test("aggregateCostAttribution handles single entry", () => {
+test("aggregateCostAttribution handles single entry [platform-cost-optimizer]", () => {
   const entries: CostAttributionEntry[] = [
     { subjectId: "agent-1", amountUsd: 1.5 },
   ];
@@ -147,7 +147,7 @@ test("aggregateCostAttribution handles zero amount", () => {
   assert.strictEqual(result["agent-1"], 0.1);
 });
 
-test("aggregateCostAttribution handles many entries for same subject", () => {
+test("aggregateCostAttribution handles many entries for same subject [platform-cost-optimizer]", () => {
   const entries: CostAttributionEntry[] = Array.from({ length: 100 }, (_, i) => ({
     subjectId: "agent-1",
     amountUsd: 0.01,

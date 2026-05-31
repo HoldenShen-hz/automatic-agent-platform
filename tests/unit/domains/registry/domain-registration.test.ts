@@ -315,7 +315,7 @@ test("validate throws for unknown domain", () => {
   });
 });
 
-test("buildCapabilityEntry throws for unknown domain", () => {
+test("buildCapabilityEntry throws for unknown domain [domain-registration]", () => {
   const service = new DomainRegistryService();
   assert.throws(() => service.buildCapabilityEntry("unknown"), (err: unknown) => {
     return err instanceof ValidationError && err.code === "domain_registry.domain_not_found";

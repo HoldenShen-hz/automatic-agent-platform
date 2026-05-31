@@ -47,13 +47,13 @@ function buildCompatibleDowngradeRegistry(): ModelMetadataRegistry {
   };
 }
 
-test("buildCostOptimizationRecommendation returns null when cost < 10", () => {
+test("buildCostOptimizationRecommendation returns null when cost < 10 [ops-maturity-recommendation-engine-index]", () => {
   assert.equal(buildCostOptimizationRecommendation("subj", 0), null);
   assert.equal(buildCostOptimizationRecommendation("subj", 9.99), null);
   assert.equal(buildCostOptimizationRecommendation("subj", -100), null);
 });
 
-test("buildCostOptimizationRecommendation returns recommendation when cost >= 10", () => {
+test("buildCostOptimizationRecommendation returns recommendation when cost >= 10 [ops-maturity-recommendation-engine-index]", () => {
   const result = buildCostOptimizationRecommendation("subj", 10);
   assert.ok(result != null);
   assert.equal(result.subjectId, "subj");

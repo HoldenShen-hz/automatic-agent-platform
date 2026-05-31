@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useTraceExplorerVm } from "../hooks";
 
 export function TraceExplorerWebView(): ReactElement {
   const vm = useTraceExplorerVm();
+  const featureCopy = translateFeatureCopy("trace-explorer");
   return (
-    <FeatureScaffold title="Trace Explorer" summary="按 trace / receipt / artifact 追踪运行事实" status="Planned">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[

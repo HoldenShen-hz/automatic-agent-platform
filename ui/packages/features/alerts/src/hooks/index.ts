@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuthState, useIncidentsQuery, useMutation, useRestClient, useWsClient } from "@aa/shared-state";
+import { translateMessage } from "@aa/shared-i18n";
 import type { IncidentDTO } from "@aa/shared-types";
 
 const ALERTS_REQUIRED_PERMISSION = "platform_sre";
@@ -101,9 +102,9 @@ export function buildAlertsVm(
       title: `${incident.severity} · ${incident.title}`,
       description: incident.summary,
       detailRows: [
-        { key: "Severity", value: incident.severity },
-        { key: "Created", value: incident.createdAt },
-        { key: "Summary", value: incident.summary },
+        { key: translateMessage("ui.alerts.field.severity"), value: incident.severity },
+        { key: translateMessage("ui.alerts.field.created"), value: incident.createdAt },
+        { key: translateMessage("ui.alerts.field.summary"), value: incident.summary },
       ],
     })),
     filters,
@@ -178,7 +179,7 @@ export function useAlertsVm(): AlertsVm {
             : current.find((entry) => entry.incident.id === incident.id)?.receivedAt ?? receivedAt,
         }));
       });
-      setHistory((current) => [buildHistoryEntry("Stream update", payload.incident!), ...current].slice(0, 8));
+      setHistory((current) => [buildHistoryEntry(translateMessage("ui.alerts.history.streamUpdate"), payload.incident!), ...current].slice(0, 8));
     });
     const unsubscribeStatus = wsClient.onStatusChange((nextStatus) => {
       setStreamStatus(nextStatus === "connected" ? "live" : "idle");

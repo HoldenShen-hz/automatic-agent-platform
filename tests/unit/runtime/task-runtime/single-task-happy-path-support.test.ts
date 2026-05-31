@@ -32,7 +32,7 @@ test("HappyPathInput structure with all fields [single-task-happy-path-support]"
     admissionBackpressureSnapshot: () => null,
     crashInjection: { mode: "none" },
     stepOutputOverride: { key: "value" },
-    logger: { log: (level, msg) => console.log(`${level}: ${msg}`) },
+    logger: { log: (_level, _msg) => undefined },
   };
 
   assert.equal(input.dbPath, "/tmp/test.db");

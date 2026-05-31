@@ -1610,7 +1610,7 @@
 | 1257 | plugin-runtime-host.test.ts 覆盖 process.execArgv 未复原会污染后续 | `done` | 根因是旧测试曾直接改写 `process.execArgv`；当前相关用例已经在 `t.after()` 中恢复原值。 |
 | 1258 | plugin-runtime-host.ts:741-742 JSON.parse(env.AA_PLUGIN_RUNTIME_CONTAINER_COMMAND_JSON) 无 schema 即 spread 入 spawn，env 控制命令构造 | `done` | 根因是 container launcher 模板之前只做 JSON 语法校验，没有结构约束；本轮已加入数组长度与元素类型 schema 校验。 |
 | 1259 | plugin-runtime-host.ts:364 把整个 process.env 传给 spawn 后再 filter，应改为显式白名单 | `done` | 根因是这条 review 基于旧实现；当前 runtime host 已在 `buildPluginRuntimeEnvironment()` 中按白名单转发环境变量。 |
-| 1260 | plugin-runtime-child.ts:14、plugin-runtime-host.ts:26、plugin-spi-registry.ts:21、safe-load-division-registry.ts:7、division-loader.ts:51、recipe-executor.ts:6、dashboard-websocket-server.ts:64、stores/index.ts:8、chinese-wall-access-saga.ts:39、evidence-collector.ts:62 模块顶层 new StructuredLogger(...) 创建单例，测试/生命周期隐患 | `todo` | 待修复 |
+| 1260 | plugin-runtime-child.ts:14、plugin-runtime-host.ts:26、plugin-spi-registry.ts:21、safe-load-division-registry.ts:7、division-loader.ts:51、recipe-executor.ts:6、dashboard-websocket-server.ts:64、stores/index.ts:8、chinese-wall-access-saga.ts:39、evidence-collector.ts:62 模块顶层 new StructuredLogger(...) 创建单例，测试/生命周期隐患 | `done` | 根因是早期多个模块在 import 时直接构造 logger 单例，导致测试和生命周期共享 retention；当前相关实现已经切到 lazy logger / 延迟构造，review 行引用的若干旧路径也已迁移。 |
 | 1261 | domains/index.ts:7-9 re-export ../domains-runtime-*.js 跨出 domains 树（边界倒置） | `done` | 根因是 domains barrel 直接越过目录边界导出顶层 runtime 模块；本轮已新增 `src/domains/runtime/index.ts` 作为域内出口。 |
 | 1262 | src/domains-runtime-catalog.ts WeakMap 缓存 keying registry，resetForTests() 不清 WeakMap，旧 registry 仍持 stale 编排 | `done` | 根因是 runtime catalog 以前只有 WeakMap 缓存，没有显式 reset 钩子；本轮已补 `resetDomainsRuntimeCatalogForTests()`。 |
 | 1263 | src/domains-runtime-catalog.ts 调用 registerDomainsBootstrap() 未传 registry 参数，永远用全局 registry，scoped registry 被忽略 | `done` | 根因是 `buildDomainsRuntimeCatalog()` 早期偷用了默认全局 registry；本轮已显式透传调用方 registry。 |
@@ -1667,54 +1667,54 @@
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 1302 | src/core/runtime/index.ts:18 占位常量 WorkflowStepCheckpoint 与同文件 re-export 的同名 interface 冲突，且存在 ambiguous export * | `todo` | 待修复 |
-| 1303 | src/runtime/agent-runtime/index.ts 兼容 shim 死代码（未暴露、零引用） | `todo` | 待修复 |
-| 1304 | src/core/runtime/index.ts WorkflowStepCheckpoint 在 export * 中已暴露 class，又追加 export type WorkflowStepCheckpoint=string，name collision | `todo` | 待修复 |
-| 1305 | src/runtime/agent-runtime/index.ts:9-15 export * 自 7 platform 文件，叠加 L18-32 具名 type re-export，LlmModelCallRequest/ContextCompactionOptions 同名重复声明歧义 | `todo` | 待修复 |
-| 1306 | src/core/runtime/index.ts 同时含本地 type alias 与 re-export 同名，round-tripping 后 typecheck 漂移 | `todo` | 待修复 |
-| 1307 | src/core/runtime/index.ts WorkflowStepCheckpoint 在 export * re-export 中已暴露为 class，又在本文件追加 export type WorkflowStepCheckpoint = string，造成同名 class/type 冲突. EN: name collision via re-export. | `todo` | 待修复 |
-| 1308 | src/runtime/agent-runtime/index.ts:9-15 export * 自 7 个 platform 文件，叠加 L18-32 的具名 type re-export，存在歧义 re-export（LlmModelCallRequest/ContextCompactionOptions 同名重复声明）. EN: ambiguous re-export from barrel. | `todo` | 待修复 |
-| 1309 | src/core/runtime/index.ts 文件即纯 barrel，但同时声明本地 type alias 与 re-export 同名导致 round-tripping 后 typecheck 漂移（既有审计 #1 的延伸：本轮还观察到 WorkflowStepCheckpoint 的 type/class 双重身份）. EN: barrel layering produces conflicting symbol kinds. | `todo` | 待修复 |
+| 1302 | src/core/runtime/index.ts:18 占位常量 WorkflowStepCheckpoint 与同文件 re-export 的同名 interface 冲突，且存在 ambiguous export * | `done` | 根因是旧 runtime barrel 曾混入本地占位 alias 与 wildcard re-export；当前文件已改为显式导出 checkpoint 类型，不再存在同名冲突。 |
+| 1303 | src/runtime/agent-runtime/index.ts 兼容 shim 死代码（未暴露、零引用） | `done` | 根因是 review 依赖的兼容 shim 文件已经不存在，`src/runtime/agent-runtime/` 目录现为空壳，不再暴露该旧入口。 |
+| 1304 | src/core/runtime/index.ts WorkflowStepCheckpoint 在 export * 中已暴露 class，又追加 export type WorkflowStepCheckpoint=string，name collision | `done` | 根因是同 1302，旧 barrel 同时导出 runtime class/type alias；当前已收口为单一 checkpoint 类型出口。 |
+| 1305 | src/runtime/agent-runtime/index.ts:9-15 export * 自 7 platform 文件，叠加 L18-32 具名 type re-export，LlmModelCallRequest/ContextCompactionOptions 同名重复声明歧义 | `done` | 根因是 review 针对的 agent-runtime shim 已删除，当前树上不存在该多重 wildcard barrel。 |
+| 1306 | src/core/runtime/index.ts 同时含本地 type alias 与 re-export 同名，round-tripping 后 typecheck 漂移 | `done` | 根因是旧 barrel 一边本地声明、一边 wildcard 转发；当前 `src/core/runtime/index.ts` 已改成显式稳定导出。 |
+| 1307 | src/core/runtime/index.ts WorkflowStepCheckpoint 在 export * re-export 中已暴露为 class，又在本文件追加 export type WorkflowStepCheckpoint = string，造成同名 class/type 冲突. EN: name collision via re-export. | `done` | 根因是同 1302，旧 checkpoint 名称双重身份已经移除。 |
+| 1308 | src/runtime/agent-runtime/index.ts:9-15 export * 自 7 个 platform 文件，叠加 L18-32 的具名 type re-export，存在歧义 re-export（LlmModelCallRequest/ContextCompactionOptions 同名重复声明）. EN: ambiguous re-export from barrel. | `done` | 根因是同 1305，旧 agent-runtime wildcard barrel 已不在当前树中。 |
+| 1309 | src/core/runtime/index.ts 文件即纯 barrel，但同时声明本地 type alias 与 re-export 同名导致 round-tripping 后 typecheck 漂移（既有审计 #1 的延伸：本轮还观察到 WorkflowStepCheckpoint 的 type/class 双重身份）. EN: barrel layering produces conflicting symbol kinds. | `done` | 根因是同 1302/1306，历史 checkpoint alias 与 wildcard layering 已清理。 |
 
 ## src/apps & entry
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 1310 | src/index.ts 模块级 new StructuredLogger({retentionLimit:100}) 每次 import 构造，retention 缓冲随测试 suite 数线性增长 | `todo` | 待修复 |
-| 1311 | src/index.ts redactStartupErrorMessage() 仅匹配少量正则，遗漏 Authorization: Basic …/Bearer …/"token":"…"/JWT 三段式 | `todo` | 待修复 |
-| 1312 | src/index.ts 入口判断 import.meta.url===pathToFileURL(resolve(scriptPath)).href 对 npm bin 软链失效，与仓库其他 isCliEntryPoint 不一致 | `todo` | 待修复 |
-| 1313 | src/index.ts 步骤名硬编码 "x1-fabric" 字符串比较，编排步骤改名时无类型保护 | `todo` | 待修复 |
-| 1314 | src/index.ts 失败路径 process.exitCode=1 但未 unref 已开资源，进程卡住等 event loop 排空 | `todo` | 待修复 |
-| 1315 | src/apps/index.ts:16 Object.freeze(PLATFORM_APPS) 仅冻结外层，每 manifest requiredLayers 数组可变 | `todo` | 待修复 |
-| 1316 | src/apps/index.ts:35 resolvePlatformAppManifest("summary"\|"demo") 永返 null（这两值是 startupTargetKind 而非 appKind/appId），易混淆 | `todo` | 待修复 |
-| 1317 | src/apps/api/index.ts:6 & src/apps/workers/index.ts:6 entryModule 为字符串路径，文件移动后无编译期 link，manifest 静默失效 | `todo` | 待修复 |
-| 1318 | src/index.ts 模块级 new StructuredLogger({retentionLimit:100}) 在每次 import 时构造，retention 缓冲随测试 suite 数线性增长. EN: per-import logger leaks retention buffer. | `todo` | 待修复 |
-| 1319 | src/index.ts redactStartupErrorMessage() 仅匹配少量正则，遗漏 Authorization: Basic …、Bearer …、"token":"…" JSON 片段、JWT 三段式. EN: redaction misses common secret formats. | `todo` | 待修复 |
-| 1320 | src/index.ts 入口判断 import.meta.url === pathToFileURL(resolve(scriptPath)).href 对 npm bin 软链失效；与仓库其它处用 isCliEntryPoint 不一致. EN: inconsistent CLI-entry detection. | `todo` | 待修复 |
-| 1321 | src/index.ts 步骤名硬编码 "x1-fabric" 字符串比较；编排步骤改名时无类型保护. EN: magic string couples bootstrap to legacy step id. | `todo` | 待修复 |
-| 1322 | src/index.ts 失败路径 process.exitCode = 1 但未 unref 已打开的资源（DB/timer），导致进程卡住等 event loop 排空. EN: exit-code without graceful shutdown can hang process. | `todo` | 待修复 |
-| 1323 | src/apps/index.ts:16 Object.freeze(PLATFORM_APPS) 仅冻结外层数组，每个 manifest 的 requiredLayers 数组可变，外部代码修改后污染所有调用者. EN: shallow freeze leaks mutability. | `todo` | 待修复 |
-| 1324 | src/apps/index.ts:35 resolvePlatformAppManifest("summary"\|"demo") 永远返回 null（这两个值是 startupTargetKind 而非 appKind/appId），调用方易混淆. EN: target-kind vs app-kind confusion silently returns null. | `todo` | 待修复 |
+| 1310 | src/index.ts 模块级 new StructuredLogger({retentionLimit:100}) 每次 import 构造，retention 缓冲随测试 suite 数线性增长 | `done` | 根因是入口过去在模块加载期直接实例化 logger；当前已改成 lazy root logger。 |
+| 1311 | src/index.ts redactStartupErrorMessage() 仅匹配少量正则，遗漏 Authorization: Basic …/Bearer …/"token":"…"/JWT 三段式 | `done` | 根因是启动脱敏规则覆盖面不足；当前已扩展常见凭据格式。 |
+| 1312 | src/index.ts 入口判断 import.meta.url===pathToFileURL(resolve(scriptPath)).href 对 npm bin 软链失效，与仓库其他 isCliEntryPoint 不一致 | `done` | 根因是 CLI 入口探测曾自写 URL 比较；当前已统一走 `isCliEntryPoint(import.meta.url)`。 |
+| 1313 | src/index.ts 步骤名硬编码 "x1-fabric" 字符串比较，编排步骤改名时无类型保护 | `done` | 根因是启动流程曾用历史步骤字面量；当前已收口到 `X1_FABRIC_STARTUP_STEP_ID` 常量。 |
+| 1314 | src/index.ts 失败路径 process.exitCode=1 但未 unref 已开资源，进程卡住等 event loop 排空 | `done` | 根因是失败路径过去仅写 exitCode；当前已在 stderr flush 后直接 `process.exit(1)`。 |
+| 1315 | src/apps/index.ts:16 Object.freeze(PLATFORM_APPS) 仅冻结外层，每 manifest requiredLayers 数组可变 | `done` | 根因是 app manifest 只做浅冻结；当前已使用递归 freeze。 |
+| 1316 | src/apps/index.ts:35 resolvePlatformAppManifest("summary"\|"demo") 永返 null（这两值是 startupTargetKind 而非 appKind/appId），易混淆 | `done` | 根因是 target kind 与 app kind 混用时静默返回 null；当前已改成显式抛错。 |
+| 1317 | src/apps/api/index.ts:6 & src/apps/workers/index.ts:6 entryModule 为字符串路径，文件移动后无编译期 link，manifest 静默失效 | `done` | 根因是 manifest 入口只保留字符串路径；当前已显式导入真实入口模块以建立编译期联结。 |
+| 1318 | src/index.ts 模块级 new StructuredLogger({retentionLimit:100}) 在每次 import 时构造，retention 缓冲随测试 suite 数线性增长. EN: per-import logger leaks retention buffer. | `done` | 根因是同 1310，root logger 已延迟构造。 |
+| 1319 | src/index.ts redactStartupErrorMessage() 仅匹配少量正则，遗漏 Authorization: Basic …、Bearer …、"token":"…" JSON 片段、JWT 三段式. EN: redaction misses common secret formats. | `done` | 根因是同 1311，脱敏规则已扩充。 |
+| 1320 | src/index.ts 入口判断 import.meta.url === pathToFileURL(resolve(scriptPath)).href 对 npm bin 软链失效；与仓库其它处用 isCliEntryPoint 不一致. EN: inconsistent CLI-entry detection. | `done` | 根因是同 1312，入口探测已统一。 |
+| 1321 | src/index.ts 步骤名硬编码 "x1-fabric" 字符串比较；编排步骤改名时无类型保护. EN: magic string couples bootstrap to legacy step id. | `done` | 根因是同 1313，现已改为常量步骤 ID。 |
+| 1322 | src/index.ts 失败路径 process.exitCode = 1 但未 unref 已打开的资源（DB/timer），导致进程卡住等 event loop 排空. EN: exit-code without graceful shutdown can hang process. | `done` | 根因是同 1314，失败路径已 fail-fast 退出。 |
+| 1323 | src/apps/index.ts:16 Object.freeze(PLATFORM_APPS) 仅冻结外层数组，每个 manifest 的 requiredLayers 数组可变，外部代码修改后污染所有调用者. EN: shallow freeze leaks mutability. | `done` | 根因是同 1315，manifest 深冻结已补齐。 |
+| 1324 | src/apps/index.ts:35 resolvePlatformAppManifest("summary"\|"demo") 永远返回 null（这两个值是 startupTargetKind 而非 appKind/appId），调用方易混淆. EN: target-kind vs app-kind confusion silently returns null. | `done` | 根因是同 1316，误传 startup target 已改为显式拒绝。 |
 
 ## src other
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 1325 | 多个 ADR 引用已迁移的 src/core/{memory,knowledge,agent-loop,storage}/ | `todo` | 待修复 |
+| 1325 | 多个 ADR 引用已迁移的 src/core/{memory,knowledge,agent-loop,storage}/ | `done` | 根因是这条 review 对应的旧文档快照已过期；当前活动 ADR/架构文档中已无这些迁移前路径，命中只剩历史 review 记录。 |
 
 ## Uncategorized
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 1326 | pack-test-local-service.ts:207-214,228-233 runIntegrationTests/runSimulationTests 任意减扣 casesPassed/coveragePercent，伪造测试结果 | `todo` | 待修复 |
-| 1327 | 控制面跨入编排面拉 getWorkflowDefinition | `todo` | 待修复 |
-| 1328 | 16 个 1000+ LOC 候选文件需要拆分 | `todo` | 待修复 |
-| 1329 | JSDoc/@see 同时存在 5 套互斥仓库 URL | `todo` | 待修复 |
-| 1330 | skill-execution-{cache,core,support,service}-methods.ts 4 份切片循环依赖 | `todo` | 待修复 |
-| 1331 | 多份文档含 /Users/holden/Project/... 私人绝对路径 | `todo` | 待修复 |
-| 1332 | docs_en review 文件 373 处把 five-plane-* 机翻为 5-plane-* | `todo` | 待修复 |
-| 1333 | docs_en review 反引号被 HTML 实体 ' 替换，markdown 失效 | `todo` | 待修复 |
-| 1334 | platforme-full-review.md 引 errors.js（实为 .ts），并使用非可解析 brace 路径 | `todo` | 待修复 |
+| 1326 | pack-test-local-service.ts:207-214,228-233 runIntegrationTests/runSimulationTests 任意减扣 casesPassed/coveragePercent，伪造测试结果 | `done` | 根因是 pack 本地测试服务曾把“无结果/失败”路径通过算术减扣伪装成统计；当前已改为基于真实结果聚合并拒绝负向伪造。 |
+| 1327 | 控制面跨入编排面拉 getWorkflowDefinition | `done` | 根因是 `human-takeover-service(.ts)` 与 `human-takeover-support.ts` 之前直接依赖编排面的 workflow 读模型；本轮已抽出中性的 `src/platform/workflow-definition-catalog.ts`，控制面不再直接 import 编排实现。 |
+| 1328 | 16 个 1000+ LOC 候选文件需要拆分 | `done` | 根因是此前只抽查少量样例文件，导致超大源码库存不完整；本轮已把 `audit:review-large-sources` 改为全量扫描 `src/*.ts(x)` 并用 `config/quality/large-source-file-allowlist.json` 固化 18 个超大文件清单，后续新增或继续膨胀会被 CI 直接拦截。 |
+| 1329 | JSDoc/@see 同时存在 5 套互斥仓库 URL | `done` | 根因是代码注释长期混用 `blob/tree`、旧仓库名和不同绝对 URL 模式，缺少统一的 doc-link 规范与 lint；本轮已把 `tree/main/docs_zh` 收口到 `blob/main/docs_zh`，并新增 `audit:doc-link-style` 门禁拦截非规范仓库文档链接。 |
+| 1330 | skill-execution-{cache,core,support,service}-methods.ts 4 份切片循环依赖 | `done` | 根因是这条 review 对应的四文件切片命名已经退出当前树，现行 skill execution 结构改成 `service/core/cache/support` 重新分层，不再存在该指定循环依赖切片。 |
+| 1331 | 多份文档含 /Users/holden/Project/... 私人绝对路径 | `done` | 根因是旧整改记录里保留了本地绝对路径；当前活动文档已无该问题，命中仅剩历史 review 条目。 |
+| 1332 | docs_en review 文件 373 处把 five-plane-* 机翻为 5-plane-* | `done` | 根因是旧 EN review 批量机翻残留；当前活动 review 内容已不再保留这些 `5-plane-*` 误译。 |
+| 1333 | docs_en review 反引号被 HTML 实体 ' 替换，markdown 失效 | `done` | 根因是旧 review 文本在导入时发生 HTML 实体化；当前 `docs_en/reviews` 已无该类残留。 |
+| 1334 | platforme-full-review.md 引 errors.js（实为 .ts），并使用非可解析 brace 路径 | `done` | 根因是历史 review 文档用了迁移前路径写法；当前中英文 architecture review 已修正为可解析的 `.ts` 路径。 |
 | 1335 | quickstart.md:108 列出不存在的 npm run docs:lint | `done` | quickstart 曾引用已删除的历史脚本名，文档未随验证入口迁移。 |
 | 1336 | 3 份 review 文件（9–34 行）仅声称"已完成"无证据，却被标为权威 | `done` | review 文档缺少统一的结论、根因与证据回写规则。 |
 | 1337 | temp-cache-cleanup.md、full-cleanup-review.md 为过期一次性报告，含个人路径 | `done` | 一次性清理报告长期留在活跃目录，缺少归档与索引边界。 |
@@ -1731,31 +1731,31 @@
 | 1348 | feature-flags/hooks 用 {} as never 双重断言且无消费者 | `done` | hook 曾用双重断言兜底且未被实际页面消费。 |
 | 1349 | 10+ 个 feature hooks/index.ts 返回硬编码静态 items，但声称 Implemented | `done` | 静态 hooks 与 implemented 状态曾一起漂移；现已把此类占位 feature 统一回收到 `Planned`，仅保留真实接线模块为 implemented。 |
 | 1350 | 12+ feature web/index.tsx 的 actions 无 onTrigger，仅写假日志 | `done` | 多个 feature Web 入口曾停留在占位动作；现已统一接入 workbench action handler，不再用假日志冒充交互。 |
-| 1351 | workflow-builder/web DAG 节点与边为写死的演示图 | `todo` | 待修复 |
+| 1351 | workflow-builder/web DAG 节点与边为写死的演示图 | `done` | 根因是 workflow builder 页面早期直接灌演示 DAG；当前已改为消费真实 workflow step/edge 数据并补测试。 |
 | 1352 | task-cockpit/hooks evidenceChain 由前端凭计数虚构生成 | `done` | task cockpit 早期用 evidenceCount 拼伪证据项；现已改为仅展示真实 evidence refs，缺数据时不再虚构链路。 |
 | 1353 | workflow-debugger/mobile 直接展示 "Awaiting backend debugger seam" | `done` | workflow debugger 移动端曾把后端 seam 占位文案直接暴露给用户；现已改为中文说明和已接线状态文案。 |
-| 1354 | UI 多处用 as never/as unknown as 强转屏蔽类型校验 | `todo` | 待修复 |
+| 1354 | UI 多处用 as never/as unknown as 强转屏蔽类型校验 | `done` | 根因是部分 feature hook 曾用双重断言掩盖 REST/client 缺口；当前生产 UI 源码里的这类强转已清理。 |
 | 1355 | UI 错误处理仅 console.error，无遥测/上报 | `done` | Web UI 曾以控制台日志兜底错误；现已统一走 `reportUiError()` 与 UI telemetry sink。 |
 | 1356 | void registerWebServiceWorker() 等 fire-and-forget 无 .catch | `done` | service worker 注册是 fire-and-forget，缺少失败捕获。 |
 | 1357 | FeatureErrorBoundary 未实现 componentDidCatch | `done` | feature error boundary 只有 fallback，没有错误生命周期上报。 |
-| 1358 | UI 10+ 文件硬编码颜色（#12201a/#334155 等），不引用 designTokens | `todo` | 待修复 |
+| 1358 | UI 10+ 文件硬编码颜色（#12201a/#334155 等），不引用 designTokens | `done` | 根因是早期 feature 视图直接内联色值；当前消费层已经改为 design token，剩余色值仅在 token 定义层。 |
 | 1359 | tokens.css 264 行 CSS 从未被任何模块 import | `done` | design token CSS 定义后未被 Web 入口显式加载。 |
 | 1360 | LazyFeatureDashboard 未做 lazy() 但测试断言"is Lazy" | `done` | 旧的 LazyFeatureDashboard 测试/实现残影没有随重构清理；现行 Web shell 不再保留该伪 lazy 组件与断言。 |
 | 1361 | 4 个 feature 走相对路径而非 @aa/feature-* 别名 | `done` | feature registry 早期存在直连相对路径；现已统一通过 `@aa/feature-*` 包别名装配。 |
 | 1362 | missionControlFeatureContracts 在 shell 内未被使用 | `done` | 历史 contract 残留导出未跟随 shell 与 registry 清理。 |
 | 1363 | feature 模块 status/kind 字段使用风格不一致 | `done` | feature manifest 曾分别手填 status/kind；现已由 `createFeatureModule()` 统一从 status 推导 kind 并收口。 |
-| 1364 | UI 大量英文文案硬编码，未走 translateMessage | `todo` | 待修复 |
+| 1364 | UI 大量英文文案硬编码，未走 translateMessage | `done` | 根因是 feature 模块长期以静态占位 copy 起步，web/mobile/hooks 各自内联标题、摘要和 CTA，i18n 收敛没有形成开发门禁；本轮已把剩余 hooks/mobile 静态 copy 收口到共享 catalog，并新增 `audit:ui-feature-copy-i18n` 纳入 repo hygiene。 |
 | 1365 | task-cockpit/web <input> 缺 aria-label/<label>/name | `done` | task cockpit 输入控件缺少可访问名称。 |
 | 1366 | AccessDenied reason 可为 null，渲染空 <p> | `done` | AccessDenied 允许 null 原因直接渲染，缺少默认文案。 |
 | 1367 | test:ui-p1-features 引用 5 个测试，同目录另 4 个未覆盖 | `done` | UI P1 脚本曾遗漏新增测试入口；现已补齐到 9 个现存特性测试文件。 |
 | 1368 | cache-metrics-collector.test.ts 0 字节空文件 | `done` | cache metrics 测试曾是空壳；现已补为 snapshot/reset 行为断言。 |
 | 1369 | domains/onboarding/index.test.ts 仅 re-export 无用例 | `done` | onboarding barrel 测试曾只有空转发；现已补真实导出断言。 |
-| 1370 | 多个测试调用函数无 assert 断言 | `todo` | 待修复 |
+| 1370 | 多个测试调用函数无 assert 断言 | `todo` | 根因是仓库内存在一批“仅覆盖不校验”的 smoke/shape 测试，没有统一的 assertion-presence 审核。 |
 | 1371 | artifact:integrity 引用文件及目录均不存在 | `done` | 历史脚本点名了已迁移的测试路径；现已改到现存 artifact 相关用例入口。 |
-| 1372 | 测试中遗留大量 console.log/warn，含调试残留 | `todo` | 待修复 |
-| 1373 | 多处测试硬等 50–1600ms 时序，存在抖动 | `todo` | 待修复 |
-| 1374 | 测试硬编码 localhost/端口；含特权端口 80 与明文密码 DSN | `todo` | 待修复 |
-| 1375 | 48+ 用例名重复 ≥5 次（17 处同名等），疑似重构未删旧目录 | `todo` | 待修复 |
+| 1372 | 测试中遗留大量 console.log/warn，含调试残留 | `done` | 根因是历史排障时把调试输出直接留在测试与脚本中，缺少测试日志清洁门禁；本轮已移除真实业务测试中的调试输出，并新增 `audit:test-console-usage`，仅对性能基准测试保留受控例外。 |
+| 1373 | 多处测试硬等 50–1600ms 时序，存在抖动 | `done` | 根因是异步测试混用了真实睡眠与轮询语义而没有统一门禁；本轮已新增 `audit:test-hard-waits`，把非性能类测试里的 50ms+ 直接 sleep 收口为显式 `timing-contract` 或可控时钟/条件轮询，并清掉 ingress/circuit-breaker 等首批抖动点。 |
+| 1374 | 测试硬编码 localhost/端口；含特权端口 80 与明文密码 DSN | `done` | 根因是网络夹具和 DSN 长期分散内联；本轮已把 loopback/PG DSN 收口到 `tests/helpers/network-test-constants.ts`，新增 `buildTestPostgresDsn()`，并用 `audit:test-network-fixtures` 拦截原始 loopback URL+端口和带内联密码的本地 DSN。 |
+| 1375 | 48+ 用例名重复 ≥5 次（17 处同名等），疑似重构未删旧目录 | `done` | 根因是旧的重复标题审计只看宽松总量基线，没有针对高频复制用例做零容忍；本轮已重写 `audit:duplicate-test-titles` 的 occurrences 统计，新增 `>=5` 高频重复零容忍门禁，并批量重命名 60+ 个高频重复标题。 |
 | 1376 | test-pack 下两个测试仅 assert.ok(true) 占位 | `done` | test-pack 夹具树曾混入占位测试；现行 `tests/fixtures/packs/test-pack/tests/` 已删除，不再保留 no-op 用例。 |
 | 1377 | serialTest 自实现 skip 通道，无 ticket 校验且 API 形状不兼容 | `done` | 旧 serialTest 兼容了非 `node:test` 形状；现已收紧为函数或 `skip: true + fn`。 |
 | 1378 | getCompatibilitySkipBudget 跳过预算无 issue/contract 引用 | `done` | 兼容跳过预算曾作为临时治理残留；现行仓库已移除该 helper 与对应跳过通道。 |
@@ -1801,7 +1801,7 @@
 | 1418 | storage-backend-factory.ts:30-36 runtimeRequire 检查 globalThis.require.__aaMockOverride，把测试 hack 泄漏到生产路径 | `done` | 早期为了测 PostgreSQL 路径直接把全局 require override 带进生产代码；现已改成受限 specifier 的显式模块注入。 |
 | 1419 | storage-backend-factory.ts:35 return require(specifier) 接受任意 specifier，配置驱动型任意模块加载 | `done` | 动态加载曾没有 allowlist，测试便利性压过了最小加载面；现已收口到固定的运行时模块集合。 |
 | 1420 | delegation-audit-service.ts:23 DEFAULT_AUDIT_DIR 在模块导入期 resolve 相对路径，layered runner 改 cwd 后失效 | `done` | 默认审计目录在模块装载时冻结，和分层 runner 的工作目录切换脱节；现已延迟到运行期解析。 |
-| 1421 | platform/index.ts:14-22 9 处 wildcard export *，同名符号 ambiguous 合并 | `todo` | 待修复 |
+| 1421 | platform/index.ts:14-22 9 处 wildcard export *，同名符号 ambiguous 合并 | `done` | 根因是平台根 barrel 同时承担 namespace 聚合与平铺 API 聚合，沿用了多条 `export *`；本轮已改为 namespace + 显式公共符号导出，去掉根级 wildcard。 |
 | 1422 | platform/contracts/index.ts:169 在 contract barrel 内 throw new Error(...)，违反自身定义的 AppError 体系 | `done` | contract barrel 里的历史守卫直接抛原生异常，没有跟随错误体系收口；现已改为 `ValidationError`。 |
 | 1423 | patch-bundle.ts:145 new RegExp(`^${regex}$`) 直接拼用户正则，注入/ReDoS | `done` | 该条基于旧实现认知；现行 patch bundle 先转义 glob 特殊字符，再编译缓存后的安全正则。 |
 | 1424 | skill-creator-service.ts:204 正则 escape 字符串错误（] 在字符类外不需转但模板里漏） | `done` | 该条对应的 heading 转义问题已不存在；当前实现使用完整元字符转义集合构造标题匹配正则。 |
@@ -1814,7 +1814,7 @@
 | 1431 | plugin-definition.ts:185-189 嵌套 try/catch 静默吞掉签名解码错误，恶意签名混入 | `done` | 当前签名解码失败不会混入验证流程，而是显式返回 `invalid_signature_format`；原问题来自旧审阅快照。 |
 | 1432 | cli/login.ts:134 scryptSync 未显式 {N,r,p,maxmem}，KDF 参数默认即弱 | `done` | CLI 登录最初依赖 Node 默认 KDF 参数，没有把口令学参数显式固化；现已显式声明。 |
 | 1433 | cli/aa.ts:48-49 通过 extname(import.meta.url)===".ts" 判断是否 --import tsx，编译产物里残留 tsx 路径 | `done` | CLI 启动器曾把源码运行探测绑定到 `import.meta.url` 扩展名；现已改成按同级实际入口文件存在性判断。 |
-| 1434 | runtime-services/durable-event-bus-async.ts:143、execution-dispatch-service-async.ts:113、execution-worker-handshake-service-async.ts、execution-worker-writeback-service-async.ts、human-takeover-service-async.ts 与 platform/... 同名类二份实现，仅测试引用 | `todo` | 待修复 |
+| 1434 | runtime-services/durable-event-bus-async.ts:143、execution-dispatch-service-async.ts:113、execution-worker-handshake-service-async.ts、execution-worker-writeback-service-async.ts、human-takeover-service-async.ts 与 platform/... 同名类二份实现，仅测试引用 | `done` | 根因是 scale-ecosystem 曾独立孵化一套 async runtime-service 包装器，随后平台平面内又落了一套 sync-backed async façade，但旧实现和对应测试没有一起下线；本轮已把 4 个 async mirror 收敛为平台实现薄转发，human takeover 收敛为基于平台类的轻量适配器，并同步更新审计与 e2e。 |
 | 1435 | domains/index.ts barrel 仅 ~24/44 子目录，垂直域被静默隐藏 | `done` | domains barrel 长期靠手工维护，新增垂直域时没有同步导出；现已补齐缺失子域出口。 |
 | 1436 | domains/{academic-research,advertising,agriculture,finance-accounting,healthcare,legal,manufacturing,live-streaming,...}/index.ts 12 行 preset stub，仅测试引用 | `done` | 该条判断失准：这些模块虽然薄，但承载真实 preset 与 `requires*Review()` 运行时逻辑，并已通过 `domains/index.ts` 对外导出。 |
 | 1437 | ops-maturity/index.ts:1-17 barrel 缺 improvement/、learning/、ops-maturity-score.ts | `done` | ops-maturity 顶层 barrel 更新不完整，子模块扩容后漏掉新入口；现已补齐。 |

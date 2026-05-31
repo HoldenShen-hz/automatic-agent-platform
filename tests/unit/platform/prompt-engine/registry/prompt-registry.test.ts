@@ -83,7 +83,7 @@ function makeRegistrationInput(overrides: Partial<PromptBundleRegistrationInput>
 // R2-8: Prompt lifecycle deprecated stage
 // ============================================================================
 
-test("HierarchicalPromptRegistryService.deprecateBundle marks bundle as deprecated", () => {
+test("HierarchicalPromptRegistryService.deprecateBundle marks bundle as deprecated [prompt-engine-registry]", () => {
   const registry = new HierarchicalPromptRegistryService();
 
   const bundle = registry.registerBundle(

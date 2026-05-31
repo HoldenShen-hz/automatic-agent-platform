@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactElement } from "react";
 import { FeatureScaffold, Inline, KeyValueTable, ListCard, Stack, ThreePaneLayout } from "@aa/ui-core";
-import { translateMessage } from "@aa/shared-i18n";
+import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
 import { useTaskCockpitVm } from "../hooks";
 
 type DrillTab = "steps" | "evidence" | "timeline";
@@ -12,6 +12,7 @@ function sanitizeInput(value: string, fallback: string): string {
 
 export function TaskCockpitWebView(): ReactElement {
   const vm = useTaskCockpitVm();
+  const featureCopy = translateFeatureCopy("task-cockpit");
   const [operator, setOperator] = useState("platform-sre");
   const [target, setTarget] = useState("domain-admin");
   const [activeTab, setActiveTab] = useState<DrillTab>("steps");
@@ -22,20 +23,20 @@ export function TaskCockpitWebView(): ReactElement {
       return [];
     }
     return [
-      { key: "Task", value: selectedTask.title },
-      { key: "Status", value: selectedTask.status },
-      { key: "Owner", value: selectedTask.owner ?? "unassigned" },
-      { key: "Current Step", value: selectedTask.currentStep },
-      { key: "Domain", value: selectedTask.domainId },
-      { key: "Evidence", value: String(selectedTask.evidenceCount ?? 0) },
-      { key: "CPU", value: `${selectedTask.resourceUsage?.cpuPercent ?? 0}%` },
-      { key: "Memory", value: `${selectedTask.resourceUsage?.memoryMb ?? 0} MB` },
-      { key: "Runtime", value: `${selectedTask.resourceUsage?.runtimeMinutes ?? 0} min` },
+      { key: translateMessage("ui.taskCockpit.field.task"), value: selectedTask.title },
+      { key: translateMessage("ui.taskCockpit.field.status"), value: selectedTask.status },
+      { key: translateMessage("ui.taskCockpit.field.owner"), value: selectedTask.owner ?? translateMessage("ui.taskCockpit.value.unassigned") },
+      { key: translateMessage("ui.taskCockpit.field.currentStep"), value: selectedTask.currentStep },
+      { key: translateMessage("ui.taskCockpit.field.domain"), value: selectedTask.domainId },
+      { key: translateMessage("ui.taskCockpit.field.evidence"), value: String(selectedTask.evidenceCount ?? 0) },
+      { key: translateMessage("ui.taskCockpit.field.cpu"), value: `${selectedTask.resourceUsage?.cpuPercent ?? 0}%` },
+      { key: translateMessage("ui.taskCockpit.field.memory"), value: `${selectedTask.resourceUsage?.memoryMb ?? 0} MB` },
+      { key: translateMessage("ui.taskCockpit.field.runtime"), value: `${selectedTask.resourceUsage?.runtimeMinutes ?? 0} min` },
     ];
   }, [selectedTask]);
 
   return (
-    <FeatureScaffold title="Task Cockpit" summary="任务五级下钻和三栏布局" status="Implemented/Contracted">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Contracted">
       <ThreePaneLayout
         left={(
           <div>
@@ -112,7 +113,7 @@ export function TaskCockpitWebView(): ReactElement {
               <ListCard
                 items={vm.stepViewer.steps.map((step) => ({
                   title: step.title,
-                  description: `${step.status} · ${step.executor ?? "unknown"}`,
+                  description: `${step.status} · ${step.executor ?? translateMessage("ui.taskCockpit.value.unknown")}`,
                 }))}
               />
             ) : null}

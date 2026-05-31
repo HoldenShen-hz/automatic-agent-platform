@@ -263,17 +263,19 @@ test("PluginExecutorService.load() throws for unregistered plugin [plugin-execut
 });
 
 test("PluginExecutorService.deactivate() is idempotent for disabled plugin [plugin-executor]", async () => {
-  const service = new PluginExecutorService();
-  const manifest = createTestManifest();
-  const hooks = createTestHooks();
+  await assert.doesNotReject(async () => {
+    const service = new PluginExecutorService();
+    const manifest = createTestManifest();
+    const hooks = createTestHooks();
 
-  service.register(manifest, hooks);
-  await service.load("test-plugin");
-  await service.activate("test-plugin");
-  await service.unregister("test-plugin");
+    service.register(manifest, hooks);
+    await service.load("test-plugin");
+    await service.activate("test-plugin");
+    await service.unregister("test-plugin");
 
-  // Should not throw - deactivate checks for disabled state
-  await service.deactivate("test-plugin");
+    // Should not throw - deactivate checks for disabled state
+    await service.deactivate("test-plugin");
+  });
 });
 
 test("PluginExecutorService.deactivate() transitions to inactive [plugin-executor]", async () => {

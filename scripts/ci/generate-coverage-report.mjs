@@ -1,22 +1,18 @@
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 import { buildCoverageReport, loadCoverageSummary, writeCoverageArtifacts } from "./coverage-lib.mjs";
 
 function generateCoverageSummaryFromCurrentRun() {
-  const c8Entrypoint = new URL("../../node_modules/c8/bin/c8.js", import.meta.url);
+  const c8Entrypoint = fileURLToPath(new URL("../../node_modules/c8/bin/c8.js", import.meta.url));
   const result = spawnSync(
     process.execPath,
     [
+      "--max-old-space-size=8192",
       c8Entrypoint,
       "--clean",
       "--reporter",
       "json-summary",
-      "--reporter",
-      "json",
-      "--reporter",
-      "lcovonly",
-      "--reporter",
-      "html",
       process.execPath,
       "--import",
       "tsx",

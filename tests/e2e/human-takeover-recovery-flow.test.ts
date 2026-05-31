@@ -147,8 +147,6 @@ test("E2E: async human takeover retries a failed multi-step workflow, reposition
     assert.equal(metrics.operationsByType.setCurrentStep, 1);
     assert.equal(metrics.operationsByType.writeStepOutput, 1);
     assert.equal(metrics.operationsByType.completeTask, 1);
-
-    takeover.dispose();
   } finally {
     harness.cleanup();
   }

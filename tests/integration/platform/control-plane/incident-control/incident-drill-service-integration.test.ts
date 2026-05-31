@@ -400,35 +400,37 @@ test("IncidentDrillService: addRunbookExecution adds execution to current drill"
 });
 
 test("IncidentDrillService: addRunbookExecution does nothing when no active drill", () => {
-  const ctx = createIntegrationContext("aa-drill-add-exec-null-");
-  try {
-    const service = new IncidentDrillService(createMockExecutor());
+  assert.doesNotThrow(() => {
+    const ctx = createIntegrationContext("aa-drill-add-exec-null-");
+    try {
+      const service = new IncidentDrillService(createMockExecutor());
 
-    const execution: RunbookExecutionResult = {
-      executionId: "exec_orphan",
-      runbook: {
-        runbookId: "runbook-1",
-        title: "Orphan",
-        severity: "P2",
-        sections: [],
-        rawMarkdown: "# Orphan",
-        parsedAt: new Date().toISOString(),
-      },
-      status: "completed",
-      sectionResults: [],
-      outcome: "success",
-      summary: "Should not be added",
-      startedAt: new Date().toISOString(),
-      completedAt: new Date().toISOString(),
-      totalDurationMs: 1000,
-      executedBy: "operator-1",
-    };
+      const execution: RunbookExecutionResult = {
+        executionId: "exec_orphan",
+        runbook: {
+          runbookId: "runbook-1",
+          title: "Orphan",
+          severity: "P2",
+          sections: [],
+          rawMarkdown: "# Orphan",
+          parsedAt: new Date().toISOString(),
+        },
+        status: "completed",
+        sectionResults: [],
+        outcome: "success",
+        summary: "Should not be added",
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        totalDurationMs: 1000,
+        executedBy: "operator-1",
+      };
 
-    // Should not throw
-    service.addRunbookExecution(execution);
-  } finally {
-    ctx.cleanup();
-  }
+      // Should not throw
+      service.addRunbookExecution(execution);
+    } finally {
+      ctx.cleanup();
+    }
+  });
 });
 
 test("IncidentDrillService: generateDrillReport creates formatted markdown", () => {

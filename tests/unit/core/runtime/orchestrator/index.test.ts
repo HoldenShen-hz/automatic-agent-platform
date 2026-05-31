@@ -124,8 +124,10 @@ test("MultiStepOrchestrationResult type structure", () => {
 });
 
 test("resetMultiStepToolRegistryForTests resets tool registry", () => {
-  // Call the reset function - it should not throw
-  resetMultiStepToolRegistryForTests();
-  // Calling it again should also be safe
-  resetMultiStepToolRegistryForTests();
+  assert.doesNotThrow(() => {
+    // Call the reset function - it should not throw
+    resetMultiStepToolRegistryForTests();
+    // Calling it again should also be safe
+    resetMultiStepToolRegistryForTests();
+  });
 });

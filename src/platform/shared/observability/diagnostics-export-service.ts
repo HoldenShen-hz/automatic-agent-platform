@@ -6,11 +6,11 @@
  * failure investigation and support scenarios.
  *
  * ## References
- * - Contract: {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/contracts/diagnostics_snapshot_and_repro_bundle_contract.md Diagnostics Snapshot And Repro Bundle Contract}
- * - Related: {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/contracts/debug_inspect_health_backpressure_contract.md debug_inspect_health_backpressure_contract.md}
- * - Related: {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/contracts/tool_output_sanitization_contract.md tool_output_sanitization_contract.md}
- * - Glossary: {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/governance/glossary_and_terminology.md Glossary - artifact, minimal repro bundle, diagnostics, trace, RCA}
- * - Architecture: {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/architecture/00-platform-architecture.md 01_architecture_and_technical_design.md}
+ * - Contract: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/diagnostics_snapshot_and_repro_bundle_contract.md Diagnostics Snapshot And Repro Bundle Contract}
+ * - Related: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/debug_inspect_health_backpressure_contract.md debug_inspect_health_backpressure_contract.md}
+ * - Related: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/tool_output_sanitization_contract.md tool_output_sanitization_contract.md}
+ * - Glossary: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md Glossary - artifact, minimal repro bundle, diagnostics, trace, RCA}
+ * - Architecture: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/architecture/00-platform-architecture.md 01_architecture_and_technical_design.md}
  *
  * @module
  */

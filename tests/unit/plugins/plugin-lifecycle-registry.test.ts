@@ -318,16 +318,18 @@ test("PluginSpiRegistry.invokePresenter throws for non-presenter plugin", async 
 });
 
 test("PluginSpiRegistry.invokeAdapterAuthenticate authenticates adapter", async () => {
-  const registry = new PluginSpiRegistry();
-  const adapter = createHealthyGithubAdapterPlugin();
+  await assert.doesNotReject(async () => {
+    const registry = new PluginSpiRegistry();
+    const adapter = createHealthyGithubAdapterPlugin();
 
-  registry.register(adapter);
+    registry.register(adapter);
 
-  await registry.invokeAdapterAuthenticate(adapter.pluginId, {
-    credentials: { token: "test_token" },
+    await registry.invokeAdapterAuthenticate(adapter.pluginId, {
+      credentials: { token: "test_token" },
+    });
+
+    // Authentication should succeed without throwing
   });
-
-  // Authentication should succeed without throwing
 });
 
 test("PluginSpiRegistry.invokeAdapterAuthenticate throws for non-adapter plugin", async () => {

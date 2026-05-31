@@ -11,6 +11,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
+import { waitForCondition } from "../../../helpers/wait.js";
 
 import {
   DashboardAggregationService,
@@ -345,7 +346,7 @@ test("integration: DashboardProjectionService builds state from projections", ()
 // Issue #2040: Heartbeat Behavior Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("integration: heartbeat timeout marks client as disconnected without unregistering", () => {
+test("integration: heartbeat timeout marks client as disconnected and unregisters the client", async () => {
   const server = new DashboardWebSocketServer({
     heartbeatIntervalMs: 50, // Short interval
     connectionTimeoutMs: 30, // Short timeout
@@ -363,20 +364,19 @@ test("integration: heartbeat timeout marks client as disconnected without unregi
   // Start heartbeat
   server.start();
 
-  // Wait for heartbeat to trigger and timeout
-  const startTime = Date.now();
-  while (Date.now() - startTime < 200) {
-    // busy wait
-  }
+  await waitForCondition(() => !server.isClientConnected(clientId), {
+    timeoutMs: 250,
+    intervalMs: 10,
+    description: "dashboard heartbeat to disconnect idle client",
+  });
 
-  // After timeout, the client should be marked disconnected
-  // but due to issue #2040, it may still be in the connections map
-  // The behavior is that heartbeat marks disconnect but doesn't unregister
+  assert.equal(server.isClientConnected(clientId), false);
+  assert.equal(server.getClientCount(), 0);
 
   server.stop();
 });
 
-test("integration: WebSocket server correctly identifies disconnected clients", () => {
+test("integration: WebSocket server correctly identifies disconnected clients after heartbeat timeout", async () => {
   const server = new DashboardWebSocketServer({
     heartbeatIntervalMs: 100,
     connectionTimeoutMs: 50,
@@ -390,14 +390,14 @@ test("integration: WebSocket server correctly identifies disconnected clients", 
 
   server.start();
 
-  // Wait for heartbeat
-  const startTime = Date.now();
-  while (Date.now() - startTime < 300) {
-    // busy wait
-  }
+  await waitForCondition(() => !server.isClientConnected(clientId), {
+    timeoutMs: 350,
+    intervalMs: 10,
+    description: "dashboard heartbeat to mark client disconnected",
+  });
 
-  // After heartbeat runs, client may be disconnected but not unregistered
-  // This is the issue #2040 behavior
+  assert.equal(server.isClientConnected(clientId), false);
+  assert.equal(server.getClientCount(), 0);
 
   server.stop();
 });

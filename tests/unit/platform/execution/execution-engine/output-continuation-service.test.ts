@@ -390,9 +390,11 @@ test("incrementContinuationCount updates count and timestamp [output-continuatio
 });
 
 test("incrementContinuationCount handles nonexistent record [output-continuation-service]", () => {
-  const service = new OutputContinuationService();
-  // Should not throw
-  service.incrementContinuationCount("nonexistent");
+  assert.doesNotThrow(() => {
+    const service = new OutputContinuationService();
+    // Should not throw
+    service.incrementContinuationCount("nonexistent");
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -132,7 +132,7 @@ test("sortAttentionQueue handles empty array", () => {
   assert.equal(sorted.length, 0);
 });
 
-test("sortAttentionQueue handles single item", () => {
+test("sortAttentionQueue handles single item [interaction-dashboard]", () => {
   const items = [makeAttentionItem({ priority: "critical" })];
 
   const sorted = sortAttentionQueue(items);

@@ -162,7 +162,7 @@ test("ApprovalDecision expired validation", () => {
 // ApprovalDecision Invalid Payload Tests
 // ============================================
 
-test("validateApprovalDecision throws for option_selected without selectedOptionId", () => {
+test("validateApprovalDecision throws for option_selected without selectedOptionId [approval-service]", () => {
   const invalidDecision = {
     approvalId: "approval_1",
     decisionType: "option_selected" as const,

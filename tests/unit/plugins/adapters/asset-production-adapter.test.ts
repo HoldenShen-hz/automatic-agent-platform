@@ -67,8 +67,10 @@ test("AssetProductionAdapter.authenticate throws on invalid credentials type", a
 });
 
 test("AssetProductionAdapter.authenticate accepts valid token", async () => {
-  const adapter = createAssetProductionAdapterPlugin();
-  await adapter.authenticate({ token: "valid_figma_token_12345" });
+  await assert.doesNotReject(async () => {
+    const adapter = createAssetProductionAdapterPlugin();
+    await adapter.authenticate({ token: "valid_figma_token_12345" });
+  });
 });
 
 test("AssetProductionAdapter.execute throws when not authenticated", async () => {

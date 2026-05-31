@@ -57,7 +57,7 @@ describe("e2e-harness", () => {
       }
     });
 
-    it("should cleanup remove workspace", () => {
+    it("createE2EHarness cleanup should remove workspace", () => {
       const harness = createE2EHarness("e2e-cleanup-");
       const workspace = harness.workspace;
       harness.cleanup();
@@ -214,7 +214,7 @@ describe("e2e-harness", () => {
       }
     });
 
-    it("should cleanup remove workspace", () => {
+    it("createSeededE2EHarness cleanup should remove workspace", () => {
       const harness = createSeededE2EHarness("e2e-seeded-cleanup-");
       const workspace = harness.workspace;
       harness.cleanup();

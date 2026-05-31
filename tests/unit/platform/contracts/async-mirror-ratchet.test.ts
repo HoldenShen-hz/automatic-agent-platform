@@ -23,21 +23,32 @@ test("[SYS-QUAL-7.0] sync-backed async facades use the shared wrapper base", () 
 });
 
 test("[SYS-QUAL-7.0] scale-ecosystem async mirrors keep sync counterparts", () => {
-  const asyncFiles = [
-    "src/scale-ecosystem/billing/billing-service-async.ts",
-    "src/scale-ecosystem/intelligence/perception-service-async.ts",
-    "src/scale-ecosystem/tenant-platform/data-plane-flow-service-async.ts",
-    "src/scale-ecosystem/tenant-platform/tenant-platform-service-async.ts",
-    "src/scale-ecosystem/runtime-services/durable-event-bus-async.ts",
-    "src/scale-ecosystem/runtime-services/execution-dispatch-service-async.ts",
-    "src/scale-ecosystem/runtime-services/execution-worker-handshake-service-async.ts",
-    "src/scale-ecosystem/runtime-services/execution-worker-writeback-service-async.ts",
-    "src/scale-ecosystem/runtime-services/human-takeover-service-async.ts",
+  const mirrors = [
+    {
+      asyncFile: "src/scale-ecosystem/runtime-services/durable-event-bus-async.ts",
+      sourceNeedle: "platform/five-plane-state-evidence/events/durable-event-bus-async",
+    },
+    {
+      asyncFile: "src/scale-ecosystem/runtime-services/execution-dispatch-service-async.ts",
+      sourceNeedle: "platform/five-plane-execution/dispatcher/execution-dispatch-service-async",
+    },
+    {
+      asyncFile: "src/scale-ecosystem/runtime-services/execution-worker-handshake-service-async.ts",
+      sourceNeedle: "platform/five-plane-execution/worker-pool/execution-worker-handshake-service-async",
+    },
+    {
+      asyncFile: "src/scale-ecosystem/runtime-services/execution-worker-writeback-service-async.ts",
+      sourceNeedle: "platform/five-plane-execution/worker-pool/execution-worker-writeback-service-async",
+    },
+    {
+      asyncFile: "src/scale-ecosystem/runtime-services/human-takeover-service-async.ts",
+      sourceNeedle: "PlatformHumanTakeoverServiceAsync",
+    },
   ] as const;
 
-  for (const asyncFile of asyncFiles) {
-    const syncFile = asyncFile.replace("-async.ts", ".ts");
-    const syncSource = readFileSync(syncFile, "utf8");
-    assert.ok(syncSource.trim().length > 0, `missing sync counterpart for ${asyncFile}`);
+  for (const mirror of mirrors) {
+    const source = readFileSync(mirror.asyncFile, "utf8");
+    assert.match(source, new RegExp(mirror.sourceNeedle));
+    assert.ok(source.split("\n").length <= 160, `${mirror.asyncFile} should stay a thin mirror`);
   }
 });

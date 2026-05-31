@@ -10,17 +10,18 @@ import {
 } from "../../../../src/sdk/cli/migrate-sqlite-to-pg.js";
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
+import { buildTestPostgresDsn } from "../../../helpers/network-test-constants.js";
 
 test("parseMigrateSqliteToPgArgs parses required flags", () => {
   const options = parseMigrateSqliteToPgArgs([
     "--sqlite",
     "/tmp/source.db",
     "--pg-dsn",
-    "postgresql://user:pass@localhost/db",
+    buildTestPostgresDsn({ database: "db" }),
     "--dry-run",
   ]);
   assert.equal(options.sqlitePath, "/tmp/source.db");
-  assert.equal(options.pgDsn, "postgresql://user:pass@localhost/db");
+  assert.equal(options.pgDsn, buildTestPostgresDsn({ database: "db" }));
   assert.equal(options.dryRun, true);
 });
 

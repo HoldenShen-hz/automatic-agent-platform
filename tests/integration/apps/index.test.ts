@@ -292,12 +292,13 @@ test("Console app requires intermediate layer set", () => {
   assert.ok(consoleManifest.requiredLayers.includes("ops-maturity"));
 });
 
-test("Worker app has minimal layer requirements", () => {
+test("Worker app declares execution dependencies required by runtime imports", () => {
   const workerManifest = getPlatformAppManifestByKind("worker");
 
-  // Worker should not require interaction or org-governance
-  assert.ok(!workerManifest.requiredLayers.includes("interaction"));
-  assert.ok(!workerManifest.requiredLayers.includes("org-governance"));
+  assert.ok(workerManifest.requiredLayers.includes("interaction"));
+  assert.ok(workerManifest.requiredLayers.includes("org-governance"));
+  assert.ok(workerManifest.requiredLayers.includes("scale-ecosystem"));
+  assert.ok(workerManifest.requiredLayers.includes("ops-maturity"));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

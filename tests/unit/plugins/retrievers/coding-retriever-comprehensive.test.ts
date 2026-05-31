@@ -83,7 +83,7 @@ test.describe("CodingRetriever comprehensive tests", () => {
     assert.equal(plugin.spiType, "retriever");
   });
 
-  test("capabilityIds includes expected capabilities", () => {
+  test("capabilityIds includes expected capabilities [coding]", () => {
     const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
     assert.deepEqual(plugin.capabilityIds, [
       "knowledge.retrieve",
@@ -92,7 +92,7 @@ test.describe("CodingRetriever comprehensive tests", () => {
     ]);
   });
 
-  test("initialize is a no-op", async () => {
+  test("initialize is a no-op [coding]", async () => {
     const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
     let initialized = false;
     plugin.initialize = async () => {
@@ -116,7 +116,7 @@ test.describe("CodingRetriever comprehensive tests", () => {
     assert.equal(result, false);
   });
 
-  test("shutdown invalidates repo map cache", async () => {
+  test("shutdown invalidates repo map cache [coding]", async () => {
     const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
     assert.ok(plugin.shutdown);
     const result = await plugin.shutdown();
@@ -124,7 +124,7 @@ test.describe("CodingRetriever comprehensive tests", () => {
   });
 
   test.describe("retrieve behavior", () => {
-    test("returns results for basic query", async () => {
+    test("returns results for basic query [coding]", async () => {
       const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
       const results = await plugin.retrieve({
         taskId: "task_basic",
@@ -137,7 +137,7 @@ test.describe("CodingRetriever comprehensive tests", () => {
       assert.ok(results.length >= 2);
     });
 
-    test("returns results with all required fields", async () => {
+    test("returns results with all required fields [coding]", async () => {
       const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
       const results = await plugin.retrieve({
         taskId: "task_fields",
@@ -266,7 +266,7 @@ test.describe("CodingRetriever comprehensive tests", () => {
       }
     });
 
-    test("returns results with correct namespaces", async () => {
+    test("returns results with correct namespaces [coding]", async () => {
       const plugin = createCodingRetrieverPlugin({ rootPath: fixtureRoot });
       const results = await plugin.retrieve({
         taskId: "task_ns",

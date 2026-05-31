@@ -318,18 +318,20 @@ test("PgAdvisoryLockAdapter releaseAsync throws when postgres module not found [
 });
 
 test("PgAdvisoryLockAdapter close is idempotent [distributed-lock]", async () => {
-  const mockDriver = {
-    end: async () => {},
-  };
-  const adapter = new PgAdvisoryLockAdapter({ dsn: "postgres://localhost/test" });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (adapter as any).sql = mockDriver;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (adapter as any).connected = true;
+  await assert.doesNotReject(async () => {
+    const mockDriver = {
+      end: async () => {},
+    };
+    const adapter = new PgAdvisoryLockAdapter({ dsn: "postgres://localhost/test" });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (adapter as any).sql = mockDriver;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (adapter as any).connected = true;
 
-  // Call close twice - should not throw
-  await adapter.close();
-  await adapter.close();
+    // Call close twice - should not throw
+    await adapter.close();
+    await adapter.close();
+  });
 });
 
 // =============================================================================

@@ -206,19 +206,21 @@ test("runStablePromptInjectionRedTeam scenario results have required fields", as
 });
 
 test("writeStablePromptInjectionRedTeamReport writes valid JSON", () => {
-  const report = {
-    startedAt: "2026-04-01T00:00:00.000Z",
-    finishedAt: "2026-04-01T00:01:00.000Z",
-    outputDir: "/tmp/test",
-    artifacts: {
-      reportPath: "/tmp/test/report.json",
-    },
-    totalScenarios: 5,
-    passedScenarios: 4,
-    failedScenarios: 1,
-    scenarios: [],
-  };
+  assert.doesNotThrow(() => {
+    const report = {
+      startedAt: "2026-04-01T00:00:00.000Z",
+      finishedAt: "2026-04-01T00:01:00.000Z",
+      outputDir: "/tmp/test",
+      artifacts: {
+        reportPath: "/tmp/test/report.json",
+      },
+      totalScenarios: 5,
+      passedScenarios: 4,
+      failedScenarios: 1,
+      scenarios: [],
+    };
 
-  // Should not throw
-  writeStablePromptInjectionRedTeamReport("/tmp/test-report-output.json", report);
+    // Should not throw
+    writeStablePromptInjectionRedTeamReport("/tmp/test-report-output.json", report);
+  });
 });

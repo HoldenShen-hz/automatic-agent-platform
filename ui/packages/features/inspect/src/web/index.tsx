@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useInspectVm } from "../hooks";
 
 export function InspectWebView(): ReactElement {
   const vm = useInspectVm();
+  const featureCopy = translateFeatureCopy("inspect");
   return (
-    <FeatureScaffold title="Inspect" summary="Inspect 和 operator snapshot 视图。" status="Planned">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[

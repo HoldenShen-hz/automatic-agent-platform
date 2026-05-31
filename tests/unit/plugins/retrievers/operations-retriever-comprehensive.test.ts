@@ -23,7 +23,7 @@ test.describe("OperationsRetriever comprehensive tests", () => {
     assert.equal(plugin.spiType, "retriever");
   });
 
-  test("capabilityIds includes expected capabilities", () => {
+  test("capabilityIds includes expected capabilities [operations]", () => {
     const plugin = createOperationsRetrieverPlugin();
     assert.deepEqual(plugin.capabilityIds, [
       "knowledge.retrieve",
@@ -32,7 +32,7 @@ test.describe("OperationsRetriever comprehensive tests", () => {
     ]);
   });
 
-  test("initialize is a no-op", async () => {
+  test("initialize is a no-op [operations]", async () => {
     const plugin = createOperationsRetrieverPlugin();
     let initialized = false;
     plugin.initialize = async () => {
@@ -42,7 +42,7 @@ test.describe("OperationsRetriever comprehensive tests", () => {
     assert.equal(initialized, true);
   });
 
-  test("shutdown returns undefined", async () => {
+  test("shutdown returns undefined [operations]", async () => {
     const plugin = createOperationsRetrieverPlugin();
     assert.ok(plugin.shutdown);
     const result = await plugin.shutdown();
@@ -86,7 +86,7 @@ test.describe("OperationsRetriever comprehensive tests", () => {
   });
 
   test.describe("retrieve behavior", () => {
-    test("returns results for basic query", async () => {
+    test("returns results for basic query [operations]", async () => {
       const plugin = createOperationsRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_basic",
@@ -99,7 +99,7 @@ test.describe("OperationsRetriever comprehensive tests", () => {
       assert.ok(results.length >= 2);
     });
 
-    test("returns results with all required fields", async () => {
+    test("returns results with all required fields [operations]", async () => {
       const plugin = createOperationsRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_fields",
@@ -190,7 +190,7 @@ test.describe("OperationsRetriever comprehensive tests", () => {
       assert.ok(results.length > 0);
     });
 
-    test("returns results with correct namespaces", async () => {
+    test("returns results with correct namespaces [operations]", async () => {
       const plugin = createOperationsRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_ns",
@@ -209,7 +209,7 @@ test.describe("OperationsRetriever comprehensive tests", () => {
       }
     });
 
-    test("returns results with different matchTypes", async () => {
+    test("returns results with different matchTypes [operations]", async () => {
       const plugin = createOperationsRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_match",
@@ -228,7 +228,7 @@ test.describe("OperationsRetriever comprehensive tests", () => {
       }
     });
 
-    test("returns results with scores between 0 and 1", async () => {
+    test("returns results with scores between 0 and 1 [operations]", async () => {
       const plugin = createOperationsRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_scores",

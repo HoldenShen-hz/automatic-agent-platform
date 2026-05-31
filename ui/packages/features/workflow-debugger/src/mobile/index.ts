@@ -1,9 +1,19 @@
 import { createMobileFeatureCard } from "@aa/ui-mobile";
+import { translateMessage } from "@aa/shared-i18n";
 
 export function createWorkflowDebuggerMobileCards() {
   return [
-    createMobileFeatureCard("时间线", "只读回放基线"),
-    createMobileFeatureCard("逐步执行", "按阶段展开的调试轨道"),
-    createMobileFeatureCard("时间旅行", "历史回放通道已接线，等待调试数据流接入"),
+    createMobileFeatureCard(
+      translateMessage("ui.workflowDebugger.mobile.timeline.title"),
+      translateMessage("ui.workflowDebugger.mobile.timeline.description"),
+    ),
+    createMobileFeatureCard(
+      translateMessage("ui.workflowDebugger.mobile.stepIn.title"),
+      translateMessage("ui.workflowDebugger.mobile.stepIn.description"),
+    ),
+    createMobileFeatureCard(
+      translateMessage("ui.workflowDebugger.mobile.timeTravel.title"),
+      translateMessage("ui.workflowDebugger.mobile.timeTravel.description"),
+    ),
   ] as const;
 }

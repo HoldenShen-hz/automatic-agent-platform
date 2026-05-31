@@ -131,13 +131,13 @@ test("prioritizeCostOptimizationRecommendations does not mutate original array",
   assert.equal(recommendations[0]!.estimatedSavingsUsd, originalFirst);
 });
 
-test("buildCostOptimizationRecommendation returns null when cost < 10", () => {
+test("buildCostOptimizationRecommendation returns null when cost < 10 [ops-maturity-cost-optimizer-index]", () => {
   assert.equal(buildCostOptimizationRecommendation("subj", 0), null);
   assert.equal(buildCostOptimizationRecommendation("subj", 9.99), null);
   assert.equal(buildCostOptimizationRecommendation("subj", -100), null);
 });
 
-test("buildCostOptimizationRecommendation returns recommendation when cost >= 10", () => {
+test("buildCostOptimizationRecommendation returns recommendation when cost >= 10 [ops-maturity-cost-optimizer-index]", () => {
   const result = buildCostOptimizationRecommendation("subj", 10);
   assert.ok(result != null);
   assert.equal(result.subjectId, "subj");
@@ -165,7 +165,7 @@ test("aggregateCostAttribution handles fractional amounts", () => {
   assert.equal(result["task_a"], 0.6);
 });
 
-test("aggregateCostAttribution handles many entries for same subject", () => {
+test("aggregateCostAttribution handles many entries for same subject [ops-maturity-cost-optimizer-index]", () => {
   const entries = Array.from({ length: 100 }, (_, i) => ({
     subjectId: "task_many",
     amountUsd: 0.01,

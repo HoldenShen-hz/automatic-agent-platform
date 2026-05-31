@@ -42,32 +42,34 @@ test("EnvironmentReadinessOrchestrationService SLO comparison with min comparato
 });
 
 test("EnvironmentReadinessOrchestrationService records multiple drills [environment-readiness-orchestration-service-additional]", () => {
-  const service = new EnvironmentReadinessOrchestrationService();
+  assert.doesNotThrow(() => {
+    const service = new EnvironmentReadinessOrchestrationService();
 
-  service.recordDrill({
-    environment: "staging",
-    drillType: "backup_restore",
-    status: "passed",
-    owner: "test-owner",
-    evidenceRefs: ["/evidence/backup-restore.json"],
+    service.recordDrill({
+      environment: "staging",
+      drillType: "backup_restore",
+      status: "passed",
+      owner: "test-owner",
+      evidenceRefs: ["/evidence/backup-restore.json"],
+    });
+
+    service.recordDrill({
+      environment: "staging",
+      drillType: "rolling_upgrade",
+      status: "partial",
+      owner: "test-owner",
+      evidenceRefs: ["/evidence/rolling-upgrade.json"],
+    });
+
+    service.recordDrill({
+      environment: "staging",
+      drillType: "maintenance_drain",
+      status: "failed",
+      owner: "test-owner",
+    });
+
+    // All drills should be recorded (drill evaluation happens in evaluatePromotion)
   });
-
-  service.recordDrill({
-    environment: "staging",
-    drillType: "rolling_upgrade",
-    status: "partial",
-    owner: "test-owner",
-    evidenceRefs: ["/evidence/rolling-upgrade.json"],
-  });
-
-  service.recordDrill({
-    environment: "staging",
-    drillType: "maintenance_drain",
-    status: "failed",
-    owner: "test-owner",
-  });
-
-  // All drills should be recorded (drill evaluation happens in evaluatePromotion)
 });
 
 test("EnvironmentReadinessOrchestrationService upserts resource pool [environment-readiness-orchestration-service-additional]", () => {

@@ -63,7 +63,7 @@ test("validateApprovalDecision passes for valid text_input decision", () => {
   assert.doesNotThrow(() => validateApprovalDecision(decision));
 });
 
-test("validateApprovalDecision throws for option_selected without selectedOptionId", () => {
+test("validateApprovalDecision throws for option_selected without selectedOptionId [workspace-approval-center]", () => {
   const decision = {
     approvalId: "approval_123",
     decisionType: "option_selected" as const,
@@ -110,7 +110,7 @@ test("validateApprovalDecision throws for rejected with extra fields", () => {
 // Quorum Calculator Tests
 // ============================================================================
 
-test("createInitialQuorumStatus returns correct initial state", () => {
+test("createInitialQuorumStatus returns correct initial state [workspace-approval-center]", () => {
   const status = createInitialQuorumStatus();
 
   assert.equal(status.isQuorumMet, false);

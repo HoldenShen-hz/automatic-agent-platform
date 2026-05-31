@@ -722,9 +722,7 @@ test("createAgentExecutor with all options [agent-executor-comprehensive]", () =
   const options: AgentExecutorOptions = {
     failOpen: true,
     loopDetection: { warnThreshold: 3, escalateThreshold: 5 },
-    logger: (code, msg) => {
-      console.log(`[${code}] ${msg}`);
-    },
+    logger: (_code, _msg) => undefined,
   };
 
   const executor = createAgentExecutor(options);

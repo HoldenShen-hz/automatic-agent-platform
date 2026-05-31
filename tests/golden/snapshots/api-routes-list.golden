@@ -1,5 +1,5 @@
 {
-  "totalRoutes": 80,
+  "totalRoutes": 90,
   "routes": [
     "DELETE:/v1/missions/{missionId}/members/{membershipId}",
     "GET:/health",
@@ -13,13 +13,13 @@
     "GET:/v1/admin/inventories/projections",
     "GET:/v1/admin/inventories/schema",
     "GET:/v1/admin/judges",
+    "GET:/v1/agents",
     "GET:/v1/approvals",
     "GET:/v1/artifacts/publishes",
+    "GET:/v1/dashboard/metrics",
     "GET:/v1/dashboard/snapshot",
     "GET:/v1/divisions",
     "GET:/v1/domains",
-    "GET:/v1/domains/{domainId}",
-    "GET:/v1/domains/{domainId}/plugins",
-    "GET:/v1/gateway/targets"
+    "GET:/v1/domains/{domainId}"
   ]
 }

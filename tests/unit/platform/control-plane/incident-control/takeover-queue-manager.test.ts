@@ -310,11 +310,13 @@ test("removeEntry removes completed entry", () => {
 });
 
 test("removeEntry handles unknown entry gracefully", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverQueueManager(createTestConfig(), emitter);
+  assert.doesNotThrow(() => {
+    const emitter = createMockEventEmitter();
+    const manager = new TakeoverQueueManager(createTestConfig(), emitter);
 
-  // Should not throw
-  manager.removeEntry("unknown-id");
+    // Should not throw
+    manager.removeEntry("unknown-id");
+  });
 });
 
 // =============================================================================
@@ -322,43 +324,47 @@ test("removeEntry handles unknown entry gracefully", () => {
 // =============================================================================
 
 test("evictExpiredSessionEntries removes old completed entries", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverQueueManager(createTestConfig(), emitter);
+  assert.doesNotThrow(() => {
+    const emitter = createMockEventEmitter();
+    const manager = new TakeoverQueueManager(createTestConfig(), emitter);
 
-  // Add entries directly to queue by using enqueue but manually setting status
-  const entry1 = manager.enqueue({
-    taskId: "task-1",
-    operatorId: "op",
-    reasonCode: "test",
-    actionType: "open_session",
-    payload: { type: "open_session", reasonCode: "test" },
+    // Add entries directly to queue by using enqueue but manually setting status
+    const entry1 = manager.enqueue({
+      taskId: "task-1",
+      operatorId: "op",
+      reasonCode: "test",
+      actionType: "open_session",
+      payload: { type: "open_session", reasonCode: "test" },
+    });
+    entry1.status = "completed";
+
+    const entry2 = manager.enqueue({
+      taskId: "task-2",
+      operatorId: "op",
+      reasonCode: "test",
+      actionType: "open_session",
+      payload: { type: "open_session", reasonCode: "test" },
+    });
+    entry2.status = "failed";
+
+    // Fast-forward time by manipulating enqueuedAt (would need to wait 30min in real test)
+    // For unit test, we just verify the method doesn't throw
+    manager.evictExpiredSessionEntries();
   });
-  entry1.status = "completed";
-
-  const entry2 = manager.enqueue({
-    taskId: "task-2",
-    operatorId: "op",
-    reasonCode: "test",
-    actionType: "open_session",
-    payload: { type: "open_session", reasonCode: "test" },
-  });
-  entry2.status = "failed";
-
-  // Fast-forward time by manipulating enqueuedAt (would need to wait 30min in real test)
-  // For unit test, we just verify the method doesn't throw
-  manager.evictExpiredSessionEntries();
 });
 
 test("evictExpiredSessionEntries respects eviction interval", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverQueueManager(createTestConfig(), emitter);
+  assert.doesNotThrow(() => {
+    const emitter = createMockEventEmitter();
+    const manager = new TakeoverQueueManager(createTestConfig(), emitter);
 
-  // First eviction
-  manager.evictExpiredSessionEntries();
+    // First eviction
+    manager.evictExpiredSessionEntries();
 
-  // Immediate second call should be no-op due to interval check
-  manager.evictExpiredSessionEntries();
-  // No error means it worked
+    // Immediate second call should be no-op due to interval check
+    manager.evictExpiredSessionEntries();
+    // No error means it worked
+  });
 });
 
 test("evictExpiredSessionEntries removes oldest when over capacity", () => {

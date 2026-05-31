@@ -43,7 +43,7 @@ describe("CausalChainBuilder", () => {
       assert.ok(summary[0]!.includes("High confidence link"));
     });
 
-    test("returns empty array for empty input", () => {
+    test("buildCausalChain returns empty array for empty input", () => {
       const summary = buildCausalChainSummary([]);
       assert.deepEqual(summary, []);
     });

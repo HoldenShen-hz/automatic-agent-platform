@@ -382,11 +382,13 @@ test("SkillGovernanceService.archiveOldDeprecatedSkills archives deprecated skil
 });
 
 test("SkillGovernanceService recordExecutionOutcome updates skill metrics", () => {
-  const service = new SkillGovernanceService(createMockStore());
+  assert.doesNotThrow(() => {
+    const service = new SkillGovernanceService(createMockStore());
 
-  // This should not throw
-  service.recordExecutionOutcome("test-skill", true, 150);
-  service.recordExecutionOutcome("test-skill", false, 200);
+    // This should not throw
+    service.recordExecutionOutcome("test-skill", true, 150);
+    service.recordExecutionOutcome("test-skill", false, 200);
+  });
 });
 
 test("SkillGovernanceService.validateSkill handles special characters in skillId", () => {

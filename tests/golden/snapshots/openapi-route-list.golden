@@ -67,6 +67,54 @@
     ]
   },
   {
+    "method": "GET",
+    "path": "/v1/dashboard/metrics",
+    "summary": "Mission control metric cards",
+    "tags": [
+      "dashboard"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/workers",
+    "summary": "List public worker summaries",
+    "tags": [
+      "dashboard"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/queues",
+    "summary": "List public queue summaries",
+    "tags": [
+      "dashboard"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/agents",
+    "summary": "List public agent summaries",
+    "tags": [
+      "dashboard"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/explanations",
+    "summary": "List explanation summaries",
+    "tags": [
+      "explainability"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/meta/contract-version",
+    "summary": "Read current public contract version",
+    "tags": [
+      "meta"
+    ]
+  },
+  {
     "method": "POST",
     "path": "/v1/missions",
     "summary": "Create a Mission governance context",
@@ -484,6 +532,14 @@
   },
   {
     "method": "GET",
+    "path": "/v1/knowledge",
+    "summary": "List public knowledge summaries",
+    "tags": [
+      "knowledge"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/knowledge/query",
     "summary": "Query knowledge plane",
     "tags": [
@@ -549,6 +605,22 @@
   },
   {
     "method": "GET",
+    "path": "/v1/marketplace",
+    "summary": "List marketplace packs",
+    "tags": [
+      "packs"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/packs/{packId}/versions",
+    "summary": "List pack versions",
+    "tags": [
+      "packs"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/artifacts/publishes",
     "summary": "List artifact publish ledger entries",
     "tags": [
@@ -601,6 +673,14 @@
         },
         "description": "Opaque cursor returned by the previous page."
       }
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/workflows/builder",
+    "summary": "List workflow builder models",
+    "tags": [
+      "tasks"
     ]
   },
   {

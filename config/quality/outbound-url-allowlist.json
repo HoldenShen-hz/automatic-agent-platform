@@ -97,6 +97,16 @@
       "reason": "YouTube livestream endpoint defined through adjacent adapter helper"
     },
     {
+      "file": "src/plugins/adapters/crm-adapter.ts",
+      "fragment": "\"https://api.hubspot.com\"",
+      "reason": "HubSpot CRM adapter default API base URL"
+    },
+    {
+      "file": "src/plugins/adapters/crm-adapter.ts",
+      "fragment": "\"https://api.salesforce.com\"",
+      "reason": "Salesforce CRM adapter default API base URL"
+    },
+    {
       "file": "src/sdk/cli/github-actions-url.ts",
       "fragment": "GITHUB_ACTION_RUN_URL_PREFIX",
       "reason": "workflow run URL prefix centralized for CLI/operator output"

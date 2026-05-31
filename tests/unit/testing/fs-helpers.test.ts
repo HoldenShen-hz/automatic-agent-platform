@@ -86,8 +86,10 @@ test("cleanupPath removes directory recursively", () => {
 });
 
 test("cleanupPath handles non-existent path", () => {
-  // Should not throw
-  cleanupPath("/non/existent/path");
+  assert.doesNotThrow(() => {
+    // Should not throw
+    cleanupPath("/non/existent/path");
+  });
 });
 
 test("createSymlink creates symlink", () => {

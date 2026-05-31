@@ -238,9 +238,17 @@ test("refreshSession throws for non-existent refresh token", () => {
 });
 
 test("refreshSession throws for expired refresh token", () => {
-  // This is hard to test without time mocking
-  // The refresh token TTL is 24 hours, so we can't easily test expiry
-  // In a real scenario, we'd use time mocking
+  const session = createSession({
+    principalId: "user-expired-refresh",
+    principalType: "user",
+  });
+
+  __dangerousExpireSessionForTests(session.sessionId);
+
+  assert.throws(
+    () => refreshSession(session.refreshToken.tokenId),
+    /session\.invalid_state/,
+  );
 });
 
 // ============================================================================

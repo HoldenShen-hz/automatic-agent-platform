@@ -66,4 +66,9 @@ interface SharingPolicy {
 ## 交叉引用
 
 - [ADR-046 组织层次模型](./046-organization-hierarchy-model.md)
+- [ADR-085 组织治理与知识边界](./085-organization-governance-and-knowledge-boundary.md)
+
+## 源章节
+
+- `§50` 知识域隔离
 -

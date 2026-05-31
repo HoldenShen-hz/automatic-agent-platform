@@ -1,13 +1,15 @@
 import type { ReactElement } from "react";
 import { FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
 import { useAlertsVm } from "../hooks";
 
 export function AlertsWebView(): ReactElement {
   const vm = useAlertsVm();
+  const featureCopy = translateFeatureCopy("alerts");
   return (
-    <FeatureScaffold title="Alerts" summary="Incident 和高优先级告警流" status="Implemented/Internal">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
       <p style={{ marginTop: 0 }}>
-        Stream: {vm.streamStatus} · Pending actions: {vm.pendingOperations}
+        {translateMessage("ui.alerts.stream")}: {vm.streamStatus} · {translateMessage("ui.alerts.pendingActions")}: {vm.pendingOperations}
       </p>
       <FeatureWorkbenchPanel
         items={vm.items}
@@ -54,8 +56,8 @@ export function AlertsWebView(): ReactElement {
           },
         ]}
         labels={{
-          activityLogTitle: "Alert history",
-          activityLogEmpty: "Incoming alert stream updates and operator actions will appear here.",
+          activityLogTitle: translateMessage("ui.alerts.activityLogTitle"),
+          activityLogEmpty: translateMessage("ui.alerts.activityLogEmpty"),
         }}
       />
       {vm.history.length > 0 ? (

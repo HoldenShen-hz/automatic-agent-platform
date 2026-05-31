@@ -12,7 +12,7 @@ test.describe("AssetProductionRetriever comprehensive tests", () => {
     assert.equal(plugin.spiType, "retriever");
   });
 
-  test("capabilityIds includes expected capabilities", () => {
+  test("capabilityIds includes expected capabilities [asset-production]", () => {
     const plugin = createAssetProductionRetrieverPlugin();
     assert.deepEqual(plugin.capabilityIds, [
       "knowledge.retrieve",
@@ -21,7 +21,7 @@ test.describe("AssetProductionRetriever comprehensive tests", () => {
     ]);
   });
 
-  test("initialize is a no-op", async () => {
+  test("initialize is a no-op [asset-production]", async () => {
     const plugin = createAssetProductionRetrieverPlugin();
     let initialized = false;
     plugin.initialize = async () => {
@@ -41,7 +41,7 @@ test.describe("AssetProductionRetriever comprehensive tests", () => {
     assert.equal(await plugin.healthCheck(), true);
   });
 
-  test("shutdown returns undefined", async () => {
+  test("shutdown returns undefined [asset-production]", async () => {
     const plugin = createAssetProductionRetrieverPlugin();
     assert.ok(plugin.shutdown);
     const result = await plugin.shutdown();
@@ -49,7 +49,7 @@ test.describe("AssetProductionRetriever comprehensive tests", () => {
   });
 
   test.describe("retrieve behavior", () => {
-    test("returns results for basic query", async () => {
+    test("returns results for basic query [asset-production]", async () => {
       const plugin = createAssetProductionRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_basic",
@@ -62,7 +62,7 @@ test.describe("AssetProductionRetriever comprehensive tests", () => {
       assert.ok(results.length >= 2);
     });
 
-    test("returns results with all required fields", async () => {
+    test("returns results with all required fields [asset-production]", async () => {
       const plugin = createAssetProductionRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_fields",
@@ -152,7 +152,7 @@ test.describe("AssetProductionRetriever comprehensive tests", () => {
       assert.ok(results.length > 0);
     });
 
-    test("returns results with correct namespaces", async () => {
+    test("returns results with correct namespaces [asset-production]", async () => {
       const plugin = createAssetProductionRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_ns",
@@ -171,7 +171,7 @@ test.describe("AssetProductionRetriever comprehensive tests", () => {
       }
     });
 
-    test("returns results with different matchTypes", async () => {
+    test("returns results with different matchTypes [asset-production]", async () => {
       const plugin = createAssetProductionRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_match",
@@ -190,7 +190,7 @@ test.describe("AssetProductionRetriever comprehensive tests", () => {
       }
     });
 
-    test("returns results with scores between 0 and 1", async () => {
+    test("returns results with scores between 0 and 1 [asset-production]", async () => {
       const plugin = createAssetProductionRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_scores",
@@ -206,7 +206,7 @@ test.describe("AssetProductionRetriever comprehensive tests", () => {
       }
     });
 
-    test("handles empty context gracefully", async () => {
+    test("handles empty context gracefully [asset-production]", async () => {
       const plugin = createAssetProductionRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_empty",
@@ -219,7 +219,7 @@ test.describe("AssetProductionRetriever comprehensive tests", () => {
       assert.ok(results.length >= 2);
     });
 
-    test("handles very long intent gracefully", async () => {
+    test("handles very long intent gracefully [asset-production]", async () => {
       const plugin = createAssetProductionRetrieverPlugin();
       const longIntent = "a".repeat(1000);
       const results = await plugin.retrieve({
@@ -232,7 +232,7 @@ test.describe("AssetProductionRetriever comprehensive tests", () => {
       assert.ok(Array.isArray(results));
     });
 
-    test("returns chunkId in results", async () => {
+    test("returns chunkId in results [asset-production]", async () => {
       const plugin = createAssetProductionRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_chunk",
@@ -246,7 +246,7 @@ test.describe("AssetProductionRetriever comprehensive tests", () => {
       }
     });
 
-    test("returns documentId in results", async () => {
+    test("returns documentId in results [asset-production]", async () => {
       const plugin = createAssetProductionRetrieverPlugin();
       const results = await plugin.retrieve({
         taskId: "task_doc",

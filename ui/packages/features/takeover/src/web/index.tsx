@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useTakeoverVm } from "../hooks";
 
 export function TakeoverWebView(): ReactElement {
   const vm = useTakeoverVm();
+  const featureCopy = translateFeatureCopy("takeover");
   return (
-    <FeatureScaffold title="Admin Takeover Console" summary="管理员接管、重试和人工覆盖入口。" status="Implemented/Internal">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[

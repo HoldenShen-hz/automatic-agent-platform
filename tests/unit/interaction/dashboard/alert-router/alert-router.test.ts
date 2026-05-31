@@ -115,7 +115,7 @@ test("sortAttentionQueue handles mixed priorities and times", () => {
   assert.equal(result[2]?.id, "early-normal");
 });
 
-test("sortAttentionQueue handles single item", () => {
+test("sortAttentionQueue handles single item [alert-router-module]", () => {
   const items = [makeItem({ id: "only" })];
 
   const result = sortAttentionQueue(items);

@@ -167,12 +167,12 @@ test("createMockCacheFacade getStats returns default stats", async () => {
 
 test("createMockCacheFacade resetMetrics is callable", () => {
   const facade = createMockCacheFacade();
-  facade.resetMetrics(); // should not throw
+  assert.doesNotThrow(() => facade.resetMetrics());
 });
 
 test("createMockCacheMetrics record is callable", () => {
   const metrics = createMockCacheMetrics();
-  metrics.record(); // should not throw
+  assert.doesNotThrow(() => metrics.record());
 });
 
 test("createMockCacheMetrics snapshot returns default structure", () => {
@@ -184,7 +184,7 @@ test("createMockCacheMetrics snapshot returns default structure", () => {
 
 test("createMockCacheMetrics reset is callable", () => {
   const metrics = createMockCacheMetrics();
-  metrics.reset(); // should not throw
+  assert.doesNotThrow(() => metrics.reset());
 });
 
 // ── fixtures/base tests ───────────────────────────────────────────────────────
@@ -405,9 +405,12 @@ test("withEnv restores original value after async execution", async () => {
 });
 
 test("withEnv handles empty overrides", async () => {
+  process.env.WITH_ENV_SENTINEL = "stable";
   await withEnv({}, async () => {
-    // should not affect environment
+    assert.equal(process.env.WITH_ENV_SENTINEL, "stable");
   });
+  assert.equal(process.env.WITH_ENV_SENTINEL, "stable");
+  delete process.env.WITH_ENV_SENTINEL;
 });
 
 // ── fs tests ──────────────────────────────────────────────────────────────────
@@ -462,7 +465,7 @@ test("cleanupPath removes directory recursively", () => {
 });
 
 test("cleanupPath does not throw when path does not exist", () => {
-  cleanupPath("/nonexistent/path/that/cannot/exist");
+  assert.doesNotThrow(() => cleanupPath("/nonexistent/path/that/cannot/exist"));
 });
 
 test("createFile creates file with content", () => {
@@ -523,7 +526,7 @@ test("createProcessGuard returns capture and assertNoLeaks functions", () => {
 
 test("createProcessGuard capture does not throw", () => {
   const guard = createProcessGuard();
-  guard.capture(); // should not throw
+  assert.doesNotThrow(() => guard.capture());
 });
 
 test("createProcessGuard assertNoLeaks passes when no new processes", () => {
@@ -533,10 +536,12 @@ test("createProcessGuard assertNoLeaks passes when no new processes", () => {
 });
 
 test("withProcessGuard wraps function correctly", async () => {
+  let ran = false;
   const wrapped = withProcessGuard(async () => {
-    // do nothing
+    ran = true;
   });
-  await wrapped(); // should not throw
+  await wrapped();
+  assert.equal(ran, true);
 });
 
 test("withProcessGuard waits for cleanup before asserting", async () => {

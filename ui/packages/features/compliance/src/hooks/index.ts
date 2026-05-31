@@ -1,3 +1,5 @@
+import { translateMessage } from "@aa/shared-i18n";
+
 export interface ComplianceVm {
   readonly metrics: readonly { label: string; value: string | number }[];
   readonly rows: readonly { key: string; value: string }[];
@@ -7,19 +9,28 @@ export interface ComplianceVm {
 export function useComplianceVm(): ComplianceVm {
   return {
     metrics: [
-      { label: "标准项", value: 5 },
-      { label: "待处理检查", value: 12 },
-      { label: "通过率", value: "87%" },
+      { label: translateMessage("ui.compliance.metric.standards"), value: 5 },
+      { label: translateMessage("ui.compliance.metric.checks"), value: 12 },
+      { label: translateMessage("ui.compliance.metric.passing"), value: "87%" },
     ],
     rows: [
-      { key: "模式", value: "GDPR / SOX / HIPAA" },
-      { key: "字段策略", value: "字段级脱敏与导出水印" },
-      { key: "审计轨迹", value: "通过规划中的接缝接入不可变审计时间线" },
+      { key: translateMessage("ui.compliance.row.mode"), value: "GDPR / SOX / HIPAA" },
+      { key: translateMessage("ui.compliance.row.fieldPolicy"), value: translateMessage("ui.compliance.row.fieldPolicy.value") },
+      { key: translateMessage("ui.compliance.row.auditTrail"), value: translateMessage("ui.compliance.row.auditTrail.value") },
     ],
     items: [
-      { title: "运行检查", description: "按标准批量运行检查并回看最近审计结果。" },
-      { title: "导出报告", description: "导出合规报告与证据包，保留脱敏与审批信息。" },
-      { title: "升级处理", description: "高风险不合规项升级给治理负责人和域管理员。" },
+      {
+        title: translateMessage("ui.compliance.item.runChecks.title"),
+        description: translateMessage("ui.compliance.item.runChecks.description"),
+      },
+      {
+        title: translateMessage("ui.compliance.item.exportReport.title"),
+        description: translateMessage("ui.compliance.item.exportReport.description"),
+      },
+      {
+        title: translateMessage("ui.compliance.item.escalate.title"),
+        description: translateMessage("ui.compliance.item.escalate.description"),
+      },
     ],
   };
 }

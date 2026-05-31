@@ -109,10 +109,12 @@ test("MemoryCacheStore.delete removes entry", async () => {
 });
 
 test("MemoryCacheStore.delete handles non-existent key gracefully", async () => {
-  const store = new MemoryCacheStore();
+  await assert.doesNotReject(async () => {
+    const store = new MemoryCacheStore();
 
-  // Should not throw
-  await store.delete("ns1", "nonexistent");
+    // Should not throw
+    await store.delete("ns1", "nonexistent");
+  });
 });
 
 test("MemoryCacheStore.invalidateByTag removes tagged entries", async () => {

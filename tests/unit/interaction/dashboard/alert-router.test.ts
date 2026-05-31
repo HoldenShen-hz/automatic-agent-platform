@@ -123,7 +123,7 @@ test("sortAttentionQueue handles empty array", () => {
   assert.deepEqual(sorted, []);
 });
 
-test("sortAttentionQueue handles single item", () => {
+test("sortAttentionQueue handles single item [alert-router-service]", () => {
   const items: AttentionItem[] = [
     {
       itemType: "incident",

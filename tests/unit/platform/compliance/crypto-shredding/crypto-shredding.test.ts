@@ -1,4 +1,5 @@
 import { describe, it, beforeEach } from "node:test";
+import assert from "node:assert/strict";
 import assert from "node:assert";
 import {
   DekStore,
@@ -101,11 +102,13 @@ describe("DekStore", () => {
     });
 
     it("should be idempotent", async () => {
-      const created = await store.create({ subjectId: "user-123" });
-      await store.destroy(created.metadata.dekId);
+      await assert.doesNotReject(async () => {
+        const created = await store.create({ subjectId: "user-123" });
+        await store.destroy(created.metadata.dekId);
 
-      // Should not throw
-      await store.destroy(created.metadata.dekId);
+        // Should not throw
+        await store.destroy(created.metadata.dekId);
+      });
     });
   });
 

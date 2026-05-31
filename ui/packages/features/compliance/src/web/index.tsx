@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useComplianceVm } from "../hooks";
 
 export function ComplianceWebView(): ReactElement {
   const vm = useComplianceVm();
+  const featureCopy = translateFeatureCopy("compliance");
   return (
-    <FeatureScaffold title="Compliance" summary="合规中心与报告出口" status="Planned">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
       <FeatureWorkbenchPanel
         metrics={vm.metrics}
         rows={vm.rows}

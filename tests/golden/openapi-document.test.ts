@@ -189,7 +189,27 @@ test("golden: all routes have required fields", () => {
 
 test("golden: route tags are from allowed set", () => {
   const routes = listApiRoutes();
-  const allowedTags = new Set(["health", "meta", "metrics", "auth", "dashboard", "divisions", "gateway", "tasks", "approvals", "admin", "knowledge", "domains", "plugins", "artifacts", "webhooks", "missions", "yono"]);
+  const allowedTags = new Set([
+    "health",
+    "meta",
+    "metrics",
+    "auth",
+    "dashboard",
+    "divisions",
+    "gateway",
+    "tasks",
+    "approvals",
+    "admin",
+    "knowledge",
+    "domains",
+    "plugins",
+    "artifacts",
+    "webhooks",
+    "missions",
+    "yono",
+    "packs",
+    "explainability",
+  ]);
 
   for (const route of routes) {
     for (const tag of route.tags) {

@@ -138,11 +138,13 @@ test("DekStore.destroy marks DEK as destroyed and wipes key", async (t) => {
 });
 
 test("DekStore.destroy is idempotent", async (t) => {
-  const store = new DekStore();
-  const { metadata } = await store.create({ subjectId: "user-12" });
-  await store.destroy(metadata.dekId);
-  // Should not throw
-  await store.destroy(metadata.dekId);
+  await assert.doesNotReject(async () => {
+    const store = new DekStore();
+    const { metadata } = await store.create({ subjectId: "user-12" });
+    await store.destroy(metadata.dekId);
+    // Should not throw
+    await store.destroy(metadata.dekId);
+  });
 });
 
 test("DekStore.destroy throws when DEK not found", async (t) => {

@@ -18,6 +18,7 @@ import {
   type RESTClient,
   type WSClient,
 } from "@aa/shared-api-client";
+import { getSharedTranslationService } from "@aa/shared-i18n";
 import type { SystemStatusVM } from "@aa/shared-types";
 import { AuthService } from "@aa/shared-auth";
 import { SyncCoordinator, type OfflineMutation } from "@aa/shared-sync";
@@ -131,6 +132,7 @@ export function UiRuntimeProvider(
     if (typeof document !== "undefined") {
       document.documentElement.lang = identity.locale;
     }
+    getSharedTranslationService().setLocale(identity.locale, typeof document === "undefined" ? undefined : document);
     uiStore.getState().setActiveRoute("/mission-control/dashboard");
     uiStore.getState().setActiveFeature("dashboard");
     if (authContext?.tenantId != null) {

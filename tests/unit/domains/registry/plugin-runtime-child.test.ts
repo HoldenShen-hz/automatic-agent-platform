@@ -48,9 +48,9 @@ test("isValidMessage rejects missing pid", () => {
 
 test("plugin runtime child routes console output through structured logger with request correlation fields", () => {
   const source = readFileSync("src/domains/registry/plugin-runtime-child.ts", "utf8");
-  assert.match(source, /new StructuredLogger\(\{ retentionLimit: 100, service: "plugin-runtime-child" \}\)/);
+  assert.match(source, /createLazyStructuredLogger\(\{ retentionLimit: 100, service: "plugin-runtime-child" \}\)/);
   assert.match(source, /let currentRequest: PluginRuntimeRequest \| null = null;/);
-  assert.match(source, /export function bootstrapPluginRuntimeChild\(\): void/);
+  assert.match(source, /function bootstrapPluginRuntimeChild\(\): void/);
   assert.match(source, /if \(process\.argv\[1\] != null && resolve\(process\.argv\[1\]\) === runtimeChildEntryPath\) \{\s*bootstrapPluginRuntimeChild\(\);\s*\}/s);
   assert.match(source, /const requestId = currentRequest\?\.requestId;/);
   assert.match(source, /requestId,\s*traceId: requestId,\s*correlationId: requestId/s);
@@ -59,6 +59,7 @@ test("plugin runtime child routes console output through structured logger with 
   assert.match(source, /return run\(\)\.finally\(\(\) => \{/);
   assert.match(source, /function logProtocolError\(message: string, error: unknown\): void/);
   assert.match(source, /message: `\$\{message\}: \$\{error instanceof Error \? error\.message : String\(error\)\}`/);
+  assert.match(source, /const entry = getLogger\(\)\.log\(\{/);
   assert.match(source, /function installStdioProtocolConsoleRedirection\(\): void \{\s*if \(process\.send\) \{\s*return;\s*\}\s*const directEntry = process\.argv\[1\];/s);
   assert.doesNotMatch(source, /plugin-runtime-child invalid stdio payload: \$\{/);
   assert.doesNotMatch(source, /plugin-runtime-child protocol violation: \$\{/);

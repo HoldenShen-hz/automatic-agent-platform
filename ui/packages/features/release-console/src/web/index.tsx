@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useReleaseConsoleVm } from "../hooks";
 
 export function ReleaseConsoleWebView(): ReactElement {
   const vm = useReleaseConsoleVm();
+  const featureCopy = translateFeatureCopy("release-console");
   return (
-    <FeatureScaffold title="Release Console" summary="发布草稿、门禁、回滚和晋级状态" status="Planned">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[

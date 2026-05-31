@@ -46,15 +46,17 @@ test("CircuitBreakerEventBus createStateChangeHandler", () => {
 });
 
 test("CircuitBreakerEventBus does not emit when no emitter set", () => {
-  const bus = new CircuitBreakerEventBus();
+  assert.doesNotThrow(() => {
+    const bus = new CircuitBreakerEventBus();
 
-  // Should not throw
-  bus.emitStateChange({
-    circuitName: "test",
-    oldState: "closed",
-    newState: "open",
-    nextAttemptAt: null,
-    occurredAt: new Date().toISOString(),
+    // Should not throw
+    bus.emitStateChange({
+      circuitName: "test",
+      oldState: "closed",
+      newState: "open",
+      nextAttemptAt: null,
+      occurredAt: new Date().toISOString(),
+    });
   });
 });
 

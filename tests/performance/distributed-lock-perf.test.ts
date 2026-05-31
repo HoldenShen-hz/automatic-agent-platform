@@ -217,6 +217,10 @@ test("performance: SqliteLockAdapter reacquireExpiredLock() >200 ops/sec", (t) =
 
   try {
     const adapter = createLockAdapter("sqlite", db.connection);
+    const insertExpiredLock = db.connection.prepare(
+      `INSERT INTO distributed_locks (lock_key, owner, fencing_token, status, acquired_at, ttl_ms)
+       VALUES (?, ?, ?, 'held', ?, ?)`,
+    );
 
     const iterations = 200;
     const start = performance.now();
@@ -224,19 +228,11 @@ test("performance: SqliteLockAdapter reacquireExpiredLock() >200 ops/sec", (t) =
     for (let i = 0; i < iterations; i++) {
       const lockName = `test-lock-reacquire-${i}`;
       const ownerId = newId("owner");
+      const expiredAt = new Date(Date.now() - 10_000).toISOString();
 
-      // First acquisition with very short TTL
-      adapter.acquire({
-        lockName,
-        ownerId,
-        ttlMs: 1,
-      });
-
-      // Small delay for lock expiration
-      const waitStart = performance.now();
-      while (performance.now() - waitStart < 5) {
-        // Busy wait for lock expiration
-      }
+      // Seed an already-expired record so the benchmark measures the expiry eviction path
+      // without violating the adapter's minimum TTL contract.
+      insertExpiredLock.run(lockName, ownerId, i + 1, expiredAt, 1_000);
 
       // Reacquire
       adapter.acquire({

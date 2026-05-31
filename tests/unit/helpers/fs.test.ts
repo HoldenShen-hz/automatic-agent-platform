@@ -69,8 +69,10 @@ describe("fs helpers", () => {
     });
 
     it("should not throw if path does not exist", () => {
-      cleanupPath("/nonexistent/path/that/does/not/exist");
-      // No error means success
+      assert.doesNotThrow(() => {
+        cleanupPath("/nonexistent/path/that/does/not/exist");
+        // No error means success
+      });
     });
 
     it("should handle nested directories", () => {

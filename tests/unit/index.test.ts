@@ -280,8 +280,10 @@ test("src/index getPlatformApplicationKernel buildSnapshot contains valid timest
 });
 
 test("src/index runPlatformStartupPlan outputs startup plan for api target", async () => {
-  const { runPlatformStartupPlan } = await import(ROOT_ENTRY_MODULE);
+  await assert.doesNotReject(async () => {
+    const { runPlatformStartupPlan } = await import(ROOT_ENTRY_MODULE);
 
-  // Should not throw and should complete (console output is suppressed in test)
-  await runPlatformStartupPlan("api");
+    // Should not throw and should complete (console output is suppressed in test)
+    await runPlatformStartupPlan("api");
+  });
 });

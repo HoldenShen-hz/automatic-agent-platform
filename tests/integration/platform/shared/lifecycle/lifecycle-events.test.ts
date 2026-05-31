@@ -21,57 +21,59 @@ import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 test("lifecycle: DurableEventBus starts in non-disposed state", () => {
-  const workspace = createTempWorkspace("lifecycle-evt-init-");
+  assert.doesNotThrow(() => {
+    const workspace = createTempWorkspace("lifecycle-evt-init-");
 
-  try {
-    const dbPath = join(workspace, "evt-init.db");
-    const db = new SqliteDatabase(dbPath);
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const eventBus = new DurableEventBus(db, store);
+    try {
+      const dbPath = join(workspace, "evt-init.db");
+      const db = new SqliteDatabase(dbPath);
+      db.migrate();
+      const store = new AuthoritativeTaskStore(db);
+      const eventBus = new DurableEventBus(db, store);
 
-    // Should be able to subscribe (not disposed)
-    let received = false;
-    eventBus.subscribe("test-consumer", () => { received = true; });
+      // Should be able to subscribe (not disposed)
+      let received = false;
+      eventBus.subscribe("test-consumer", () => { received = true; });
 
-    // Publishing should work
-    const taskId = newId("task");
-    const now = nowIso();
+      // Publishing should work
+      const taskId = newId("task");
+      const now = nowIso();
 
-    db.transaction(() => {
-      store.insertTask({
-        id: taskId,
-        parentId: null,
-        rootId: taskId,
-        divisionId: "general_ops",
-        title: "Init test",
-        status: "in_progress",
-        source: "user",
-        priority: "normal",
-        inputJson: "{}",
-        normalizedInputJson: "{}",
-        outputJson: null,
-        estimatedCostUsd: 0,
-        actualCostUsd: 0,
-        errorCode: null,
-        createdAt: now,
-        updatedAt: now,
-        completedAt: null,
+      db.transaction(() => {
+        store.insertTask({
+          id: taskId,
+          parentId: null,
+          rootId: taskId,
+          divisionId: "general_ops",
+          title: "Init test",
+          status: "in_progress",
+          source: "user",
+          priority: "normal",
+          inputJson: "{}",
+          normalizedInputJson: "{}",
+          outputJson: null,
+          estimatedCostUsd: 0,
+          actualCostUsd: 0,
+          errorCode: null,
+          createdAt: now,
+          updatedAt: now,
+          completedAt: null,
+        });
       });
-    });
 
-    eventBus.publish({
-      eventType: "task:status_changed",
-      taskId,
-      payload: { fromStatus: "in_progress", toStatus: "done" },
-      traceId: newId("trace"),
-    });
+      eventBus.publish({
+        eventType: "task:status_changed",
+        taskId,
+        payload: { fromStatus: "in_progress", toStatus: "done" },
+        traceId: newId("trace"),
+      });
 
-    eventBus.dispose();
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+      eventBus.dispose();
+      db.close();
+    } finally {
+      cleanupPath(workspace);
+    }
+  });
 });
 
 test("lifecycle: DurableEventBus.publish() stores event durably", () => {
@@ -195,23 +197,25 @@ test("lifecycle: DurableEventBus.subscribe() and unsubscribe() work correctly", 
 });
 
 test("lifecycle: DurableEventBus.dispose() can be called multiple times safely", () => {
-  const workspace = createTempWorkspace("lifecycle-evt-dispose-");
+  assert.doesNotThrow(() => {
+    const workspace = createTempWorkspace("lifecycle-evt-dispose-");
 
-  try {
-    const dbPath = join(workspace, "evt-dispose.db");
-    const db = new SqliteDatabase(dbPath);
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const eventBus = new DurableEventBus(db, store);
+    try {
+      const dbPath = join(workspace, "evt-dispose.db");
+      const db = new SqliteDatabase(dbPath);
+      db.migrate();
+      const store = new AuthoritativeTaskStore(db);
+      const eventBus = new DurableEventBus(db, store);
 
-    // Dispose multiple times should not throw
-    eventBus.dispose();
-    eventBus.dispose();
+      // Dispose multiple times should not throw
+      eventBus.dispose();
+      eventBus.dispose();
 
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+      db.close();
+    } finally {
+      cleanupPath(workspace);
+    }
+  });
 });
 
 test("lifecycle: Event published with task association can be queried by task_id", () => {

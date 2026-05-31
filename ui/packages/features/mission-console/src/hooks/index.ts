@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { translateMessage } from "@aa/shared-i18n";
 import {
   fetchMissionBudget,
   fetchMissionEvidence,
@@ -102,11 +103,11 @@ export function useMissionConsoleVm(): MissionConsoleVm {
   const missionSettings = mapped.selectedMission == null
     ? []
     : [
-      { key: "Risk profile", value: mapped.selectedMission.riskProfileRef ?? "not configured" },
-      { key: "Policy refs", value: String(mapped.selectedMission.policyRefs?.length ?? 0) },
-      { key: "Knowledge boundary", value: mapped.selectedMission.knowledgeBoundaryRef ?? "default mission boundary" },
-      { key: "Workflow templates", value: String(mapped.selectedMission.defaultWorkflowTemplateRefs?.length ?? 0) },
-      { key: "Budget envelope", value: mapped.selectedMission.budgetEnvelopeRef ?? "not configured" },
+      { key: translateMessage("ui.missionConsole.settings.riskProfile"), value: mapped.selectedMission.riskProfileRef ?? translateMessage("ui.missionConsole.value.notConfigured") },
+      { key: translateMessage("ui.missionConsole.settings.policyRefs"), value: String(mapped.selectedMission.policyRefs?.length ?? 0) },
+      { key: translateMessage("ui.missionConsole.settings.knowledgeBoundary"), value: mapped.selectedMission.knowledgeBoundaryRef ?? translateMessage("ui.missionConsole.value.defaultBoundary") },
+      { key: translateMessage("ui.missionConsole.settings.workflowTemplates"), value: String(mapped.selectedMission.defaultWorkflowTemplateRefs?.length ?? 0) },
+      { key: translateMessage("ui.missionConsole.settings.budgetEnvelope"), value: mapped.selectedMission.budgetEnvelopeRef ?? translateMessage("ui.missionConsole.value.notConfigured") },
     ];
 
   const operatorNotices = mapped.selectedMission == null
@@ -144,31 +145,31 @@ function buildOperatorNotices(
 ): readonly { title: string; description: string }[] {
   const notices = [
     {
-      title: "High-risk actions require confirmation",
-      description: "Freeze, complete, archive, and other high-risk writes must stay server-authorized and explicitly confirmed.",
+      title: translateMessage("ui.missionConsole.notice.confirmation.title"),
+      description: translateMessage("ui.missionConsole.notice.confirmation.description"),
     },
     {
-      title: "Mission hint is not authorization",
-      description: "Mission selection in UI remains advisory until MissionGovernance resolves permissions and policy.",
+      title: translateMessage("ui.missionConsole.notice.authorization.title"),
+      description: translateMessage("ui.missionConsole.notice.authorization.description"),
     },
   ];
 
   if (memberCount === 0) {
     notices.push({
-      title: "Membership review required",
-      description: "This mission currently exposes no active members in the console data view.",
+      title: translateMessage("ui.missionConsole.notice.membership.title"),
+      description: translateMessage("ui.missionConsole.notice.membership.description"),
     });
   }
   if (budget?.status !== "configured") {
     notices.push({
-      title: "Budget envelope missing",
-      description: "Budget-backed execution and cost attribution remain limited until a budget envelope is configured.",
+      title: translateMessage("ui.missionConsole.notice.budget.title"),
+      description: translateMessage("ui.missionConsole.notice.budget.description"),
     });
   }
   if (mission.status === "frozen" || mission.status === "archived") {
     notices.push({
-      title: "Execution is guarded",
-      description: `Mission status is ${mission.status}; runtime writes should fail closed through MissionLiveGuard.`,
+      title: translateMessage("ui.missionConsole.notice.executionGuard.title"),
+      description: translateMessage("ui.missionConsole.notice.executionGuard.description", { status: mission.status }),
     });
   }
 
@@ -183,30 +184,38 @@ function buildKnowledgeLearningSummary(
 ): readonly { key: string; value: string }[] {
   return [
     {
-      key: "Knowledge boundary",
-      value: mission.knowledgeBoundaryRef ?? "default mission-local boundary",
+      key: translateMessage("ui.missionConsole.summary.knowledgeBoundary"),
+      value: mission.knowledgeBoundaryRef ?? translateMessage("ui.missionConsole.value.defaultMissionBoundary"),
     },
     {
-      key: "Promotion mode",
+      key: translateMessage("ui.missionConsole.summary.promotionMode"),
       value: mission.status === "active" || mission.status === "paused"
-        ? "mission-local by default; promotion requires approval + evidence"
-        : "learning remains local while mission is not executable",
+        ? translateMessage("ui.missionConsole.summary.promotionMode.active")
+        : translateMessage("ui.missionConsole.summary.promotionMode.inactive"),
     },
     {
-      key: "Knowledge assets",
-      value: knowledgeCount > 0 ? `${knowledgeCount} mission-linked knowledge assets` : "no mission-linked knowledge assets",
+      key: translateMessage("ui.missionConsole.summary.knowledgeAssets"),
+      value: knowledgeCount > 0
+        ? translateMessage("ui.missionConsole.summary.knowledgeAssets.count", { count: knowledgeCount })
+        : translateMessage("ui.missionConsole.summary.knowledgeAssets.empty"),
     },
     {
-      key: "Learning records",
-      value: learningCount > 0 ? `${learningCount} learning records promoted or pending` : "no learning records linked yet",
+      key: translateMessage("ui.missionConsole.summary.learningRecords"),
+      value: learningCount > 0
+        ? translateMessage("ui.missionConsole.summary.learningRecords.count", { count: learningCount })
+        : translateMessage("ui.missionConsole.summary.learningRecords.empty"),
     },
     {
-      key: "Evidence backing",
-      value: evidenceCount > 0 ? `${evidenceCount} evidence records attached` : "no evidence linked yet",
+      key: translateMessage("ui.missionConsole.summary.evidenceBacking"),
+      value: evidenceCount > 0
+        ? translateMessage("ui.missionConsole.summary.evidenceBacking.count", { count: evidenceCount })
+        : translateMessage("ui.missionConsole.summary.evidenceBacking.empty"),
     },
     {
-      key: "Workflow templates",
-      value: `${mission.defaultWorkflowTemplateRefs?.length ?? 0} template refs bound`,
+      key: translateMessage("ui.missionConsole.summary.workflowTemplates"),
+      value: translateMessage("ui.missionConsole.summary.workflowTemplates.count", {
+        count: mission.defaultWorkflowTemplateRefs?.length ?? 0,
+      }),
     },
   ];
 }
@@ -215,33 +224,33 @@ function buildRecommendedActions(mission: MissionDTO): readonly { title: string;
   switch (mission.status) {
     case "draft":
       return [
-        { title: "Activate mission", description: "Move from draft into executable state after final objective and policy review." },
-        { title: "Archive mission", description: "Close out unused drafts that should not remain selectable for task binding." },
+        { title: translateMessage("ui.missionConsole.action.activate.title"), description: translateMessage("ui.missionConsole.action.activate.description") },
+        { title: translateMessage("ui.missionConsole.action.archive.title"), description: translateMessage("ui.missionConsole.action.archive.draftDescription") },
       ];
     case "active":
       return [
-        { title: "Pause mission", description: "Temporarily stop new work intake while preserving resumability." },
-        { title: "Freeze mission", description: "Fail-close runtime execution when policy, risk, or budget conditions require a hard stop." },
-        { title: "Complete mission", description: "Mark successful completion when acceptance criteria and evidence are satisfied." },
+        { title: translateMessage("ui.missionConsole.action.pause.title"), description: translateMessage("ui.missionConsole.action.pause.description") },
+        { title: translateMessage("ui.missionConsole.action.freeze.title"), description: translateMessage("ui.missionConsole.action.freeze.description") },
+        { title: translateMessage("ui.missionConsole.action.complete.title"), description: translateMessage("ui.missionConsole.action.complete.description") },
       ];
     case "paused":
       return [
-        { title: "Resume mission", description: "Return to active execution after blockers are removed." },
-        { title: "Freeze mission", description: "Escalate from paused to hard-stop when runtime write access must be revoked." },
-        { title: "Archive mission", description: "Retire paused work that should not resume." },
+        { title: translateMessage("ui.missionConsole.action.resume.title"), description: translateMessage("ui.missionConsole.action.resume.description") },
+        { title: translateMessage("ui.missionConsole.action.freeze.title"), description: translateMessage("ui.missionConsole.action.freeze.pausedDescription") },
+        { title: translateMessage("ui.missionConsole.action.archive.title"), description: translateMessage("ui.missionConsole.action.archive.pausedDescription") },
       ];
     case "frozen":
       return [
-        { title: "Unfreeze to paused", description: "Reopen governance review without immediately restoring execution rights." },
-        { title: "Archive mission", description: "Permanently retire frozen missions after audit capture." },
+        { title: translateMessage("ui.missionConsole.action.unfreeze.title"), description: translateMessage("ui.missionConsole.action.unfreeze.description") },
+        { title: translateMessage("ui.missionConsole.action.archive.title"), description: translateMessage("ui.missionConsole.action.archive.frozenDescription") },
       ];
     case "completed":
       return [
-        { title: "Archive mission", description: "Finalize completed missions after outcome review, evidence export, and retention checks." },
+        { title: translateMessage("ui.missionConsole.action.archive.title"), description: translateMessage("ui.missionConsole.action.archive.completedDescription") },
       ];
     case "archived":
       return [
-        { title: "Mission is terminal", description: "Archived missions stay read-only and should only be used for audit or historical review." },
+        { title: translateMessage("ui.missionConsole.action.terminal.title"), description: translateMessage("ui.missionConsole.action.terminal.description") },
       ];
     default:
       return [];

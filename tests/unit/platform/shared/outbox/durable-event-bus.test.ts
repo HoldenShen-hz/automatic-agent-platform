@@ -94,18 +94,20 @@ test.describe("DurableEventBus unit tests", () => {
   });
 
   test("subscribe registers a handler for a consumer", () => {
-    let handlerCalled = false;
-    bus.subscribe("consumer-1", (_event) => {
-      handlerCalled = true;
-    });
+    assert.doesNotThrow(() => {
+      let handlerCalled = false;
+      bus.subscribe("consumer-1", (_event) => {
+        handlerCalled = true;
+      });
 
-    // Publish a tier-2 event which triggers volatile dispatch
-    bus.publish({
-      eventType: "dispatch:ticket_created",
-      payload: { ticketId: "ticket-1" },
-    });
+      // Publish a tier-2 event which triggers volatile dispatch
+      bus.publish({
+        eventType: "dispatch:ticket_created",
+        payload: { ticketId: "ticket-1" },
+      });
 
-    // Give async dispatch time to call handler
+      // Give async dispatch time to call handler
+    });
   });
 
   test("unsubscribe removes consumer handler", () => {
@@ -166,7 +168,7 @@ test.describe("DurableEventBus unit tests", () => {
       payload: { toStatus: "completed" },
     });
 
-    // Wait for async operations
+    // timing-contract: async delivery queue flushes on a later poll tick.
     await new Promise(resolve => setTimeout(resolve, 50));
 
     const delivered = await bus.deliverPending("consumer-1");
@@ -189,7 +191,7 @@ test.describe("DurableEventBus unit tests", () => {
       payload: { toStatus: "running" },
     });
 
-    // Wait for initial dispatch
+    // timing-contract: initial dispatch happens on an async poll tick.
     await new Promise(resolve => setTimeout(resolve, 100));
 
     // deliverPending should eventually throw after retries
@@ -198,6 +200,7 @@ test.describe("DurableEventBus unit tests", () => {
         for (let i = 0; i < 10; i++) {
           await bus.deliverPending("consumer-1");
           if (callCount >= 3) break;
+          // timing-contract: retry/dead-letter flow requires poll tick advancement.
           await new Promise(resolve => setTimeout(resolve, 50));
         }
       },

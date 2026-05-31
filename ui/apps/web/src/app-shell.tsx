@@ -398,7 +398,11 @@ export function WebAppShell(
   const normalizedFeatures = useMemo(() => features.map(normalizeFeatureModule), [features]);
   const locationAuthContext = useMemo(() => resolveLocationAuthContext(), []);
   const resolvedUserId = authContext?.userId ?? locationAuthContext.userId;
-  const resolvedAuthenticated = authContext?.authenticated ?? locationAuthContext.authenticated ?? false;
+  const inferredAuthenticated = authContext?.userId != null
+    || (authContext?.permissions?.length ?? 0) > 0
+    || (authContext?.roles?.length ?? 0) > 0;
+  const resolvedAuthenticated = authContext?.authenticated
+    ?? (inferredAuthenticated || locationAuthContext.authenticated || false);
 
   const effectiveAuthContext = useMemo(() => ({
     ...createFeatureGuardContext({

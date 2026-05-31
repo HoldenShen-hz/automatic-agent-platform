@@ -1,4 +1,5 @@
 import { describe, it, beforeEach, afterEach, mock } from "node:test";
+import assert from "node:assert/strict";
 import assert, {
   strictEqual,
   deepStrictEqual,
@@ -126,7 +127,9 @@ describe("InMemoryIdempotencyStorage", () => {
     });
 
     it("should not throw for non-existent key", async () => {
-      await storage.delete("nonexistent");
+      await assert.doesNotReject(async () => {
+        await storage.delete("nonexistent");
+      });
     });
   });
 

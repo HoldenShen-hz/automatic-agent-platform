@@ -51,7 +51,7 @@ test("sortAttentionQueue handles empty array", () => {
   assert.deepEqual(sorted, []);
 });
 
-test("sortAttentionQueue handles single item", () => {
+test("sortAttentionQueue handles single item [alert-router-index]", () => {
   const items: AttentionItem[] = [
     { itemType: "approval_needed", priority: "high", title: "Single", description: "s", actionOptions: [], createdAt: "2026-04-19T00:00:00.000Z", domainId: "d1" },
   ];

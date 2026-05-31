@@ -239,21 +239,25 @@ test("buildView sets fromCache to false when cache is not provided", async () =>
 });
 
 test("buildView includes sessionId tag when provided", async () => {
-  const provider = createMockProvider();
-  const service = new MemoryPlaneService(provider);
+  await assert.doesNotReject(async () => {
+    const provider = createMockProvider();
+    const service = new MemoryPlaneService(provider);
 
-  await service.buildView({ scopes: ["project"], sessionId: "session_abc" });
+    await service.buildView({ scopes: ["project"], sessionId: "session_abc" });
 
-  // No assertion error means success - just verifying it doesn't throw
+    // No assertion error means success - just verifying it doesn't throw
+  });
 });
 
 test("buildView includes agentId tag when provided", async () => {
-  const provider = createMockProvider();
-  const service = new MemoryPlaneService(provider);
+  await assert.doesNotReject(async () => {
+    const provider = createMockProvider();
+    const service = new MemoryPlaneService(provider);
 
-  await service.buildView({ scopes: ["project"], agentId: "agent_xyz" });
+    await service.buildView({ scopes: ["project"], agentId: "agent_xyz" });
 
-  // No assertion error means success
+    // No assertion error means success
+  });
 });
 
 test("buildView includes queryText tag when provided", async () => {

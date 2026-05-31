@@ -221,7 +221,7 @@ describe("UI integration: error boundary behavior", () => {
     render(<WebAppShell features={mockFeatures} router="memory" initialEntries={["/test"]} />);
 
     expect(screen.getByText("页面渲染失败")).toBeInTheDocument();
-    expect(screen.getByText("Integration test error")).toBeInTheDocument();
+    expect(screen.getByText("界面遇到不可恢复错误，请刷新页面或联系当前值班操作员。")).toBeInTheDocument();
   });
 
   it("provides retry action in error boundary", () => {

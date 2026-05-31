@@ -177,10 +177,12 @@ test("DashboardWebSocketServer heartbeat timer is cleared on stop", () => {
 });
 
 test("DashboardWebSocketServer handles setDeltaHandler with null", () => {
-  const server = new DashboardWebSocketServer();
+  assert.doesNotThrow(() => {
+    const server = new DashboardWebSocketServer();
 
-  // Should not throw
-  server.setDeltaHandler(null as any);
+    // Should not throw
+    server.setDeltaHandler(null as any);
+  });
 });
 
 test("DashboardWebSocketServer handleProjectionDelta without delta handler", () => {

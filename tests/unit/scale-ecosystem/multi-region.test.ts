@@ -448,12 +448,14 @@ test("RegionFailoverOrchestrator.selectFailoverTarget returns null when no healt
 });
 
 test("RegionFailoverOrchestrator.addFailoverListener registers listener [multi-region]", () => {
-  const orchestrator = new RegionFailoverOrchestrator();
-  const listener = (_source: string, _target: string) => {};
+  assert.doesNotThrow(() => {
+    const orchestrator = new RegionFailoverOrchestrator();
+    const listener = (_source: string, _target: string) => {};
 
-  orchestrator.addFailoverListener(listener);
-  orchestrator.removeFailoverListener(listener);
-  // If remove doesn't throw, listener was added
+    orchestrator.addFailoverListener(listener);
+    orchestrator.removeFailoverListener(listener);
+    // If remove doesn't throw, listener was added
+  });
 });
 
 test("RegionFailoverOrchestrator.orchestrateFailover returns failure when no target [multi-region]", async () => {
@@ -523,27 +525,29 @@ test("CDCReplicationService.getReplicationLag returns total events when no check
 });
 
 test("CDCReplicationService.recordFailure logs error without throwing [multi-region]", () => {
-  const service = new CDCReplicationService();
-  service.registerReplication({
-    sourceRegionId: "us-east",
-    targetRegionId: "eu-west",
-    batchSize: 100,
-    replicationIntervalMs: 5000,
-    enabled: true,
-    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+  assert.doesNotThrow(() => {
+    const service = new CDCReplicationService();
+    service.registerReplication({
+      sourceRegionId: "us-east",
+      targetRegionId: "eu-west",
+      batchSize: 100,
+      replicationIntervalMs: 5000,
+      enabled: true,
+      retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+    });
+
+    service.recordFailure("us-east", "eu-west", {
+      batchId: "batch-1",
+      sourceRegionId: "us-east",
+      targetRegionId: "eu-west",
+      events: [],
+      startSequence: 0,
+      endSequence: 0,
+      createdAt: new Date().toISOString(),
+    }, "Test error");
+
+    // Should not throw
   });
-
-  service.recordFailure("us-east", "eu-west", {
-    batchId: "batch-1",
-    sourceRegionId: "us-east",
-    targetRegionId: "eu-west",
-    events: [],
-    startSequence: 0,
-    endSequence: 0,
-    createdAt: new Date().toISOString(),
-  }, "Test error");
-
-  // Should not throw
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -726,40 +726,42 @@ test("PluginSpiRegistry asserts network allowed for adapter operations", async (
 });
 
 test("PluginSpiRegistry allows network when allowNetworkEgress is true", async () => {
-  const registry = new PluginSpiRegistry({ maxConsecutiveFailures: 10 });
+  await assert.doesNotReject(async () => {
+    const registry = new PluginSpiRegistry({ maxConsecutiveFailures: 10 });
 
-  registry.register({
-    pluginId: "plugin.adapter.allowed_network",
-    spiType: "adapter",
-    adapterType: "github",
-    async authenticate() {},
-    async execute() {
-      return { result: "ok" };
-    },
-  }, {
-    pluginId: "plugin.adapter.allowed_network",
-    name: "allowed network adapter",
-    version: "1.0.0",
-    owner: "test",
-    domainIds: [],
-    capabilityIds: [],
-    spiTypes: ["adapter"],
-    extensionKind: "external_adapter",
-    trustLevel: "trusted",
-    publicSdkSurface: "test",
-    settingsSchema: {},
-    sandbox: makeSandboxPolicy({
-      allowNetworkEgress: true,
-      allowedExternalDomains: ["github.com"],
-      timeoutMs: 1000,
-    }),
-  });
+    registry.register({
+      pluginId: "plugin.adapter.allowed_network",
+      spiType: "adapter",
+      adapterType: "github",
+      async authenticate() {},
+      async execute() {
+        return { result: "ok" };
+      },
+    }, {
+      pluginId: "plugin.adapter.allowed_network",
+      name: "allowed network adapter",
+      version: "1.0.0",
+      owner: "test",
+      domainIds: [],
+      capabilityIds: [],
+      spiTypes: ["adapter"],
+      extensionKind: "external_adapter",
+      trustLevel: "trusted",
+      publicSdkSurface: "test",
+      settingsSchema: {},
+      sandbox: makeSandboxPolicy({
+        allowNetworkEgress: true,
+        allowedExternalDomains: ["github.com"],
+        timeoutMs: 1000,
+      }),
+    });
 
-  await registry.ensureActive("plugin.adapter.allowed_network");
+    await registry.ensureActive("plugin.adapter.allowed_network");
 
-  // Authenticate should work when network is allowed
-  await registry.invokeAdapterAuthenticate("plugin.adapter.allowed_network", {
-    credentials: { token: "test" },
+    // Authenticate should work when network is allowed
+    await registry.invokeAdapterAuthenticate("plugin.adapter.allowed_network", {
+      credentials: { token: "test" },
+    });
   });
 });
 

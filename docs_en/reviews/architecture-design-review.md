@@ -1149,7 +1149,7 @@ deploy/
 #### 70. [源代码] [高严重] [interface一致性问题 - runtime-state-machine 导入patherror]
 - **file/path**: `src/platform/five-plane-execution/runtime-state-machine.ts`
 - **问题描述**: 
-  - 该fileuses `import { ValidationError, WorkflowStateError } from "../contracts/errors.js"`
+  - 该fileuses `import { ValidationError, WorkflowStateError } from "../contracts/errors.ts"`
   - 但 `../contracts` path在 `five-plane-execution` 上下文中应该指向 `five-plane-execution/contracts` 而非 `platform/contracts`
   - 这表明可能exists循环导入或path解析问题
 - **建议修复**: 

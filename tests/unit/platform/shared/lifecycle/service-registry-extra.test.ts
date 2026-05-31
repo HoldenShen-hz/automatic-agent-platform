@@ -56,19 +56,21 @@ test("ServiceRegistry.register allows registering service with dependsOn", () =>
 });
 
 test("ServiceRegistry.getRecursive handles missing dependency gracefully", () => {
-  const registry = ServiceRegistry.getInstance();
+  assert.doesNotThrow(() => {
+    const registry = ServiceRegistry.getInstance();
 
-  registry.register("orphan-service", {
-    init: () => ({}),
-    dependsOn: ["nonexistent-service"],
+    registry.register("orphan-service", {
+      init: () => ({}),
+      dependsOn: ["nonexistent-service"],
+    });
+
+    // Should not throw - dependsOn is optional
+    try {
+      registry.get("orphan-service");
+    } catch {
+      // May throw if dependency not found
+    }
   });
-
-  // Should not throw - dependsOn is optional
-  try {
-    registry.get("orphan-service");
-  } catch {
-    // May throw if dependency not found
-  }
 });
 
 test("ServiceRegistry.initializeAll initializes all registered services", () => {

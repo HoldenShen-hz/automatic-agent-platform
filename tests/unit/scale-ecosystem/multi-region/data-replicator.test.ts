@@ -731,25 +731,27 @@ test("DataReplicatorService handles incoming events via handler [data-replicator
 });
 
 test("DataReplicatorService handleIncomingEvent does nothing without handler [data-replicator]", async () => {
-  const replicator = createDataReplicator("us-east", ["eu-west"], {
-    sourceRegionId: "us-east",
-    targetRegionIds: ["eu-west"],
-    residencyMode: "same_jurisdiction",
+  await assert.doesNotReject(async () => {
+    const replicator = createDataReplicator("us-east", ["eu-west"], {
+      sourceRegionId: "us-east",
+      targetRegionIds: ["eu-west"],
+      residencyMode: "same_jurisdiction",
+    });
+
+    const testEvent: ReplicationEvent = {
+      eventId: "from-eu",
+      sourceRegionId: "eu-west",
+      targetRegionId: "us-east",
+      aggregateType: "task",
+      aggregateId: "task-789",
+      payload: { data: "test" },
+      timestamp: new Date().toISOString(),
+      checksum: computeChecksum({ data: "test" }, "sha256"),
+    };
+
+    // Should not throw even without handler
+    await replicator.handleIncomingEvent(testEvent);
   });
-
-  const testEvent: ReplicationEvent = {
-    eventId: "from-eu",
-    sourceRegionId: "eu-west",
-    targetRegionId: "us-east",
-    aggregateType: "task",
-    aggregateId: "task-789",
-    payload: { data: "test" },
-    timestamp: new Date().toISOString(),
-    checksum: computeChecksum({ data: "test" }, "sha256"),
-  };
-
-  // Should not throw even without handler
-  await replicator.handleIncomingEvent(testEvent);
 });
 
 test("DataReplicatorService multiple handlers for different regions [data-replicator]", async () => {

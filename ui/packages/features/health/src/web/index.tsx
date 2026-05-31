@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useHealthVm } from "../hooks";
 
 export function HealthWebView(): ReactElement {
   const vm = useHealthVm();
+  const featureCopy = translateFeatureCopy("health");
   return (
-    <FeatureScaffold title="Health" summary="健康状态与基础指标" status="Implemented/Contracted">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Contracted">
       <FeatureWorkbenchPanel
         rows={vm.rows}
         actions={[

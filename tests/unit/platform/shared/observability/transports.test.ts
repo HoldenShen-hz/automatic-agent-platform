@@ -87,13 +87,17 @@ test("StdoutTransport.write writes JSON to stdout", () => {
 });
 
 test("StdoutTransport.flush is a no-op", async () => {
-  const transport = new StdoutTransport();
-  await transport.flush(); // Should not throw
+  await assert.doesNotReject(async () => {
+    const transport = new StdoutTransport();
+    await transport.flush(); // Should not throw
+  });
 });
 
 test("StdoutTransport.close is a no-op", async () => {
-  const transport = new StdoutTransport();
-  await transport.close(); // Should not throw
+  await assert.doesNotReject(async () => {
+    const transport = new StdoutTransport();
+    await transport.close(); // Should not throw
+  });
 });
 
 // ============================================================================
@@ -193,12 +197,14 @@ test("DatadogTransport.flush clears batch", async () => {
 });
 
 test("DatadogTransport.flush returns early when batch is empty", async () => {
-  const config = createDatadogTestConfig();
+  await assert.doesNotReject(async () => {
+    const config = createDatadogTestConfig();
 
-  const transport = new DatadogTransport(config);
-  // Flush when batch is empty should return immediately
-  await transport.flush();
-  transport.close();
+    const transport = new DatadogTransport(config);
+    // Flush when batch is empty should return immediately
+    await transport.flush();
+    transport.close();
+  });
 });
 
 test("DatadogTransport.close clears timer and flushes", async () => {
@@ -441,18 +447,20 @@ test("FluentdTransport.close sets socket to null", async () => {
 });
 
 test("FluentdTransport.flush resolves when socket is not writable", async () => {
-  const config: FluentdTransportConfig = {
-    host: "localhost",
-    port: 24224,
-    tag: "test",
-  };
+  await assert.doesNotReject(async () => {
+    const config: FluentdTransportConfig = {
+      host: "localhost",
+      port: 24224,
+      tag: "test",
+    };
 
-  const transport = new FluentdTransport(config);
+    const transport = new FluentdTransport(config);
 
-  (transport as unknown as { socket: EventEmitter | null }).socket = null;
+    (transport as unknown as { socket: EventEmitter | null }).socket = null;
 
-  // Should resolve immediately
-  await transport.flush();
+    // Should resolve immediately
+    await transport.flush();
+  });
 });
 
 test("FluentdTransport.connect returns early if already connecting", () => {

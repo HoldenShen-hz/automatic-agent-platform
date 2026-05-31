@@ -104,9 +104,7 @@ test("RetryConfig structure with all fields [call-governance-types]", () => {
     jitterFactor: 0.1,
     retryableCodes: ["rate_limit", "timeout"],
     nonRetryableCodes: ["auth_failed"],
-    onRetry: async (input) => {
-      console.log(`Retrying attempt ${input.attempt}`);
-    },
+    onRetry: async (_input) => undefined,
   };
 
   assert.equal(config.maxAttempts, 5);

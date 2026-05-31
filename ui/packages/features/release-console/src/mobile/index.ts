@@ -1,8 +1,9 @@
 import { createMobileFeatureCard } from "@aa/ui-mobile";
+import { translateMessage } from "@aa/shared-i18n";
 
 export function createReleaseConsoleMobileCards() {
   return [
-    createMobileFeatureCard("Release Console", "查看发布门禁和晋级状态"),
-    createMobileFeatureCard("Rollback Plan", "确认回滚计划和证据完整度"),
+    createMobileFeatureCard(translateMessage("ui.releaseConsole.mobile.console.title"), translateMessage("ui.releaseConsole.mobile.console.description")),
+    createMobileFeatureCard(translateMessage("ui.releaseConsole.mobile.rollback.title"), translateMessage("ui.releaseConsole.mobile.rollback.description")),
   ];
 }

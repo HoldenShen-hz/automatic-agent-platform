@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { translateMessage } from "@aa/shared-i18n";
 import { useDomainConfigsQuery } from "@aa/shared-state";
 
 export type DomainWizardStepId = "domain-select" | "risk-profile" | "capability-config" | "review";
@@ -55,12 +56,30 @@ export interface DomainWizardVm {
 const STORAGE_KEY = "aa-domain-wizard-draft";
 const orderedSteps: readonly DomainWizardStepId[] = ["domain-select", "risk-profile", "capability-config", "review"];
 
-const stepDescriptors: DomainWizardVm["steps"] = [
-  { id: "domain-select", label: "选择域", description: "选择要配置的领域" },
-  { id: "risk-profile", label: "风险配置", description: "设置风险等级和数据分类" },
-  { id: "capability-config", label: "能力配置", description: "配置并发任务和钻取深度" },
-  { id: "review", label: "审核确认", description: "审核并提交配置" },
-];
+function buildStepDescriptors(): DomainWizardVm["steps"] {
+  return [
+    {
+      id: "domain-select",
+      label: translateMessage("ui.domainWizard.step.select.label"),
+      description: translateMessage("ui.domainWizard.step.select.description"),
+    },
+    {
+      id: "risk-profile",
+      label: translateMessage("ui.domainWizard.step.risk.label"),
+      description: translateMessage("ui.domainWizard.step.risk.description"),
+    },
+    {
+      id: "capability-config",
+      label: translateMessage("ui.domainWizard.step.capability.label"),
+      description: translateMessage("ui.domainWizard.step.capability.description"),
+    },
+    {
+      id: "review",
+      label: translateMessage("ui.domainWizard.step.review.label"),
+      description: translateMessage("ui.domainWizard.step.review.description"),
+    },
+  ];
+}
 
 function createDefaultDraft(): DomainWizardPersistedDraft {
   return {
@@ -114,7 +133,10 @@ export function useDomainWizardVm(): DomainWizardVm {
 
   const items = useMemo(() => domains.map((domain) => ({
     title: domain.displayName,
-    description: `owner ${domain.owner} · drill ${domain.defaultDrillDepth}`,
+    description: translateMessage("ui.domainWizard.domainItem.description", {
+      owner: domain.owner,
+      depth: domain.defaultDrillDepth,
+    }),
   })), [domains]);
 
   const persist = useCallback((next: Partial<DomainWizardPersistedDraft> = {}) => {
@@ -171,19 +193,19 @@ export function useDomainWizardVm(): DomainWizardVm {
   const validationErrors = useMemo(() => {
     const errors: string[] = [];
     if (selectedDomainId == null) {
-      errors.push("Select a domain before continuing.");
+      errors.push(translateMessage("ui.domainWizard.validation.selectDomain"));
     }
     if (currentStep === "risk-profile" || currentStep === "review") {
       if (riskLevel === "critical" && dataClassification === "public") {
-        errors.push("Critical domains cannot be marked public.");
+        errors.push(translateMessage("ui.domainWizard.validation.criticalPublic"));
       }
     }
     if (currentStep === "capability-config" || currentStep === "review") {
       if (maxConcurrentTasks < 1) {
-        errors.push("Max concurrent tasks must be at least 1.");
+        errors.push(translateMessage("ui.domainWizard.validation.maxConcurrentTasks"));
       }
       if (allowedDrillDepth < 1 || allowedDrillDepth > 5) {
-        errors.push("Allowed drill depth must stay between 1 and 5.");
+        errors.push(translateMessage("ui.domainWizard.validation.allowedDrillDepth"));
       }
     }
     return errors;
@@ -206,18 +228,18 @@ export function useDomainWizardVm(): DomainWizardVm {
   }, [domains, persist]);
 
   const previewRows = useMemo(() => [
-    { key: "Domain", value: selectedDomainId ?? "Unspecified" },
-    { key: "Risk level", value: riskLevel },
-    { key: "Data classification", value: dataClassification },
-    { key: "External integrations", value: hasExternalIntegration ? "enabled" : "disabled" },
-    { key: "Max concurrent tasks", value: String(maxConcurrentTasks) },
-    { key: "Allowed drill depth", value: String(allowedDrillDepth) },
-    { key: "Auto rollback", value: enableAutoRollback ? "enabled" : "disabled" },
+    { key: translateMessage("ui.domainWizard.preview.domain"), value: selectedDomainId ?? translateMessage("ui.domainWizard.value.unspecified") },
+    { key: translateMessage("ui.domainWizard.preview.riskLevel"), value: riskLevel },
+    { key: translateMessage("ui.domainWizard.preview.dataClassification"), value: dataClassification },
+    { key: translateMessage("ui.domainWizard.preview.externalIntegrations"), value: hasExternalIntegration ? translateMessage("ui.domainWizard.value.enabled") : translateMessage("ui.domainWizard.value.disabled") },
+    { key: translateMessage("ui.domainWizard.preview.maxConcurrentTasks"), value: String(maxConcurrentTasks) },
+    { key: translateMessage("ui.domainWizard.preview.allowedDrillDepth"), value: String(allowedDrillDepth) },
+    { key: translateMessage("ui.domainWizard.preview.autoRollback"), value: enableAutoRollback ? translateMessage("ui.domainWizard.value.enabled") : translateMessage("ui.domainWizard.value.disabled") },
   ], [allowedDrillDepth, dataClassification, enableAutoRollback, hasExternalIntegration, maxConcurrentTasks, riskLevel, selectedDomainId]);
 
   return {
     items,
-    steps: stepDescriptors,
+    steps: buildStepDescriptors(),
     currentStep,
     selectedDomainId,
     riskProfile: {
@@ -288,7 +310,7 @@ export function useDomainWizardVm(): DomainWizardVm {
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(STORAGE_KEY);
       }
-      setSubmissionMessage("Domain configuration submitted");
+      setSubmissionMessage(translateMessage("ui.domainWizard.submitted"));
     },
   };
 }

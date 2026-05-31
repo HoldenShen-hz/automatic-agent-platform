@@ -60,8 +60,10 @@ test("LivestreamAdapter.authenticate throws on invalid OBS token format", async 
 });
 
 test("LivestreamAdapter.authenticate accepts valid OBS token", async () => {
-  const adapter = createLivestreamAdapterPlugin();
-  await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123" });
+  await assert.doesNotReject(async () => {
+    const adapter = createLivestreamAdapterPlugin();
+    await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123" });
+  });
 });
 
 test("LivestreamAdapter.execute throws when not authenticated", async () => {

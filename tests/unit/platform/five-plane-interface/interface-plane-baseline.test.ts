@@ -69,7 +69,7 @@ test("resolveInterfaceCapabilityBaseline throws for unknown capability", () => {
   );
 });
 
-test("capability baselines have required fields", () => {
+test("capability baselines have required fields [interface-plane-baseline]", () => {
   for (const baseline of INTERFACE_CAPABILITY_BASELINES) {
     assert.ok(typeof baseline.capabilityId === "string");
     assert.ok(typeof baseline.entryModule === "string");

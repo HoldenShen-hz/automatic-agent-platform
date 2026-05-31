@@ -212,9 +212,11 @@ test("spawnTracked defaults owner to unknown", () => {
 // ---------------------------------------------------------------------------
 
 test("ProcessTracker.killAll handles empty tracker", async () => {
-  const tracker = new ProcessTracker();
-  // Should not throw
-  await tracker.killAll("SIGTERM", 100);
+  await assert.doesNotReject(async () => {
+    const tracker = new ProcessTracker();
+    // Should not throw
+    await tracker.killAll("SIGTERM", 100);
+  });
 });
 
 // ---------------------------------------------------------------------------

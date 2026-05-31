@@ -70,7 +70,7 @@ test("INTERFACE_CAPABILITY_BASELINES contains webhook capability", () => {
   assert.equal(wh.entryModule, "src/platform/five-plane-interface/webhook/index.ts");
 });
 
-test("capability baselines have required fields", () => {
+test("capability baselines have required fields [five-plane-interface]", () => {
   for (const baseline of INTERFACE_CAPABILITY_BASELINES) {
     assert.ok(typeof baseline.capabilityId === "string");
     assert.ok(typeof baseline.entryModule === "string");

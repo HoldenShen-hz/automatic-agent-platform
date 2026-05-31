@@ -139,21 +139,23 @@ test("[SYS-PERF-3.1] DurableEventBus dispose clears all subscribers", () => {
 });
 
 test("[SYS-PERF-3.1] DurableEventBus dispose is idempotent", () => {
-  const { bus, db, store, workspace } = createTestBus();
-  try {
-    seedTaskAndExecution(db, store, {
-      taskId: "task-dispose-idempotent",
-      executionId: "exec-dispose-idempotent",
-      traceId: "trace-dispose-idempotent",
-    });
+  assert.doesNotThrow(() => {
+    const { bus, db, store, workspace } = createTestBus();
+    try {
+      seedTaskAndExecution(db, store, {
+        taskId: "task-dispose-idempotent",
+        executionId: "exec-dispose-idempotent",
+        traceId: "trace-dispose-idempotent",
+      });
 
-    // Should not throw
-    bus.dispose();
-    bus.dispose();
-    bus.dispose();
-  } finally {
-    cleanupBus(bus, db, workspace);
-  }
+      // Should not throw
+      bus.dispose();
+      bus.dispose();
+      bus.dispose();
+    } finally {
+      cleanupBus(bus, db, workspace);
+    }
+  });
 });
 
 test("[SYS-PERF-3.1] DurableEventBus publish after dispose throws", () => {

@@ -44,14 +44,18 @@ test.describe("LivestreamAdapter Plugin", () => {
 
 test.describe("LivestreamAdapter authenticate", () => {
   test("authenticate accepts valid OBS token", async () => {
-    const adapter = createLivestreamAdapterPlugin();
-    await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123456" });
+    await assert.doesNotReject(async () => {
+      const adapter = createLivestreamAdapterPlugin();
+      await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123456" });
+    });
   });
 
   test("authenticate accepts very long valid token", async () => {
-    const adapter = createLivestreamAdapterPlugin();
-    const longToken = "A".repeat(100) + "1234567890";
-    await adapter.authenticate({ obsToken: longToken });
+    await assert.doesNotReject(async () => {
+      const adapter = createLivestreamAdapterPlugin();
+      const longToken = "A".repeat(100) + "1234567890";
+      await adapter.authenticate({ obsToken: longToken });
+    });
   });
 
   test("authenticate throws on missing OBS token", async () => {
@@ -112,23 +116,31 @@ test.describe("LivestreamAdapter authenticate", () => {
   });
 
   test("authenticate accepts token with base64 characters", async () => {
-    const adapter = createLivestreamAdapterPlugin();
-    await adapter.authenticate({ obsToken: "ValidBase64Token1234567890" });
+    await assert.doesNotReject(async () => {
+      const adapter = createLivestreamAdapterPlugin();
+      await adapter.authenticate({ obsToken: "ValidBase64Token1234567890" });
+    });
   });
 
   test("authenticate accepts token with base64url characters", async () => {
-    const adapter = createLivestreamAdapterPlugin();
-    await adapter.authenticate({ obsToken: "ValidBase64-Token_123456789" });
+    await assert.doesNotReject(async () => {
+      const adapter = createLivestreamAdapterPlugin();
+      await adapter.authenticate({ obsToken: "ValidBase64-Token_123456789" });
+    });
   });
 
   test("authenticate accepts credentials and derives a stable hashed fingerprint", async () => {
-    const adapter = createLivestreamAdapterPlugin();
-    await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123456" });
+    await assert.doesNotReject(async () => {
+      const adapter = createLivestreamAdapterPlugin();
+      await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123456" });
+    });
   });
 
   test("authenticate trims whitespace from token", async () => {
-    const adapter = createLivestreamAdapterPlugin();
-    await adapter.authenticate({ obsToken: "  AValidOBSWebSocketToken123456  " });
+    await assert.doesNotReject(async () => {
+      const adapter = createLivestreamAdapterPlugin();
+      await adapter.authenticate({ obsToken: "  AValidOBSWebSocketToken123456  " });
+    });
   });
 });
 

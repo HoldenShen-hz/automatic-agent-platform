@@ -38,7 +38,7 @@ test("listPromptEngineCapabilityBaselines returns frozen array", () => {
   assert.ok(Object.isFrozen(baselines));
 });
 
-test("capability baselines have required fields", () => {
+test("capability baselines have required fields [prompt-engine]", () => {
   const baselines = listPromptEngineCapabilityBaselines();
 
   for (const baseline of baselines) {

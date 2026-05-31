@@ -95,27 +95,33 @@ test("TakeoverEscalationManager accepts auto-close handler", () => {
 // =============================================================================
 
 test("startSessionTracking initializes tracking for session", () => {
-  const manager = createManager();
+  assert.doesNotThrow(() => {
+    const manager = createManager();
 
-  manager.startSessionTracking("session-1", "task-1");
+    manager.startSessionTracking("session-1", "task-1");
 
-  // Should not throw
+    // Should not throw
+  });
 });
 
 test("stopSessionTracking clears all tracking", () => {
-  const manager = createManager();
+  assert.doesNotThrow(() => {
+    const manager = createManager();
 
-  manager.startSessionTracking("session-1", "task-1");
-  manager.stopSessionTracking("session-1");
+    manager.startSessionTracking("session-1", "task-1");
+    manager.stopSessionTracking("session-1");
 
-  // Should not throw - verifies timers are cleared
+    // Should not throw - verifies timers are cleared
+  });
 });
 
 test("stopSessionTracking handles unknown session gracefully", () => {
-  const manager = createManager();
+  assert.doesNotThrow(() => {
+    const manager = createManager();
 
-  // Should not throw
-  manager.stopSessionTracking("unknown-session");
+    // Should not throw
+    manager.stopSessionTracking("unknown-session");
+  });
 });
 
 // =============================================================================
@@ -258,16 +264,18 @@ test("extendAcknowledgment throws for non-acknowledged session", () => {
 // =============================================================================
 
 test("clearAllTimers clears all active timers", () => {
-  const emitter = createMockEventEmitter();
-  const config = createTestConfig();
-  const manager = createManager(config, emitter);
+  assert.doesNotThrow(() => {
+    const emitter = createMockEventEmitter();
+    const config = createTestConfig();
+    const manager = createManager(config, emitter);
 
-  manager.startSessionTracking("session-1", "task-1");
-  manager.acknowledgeSession("session-1", "operator-1", "task-1");
+    manager.startSessionTracking("session-1", "task-1");
+    manager.acknowledgeSession("session-1", "operator-1", "task-1");
 
-  manager.clearAllTimers();
+    manager.clearAllTimers();
 
-  // Should not throw
+    // Should not throw
+  });
 });
 
 // =============================================================================
@@ -275,28 +283,34 @@ test("clearAllTimers clears all active timers", () => {
 // =============================================================================
 
 test("evictExpiredSessionEntries handles empty queue", () => {
-  const manager = createManager();
+  assert.doesNotThrow(() => {
+    const manager = createManager();
 
-  // Should not throw
-  manager.evictExpiredSessionEntries();
+    // Should not throw
+    manager.evictExpiredSessionEntries();
+  });
 });
 
 test("evictExpiredSessionEntries respects eviction interval", () => {
-  const manager = createManager();
+  assert.doesNotThrow(() => {
+    const manager = createManager();
 
-  manager.evictExpiredSessionEntries();
-  manager.evictExpiredSessionEntries(); // Second call is no-op
+    manager.evictExpiredSessionEntries();
+    manager.evictExpiredSessionEntries(); // Second call is no-op
 
-  // Should not throw
+    // Should not throw
+  });
 });
 
 test("evictExpiredSessionEntries cleans up old entries", () => {
-  const manager = createManager();
+  assert.doesNotThrow(() => {
+    const manager = createManager();
 
-  manager.acknowledgeSession("session-1", "operator-1", "task-1");
+    manager.acknowledgeSession("session-1", "operator-1", "task-1");
 
-  // Should not throw
-  manager.evictExpiredSessionEntries();
+    // Should not throw
+    manager.evictExpiredSessionEntries();
+  });
 });
 
 });

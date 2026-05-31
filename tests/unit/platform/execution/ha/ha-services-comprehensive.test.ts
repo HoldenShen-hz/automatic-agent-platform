@@ -392,11 +392,13 @@ test("LeaderElectionService - attemptElection returns early when shutdown [ha-se
 });
 
 test("LeaderElectionService - renewLeadership returns early when not leader [ha-services-comprehensive]", async () => {
-  const coordinator = createMockCoordinator();
-  const service = createLeaderElectionService(coordinator, { haLevel: "HA_2" });
+  await assert.doesNotReject(async () => {
+    const coordinator = createMockCoordinator();
+    const service = createLeaderElectionService(coordinator, { haLevel: "HA_2" });
 
-  // Don't start - we won't be leader
-  service.dispose();
+    // Don't start - we won't be leader
+    service.dispose();
+  });
 });
 
 test("LeaderElectionService - isLeader returns false after stop in HA_2 [ha-services-comprehensive]", async () => {
@@ -622,53 +624,57 @@ test("LeaseReclaimerService - reclaimOnce with leadership query returning null l
 });
 
 test("LeaseReclaimerService - expireLease logs debug message [ha-services-comprehensive]", async () => {
-  const coordinator = createMockCoordinator();
+  await assert.doesNotReject(async () => {
+    const coordinator = createMockCoordinator();
 
-  coordinator.registerNode("node-1", "us-east-1");
-  coordinator.acquireLeadership({ nodeId: "node-1", ttlMs: 5_000 });
+    coordinator.registerNode("node-1", "us-east-1");
+    coordinator.acquireLeadership({ nodeId: "node-1", ttlMs: 5_000 });
 
-  // Make lease expired
-  const oldExpiresAt = new Date(Date.now() - 30_000).toISOString();
-  coordinator.mockState.isExpired = true;
-  coordinator.mockState.expiresAt = oldExpiresAt;
+    // Make lease expired
+    const oldExpiresAt = new Date(Date.now() - 30_000).toISOString();
+    coordinator.mockState.isExpired = true;
+    coordinator.mockState.expiresAt = oldExpiresAt;
 
-  const activeLease = coordinator.getActiveLease()!;
-  coordinator.mockState.leases.set("node-1", {
-    ...activeLease,
-    expiresAt: oldExpiresAt,
+    const activeLease = coordinator.getActiveLease()!;
+    coordinator.mockState.leases.set("node-1", {
+      ...activeLease,
+      expiresAt: oldExpiresAt,
+    });
+
+    const node = coordinator.getNode("node-1")!;
+    node.isLeader = true;
+
+    const service = new LeaseReclaimerService({
+      coordinator,
+      config: { reclaimIntervalMs: 10_000, gracePeriodMs: 0, autoFailover: false },
+    });
+
+    service.start();
+    await service.reclaimOnce();
+
+    service.dispose();
   });
-
-  const node = coordinator.getNode("node-1")!;
-  node.isLeader = true;
-
-  const service = new LeaseReclaimerService({
-    coordinator,
-    config: { reclaimIntervalMs: 10_000, gracePeriodMs: 0, autoFailover: false },
-  });
-
-  service.start();
-  await service.reclaimOnce();
-
-  service.dispose();
 });
 
 test("LeaseReclaimerService - expireLeaseForNode logs debug message [ha-services-comprehensive]", async () => {
-  const coordinator = createMockCoordinator();
+  await assert.doesNotReject(async () => {
+    const coordinator = createMockCoordinator();
 
-  coordinator.registerNode("node-1", "us-east-1");
-  coordinator.registerNode("node-2", "us-east-1");
+    coordinator.registerNode("node-1", "us-east-1");
+    coordinator.registerNode("node-2", "us-east-1");
 
-  const service = new LeaseReclaimerService({
-    coordinator,
-    config: { reclaimIntervalMs: 10_000, gracePeriodMs: 2_000, autoFailover: false },
+    const service = new LeaseReclaimerService({
+      coordinator,
+      config: { reclaimIntervalMs: 10_000, gracePeriodMs: 2_000, autoFailover: false },
+    });
+
+    // getStaleNodes returns empty in basic implementation
+    // But we can test the method exists and doesn't throw
+    service.start();
+    await service.reclaimOnce();
+
+    service.dispose();
   });
-
-  // getStaleNodes returns empty in basic implementation
-  // But we can test the method exists and doesn't throw
-  service.start();
-  await service.reclaimOnce();
-
-  service.dispose();
 });
 
 test("LeaseReclaimerService - runRecoveryCycle returns proper report [ha-services-comprehensive]", async () => {
@@ -751,15 +757,17 @@ test("LeaseReclaimerService - getRecoveryCadence returns correct cadence [ha-ser
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("StuckRunSweeperService - evictExpiredRuns when not yet time [ha-services-comprehensive]", () => {
-  const clock = new TestClock(0);
-  clock.install();
+  assert.doesNotThrow(() => {
+    const clock = new TestClock(0);
+    clock.install();
 
-  const service = new StuckRunSweeperService({
-    config: { sweepIntervalMs: 60_000, stuckThresholdMs: 60_000, killAfterWarningMs: 30_000, cleanupAfterKillMs: 60_000, maxRunsPerSweep: 100 },
+    const service = new StuckRunSweeperService({
+      config: { sweepIntervalMs: 60_000, stuckThresholdMs: 60_000, killAfterWarningMs: 30_000, cleanupAfterKillMs: 60_000, maxRunsPerSweep: 100 },
+    });
+
+    // Should not evict yet (just started)
+    service.dispose();
   });
-
-  // Should not evict yet (just started)
-  service.dispose();
 });
 
 test("StuckRunSweeperService - evictExpiredRuns removes old runs [ha-services-comprehensive]", () => {

@@ -70,12 +70,14 @@ test("ModelCallProviderService dispose marks provider as disposed [model-call-pr
 });
 
 test("ModelCallProviderService dispose can only be called once [model-call-provider]", () => {
-  const config: ModelCallProviderConfig = {};
-  const provider = new ModelCallProviderService(config);
+  assert.doesNotThrow(() => {
+    const config: ModelCallProviderConfig = {};
+    const provider = new ModelCallProviderService(config);
 
-  provider.dispose();
-  // Second dispose should be no-op (no error thrown)
-  provider.dispose();
+    provider.dispose();
+    // Second dispose should be no-op (no error thrown)
+    provider.dispose();
+  });
 });
 
 test("ModelCallProviderService createCompletion throws when no provider configured [model-call-provider]", async () => {

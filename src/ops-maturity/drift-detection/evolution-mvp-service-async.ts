@@ -10,10 +10,8 @@
  */
 
 import { SyncBackedAsyncService } from "../../platform/shared/async/sync-backed-async-service.js";
-import type { ApprovalService } from "../../platform/five-plane-control-plane/approval-center/approval-service.js";
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-import type { MemoryService } from "../../platform/five-plane-state-evidence/memory-gateway/index.js";
 import { EvolutionMvpService } from "./evolution-mvp-service.js";
 
 /**
@@ -25,22 +23,24 @@ import { EvolutionMvpService } from "./evolution-mvp-service.js";
  * but with async/await interface for modern async contexts.
  */
 type EvolutionMvpServiceSync = import("./evolution-mvp-service.js").EvolutionMvpService;
+type EvolutionApprovalService = ConstructorParameters<typeof EvolutionMvpService>[2];
+type EvolutionMemoryService = ConstructorParameters<typeof EvolutionMvpService>[3];
 
 export class EvolutionServiceAsync extends SyncBackedAsyncService<EvolutionMvpServiceSync> {
-  private static readonly NOOP_APPROVAL_SERVICE = {
+  private static readonly NOOP_APPROVAL_SERVICE: EvolutionApprovalService = {
     createRequest(): never {
       throw new Error("evolution.async.approval_service_required");
     },
-  } as unknown as ApprovalService;
+  };
 
-  private static readonly NOOP_MEMORY_SERVICE = {
+  private static readonly NOOP_MEMORY_SERVICE: EvolutionMemoryService = {
     remember(): never {
       throw new Error("evolution.async.memory_service_required");
     },
     revoke(): never {
       throw new Error("evolution.async.memory_service_required");
     },
-  } as unknown as MemoryService;
+  };
 
   /**
    * Creates a new EvolutionServiceAsync instance.

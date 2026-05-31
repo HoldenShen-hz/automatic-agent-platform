@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { installMockDateNow } from "../../../helpers/time.js";
 
 import { CircuitBreaker, CircuitBreakerOpenError, type CircuitBreakerMetrics } from "../../../../src/platform/model-gateway/provider-registry/circuit-breaker.js";
 import { globalCircuitBreakerEventBus } from "../../../../src/platform/model-gateway/provider-registry/circuit-breaker-event-bus.js";
@@ -51,6 +52,8 @@ test("CircuitBreaker execute throws CircuitBreakerOpenError when open", async ()
 });
 
 test("CircuitBreaker transitions to half_open after resetTimeoutMs", async () => {
+  const clock = installMockDateNow(0);
+  try {
   const cb = new CircuitBreaker({ name: "test", failureThreshold: 1, resetTimeoutMs: 10 });
 
   // Open the circuit
@@ -65,13 +68,18 @@ test("CircuitBreaker transitions to half_open after resetTimeoutMs", async () =>
   assert.equal(cb.getState(), "open");
 
   // Wait for reset timeout
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  clock.advance(20);
 
   // State should transition to half_open on getState
   assert.equal(cb.getState(), "half_open");
+  } finally {
+    clock.restore();
+  }
 });
 
 test("CircuitBreaker half_open admits probes after successful execution", async () => {
+  const clock = installMockDateNow(0);
+  try {
   const cb = new CircuitBreaker({ name: "test", failureThreshold: 1, resetTimeoutMs: 10, halfOpenSuccessThreshold: 3 });
 
   // Open then transition to half_open
@@ -83,7 +91,7 @@ test("CircuitBreaker half_open admits probes after successful execution", async 
     // Expected
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  clock.advance(20);
   assert.equal(cb.getState(), "half_open");
 
   // First probe allowed
@@ -94,9 +102,14 @@ test("CircuitBreaker half_open admits probes after successful execution", async 
   // The circuit should be able to process more requests
   const metrics = cb.getMetrics();
   assert.equal(metrics.consecutiveSuccesses, 1);
+  } finally {
+    clock.restore();
+  }
 });
 
 test("CircuitBreaker closes after halfOpenSuccessThreshold successes in half_open", async () => {
+  const clock = installMockDateNow(0);
+  try {
   const cb = new CircuitBreaker({ name: "test", failureThreshold: 1, resetTimeoutMs: 10, halfOpenSuccessThreshold: 2 });
 
   // Open then transition to half_open
@@ -108,7 +121,7 @@ test("CircuitBreaker closes after halfOpenSuccessThreshold successes in half_ope
     // Expected
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  clock.advance(20);
   assert.equal(cb.getState(), "half_open");
 
   // The first probe transitions the internal state to half_open.
@@ -118,9 +131,14 @@ test("CircuitBreaker closes after halfOpenSuccessThreshold successes in half_ope
 
   await cb.execute(async () => "ok2");
   assert.equal(cb.getState(), "closed");
+  } finally {
+    clock.restore();
+  }
 });
 
 test("CircuitBreaker any failure in half_open returns to open", async () => {
+  const clock = installMockDateNow(0);
+  try {
   const cb = new CircuitBreaker({ name: "test", failureThreshold: 1, resetTimeoutMs: 50, halfOpenSuccessThreshold: 3 });
 
   // Open then transition to half_open
@@ -132,7 +150,7 @@ test("CircuitBreaker any failure in half_open returns to open", async () => {
     // Expected
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  clock.advance(60);
   assert.equal(cb.getState(), "half_open");
 
   await assert.rejects(
@@ -143,6 +161,9 @@ test("CircuitBreaker any failure in half_open returns to open", async () => {
   );
 
   assert.equal(cb.getState(), "open");
+  } finally {
+    clock.restore();
+  }
 });
 
 test("CircuitBreaker state change callback is called", async () => {

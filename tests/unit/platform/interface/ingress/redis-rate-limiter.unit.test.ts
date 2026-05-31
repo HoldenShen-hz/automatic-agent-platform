@@ -364,13 +364,15 @@ test("RedisRateLimiter - handles count one over limit", () => {
 });
 
 test("RedisRateLimiter - close handles different Redis statuses", async () => {
-  const limiter = new RedisRateLimiter({
-    host: "localhost",
-    port: 6379,
-  });
+  await assert.doesNotReject(async () => {
+    const limiter = new RedisRateLimiter({
+      host: "localhost",
+      port: 6379,
+    });
 
-  // Should handle close gracefully
-  await limiter.close();
+    // Should handle close gracefully
+    await limiter.close();
+  });
 });
 
 test("RedisRateLimiter - windowStart calculation is correct", () => {

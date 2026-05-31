@@ -19,7 +19,9 @@ import { createPatchBundle, type PatchBundle, type ChangedFile } from "../../../
 import { createValidationReport, type ValidationReport, type CheckResult } from "../../../../../src/platform/five-plane-execution/recovery/validation-report.js";
 import { createReviewReport, type ReviewReport, type ReviewIssue } from "../../../../../src/platform/five-plane-execution/recovery/review-report.js";
 import { classifyFailure, shouldEscalate, type FailureCategory } from "../../../../../src/platform/five-plane-execution/recovery/failure-classification.js";
+import { RuntimeRepairService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-repair-service.js";
 import { RuntimeRecoveryService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service.js";
+import type { StartupConsistencyReport } from "../../../../../src/platform/five-plane-execution/startup/startup-consistency-checker.js";
 import type { ApprovalRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 // Helper to create a test task card
@@ -659,11 +661,136 @@ test("recovery: stale execution detection works correctly", () => {
 });
 
 test("recovery: RuntimeRepairService.apply handles requeue_execution action", () => {
-  // This test requires StartupConsistencyReport which depends on startup-consistency-checker
-  // Skipping as it requires significant setup
+  const workspace = createTempWorkspace("aa-runtime-repair-");
+
+  try {
+    const dbPath = join(workspace, "runtime-repair-requeue.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const repairService = new RuntimeRepairService(db, store);
+
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const now = nowIso();
+
+    db.transaction(() => {
+      store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Repair requeue test",
+        status: "failed",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: "runtime.failed",
+        createdAt: now,
+        updatedAt: now,
+        completedAt: now,
+      });
+      store.insertExecution({
+        id: executionId,
+        taskId,
+        workflowId: null,
+        parentExecutionId: null,
+        harnessRunId: null,
+        agentId: newId("agent"),
+        roleId: null,
+        runKind: "task_run",
+        status: "failed",
+        inputRef: null,
+        traceId: newId("trace"),
+        attempt: 1,
+        timeoutMs: 30000,
+        budgetUsdLimit: null,
+        budgetReservationId: null,
+        budgetLedgerId: null,
+        requiresApproval: 0,
+        sandboxMode: null,
+        allowedToolsJson: null,
+        allowedPathsJson: null,
+        maxRetries: 0,
+        retryBackoff: "exponential",
+        lastErrorCode: "runtime.failed",
+        lastErrorMessage: "test failure",
+        startedAt: now,
+        finishedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    const report: StartupConsistencyReport = {
+      checkedAt: now,
+      status: "repairable",
+      findings: [],
+      repairActions: [
+        {
+          action: "requeue_execution",
+          reasonCode: "stale_execution",
+          targetType: "execution",
+          targetId: executionId,
+        },
+      ],
+    };
+
+    return repairService.apply(report).then(async (results) => {
+      const repairedExecution = store.getExecution(executionId);
+      const repairedTask = store.getTask(taskId);
+      const tickets = store.listExecutionTicketsByExecution(executionId);
+      const repairEvents = store.listEventsForTask(taskId).filter((event) => event.eventType === "recovery:repair_applied");
+
+      assert.equal(results.length, 1);
+      assert.deepEqual(results[0], {
+        action: "requeue_execution",
+        targetId: executionId,
+        applied: true,
+        detail: "execution requeued",
+      });
+      assert.equal(repairedExecution?.status, "created");
+      assert.equal(repairedTask?.status, "pending");
+      assert.ok(tickets.some((ticket) => ticket.status === "pending"));
+      assert.equal(repairEvents.length, 1);
+
+      await repairService.dispose();
+      db.close();
+    });
+  } finally {
+    cleanupPath(workspace);
+  }
 });
 
 test("recovery: checkpoint creation and restoration workflow", () => {
-  // This test requires checkpoint infrastructure that's complex to set up in isolation
-  // Skipping as it requires artifact/checkpoint store setup
+  const recoveryService = new RuntimeRecoveryService({
+    operations: {
+      listStaleRuns: () => [],
+      listDeadLetters: () => [],
+      listWorkflowArtifactsForTask: () => [],
+    },
+    task: {
+      listTasks: () => [],
+      getTask: () => null,
+    },
+    event: {
+      listEventsByTask: () => [],
+    },
+    approval: {
+      listApprovalsByTask: () => [],
+    },
+    execution: {
+      listExecutionsByTask: () => [],
+    },
+  } as unknown as AuthoritativeTaskStore);
+
+  const overview = recoveryService.getDivisionOverview("general_ops");
+
+  assert.equal(overview.divisionId, "general_ops");
+  assert.equal(overview.activeCandidateCount, 0);
+  assert.deepEqual(overview.taskIds, []);
 });

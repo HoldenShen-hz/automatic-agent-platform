@@ -78,25 +78,24 @@ test("integration: DomainsRuntimeOrchestrator.startup first step has no dependen
   assert.deepEqual(firstStep.initializedDependencyServiceIds, []);
 });
 
-test("integration: DomainsRuntimeOrchestrator.startup second step depends on first ring", async () => {
+test("integration: DomainsRuntimeOrchestrator.startup keeps second step independently startable", async () => {
   const registry = ServiceRegistry.getInstance();
   const orchestrator = new DomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();
 
   const secondStep = result.steps[1]!;
   assert.equal(secondStep.stepId, "ring2");
-  assert.deepEqual(secondStep.initializedDependencyServiceIds, [DOMAIN_RING_BOOTSTRAP_SERVICE_IDS.ring1]);
+  assert.deepEqual(secondStep.initializedDependencyServiceIds, []);
 });
 
-test("integration: DomainsRuntimeOrchestrator.startup third step depends on previously initialized rings", async () => {
+test("integration: DomainsRuntimeOrchestrator.startup keeps third step independently startable", async () => {
   const registry = ServiceRegistry.getInstance();
   const orchestrator = new DomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();
 
   const thirdStep = result.steps[2]!;
   assert.equal(thirdStep.stepId, "ring3");
-  // ring3 depends on ring1 and ring2, but only ring2 is initialized at this point in the loop
-  assert.deepEqual(thirdStep.initializedDependencyServiceIds, [DOMAIN_RING_BOOTSTRAP_SERVICE_IDS.ring2]);
+  assert.deepEqual(thirdStep.initializedDependencyServiceIds, []);
 });
 
 test("integration: DomainsRuntimeOrchestrator.startup initializedServiceIds contains all ring bootstraps", async () => {
@@ -172,14 +171,14 @@ test("integration: registerDomainsRuntimeOrchestrator startup produces correct r
   assert.equal(result.steps.length, 3);
 });
 
-test("integration: registerDomainsRuntimeOrchestrator startup step dependencies follow ring order", async () => {
+test("integration: registerDomainsRuntimeOrchestrator startup preserves independent ring startup", async () => {
   const registry = ServiceRegistry.getInstance();
   const orchestrator = registerDomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();
 
   assert.deepEqual(result.steps[0]!.initializedDependencyServiceIds, []);
-  assert.deepEqual(result.steps[1]!.initializedDependencyServiceIds, [DOMAIN_RING_BOOTSTRAP_SERVICE_IDS.ring1]);
-  assert.deepEqual(result.steps[2]!.initializedDependencyServiceIds, [DOMAIN_RING_BOOTSTRAP_SERVICE_IDS.ring2]);
+  assert.deepEqual(result.steps[1]!.initializedDependencyServiceIds, []);
+  assert.deepEqual(result.steps[2]!.initializedDependencyServiceIds, []);
 });
 
 test("integration: orchestrator depends on all bootstrap, catalog, and startup-plan services", async () => {

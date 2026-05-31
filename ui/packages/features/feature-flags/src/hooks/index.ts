@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { translateMessage } from "@aa/shared-i18n";
 import { useFeatureFlagsQuery } from "@aa/shared-state";
 import type { FeatureFlagDTO } from "@aa/shared-types";
 
@@ -22,11 +23,18 @@ export function useFeatureFlagsVm(): FeatureFlagsVm {
   const items = useMemo(() => flags.map((flag) => ({
     id: flag.id,
     title: flag.id,
-    description: `${flag.enabled ? "已启用" : "已停用"} · rollout ${flag.rolloutPercentage}% · ${flag.target}`,
+    description: translateMessage("ui.featureFlags.item.description", {
+      status: translateMessage(flag.enabled ? "ui.featureFlags.value.enabled" : "ui.featureFlags.value.disabled"),
+      percentage: flag.rolloutPercentage,
+      target: flag.target,
+    }),
     detailRows: [
-      { key: "状态", value: flag.enabled ? "enabled" : "disabled" },
-      { key: "灰度比例", value: `${flag.rolloutPercentage}%` },
-      { key: "目标", value: flag.target },
+      {
+        key: translateMessage("ui.featureFlags.detail.status"),
+        value: translateMessage(flag.enabled ? "ui.featureFlags.value.enabled" : "ui.featureFlags.value.disabled"),
+      },
+      { key: translateMessage("ui.featureFlags.detail.rollout"), value: `${flag.rolloutPercentage}%` },
+      { key: translateMessage("ui.featureFlags.detail.target"), value: flag.target },
     ],
   })), [flags]);
 
@@ -34,9 +42,9 @@ export function useFeatureFlagsVm(): FeatureFlagsVm {
     isLoading: query.isLoading,
     flags,
     metrics: [
-      { label: "总开关数", value: flags.length },
-      { label: "已启用", value: enabledCount },
-      { label: "已停用", value: flags.length - enabledCount },
+      { label: translateMessage("ui.featureFlags.metric.total"), value: flags.length },
+      { label: translateMessage("ui.featureFlags.metric.enabled"), value: enabledCount },
+      { label: translateMessage("ui.featureFlags.metric.disabled"), value: flags.length - enabledCount },
     ],
     items,
   };

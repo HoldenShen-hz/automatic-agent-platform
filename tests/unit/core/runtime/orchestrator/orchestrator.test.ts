@@ -358,9 +358,11 @@ test("resetMultiStepToolRegistryForTests is exported as function", () => {
 });
 
 test("resetMultiStepToolRegistryForTests can be called multiple times", () => {
-  // Should not throw
-  resetMultiStepToolRegistryForTests();
-  resetMultiStepToolRegistryForTests();
+  assert.doesNotThrow(() => {
+    // Should not throw
+    resetMultiStepToolRegistryForTests();
+    resetMultiStepToolRegistryForTests();
+  });
 });
 
 test("MultiStepToolExecutionInput with stepFailureInjection", () => {

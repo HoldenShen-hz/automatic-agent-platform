@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { translateMessage } from "@aa/shared-i18n";
 import { useRestClient, useWorkflowsQuery } from "@aa/shared-state";
 import type { WorkflowDTO } from "@aa/shared-types";
 import {
@@ -77,8 +78,8 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
     }
     await runAction(
       () => cancelWorkflow(client, selectedWorkflow.id),
-      `Canceled · ${selectedWorkflow.title}`,
-      "Workflow was canceled from the cockpit.",
+      translateMessage("ui.workflowCockpit.activity.cancel.title", { title: selectedWorkflow.title }),
+      translateMessage("ui.workflowCockpit.activity.cancel.description"),
     );
   }, [client, runAction, selectedWorkflow]);
 
@@ -88,8 +89,8 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
     }
     await runAction(
       () => pauseWorkflowApi(client, selectedWorkflow.id),
-      `Paused · ${selectedWorkflow.title}`,
-      "Workflow entered HITL waiting state.",
+      translateMessage("ui.workflowCockpit.activity.pause.title", { title: selectedWorkflow.title }),
+      translateMessage("ui.workflowCockpit.activity.pause.description"),
     );
   }, [client, runAction, selectedWorkflow]);
 
@@ -99,8 +100,8 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
     }
     await runAction(
       () => resumeWorkflowApi(client, selectedWorkflow.id),
-      `Resumed · ${selectedWorkflow.title}`,
-      "Workflow resumed execution from the selected checkpoint.",
+      translateMessage("ui.workflowCockpit.activity.resume.title", { title: selectedWorkflow.title }),
+      translateMessage("ui.workflowCockpit.activity.resume.description"),
     );
   }, [client, runAction, selectedWorkflow]);
 
@@ -110,8 +111,8 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
     }
     await runAction(
       () => recoverWorkflowApi(client, selectedWorkflow.id),
-      `Recovered · ${selectedWorkflow.title}`,
-      "Recovery controller rebuilt state and replayed the workflow.",
+      translateMessage("ui.workflowCockpit.activity.recover.title", { title: selectedWorkflow.title }),
+      translateMessage("ui.workflowCockpit.activity.recover.description"),
     );
   }, [client, runAction, selectedWorkflow]);
 
@@ -121,8 +122,8 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
     }
     await runAction(
       () => releaseWorkflowApi(client, selectedWorkflow.id),
-      `Released · ${selectedWorkflow.title}`,
-      "Workflow completed release checks and closed successfully.",
+      translateMessage("ui.workflowCockpit.activity.release.title", { title: selectedWorkflow.title }),
+      translateMessage("ui.workflowCockpit.activity.release.description"),
     );
   }, [client, runAction, selectedWorkflow]);
 

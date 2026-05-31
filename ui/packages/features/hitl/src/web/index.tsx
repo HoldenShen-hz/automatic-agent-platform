@@ -1,8 +1,10 @@
 import { useState, type ReactElement } from "react";
 import { FeatureScaffold, Inline, ListCard, Stack, designTokens } from "@aa/ui-core";
+import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
 import { useHitlVm } from "../hooks";
 
 export function HitlWebView(): ReactElement {
+  const featureCopy = translateFeatureCopy("hitl");
   const vm = useHitlVm();
   const [editorMode, setEditorMode] = useState<"patch" | "override" | null>(null);
   const [editorTargetId, setEditorTargetId] = useState<string | null>(null);
@@ -17,12 +19,12 @@ export function HitlWebView(): ReactElement {
     try {
       const candidate = JSON.parse(editorValue);
       if (candidate == null || typeof candidate !== "object" || Array.isArray(candidate)) {
-        setEditorError("Editor payload must be a JSON object.");
+        setEditorError(translateMessage("ui.hitl.editor.error.object"));
         return;
       }
       parsed = candidate as Record<string, unknown>;
     } catch {
-      setEditorError("Editor payload must be valid JSON.");
+      setEditorError(translateMessage("ui.hitl.editor.error.json"));
       return;
     }
     try {
@@ -41,7 +43,7 @@ export function HitlWebView(): ReactElement {
   }
 
   return (
-    <FeatureScaffold title="HITL" summary="人工介入、Inspect、Takeover、Resume 的统一入口" status="Implemented/Partial">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Partial">
       <Stack>
         <Inline>
           <button
@@ -51,7 +53,7 @@ export function HitlWebView(): ReactElement {
             }}
             type="button"
           >
-            Bulk Approve
+            {translateMessage("ui.hitl.bulkApprove")}
           </button>
           <button
             disabled={vm.items.length === 0}
@@ -60,7 +62,7 @@ export function HitlWebView(): ReactElement {
             }}
             type="button"
           >
-            Bulk Reject
+            {translateMessage("ui.hitl.bulkReject")}
           </button>
         </Inline>
         <ListCard items={vm.items.map((item) => ({
@@ -73,13 +75,13 @@ export function HitlWebView(): ReactElement {
             <div>
               <strong>{item.title}</strong>
               <div>{item.description}</div>
-              {item.secondsRemaining != null && <div>{`SLA: ${item.secondsRemaining}s remaining`}</div>}
-              {item.escalationTarget != null && <div>{`Escalation: ${item.escalationTarget}`}</div>}
+              {item.secondsRemaining != null && <div>{translateMessage("ui.hitl.item.sla", { seconds: item.secondsRemaining })}</div>}
+              {item.escalationTarget != null && <div>{translateMessage("ui.hitl.item.escalation", { target: item.escalationTarget })}</div>}
             </div>
             {item.type === "approval" ? (
               <Inline>
-                <button onClick={() => { void vm.approve(item.id); }} type="button">Approve</button>
-                <button onClick={() => { void vm.reject(item.id); }} type="button">Reject</button>
+                <button onClick={() => { void vm.approve(item.id); }} type="button">{translateMessage("ui.hitl.approve")}</button>
+                <button onClick={() => { void vm.reject(item.id); }} type="button">{translateMessage("ui.hitl.reject")}</button>
                 <button
                   onClick={() => {
                     setEditorMode("patch");
@@ -88,7 +90,7 @@ export function HitlWebView(): ReactElement {
                   }}
                   type="button"
                 >
-                  Patch
+                  {translateMessage("ui.hitl.patch")}
                 </button>
                 <button
                   onClick={() => {
@@ -98,11 +100,11 @@ export function HitlWebView(): ReactElement {
                   }}
                   type="button"
                 >
-                  Override
+                  {translateMessage("ui.hitl.override")}
                 </button>
               </Inline>
             ) : (
-              <button onClick={() => { void vm.resume(item.id, "normal"); }} type="button">Resume</button>
+              <button onClick={() => { void vm.resume(item.id, "normal"); }} type="button">{translateMessage("ui.hitl.resume")}</button>
             )}
           </div>
         ))}
@@ -114,9 +116,9 @@ export function HitlWebView(): ReactElement {
             }}
           >
             <Stack gap={8}>
-            <textarea onChange={(event) => setEditorValue(event.target.value)} value={editorValue} />
+            <textarea aria-label={translateMessage("ui.hitl.editor.label")} onChange={(event) => setEditorValue(event.target.value)} value={editorValue} />
             {editorError != null ? <p role="alert">{editorError}</p> : null}
-            <button type="submit">Apply</button>
+            <button type="submit">{translateMessage("ui.hitl.apply")}</button>
             </Stack>
           </form>
         )}

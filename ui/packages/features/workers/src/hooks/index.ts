@@ -1,4 +1,5 @@
 import { useWorkersQuery } from "@aa/shared-state";
+import { translateMessage } from "@aa/shared-i18n";
 import type { WorkerDTO } from "@aa/shared-types";
 
 export interface WorkersVm {
@@ -8,10 +9,13 @@ export interface WorkersVm {
 export function mapWorkersToVm(workers: readonly WorkerDTO[]): WorkersVm {
   return {
     metrics: [
-      { label: "Active Workers", value: workers.length },
-      { label: "Busy", value: workers.filter((worker) => worker.status === "busy").length },
-      { label: "Draining", value: workers.filter((worker) => worker.status === "draining").length },
-      { label: "Heartbeat Lag", value: workers.length === 0 ? "0ms" : `${Math.max(...workers.map((worker) => worker.heartbeatLagMs))}ms` },
+      { label: translateMessage("ui.workers.metric.active"), value: workers.length },
+      { label: translateMessage("ui.workers.metric.busy"), value: workers.filter((worker) => worker.status === "busy").length },
+      { label: translateMessage("ui.workers.metric.draining"), value: workers.filter((worker) => worker.status === "draining").length },
+      {
+        label: translateMessage("ui.workers.metric.heartbeatLag"),
+        value: workers.length === 0 ? "0ms" : `${Math.max(...workers.map((worker) => worker.heartbeatLagMs))}ms`,
+      },
     ],
   };
 }

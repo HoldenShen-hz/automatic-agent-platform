@@ -75,7 +75,7 @@ test("TopologyValidator.validateDepth throws when depth exceeds max depth", () =
 
 test("TopologyValidator.validateDepth does not throw below max depth", () => {
   const validator = createTopologyValidator({ maxDepth: 3 });
-  validator.validateDepth(2); // Should not throw
+  assert.doesNotThrow(() => validator.validateDepth(2));
 });
 
 test("TopologyValidator.validateDepth throws when at max depth", () => {
@@ -96,7 +96,7 @@ test("TopologyValidator.validateFanout throws when at max fanout", () => {
 
 test("TopologyValidator.validateFanout does not throw below max fanout", () => {
   const validator = createTopologyValidator({ maxFanout: 10 });
-  validator.validateFanout(9); // Should not throw
+  assert.doesNotThrow(() => validator.validateFanout(9));
 });
 
 test("TopologyValidator.detectCycle throws when packId in chain", () => {
@@ -109,7 +109,7 @@ test("TopologyValidator.detectCycle throws when packId in chain", () => {
 
 test("TopologyValidator.detectCycle does not throw when packId not in chain", () => {
   const validator = createTopologyValidator();
-  validator.detectCycle("pack-1", ["pack-2", "pack-3"]); // Should not throw
+  assert.doesNotThrow(() => validator.detectCycle("pack-1", ["pack-2", "pack-3"]));
 });
 
 test("TopologyValidator.validatePackId throws when packId not allowed", () => {
@@ -121,12 +121,12 @@ test("TopologyValidator.validatePackId throws when packId not allowed", () => {
 
 test("TopologyValidator.validatePackId does not throw when packId allowed", () => {
   const validator = createTopologyValidator({ allowedPackIds: ["allowed-pack"] });
-  validator.validatePackId("allowed-pack"); // Should not throw
+  assert.doesNotThrow(() => validator.validatePackId("allowed-pack"));
 });
 
 test("TopologyValidator.validatePackId does not throw when no allowed list", () => {
   const validator = createTopologyValidator();
-  validator.validatePackId("any-pack"); // Should not throw
+  assert.doesNotThrow(() => validator.validatePackId("any-pack"));
 });
 
 test("TopologyValidator.getMaxDepth returns configured depth", () => {

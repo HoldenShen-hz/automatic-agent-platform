@@ -142,7 +142,7 @@ test("HierarchicalPromptRegistryService.listBundles returns all global bundles",
   assert.equal(bundles.length, 2);
 });
 
-test("HierarchicalPromptRegistryService.deprecateBundle marks bundle as deprecated", () => {
+test("HierarchicalPromptRegistryService.deprecateBundle marks bundle as deprecated [hierarchical-registry-service]", () => {
   const registry = new HierarchicalPromptRegistryService();
   registry.registerBundle(createTestBundle("test-bundle", "v1.0"), "global");
 

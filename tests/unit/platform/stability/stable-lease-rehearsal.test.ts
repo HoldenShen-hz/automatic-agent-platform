@@ -104,23 +104,25 @@ test("StableLeaseRehearsalReport passed/failed counts are accurate", () => {
 });
 
 test("writeStableLeaseRehearsalReport writes valid JSON", () => {
-  const report: StableLeaseRehearsalReport = {
-    startedAt: "2026-04-01T00:00:00.000Z",
-    finishedAt: "2026-04-01T00:10:00.000Z",
-    outputDir: "/tmp/lease-test",
-    totalScenarios: 4,
-    passedScenarios: 4,
-    failedScenarios: 0,
-    scenarios: [
-      { scenarioId: "lease_reclaim_increments_fencing", passed: true, durationMs: 100, summary: "test", details: {} },
-      { scenarioId: "stale_write_rejected_after_failover", passed: true, durationMs: 100, summary: "test", details: {} },
-      { scenarioId: "lease_handover_preserves_lineage", passed: true, durationMs: 100, summary: "test", details: {} },
-      { scenarioId: "worker_registry_capacity_visible", passed: true, durationMs: 100, summary: "test", details: {} },
-    ],
-  };
+  assert.doesNotThrow(() => {
+    const report: StableLeaseRehearsalReport = {
+      startedAt: "2026-04-01T00:00:00.000Z",
+      finishedAt: "2026-04-01T00:10:00.000Z",
+      outputDir: "/tmp/lease-test",
+      totalScenarios: 4,
+      passedScenarios: 4,
+      failedScenarios: 0,
+      scenarios: [
+        { scenarioId: "lease_reclaim_increments_fencing", passed: true, durationMs: 100, summary: "test", details: {} },
+        { scenarioId: "stale_write_rejected_after_failover", passed: true, durationMs: 100, summary: "test", details: {} },
+        { scenarioId: "lease_handover_preserves_lineage", passed: true, durationMs: 100, summary: "test", details: {} },
+        { scenarioId: "worker_registry_capacity_visible", passed: true, durationMs: 100, summary: "test", details: {} },
+      ],
+    };
 
-  // Should not throw
-  writeStableLeaseRehearsalReport("/tmp/test-lease-report-output.json", report);
+    // Should not throw
+    writeStableLeaseRehearsalReport("/tmp/test-lease-report-output.json", report);
+  });
 });
 
 test("runStableLeaseRehearsal executes all lease scenarios successfully", async () => {

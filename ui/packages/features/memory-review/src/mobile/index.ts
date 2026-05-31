@@ -1,8 +1,9 @@
 import { createMobileFeatureCard } from "@aa/ui-mobile";
+import { translateMessage } from "@aa/shared-i18n";
 
 export function createMemoryReviewMobileCards() {
   return [
-    createMobileFeatureCard("Memory Review", "审核 L5/L7 记忆提案与撤销动作"),
-    createMobileFeatureCard("Evidence Lineage", "查看来源证据与投影影响"),
+    createMobileFeatureCard(translateMessage("ui.memoryReview.mobile.review.title"), translateMessage("ui.memoryReview.mobile.review.description")),
+    createMobileFeatureCard(translateMessage("ui.memoryReview.mobile.lineage.title"), translateMessage("ui.memoryReview.mobile.lineage.description")),
   ];
 }

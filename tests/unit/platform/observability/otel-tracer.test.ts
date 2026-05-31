@@ -146,13 +146,15 @@ test("startActiveSpan includes span name in attributes", async () => {
 });
 
 test("startActiveSpan uses provided attributes", async () => {
-  await startActiveSpan(
-    "attributed-span",
-    { attributes: { "custom.attribute": "test-value", numberAttr: 42 } },
-    async (_span, _context) => {
-      return undefined;
-    },
-  );
+  await assert.doesNotReject(async () => {
+    await startActiveSpan(
+      "attributed-span",
+      { attributes: { "custom.attribute": "test-value", numberAttr: 42 } },
+      async (_span, _context) => {
+        return undefined;
+      },
+    );
+  });
 });
 
 test("startActiveSpan uses provided parent context", async () => {
@@ -238,11 +240,13 @@ test("startActiveSpan works without OTel API using fallback context", async () =
 });
 
 test("startActiveSpan with tracerName uses custom tracer", async () => {
-  await startActiveSpan(
-    "custom-tracer-span",
-    { tracerName: "my-custom-tracer" },
-    async (_span, _context) => {
-      return undefined;
-    },
-  );
+  await assert.doesNotReject(async () => {
+    await startActiveSpan(
+      "custom-tracer-span",
+      { tracerName: "my-custom-tracer" },
+      async (_span, _context) => {
+        return undefined;
+      },
+    );
+  });
 });

@@ -127,12 +127,14 @@ test("DekStore.destroy marks DEK as destroyed", async () => {
 });
 
 test("DekStore.destroy is idempotent", async () => {
-  const store = new DekStore();
-  const result = await store.create({ subjectId: "user-123" });
+  await assert.doesNotReject(async () => {
+    const store = new DekStore();
+    const result = await store.create({ subjectId: "user-123" });
 
-  await store.destroy(result.metadata.dekId);
-  // Should not throw
-  await store.destroy(result.metadata.dekId);
+    await store.destroy(result.metadata.dekId);
+    // Should not throw
+    await store.destroy(result.metadata.dekId);
+  });
 });
 
 test("DekStore.destroy throws for non-existent DEK", async () => {

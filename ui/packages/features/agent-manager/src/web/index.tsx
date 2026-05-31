@@ -1,11 +1,13 @@
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import type { ReactElement } from "react";
 import { useAgentManagerVm } from "../hooks";
 
 export function AgentManagerWebView(): ReactElement {
   const vm = useAgentManagerVm();
+  const featureCopy = translateFeatureCopy("agent-manager");
   return (
-    <FeatureScaffold title="Agent Manager" summary="Agent 实时监控中心与详情页" status="Planned">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
       <FeatureWorkbenchPanel
         metrics={vm.metrics}
         items={vm.items}

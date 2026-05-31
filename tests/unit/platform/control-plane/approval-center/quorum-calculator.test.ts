@@ -40,7 +40,7 @@ function makeVote(approverId: string, voteType: VoteType): QuorumVote {
   };
 }
 
-test("createInitialQuorumStatus returns correct initial state", () => {
+test("createInitialQuorumStatus returns correct initial state [quorum-calculator]", () => {
   const status = createInitialQuorumStatus();
 
   assert.equal(status.isQuorumMet, false);
@@ -424,10 +424,12 @@ test("validateVote throws for missing votedAt", () => {
 });
 
 test("validateVote passes for valid vote", () => {
-  const vote = createVote("approver-1", VoteType.APPROVE);
+  assert.doesNotThrow(() => {
+    const vote = createVote("approver-1", VoteType.APPROVE);
 
-  // Should not throw
-  validateVote(vote);
+    // Should not throw
+    validateVote(vote);
+  });
 });
 
 test("countEffectiveVotes excludes abstentions", () => {

@@ -302,30 +302,32 @@ test("IncidentDrillService.addRunbookExecution adds execution to current drill",
 });
 
 test("IncidentDrillService.addRunbookExecution does nothing when no active drill", () => {
-  const service = new IncidentDrillService(createMockExecutor() as any);
+  assert.doesNotThrow(() => {
+    const service = new IncidentDrillService(createMockExecutor() as any);
 
-  const execution: RunbookExecutionResult = {
-    executionId: "exec-123",
-    runbook: {
-      runbookId: "runbook-1",
-      title: "Test",
-      severity: "P2",
-      sections: [],
-      rawMarkdown: "# Test",
-      parsedAt: new Date().toISOString(),
-    },
-    status: "completed",
-    sectionResults: [],
-    outcome: "success",
-    summary: "Test",
-    startedAt: new Date().toISOString(),
-    completedAt: new Date().toISOString(),
-    totalDurationMs: 1000,
-    executedBy: "operator-1",
-  };
+    const execution: RunbookExecutionResult = {
+      executionId: "exec-123",
+      runbook: {
+        runbookId: "runbook-1",
+        title: "Test",
+        severity: "P2",
+        sections: [],
+        rawMarkdown: "# Test",
+        parsedAt: new Date().toISOString(),
+      },
+      status: "completed",
+      sectionResults: [],
+      outcome: "success",
+      summary: "Test",
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+      totalDurationMs: 1000,
+      executedBy: "operator-1",
+    };
 
-  // Should not throw
-  service.addRunbookExecution(execution);
+    // Should not throw
+    service.addRunbookExecution(execution);
+  });
 });
 
 test("IncidentDrillService.generateDrillReport creates formatted markdown report", () => {

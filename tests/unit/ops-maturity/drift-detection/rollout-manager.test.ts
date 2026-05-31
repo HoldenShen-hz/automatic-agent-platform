@@ -102,11 +102,13 @@ test("SimpleRolloutManager.evaluateAndTriggerRollback enters rollback_pending on
 });
 
 test("SimpleRolloutManager.updateMetrics does nothing for unknown proposal", async () => {
-  const manager = new SimpleRolloutManager();
+  await assert.doesNotReject(async () => {
+    const manager = new SimpleRolloutManager();
 
-  await manager.updateMetrics("unknown", createMetrics());
+    await manager.updateMetrics("unknown", createMetrics());
 
-  // Should not throw
+    // Should not throw
+  });
 });
 
 test("SimpleRolloutManager.complete marks rollout as succeeded", async () => {
@@ -122,11 +124,13 @@ test("SimpleRolloutManager.complete marks rollout as succeeded", async () => {
 });
 
 test("SimpleRolloutManager.complete does nothing for unknown proposal", async () => {
-  const manager = new SimpleRolloutManager();
+  await assert.doesNotReject(async () => {
+    const manager = new SimpleRolloutManager();
 
-  await manager.complete("unknown");
+    await manager.complete("unknown");
 
-  // Should not throw
+    // Should not throw
+  });
 });
 
 test("SimpleRolloutManager.fail marks rollout as failed", async () => {

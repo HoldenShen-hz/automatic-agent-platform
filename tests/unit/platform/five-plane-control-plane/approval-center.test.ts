@@ -43,7 +43,7 @@ test("validateApprovalDecision passes for valid option_selected decision", () =>
   assert.doesNotThrow(() => validateApprovalDecision(decision));
 });
 
-test("validateApprovalDecision throws for option_selected without selectedOptionId", () => {
+test("validateApprovalDecision throws for option_selected without selectedOptionId [five-plane-control-plane]", () => {
   const decision = createDecision({
     decisionType: "option_selected",
     selectedOptionId: "",

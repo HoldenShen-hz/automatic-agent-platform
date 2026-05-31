@@ -62,6 +62,7 @@ test("RecoveryOrchestratorService runs workers in parallel", async () => {
     getRecoveryCadence: () => buildRecoveryCadence({ intervalMs: 1000, priority: "normal" }),
     runRecoveryCycle: async () => {
       worker1Started = true;
+      // timing-contract: simulates slow worker latency in parallel orchestration.
       await new Promise(resolve => setTimeout(resolve, 50));
       return {
         workerId: "slow-worker",

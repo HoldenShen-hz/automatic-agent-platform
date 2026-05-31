@@ -112,28 +112,30 @@ test("TypedEventBus.subscribe filters by event type array", async () => {
 });
 
 test("TypedEventBus.publish validates typed payload", async () => {
-  const workspace = createTempWorkspace("aa-typed-payload-validate-");
+  await assert.doesNotReject(async () => {
+    const workspace = createTempWorkspace("aa-typed-payload-validate-");
 
-  try {
-    const { db, store, bus } = await setupTypedBus(workspace);
-    seedTaskAndExecution(db, store, { taskId: "task-payload-validate", executionId: "exec-payload-validate" });
+    try {
+      const { db, store, bus } = await setupTypedBus(workspace);
+      seedTaskAndExecution(db, store, { taskId: "task-payload-validate", executionId: "exec-payload-validate" });
 
-    // This should not throw - valid payload for decision:requested
-    bus.publish({
-      eventType: "decision:requested",
-      taskId: "task-payload-validate",
-      executionId: "exec-payload-validate",
-      payload: {
-        approvalId: "approval-123",
-        reason: "test reason",
-      },
-    });
+      // This should not throw - valid payload for decision:requested
+      bus.publish({
+        eventType: "decision:requested",
+        taskId: "task-payload-validate",
+        executionId: "exec-payload-validate",
+        payload: {
+          approvalId: "approval-123",
+          reason: "test reason",
+        },
+      });
 
-    bus.dispose();
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+      bus.dispose();
+      db.close();
+    } finally {
+      cleanupPath(workspace);
+    }
+  });
 });
 
 test("TypedEventBus.deliverPending returns count of delivered events", async () => {

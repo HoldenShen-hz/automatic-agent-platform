@@ -53,7 +53,7 @@ test.describe("sync-queue", () => {
       assert.equal(result.length, 2);
     });
 
-    test("returns empty array for empty input", () => {
+    test("sortByPriority returns empty array for empty input", () => {
       const result = orderEdgeSyncQueue([]);
       assert.deepEqual(result, []);
     });
@@ -102,7 +102,7 @@ test.describe("sync-queue", () => {
       assert.equal(result[0]?.priority, 2); // latest createdAt
     });
 
-    test("returns empty array for empty input", () => {
+    test("takeReadyEntries returns empty array for empty input", () => {
       const result = dedupeEdgeSyncQueue([]);
       assert.deepEqual(result, []);
     });

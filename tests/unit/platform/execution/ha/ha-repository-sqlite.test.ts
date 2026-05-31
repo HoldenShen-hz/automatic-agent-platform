@@ -205,38 +205,42 @@ test("SqliteHaRepository.deleteNode removes node [ha-repository-sqlite]", async 
 });
 
 test("SqliteHaRepository.insertLease works [ha-repository-sqlite]", async () => {
-  const mockDb = createMockSqliteDb() as any;
-  const repo = new SqliteHaRepository(mockDb) as any;
+  await assert.doesNotReject(async () => {
+    const mockDb = createMockSqliteDb() as any;
+    const repo = new SqliteHaRepository(mockDb) as any;
 
-  const lease: LeaderLease = {
-    leaseId: "sqlite-lease-1",
-    nodeId: "node-1",
-    epoch: 1,
-    acquiredAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 60000).toISOString(),
-    status: "active",
-    ttlMs: 30000,
-  };
+    const lease: LeaderLease = {
+      leaseId: "sqlite-lease-1",
+      nodeId: "node-1",
+      epoch: 1,
+      acquiredAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 60000).toISOString(),
+      status: "active",
+      ttlMs: 30000,
+    };
 
-  await repo.insertLease(lease);
+    await repo.insertLease(lease);
+  });
 });
 
 test("SqliteHaRepository.updateLeaseStatus changes status [ha-repository-sqlite]", async () => {
-  const mockDb = createMockSqliteDb() as any;
-  const repo = new SqliteHaRepository(mockDb) as any;
+  await assert.doesNotReject(async () => {
+    const mockDb = createMockSqliteDb() as any;
+    const repo = new SqliteHaRepository(mockDb) as any;
 
-  const lease: LeaderLease = {
-    leaseId: "lease-status-test",
-    nodeId: "node-1",
-    epoch: 1,
-    acquiredAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 60000).toISOString(),
-    status: "active",
-    ttlMs: 30000,
-  };
+    const lease: LeaderLease = {
+      leaseId: "lease-status-test",
+      nodeId: "node-1",
+      epoch: 1,
+      acquiredAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 60000).toISOString(),
+      status: "active",
+      ttlMs: 30000,
+    };
 
-  await repo.insertLease(lease);
-  await repo.updateLeaseStatus("lease-status-test", "expired");
+    await repo.insertLease(lease);
+    await repo.updateLeaseStatus("lease-status-test", "expired");
+  });
 });
 
 test("SqliteHaRepository.insertEpoch and getLatestEpoch work [ha-repository-sqlite]", async () => {
@@ -259,20 +263,22 @@ test("SqliteHaRepository.insertEpoch and getLatestEpoch work [ha-repository-sqli
 });
 
 test("SqliteHaRepository.updateEpochEnd marks epoch ended [ha-repository-sqlite]", async () => {
-  const mockDb = createMockSqliteDb() as any;
-  const repo = new SqliteHaRepository(mockDb) as any;
+  await assert.doesNotReject(async () => {
+    const mockDb = createMockSqliteDb() as any;
+    const repo = new SqliteHaRepository(mockDb) as any;
 
-  const epoch: LeadershipEpoch = {
-    epoch: 5,
-    leaderNodeId: "node-1",
-    startedAt: new Date().toISOString(),
-    endedAt: null,
-    cause: "acquired",
-    fencingToken: 5,
-  };
+    const epoch: LeadershipEpoch = {
+      epoch: 5,
+      leaderNodeId: "node-1",
+      startedAt: new Date().toISOString(),
+      endedAt: null,
+      cause: "acquired",
+      fencingToken: 5,
+    };
 
-  await repo.insertEpoch(epoch);
-  await repo.updateEpochEnd(5, new Date().toISOString(), "voluntary");
+    await repo.insertEpoch(epoch);
+    await repo.updateEpochEnd(5, new Date().toISOString(), "voluntary");
+  });
 });
 
 test("SqliteHaRepository.insertFailoverDecision works [ha-repository-sqlite]", async () => {

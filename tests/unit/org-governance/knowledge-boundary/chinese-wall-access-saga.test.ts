@@ -42,5 +42,5 @@ test("ChineseWallAccessSaga executes release compensation when grant commit fail
 test("ChineseWallAccessSaga logs failed workflow steps instead of silently suppressing them", () => {
   const source = readFileSync("src/org-governance/knowledge-boundary/chinese-wall-access-saga.ts", "utf8");
 
-  assert.match(source, /chineseWallAccessSagaLogger\.warn\("chinese_wall_access_saga\.step_failed"/);
+  assert.match(source, /getChineseWallAccessSagaLogger\(\)\.warn\("chinese_wall_access_saga\.step_failed"/);
 });

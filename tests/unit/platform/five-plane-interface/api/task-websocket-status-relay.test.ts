@@ -58,49 +58,55 @@ function createMockServer(): MockHttpApiServer {
 }
 
 test("TaskWebSocketStatusRelay.start begins polling", () => {
-  const store = createMockStore([]);
-  const server = createMockServer();
-  const relay = new TaskWebSocketStatusRelay(
-    server as unknown as HttpApiServer,
-    store,
-    { pollIntervalMs: 10_000 },
-  );
+  assert.doesNotThrow(() => {
+    const store = createMockStore([]);
+    const server = createMockServer();
+    const relay = new TaskWebSocketStatusRelay(
+      server as unknown as HttpApiServer,
+      store,
+      { pollIntervalMs: 10_000 },
+    );
 
-  relay.start();
+    relay.start();
 
-  // After start, timer should be set (non-null)
-  // We verify by stopping - if it was null, stop is no-op
-  relay.stop();
+    // After start, timer should be set (non-null)
+    // We verify by stopping - if it was null, stop is no-op
+    relay.stop();
+  });
 });
 
 test("TaskWebSocketStatusRelay.start is idempotent", () => {
-  const store = createMockStore([]);
-  const server = createMockServer();
-  const relay = new TaskWebSocketStatusRelay(
-    server as unknown as HttpApiServer,
-    store,
-    { pollIntervalMs: 10_000 },
-  );
+  assert.doesNotThrow(() => {
+    const store = createMockStore([]);
+    const server = createMockServer();
+    const relay = new TaskWebSocketStatusRelay(
+      server as unknown as HttpApiServer,
+      store,
+      { pollIntervalMs: 10_000 },
+    );
 
-  relay.start();
-  relay.start(); // Should not throw or create multiple timers
+    relay.start();
+    relay.start(); // Should not throw or create multiple timers
 
-  relay.stop();
+    relay.stop();
+  });
 });
 
 test("TaskWebSocketStatusRelay.stop clears the timer", () => {
-  const store = createMockStore([]);
-  const server = createMockServer();
-  const relay = new TaskWebSocketStatusRelay(
-    server as unknown as HttpApiServer,
-    store,
-    { pollIntervalMs: 10_000 },
-  );
+  assert.doesNotThrow(() => {
+    const store = createMockStore([]);
+    const server = createMockServer();
+    const relay = new TaskWebSocketStatusRelay(
+      server as unknown as HttpApiServer,
+      store,
+      { pollIntervalMs: 10_000 },
+    );
 
-  relay.start();
-  relay.stop();
-  // After stop, calling stop again should not throw
-  relay.stop();
+    relay.start();
+    relay.stop();
+    // After stop, calling stop again should not throw
+    relay.stop();
+  });
 });
 
 test("TaskWebSocketStatusRelay.pollOnce processes new events", () => {
@@ -238,17 +244,19 @@ test("TaskWebSocketStatusRelay.pollOnce handles events with null taskId", () => 
 });
 
 test("TaskWebSocketStatusRelay.pollOnce handles empty event list", () => {
-  const store = createMockStore([]);
-  const server = createMockServer();
+  assert.doesNotThrow(() => {
+    const store = createMockStore([]);
+    const server = createMockServer();
 
-  const relay = new TaskWebSocketStatusRelay(
-    server as unknown as HttpApiServer,
-    store,
-    { pollIntervalMs: 10_000, backlogLimit: 100 },
-  );
+    const relay = new TaskWebSocketStatusRelay(
+      server as unknown as HttpApiServer,
+      store,
+      { pollIntervalMs: 10_000, backlogLimit: 100 },
+    );
 
-  // Should not throw
-  relay.pollOnce();
+    // Should not throw
+    relay.pollOnce();
+  });
 });
 
 test("TaskWebSocketStatusRelay.pollOnce skips store reads when no websocket clients are connected", () => {
@@ -307,43 +315,47 @@ test("TaskWebSocketStatusRelay.start preloads existing events as seen", () => {
 });
 
 test("TaskWebSocketStatusRelay uses default options", () => {
-  const store = createMockStore([]);
-  const server = createMockServer();
+  assert.doesNotThrow(() => {
+    const store = createMockStore([]);
+    const server = createMockServer();
 
-  const relay = new TaskWebSocketStatusRelay(
-    server as unknown as HttpApiServer,
-    store,
-  );
+    const relay = new TaskWebSocketStatusRelay(
+      server as unknown as HttpApiServer,
+      store,
+    );
 
-  // Just verify construction doesn't throw with no options
-  relay.start();
-  relay.stop();
+    // Just verify construction doesn't throw with no options
+    relay.start();
+    relay.stop();
+  });
 });
 
 test("TaskWebSocketStatusRelay respects backlogLimit option", () => {
-  const events: EventRecord[] = [];
-  for (let i = 0; i < 200; i++) {
-    events.push(
-      createMockEventRecord({
-        id: `evt_${i}`,
-        taskId: `task_${i}`,
-        payloadJson: JSON.stringify({ toStatus: "running", occurredAt: "2026-05-01T12:00:00.000Z" }),
-      }),
+  assert.doesNotThrow(() => {
+    const events: EventRecord[] = [];
+    for (let i = 0; i < 200; i++) {
+      events.push(
+        createMockEventRecord({
+          id: `evt_${i}`,
+          taskId: `task_${i}`,
+          payloadJson: JSON.stringify({ toStatus: "running", occurredAt: "2026-05-01T12:00:00.000Z" }),
+        }),
+      );
+    }
+
+    const store = createMockStore(events);
+    const server = createMockServer();
+
+    const relay = new TaskWebSocketStatusRelay(
+      server as unknown as HttpApiServer,
+      store,
+      { pollIntervalMs: 10_000, backlogLimit: 10 },
     );
-  }
 
-  const store = createMockStore(events);
-  const server = createMockServer();
-
-  const relay = new TaskWebSocketStatusRelay(
-    server as unknown as HttpApiServer,
-    store,
-    { pollIntervalMs: 10_000, backlogLimit: 10 },
-  );
-
-  // Should not throw on construction
-  relay.start();
-  relay.stop();
+    // Should not throw on construction
+    relay.start();
+    relay.stop();
+  });
 });
 
 test("TaskWebSocketStatusRelay.pollOnce sorts events by occurrence", () => {

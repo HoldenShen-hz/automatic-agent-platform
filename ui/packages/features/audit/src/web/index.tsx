@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useAuditVm } from "../hooks";
 
 export function AuditWebView(): ReactElement {
   const vm = useAuditVm();
+  const featureCopy = translateFeatureCopy("audit");
   return (
-    <FeatureScaffold title="Audit" summary="审计与追踪中心" status="Planned">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[

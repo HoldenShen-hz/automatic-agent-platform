@@ -59,14 +59,17 @@ import {
   type RollbackEvolutionProposalInput,
 } from "./evolution-mvp-support.js";
 
+type EvolutionApprovalService = Pick<ApprovalService, "createRequest">;
+type EvolutionMemoryService = Pick<MemoryService, "remember" | "revoke">;
+
 export class EvolutionMvpService {
   private readonly experienceCacheService: ExperienceCacheService;
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
-    private readonly approvalService: ApprovalService,
-    private readonly memoryService: MemoryService,
+    private readonly approvalService: EvolutionApprovalService,
+    private readonly memoryService: EvolutionMemoryService,
   ) {
     this.experienceCacheService = new ExperienceCacheService(store);
   }
@@ -741,7 +744,7 @@ const ApprovalRequestSchema = z.object({
 }).passthrough();
 
 function parseApprovalRequestJson(requestJson: string): ApprovalRequest {
-  return ApprovalRequestSchema.parse(JSON.parse(requestJson)) as unknown as ApprovalRequest;
+  return ApprovalRequestSchema.parse(JSON.parse(requestJson));
 }
 
 function buildProposalIdempotencyKey(

@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useIncidentsVm } from "../hooks";
 
 export function IncidentsWebView(): ReactElement {
   const vm = useIncidentsVm();
+  const featureCopy = translateFeatureCopy("incidents");
   return (
-    <FeatureScaffold title="Incidents" summary="Incident 时间线与处置流" status="Implemented/Internal">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[

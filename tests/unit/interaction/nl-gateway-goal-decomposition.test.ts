@@ -283,6 +283,7 @@ test("dashboard websocket projection polling backs off after an empty poll", asy
     },
   }, 10);
 
+  // timing-contract: debounce window must elapse before recomputing decomposition.
   await delay(60);
   server.stopProjectionIntegration();
 

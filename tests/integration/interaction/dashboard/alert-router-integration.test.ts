@@ -49,7 +49,7 @@ test("sortAttentionQueue handles empty array", () => {
   assert.equal(sorted.length, 0);
 });
 
-test("sortAttentionQueue handles single item", () => {
+test("sortAttentionQueue handles single item [alert-router-integration]", () => {
   const items = [makeAttentionItem({ priority: "critical" })];
   const sorted = sortAttentionQueue(items);
   assert.equal(sorted.length, 1);

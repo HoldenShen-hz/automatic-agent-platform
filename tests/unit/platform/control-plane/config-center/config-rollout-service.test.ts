@@ -89,11 +89,13 @@ test("startRollout emits config.rollout.started event with event bus", () => {
 });
 
 test("startRollout does not emit event when eventBus is null", () => {
-  const service = new ConfigRolloutService({ eventBus: null });
+  assert.doesNotThrow(() => {
+    const service = new ConfigRolloutService({ eventBus: null });
 
-  service.startRollout("runtime.timeout", "platform", null);
+    service.startRollout("runtime.timeout", "platform", null);
 
-  // No error means success - event bus is null so no event emitted
+    // No error means success - event bus is null so no event emitted
+  });
 });
 
 test("startRollout rejects out-of-range health gate values", () => {

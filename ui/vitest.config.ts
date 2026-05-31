@@ -13,6 +13,7 @@ export default defineConfig({
     alias: {
       "react-native": fileURLToPath(new URL("./apps/web/src/react-native-web-stub.tsx", import.meta.url)),
     },
+    extensions: [".ts", ".tsx", ".mts", ".js", ".jsx", ".mjs", ".json"],
   },
   test: {
     globals: true,

@@ -1,4 +1,5 @@
 import { createMobileFeatureCard } from "@aa/ui-mobile";
+import { translateMessage } from "@aa/shared-i18n";
 
 export function createSettingsMobileCards(input: {
   readonly locale: string;
@@ -7,9 +8,9 @@ export function createSettingsMobileCards(input: {
   readonly flags: number;
 }) {
   return [
-    createMobileFeatureCard("Locale", input.locale),
-    createMobileFeatureCard("Theme", input.theme),
-    createMobileFeatureCard("Tenants", String(input.tenants)),
-    createMobileFeatureCard("Feature Flags", String(input.flags)),
+    createMobileFeatureCard(translateMessage("ui.settings.mobile.locale"), input.locale),
+    createMobileFeatureCard(translateMessage("ui.settings.mobile.theme"), input.theme),
+    createMobileFeatureCard(translateMessage("ui.settings.mobile.tenants"), String(input.tenants)),
+    createMobileFeatureCard(translateMessage("ui.settings.mobile.featureFlags"), String(input.flags)),
   ] as const;
 }

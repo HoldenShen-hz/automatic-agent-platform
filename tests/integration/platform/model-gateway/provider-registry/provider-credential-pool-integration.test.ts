@@ -87,7 +87,7 @@ test("ProviderCredentialPool recovery after cooldown", async () => {
   const state1 = pool.getStates()[0];
   assert.equal(state1?.effectiveStatus, "cooling_down");
 
-  // Wait for cooldown
+  // timing-contract: verifies credential cooldown expires before reselection.
   await new Promise(resolve => setTimeout(resolve, 60));
 
   // Should be active again

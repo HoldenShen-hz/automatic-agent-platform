@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useDispatchVm } from "../hooks";
 
 export function DispatchWebView(): ReactElement {
   const vm = useDispatchVm();
+  const featureCopy = translateFeatureCopy("dispatch");
   return (
-    <FeatureScaffold title="Dispatch" summary="调度、执行和操作入口。" status="Planned">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[

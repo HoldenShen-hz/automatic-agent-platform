@@ -457,16 +457,18 @@ test("ForkedPluginRuntimeHost surfaces child runtime errors for unsupported acti
 });
 
 test("ForkedPluginRuntimeHost.stop handles already stopped child", async () => {
-  const host = new ForkedPluginRuntimeHost({
-    pluginId: "plugin.coding.presenter",
-    isolation: "forked_process",
-    sandboxPolicy: createSandboxPolicy(),
-    workspaceRoot: process.cwd(),
-  });
+  await assert.doesNotReject(async () => {
+    const host = new ForkedPluginRuntimeHost({
+      pluginId: "plugin.coding.presenter",
+      isolation: "forked_process",
+      sandboxPolicy: createSandboxPolicy(),
+      workspaceRoot: process.cwd(),
+    });
 
-  // Calling stop twice should not throw
-  await host.stop();
-  await host.stop();
+    // Calling stop twice should not throw
+    await host.stop();
+    await host.stop();
+  });
 });
 
 test("ForkedPluginRuntimeHost.invoke restarts the child after an explicit stop", async () => {

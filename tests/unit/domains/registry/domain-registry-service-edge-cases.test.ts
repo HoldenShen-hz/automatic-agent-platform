@@ -408,7 +408,7 @@ test("buildCapabilityEntry includes knowledge namespaces", () => {
   assert.ok(entry.knowledgeNamespaces.includes("ns2"));
 });
 
-test("buildCapabilityEntry throws for unknown domain", () => {
+test("buildCapabilityEntry throws for unknown domain [domain-registry-edge-cases]", () => {
   const service = new DomainRegistryService();
 
   assert.throws(

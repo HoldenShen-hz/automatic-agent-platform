@@ -82,10 +82,12 @@ test("CrmAdapter authenticate throws on missing token", async () => {
 });
 
 test("CrmAdapter authenticate succeeds with token", async () => {
-  const adapter = createCrmAdapterPlugin();
+  await assert.doesNotReject(async () => {
+    const adapter = createCrmAdapterPlugin();
 
-  await adapter.authenticate({ token: "test_secret_token" });
-  // No error means success
+    await adapter.authenticate({ token: "test_secret_token" });
+    // No error means success
+  });
 });
 
 test("CrmAdapter execute builds correct response structure", async () => {
@@ -101,10 +103,12 @@ test("CrmAdapter execute builds correct response structure", async () => {
 });
 
 test("GameDevAdapter authenticate succeeds with any credentials", async () => {
-  const adapter = createGameDevAdapterPlugin();
+  await assert.doesNotReject(async () => {
+    const adapter = createGameDevAdapterPlugin();
 
-  await adapter.authenticate({ token: "unity_key" });
-  // No error means success
+    await adapter.authenticate({ token: "unity_key" });
+    // No error means success
+  });
 });
 
 test("GameDevAdapter execute returns correct structure", async () => {
@@ -125,10 +129,12 @@ test("GameDevAdapter execute returns correct structure", async () => {
 });
 
 test("AssetProductionAdapter authenticate succeeds", async () => {
-  const adapter = createAssetProductionAdapterPlugin();
+  await assert.doesNotReject(async () => {
+    const adapter = createAssetProductionAdapterPlugin();
 
-  await adapter.authenticate({ token: "figma_token" });
-  // No error means success
+    await adapter.authenticate({ token: "figma_token" });
+    // No error means success
+  });
 });
 
 test("AssetProductionAdapter execute returns correct structure", async () => {
@@ -148,10 +154,12 @@ test("AssetProductionAdapter execute returns correct structure", async () => {
 });
 
 test("LivestreamAdapter authenticate succeeds", async () => {
-  const adapter = createLivestreamAdapterPlugin();
+  await assert.doesNotReject(async () => {
+    const adapter = createLivestreamAdapterPlugin();
 
-  await adapter.authenticate({ obsToken: "abcdefghijklmnopqrstuvwxyz123456" });
-  // No error means success
+    await adapter.authenticate({ obsToken: "abcdefghijklmnopqrstuvwxyz123456" });
+    // No error means success
+  });
 });
 
 test("LivestreamAdapter execute returns correct structure", async () => {

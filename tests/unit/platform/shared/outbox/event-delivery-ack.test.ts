@@ -72,7 +72,7 @@ test.describe("Event Delivery Acknowledgment unit tests", () => {
       payload: { toStatus: "completed" },
     });
 
-    // Wait for async polling
+    // timing-contract: ack status is updated by async polling.
     await new Promise(resolve => setTimeout(resolve, 50));
 
     const delivered = await bus.deliverPending("consumer-ack");
@@ -98,6 +98,7 @@ test.describe("Event Delivery Acknowledgment unit tests", () => {
 
     // Wait for multiple polling cycles
     for (let i = 0; i < 5; i++) {
+      // timing-contract: exponential backoff requires real poll intervals.
       await new Promise(resolve => setTimeout(resolve, 150));
       if (callCount >= 3) break;
     }
@@ -121,6 +122,7 @@ test.describe("Event Delivery Acknowledgment unit tests", () => {
 
     // Wait for all retries to exhaust
     for (let i = 0; i < 10; i++) {
+      // timing-contract: retry exhaustion requires real poll intervals.
       await new Promise(resolve => setTimeout(resolve, 100));
       if (callCount >= 4) break; // Initial + retries
     }
@@ -212,6 +214,7 @@ test.describe("Event Delivery Acknowledgment unit tests", () => {
       payload: { toStatus: "running" },
     });
 
+    // timing-contract: ack status is updated by async polling.
     await new Promise(resolve => setTimeout(resolve, 50));
 
     await bus.deliverPending("consumer-filter-a");

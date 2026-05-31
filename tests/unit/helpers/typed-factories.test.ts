@@ -98,7 +98,7 @@ describe("typed-factories", () => {
 
     it("set should return void", async () => {
       const store = createMockCacheStore();
-      await store.set("namespace", "key", "value", {
+      const result = await store.set("namespace", "key", "value", {
         scope: "memory",
         tags: [],
         version: "1.0",
@@ -107,13 +107,13 @@ describe("typed-factories", () => {
         hitCount: 0,
         sizeBytes: 0,
       });
-      // No error means success
+      assert.strictEqual(result, undefined);
     });
 
     it("delete should return void", async () => {
       const store = createMockCacheStore();
-      await store.delete("namespace", "key");
-      // No error means success
+      const result = await store.delete("namespace", "key");
+      assert.strictEqual(result, undefined);
     });
 
     it("invalidateByTag should return 0", async () => {
@@ -194,8 +194,7 @@ describe("typed-factories", () => {
 
     it("resetMetrics should not throw", () => {
       const facade = createMockCacheFacade();
-      facade.resetMetrics();
-      // No error means success
+      assert.doesNotThrow(() => facade.resetMetrics());
     });
   });
 
@@ -209,8 +208,7 @@ describe("typed-factories", () => {
 
     it("record should not throw", () => {
       const metrics = createMockCacheMetrics();
-      metrics.record({ hit: false });
-      // No error means success
+      assert.doesNotThrow(() => metrics.record({ hit: false }));
     });
 
     it("snapshot should return default values", () => {
@@ -226,8 +224,7 @@ describe("typed-factories", () => {
 
     it("reset should not throw", () => {
       const metrics = createMockCacheMetrics();
-      metrics.reset();
-      // No error means success
+      assert.doesNotThrow(() => metrics.reset());
     });
   });
 });

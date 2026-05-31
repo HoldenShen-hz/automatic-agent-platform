@@ -353,28 +353,30 @@ test("DEFAULT_CONSTRAINT_RULES has all layers", () => {
 });
 
 test("ConfigOverrideGovernanceService detects provider_profile high risk object", () => {
-  const service = new ConfigOverrideGovernanceService();
-  const attempt: ConfigOverrideAttempt = {
-    path: "my-provider-config",
-    layer: "tenant",
-    source: "tenant:test",
-    value: {},
-    timestamp: "2026-04-14T00:00:00.000Z",
-  };
+  assert.doesNotThrow(() => {
+    const service = new ConfigOverrideGovernanceService();
+    const attempt: ConfigOverrideAttempt = {
+      path: "my-provider-config",
+      layer: "tenant",
+      source: "tenant:test",
+      value: {},
+      timestamp: "2026-04-14T00:00:00.000Z",
+    };
 
-  // Manually calling detectHighRiskObject through the private method is not possible
-  // but we can test through the public interface by checking if break_glass allows it
-  const bgAttempt: ConfigOverrideAttempt = {
-    path: "my-provider-config",
-    layer: "break_glass",
-    source: "emergency",
-    value: {},
-    timestamp: "2026-04-14T00:00:00.000Z",
-  };
+    // Manually calling detectHighRiskObject through the private method is not possible
+    // but we can test through the public interface by checking if break_glass allows it
+    const bgAttempt: ConfigOverrideAttempt = {
+      path: "my-provider-config",
+      layer: "break_glass",
+      source: "emergency",
+      value: {},
+      timestamp: "2026-04-14T00:00:00.000Z",
+    };
 
-  const result = service.validateOverride(bgAttempt);
-  // The path doesn't match the high risk detection pattern exactly
-  // since it checks for "provider" AND "profile" in the path
+    const result = service.validateOverride(bgAttempt);
+    // The path doesn't match the high risk detection pattern exactly
+    // since it checks for "provider" AND "profile" in the path
+  });
 });
 
 test("ConfigOverrideGovernanceService detects feature_flag high risk object", () => {

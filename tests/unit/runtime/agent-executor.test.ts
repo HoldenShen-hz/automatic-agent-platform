@@ -93,37 +93,39 @@ test("AgentExecutor tracks loop detection patterns [agent-executor]", async () =
 });
 
 test("AgentExecutor executeAgentRound increments agent round [agent-executor]", async () => {
-  const executor = createAgentExecutor({ loopDetection: null });
+  await assert.doesNotReject(async () => {
+    const executor = createAgentExecutor({ loopDetection: null });
 
-  await executor.executeAgentRound(
-    {
-      request: "first",
-      history: [],
-      messages: [],
-      context: createTestContext(),
-    },
-    async () => "first",
-  );
+    await executor.executeAgentRound(
+      {
+        request: "first",
+        history: [],
+        messages: [],
+        context: createTestContext(),
+      },
+      async () => "first",
+    );
 
-  await executor.executeAgentRound(
-    {
-      request: "second",
-      history: [],
-      messages: [],
-      context: createTestContext(),
-    },
-    async () => "second",
-  );
+    await executor.executeAgentRound(
+      {
+        request: "second",
+        history: [],
+        messages: [],
+        context: createTestContext(),
+      },
+      async () => "second",
+    );
 
-  await executor.executeAgentRound(
-    {
-      request: "third",
-      history: [],
-      messages: [],
-      context: createTestContext(),
-    },
-    async () => "third",
-  );
+    await executor.executeAgentRound(
+      {
+        request: "third",
+        history: [],
+        messages: [],
+        context: createTestContext(),
+      },
+      async () => "third",
+    );
+  });
 });
 
 test("AgentExecutor wrapToolCall wraps tool execution [agent-executor]", async () => {
@@ -209,23 +211,25 @@ test("AgentExecutor result includes loop detection when enabled [agent-executor]
 });
 
 test("AgentExecutor with custom logger receives middleware logs [agent-executor]", async () => {
-  const logs: Array<{ code: string; msg: string }> = [];
-  const executor = createAgentExecutor({
-    loopDetection: null,
-    logger: (code, msg) => {
-      logs.push({ code, msg });
-    },
-  });
+  await assert.doesNotReject(async () => {
+    const logs: Array<{ code: string; msg: string }> = [];
+    const executor = createAgentExecutor({
+      loopDetection: null,
+      logger: (code, msg) => {
+        logs.push({ code, msg });
+      },
+    });
 
-  await executor.executeAgentRound(
-    {
-      request: "test",
-      history: [],
-      messages: [],
-      context: createTestContext(),
-    },
-    async () => ({ content: "response" }),
-  );
+    await executor.executeAgentRound(
+      {
+        request: "test",
+        history: [],
+        messages: [],
+        context: createTestContext(),
+      },
+      async () => ({ content: "response" }),
+    );
+  });
 });
 
 test("AgentExecutor executeAgentRound passes request and history to middleware [agent-executor]", async () => {

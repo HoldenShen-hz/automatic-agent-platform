@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRestClient } from "@aa/shared-state";
+import { translateMessage } from "@aa/shared-i18n";
 import {
   approveException,
   fetchAuditLogs,
@@ -82,9 +83,20 @@ export function useGovernanceComplianceVm(): GovernanceComplianceVm {
   }, [client]);
 
   const items = useMemo(() => [
-    { title: "Compliance Score", description: `${policies.length} active policies under review.` },
-    { title: "Approval Queue", description: `${exceptionQueue.filter((item) => item.status === "pending").length} pending governance exceptions.` },
-    { title: "Audit Trail", description: `${auditTrail.length} recent governance actions captured.` },
+    {
+      title: translateMessage("ui.governanceCompliance.item.score.title"),
+      description: translateMessage("ui.governanceCompliance.item.score.description", { count: policies.length }),
+    },
+    {
+      title: translateMessage("ui.governanceCompliance.item.queue.title"),
+      description: translateMessage("ui.governanceCompliance.item.queue.description", {
+        count: exceptionQueue.filter((item) => item.status === "pending").length,
+      }),
+    },
+    {
+      title: translateMessage("ui.governanceCompliance.item.audit.title"),
+      description: translateMessage("ui.governanceCompliance.item.audit.description", { count: auditTrail.length }),
+    },
   ], [auditTrail.length, exceptionQueue, policies.length]);
 
   const updatePolicy = useCallback(async (policyId: string, patch: Record<string, unknown>) => {

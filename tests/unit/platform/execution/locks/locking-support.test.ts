@@ -9,34 +9,42 @@ test("lockLogger is a StructuredLogger instance [locking-support]", () => {
 });
 
 test("lockLogger.log accepts an object with level and message [locking-support]", () => {
-  // Should not throw
-  lockLogger.log({ level: "info", message: "test message" });
-  lockLogger.log({ level: "debug", message: "debug message" });
-  lockLogger.log({ level: "warn", message: "warning message" });
-  lockLogger.log({ level: "error", message: "error message" });
+  assert.doesNotThrow(() => {
+    // Should not throw
+    lockLogger.log({ level: "info", message: "test message" });
+    lockLogger.log({ level: "debug", message: "debug message" });
+    lockLogger.log({ level: "warn", message: "warning message" });
+    lockLogger.log({ level: "error", message: "error message" });
+  });
 });
 
 test("lockLogger.log accepts optional data field [locking-support]", () => {
-  lockLogger.log({
-    level: "info",
-    message: "test message with data",
-    data: { key: "value", count: 42 },
+  assert.doesNotThrow(() => {
+    lockLogger.log({
+      level: "info",
+      message: "test message with data",
+      data: { key: "value", count: 42 },
+    });
   });
 });
 
 test("lockLogger.log handles nested error objects [locking-support]", () => {
-  lockLogger.log({
-    level: "error",
-    message: "error with cause",
-    data: { err: new Error("underlying error") },
+  assert.doesNotThrow(() => {
+    lockLogger.log({
+      level: "error",
+      message: "error with cause",
+      data: { err: new Error("underlying error") },
+    });
   });
 });
 
 test("lockLogger.log handles non-Error values in data [locking-support]", () => {
-  lockLogger.log({
-    level: "warn",
-    message: "warning with mixed data",
-    data: { count: 1, text: "hello", nested: { a: 1, b: 2 } },
+  assert.doesNotThrow(() => {
+    lockLogger.log({
+      level: "warn",
+      message: "warning with mixed data",
+      data: { count: 1, text: "hello", nested: { a: 1, b: 2 } },
+    });
   });
 });
 

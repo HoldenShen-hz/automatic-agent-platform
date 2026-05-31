@@ -329,21 +329,23 @@ test("HttpApiServer inject handles request body larger than limit", async () => 
 });
 
 test("HttpApiServer broadcastTaskEvent does not throw when WebSocket bridge is disabled", async () => {
-  const server = createMinimalServer();
+  await assert.doesNotReject(async () => {
+    const server = createMinimalServer();
 
-  try {
-    const event = {
-      eventType: "status_changed" as const,
-      taskId: "task-123",
-      status: "in_progress",
-      timestamp: new Date().toISOString(),
-    };
+    try {
+      const event = {
+        eventType: "status_changed" as const,
+        taskId: "task-123",
+        status: "in_progress",
+        timestamp: new Date().toISOString(),
+      };
 
-    // Should not throw even though WebSocket is disabled
-    server.broadcastTaskEvent("task-123", event);
-  } finally {
-    await server.stop();
-  }
+      // Should not throw even though WebSocket is disabled
+      server.broadcastTaskEvent("task-123", event);
+    } finally {
+      await server.stop();
+    }
+  });
 });
 
 test("HttpApiServer sets security headers on responses", async () => {

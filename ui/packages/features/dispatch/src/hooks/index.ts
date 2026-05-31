@@ -1,3 +1,5 @@
+import { translateMessage } from "@aa/shared-i18n";
+
 export interface DispatchVm {
   readonly items: readonly { title: string; description: string }[];
 }
@@ -5,9 +7,18 @@ export interface DispatchVm {
 export function useDispatchVm(): DispatchVm {
   return {
     items: [
-      { title: "Dispatch Queue", description: "发起和重排 execution dispatch。" },
-      { title: "Operator Actions", description: "人工触发 replay、repair 和 reroute。" },
-      { title: "Escalation", description: "高风险任务进入人工监管和审批联动。" },
+      {
+        title: translateMessage("ui.dispatch.item.queue.title"),
+        description: translateMessage("ui.dispatch.item.queue.description"),
+      },
+      {
+        title: translateMessage("ui.dispatch.item.operatorActions.title"),
+        description: translateMessage("ui.dispatch.item.operatorActions.description"),
+      },
+      {
+        title: translateMessage("ui.dispatch.item.escalation.title"),
+        description: translateMessage("ui.dispatch.item.escalation.description"),
+      },
     ],
   };
 }

@@ -1,4 +1,5 @@
 import { useAgentsQuery, useDashboardSnapshotQuery, useIncidentsQuery, useQueuesQuery, useWorkersQuery } from "@aa/shared-state";
+import { translateMessage } from "@aa/shared-i18n";
 import type { AgentDTO, DashboardSnapshotDTO, IncidentDTO, QueueDTO, WorkerDTO } from "@aa/shared-types";
 
 export interface StabilityVm {
@@ -31,21 +32,24 @@ export function mapStabilityToVm(
   const totalDlq = queues.reduce((total, queue) => total + queue.dlq, 0);
   return {
     metrics: [
-      { label: "Incidents", value: incidents.length },
-      { label: "Workers", value: workers.length },
-      { label: "Queues", value: queues.length },
-      { label: "DLQ", value: totalDlq },
+      { label: translateMessage("ui.stability.metric.incidents"), value: incidents.length },
+      { label: translateMessage("ui.stability.metric.workers"), value: workers.length },
+      { label: translateMessage("ui.stability.metric.queues"), value: queues.length },
+      { label: translateMessage("ui.stability.metric.dlq"), value: totalDlq },
     ],
     rows: snapshot == null ? [] : [
-      { key: "Overall", value: snapshot.overallHealth },
-      { key: "Uptime", value: formatPercent(snapshot.uptimePercent) },
-      { key: "Error Rate", value: formatPercent(snapshot.errorRate) },
-      { key: "P50 Latency", value: formatMs(snapshot.p50LatencyMs) },
-      { key: "P99 Latency", value: formatMs(snapshot.p99LatencyMs) },
-      { key: "Queue Depth", value: String(snapshot.queueDepth) },
-      { key: "Active Workers", value: String(snapshot.activeAgents ?? workers.length) },
-      { key: "Budget Utilization", value: formatPercent(snapshot.budgetUtilizationPercent) },
-      { key: "Findings", value: String(incidents.length + totalDlq + agents.filter((agent) => agent.status === "degraded").length) },
+      { key: translateMessage("ui.stability.row.overall"), value: snapshot.overallHealth },
+      { key: translateMessage("ui.stability.row.uptime"), value: formatPercent(snapshot.uptimePercent) },
+      { key: translateMessage("ui.stability.row.errorRate"), value: formatPercent(snapshot.errorRate) },
+      { key: translateMessage("ui.stability.row.p50Latency"), value: formatMs(snapshot.p50LatencyMs) },
+      { key: translateMessage("ui.stability.row.p99Latency"), value: formatMs(snapshot.p99LatencyMs) },
+      { key: translateMessage("ui.stability.row.queueDepth"), value: String(snapshot.queueDepth) },
+      { key: translateMessage("ui.stability.row.activeWorkers"), value: String(snapshot.activeAgents ?? workers.length) },
+      { key: translateMessage("ui.stability.row.budgetUtilization"), value: formatPercent(snapshot.budgetUtilizationPercent) },
+      {
+        key: translateMessage("ui.stability.row.findings"),
+        value: String(incidents.length + totalDlq + agents.filter((agent) => agent.status === "degraded").length),
+      },
     ],
     items: incidents.map((incident) => ({
       title: `${incident.severity.toUpperCase()} · ${incident.title}`,

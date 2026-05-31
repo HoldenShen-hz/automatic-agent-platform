@@ -187,7 +187,7 @@ test("HierarchicalPromptRegistryService.listBundles filters by domain", () => {
   assert.equal(bundles[0]!.bundle.name, "domain-bundle");
 });
 
-test("HierarchicalPromptRegistryService.deprecateBundle marks bundle as deprecated", () => {
+test("HierarchicalPromptRegistryService.deprecateBundle marks bundle as deprecated [prompt-registry-service]", () => {
   const service = new HierarchicalPromptRegistryService();
   service.registerBundle(makeInput({ name: "bundle" }), "global");
   service.deprecateBundle("bundle", "v1.0.0", "global");

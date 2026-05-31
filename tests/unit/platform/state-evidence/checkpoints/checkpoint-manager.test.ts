@@ -340,7 +340,7 @@ describe("CheckpointManager", () => {
   });
 
   describe("getLatestCheckpoint", () => {
-    it("should return null for workflow with no checkpoints", async () => {
+    it("getLatestCheckpoint should return null for workflow with no checkpoints", async () => {
       const result = await manager.getLatestCheckpoint("non-existent");
       assert.strictEqual(result, null);
     });
@@ -398,7 +398,7 @@ describe("CheckpointManager", () => {
   });
 
   describe("getWorkflowProgress", () => {
-    it("should return null for workflow with no checkpoints", async () => {
+    it("getWorkflowProgress should return null for workflow with no checkpoints", async () => {
       const result = await manager.getWorkflowProgress("non-existent");
       assert.strictEqual(result, null);
     });
@@ -433,7 +433,7 @@ describe("CheckpointManager", () => {
   });
 
   describe("recoverWorkflow", () => {
-    it("should return null for workflow with no checkpoints", async () => {
+    it("recoverWorkflow should return null for workflow with no checkpoints", async () => {
       const result = await manager.recoverWorkflow("non-existent");
       assert.strictEqual(result, null);
     });

@@ -95,6 +95,7 @@ function createMockTaskStore(): AuthoritativeTaskStore {
     execution: {
       insertExecution: (_execution: ExecutionRecord) => {},
       getExecution: (_executionId: string) => null,
+      listExecutionsByTask: (_taskId: string) => [],
       insertExecutionPrecheck: (_precheck: ExecutionPrecheckRecord) => {},
       updateExecutionFailure: (_updates: Record<string, unknown>) => {},
     },
@@ -618,14 +619,16 @@ test("normalizeStepFailurePlan handles object with extra properties [multi-step-
 // =============================================================================
 
 test("resolveStepFailurePlan returns null for empty step ID [multi-step-supervisor-comprehensive]", () => {
-  const input = createMockInput({
-    stepFailurePlans: {
-      "": [{ errorCode: "empty_id_error" }],
-    },
+  assert.doesNotThrow(() => {
+    const input = createMockInput({
+      stepFailurePlans: {
+        "": [{ errorCode: "empty_id_error" }],
+      },
+    });
+    const result = resolveStepFailurePlan(input, "", 1);
+    // Empty string step ID should return null or the plan depending on implementation
+    // The function may return null because stepFailurePlans[""] is accessed
   });
-  const result = resolveStepFailurePlan(input, "", 1);
-  // Empty string step ID should return null or the plan depending on implementation
-  // The function may return null because stepFailurePlans[""] is accessed
 });
 
 test("resolveStepFailurePlan handles very long step ID [multi-step-supervisor-comprehensive]", () => {

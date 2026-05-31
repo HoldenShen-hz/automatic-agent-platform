@@ -85,16 +85,20 @@ test("RedisLockAdapter inspect throws sync not supported error [redis-lock-adapt
 });
 
 test("RedisLockAdapter close handles disconnected state [redis-lock-adapter]", async () => {
-  const adapter = new RedisLockAdapter();
-  // Should not throw even when not connected
-  await adapter.close();
+  await assert.doesNotReject(async () => {
+    const adapter = new RedisLockAdapter();
+    // Should not throw even when not connected
+    await adapter.close();
+  });
 });
 
 test("RedisLockAdapter close handles wait state [redis-lock-adapter]", async () => {
-  const adapter = new RedisLockAdapter({ connectTimeoutMs: 100 });
-  // Manually trigger wait state by not connecting
-  // close should handle it gracefully
-  await adapter.close();
+  await assert.doesNotReject(async () => {
+    const adapter = new RedisLockAdapter({ connectTimeoutMs: 100 });
+    // Manually trigger wait state by not connecting
+    // close should handle it gracefully
+    await adapter.close();
+  });
 });
 
 test("RedisLockAdapter forceStealAsync succeeds for a missing lock or fails cleanly when Redis is unavailable [redis-lock-adapter]", async () => {

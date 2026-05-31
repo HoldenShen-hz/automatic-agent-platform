@@ -21,7 +21,7 @@ import {
 import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { createTestPgDatabase, shouldRunPgIntegration, resetPgTables } from "../../helpers/pg-test-helper.js";
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
-import { TEST_POSTGRES_DSN } from "../../helpers/network-test-constants.js";
+import { TEST_POSTGRES_DSN, buildTestPostgresDsn } from "../../helpers/network-test-constants.js";
 
 // Check if PG integration tests can run
 const pgCheck = shouldRunPgIntegration();
@@ -39,7 +39,7 @@ test("2278: parseMigrateSqliteToPgArgs does not interpolate SQL in table names",
     "--sqlite",
     maliciousPath,
     "--pg-dsn",
-    "postgresql://user:pass@localhost/db",
+    buildTestPostgresDsn({ database: "db" }),
   ]);
 
   assert.equal(options.sqlitePath, maliciousPath);
@@ -162,14 +162,14 @@ test("2279: migrateSqliteToPg output does not contain credentials in dry-run mod
       "--sqlite",
       "/tmp/test.db",
       "--pg-dsn",
-      "postgresql://user:MySecretPass@localhost/db",
+      buildTestPostgresDsn({ password: "dry-run-password-placeholder", database: "db" }),
       "--dry-run",
     ]);
 
     // Dry run returns migration plan without connecting to PG
     // Verify options were parsed correctly
     assert.equal(options.dryRun, true);
-    assert.ok(options.pgDsn.includes("MySecretPass")); // Password is stored in options
+    assert.ok(options.pgDsn.includes("dry-run-password-placeholder")); // Password is stored in options
     return;
   }
 
@@ -184,7 +184,7 @@ test("2279: migrateSqliteToPg output does not contain credentials in dry-run mod
 
     const options: MigrateSqliteToPgOptions = {
       sqlitePath: join(workspace, "source.db"),
-      pgDsn: "postgresql://user:DRYRUN_TEST_PASS@localhost/testdb",
+      pgDsn: buildTestPostgresDsn({ password: "dry-run-password-placeholder" }),
       dryRun: true,
     };
 
@@ -192,7 +192,7 @@ test("2279: migrateSqliteToPg output does not contain credentials in dry-run mod
     output = JSON.stringify(result);
 
     // Check if output contains the password
-    outputContainsPassword = output.includes("DRYRUN_TEST_PASS");
+    outputContainsPassword = output.includes("dry-run-password-placeholder");
 
     db.close();
   } finally {

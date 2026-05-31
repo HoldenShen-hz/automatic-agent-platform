@@ -61,7 +61,7 @@ describe("repository-harness", () => {
       }
     });
 
-    it("should cleanup remove workspace", () => {
+    it("createRepositoryHarness cleanup should remove workspace", () => {
       const harness = createRepositoryHarness("repo-cleanup-");
       const workspace = harness.workspace;
       harness.cleanup();

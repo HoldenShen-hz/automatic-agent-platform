@@ -59,6 +59,32 @@ function createMockRequestFactory() {
   return { mockRequest, getRequestCount: () => requestCount };
 }
 
+function createFluentdTransport() {
+  return new FluentdTransport({
+    host: "localhost",
+    port: 60000,
+    tag: "test",
+  });
+}
+
+function getFluentdState(transport: FluentdTransport): {
+  tag: string;
+  reconnectIntervalMs: number;
+  bufferLimit: number;
+  buffer: string[];
+  reconnectTimer: ReturnType<typeof setTimeout> | null;
+  socket: { destroyed?: boolean; writable?: boolean } | null;
+} {
+  return transport as unknown as {
+    tag: string;
+    reconnectIntervalMs: number;
+    bufferLimit: number;
+    buffer: string[];
+    reconnectTimer: ReturnType<typeof setTimeout> | null;
+    socket: { destroyed?: boolean; writable?: boolean } | null;
+  };
+}
+
 test("StdoutTransport has correct name", () => {
   const transport = new StdoutTransport();
   assert.equal(transport.name, "stdout");
@@ -218,31 +244,78 @@ test("DatadogTransport.flush handles empty batch", async () => {
   await transport.close();
 });
 
-test("FluentdTransport has correct name", () => {
-  // SKIP: Implementation issue - FluentdTransport constructor validates port range (0-65535) and throws RangeError for port 99999 before test assertions run
-  // FluentdTransport requires valid port but test uses 99999 to avoid network connection - needs implementation fix
+test("FluentdTransport has correct name", async () => {
+  const transport = createFluentdTransport();
+  assert.equal(transport.name, "fluentd");
+  await transport.close();
 });
 
-test("FluentdTransport constructor sets defaults", () => {
-  // SKIP: Implementation issue - FluentdTransport constructor validates port range (0-65535) and throws RangeError for port 99999 before test assertions run
+test("FluentdTransport constructor sets defaults", async () => {
+  const transport = createFluentdTransport();
+  const state = getFluentdState(transport);
+  assert.equal(state.reconnectIntervalMs, 5000);
+  assert.equal(state.bufferLimit, 10000);
+  await transport.close();
 });
 
-test("FluentdTransport constructor accepts custom config", () => {
-  // SKIP: Implementation issue - FluentdTransport constructor validates port range (0-65535) and throws RangeError for port 99999 before test assertions run
+test("FluentdTransport constructor accepts custom config", async () => {
+  const transport = new FluentdTransport({
+    host: "fluentd.example.com",
+    port: 24224,
+    tag: "custom-tag",
+    reconnectIntervalMs: 3000,
+    bufferLimit: 5000,
+  });
+  const state = getFluentdState(transport);
+  assert.equal(transport.name, "fluentd");
+  assert.equal(state.tag, "custom-tag");
+  assert.equal(state.reconnectIntervalMs, 3000);
+  assert.equal(state.bufferLimit, 5000);
+  await transport.close();
 });
 
-test("FluentdTransport.write handles entry without socket", () => {
-  // SKIP: Implementation issue - FluentdTransport constructor validates port range (0-65535) and throws RangeError for port 99999 before test assertions run
+test("FluentdTransport.write handles entry without socket", async () => {
+  const transport = createFluentdTransport();
+
+  transport.write({
+    level: "info",
+    message: "buffered message",
+    service: "test-service",
+    createdAt: "2026-04-22T00:00:00.000Z",
+    timestamp: "2026-04-22T00:00:00.000Z",
+  });
+
+  await new Promise<void>((resolve) => setTimeout(resolve, 50));
+  const state = getFluentdState(transport);
+  assert.equal(state.buffer.length, 1);
+  assert.ok(state.buffer[0]?.includes("buffered message"));
+  await transport.close();
 });
 
 test("FluentdTransport.flush returns promise", async () => {
-  // SKIP: Implementation issue - FluentdTransport constructor validates port range (0-65535) and throws RangeError for port 99999 before test assertions run
+  const transport = createFluentdTransport();
+  assert.equal(await transport.flush(), undefined);
+  await transport.close();
 });
 
 test("FluentdTransport.close clears reconnect timer", async () => {
-  // SKIP: Implementation issue - FluentdTransport constructor validates port range (0-65535) and throws RangeError for port 99999 before test assertions run
+  const transport = createFluentdTransport();
+  transport.write({
+    level: "info",
+    message: "close timer",
+    service: "test-service",
+    createdAt: "2026-04-22T00:00:00.000Z",
+    timestamp: "2026-04-22T00:00:00.000Z",
+  });
+
+  await new Promise<void>((resolve) => setTimeout(resolve, 50));
+  await transport.close();
+  assert.equal(getFluentdState(transport).reconnectTimer, null);
 });
 
 test("FluentdTransport.close is idempotent", async () => {
-  // SKIP: Implementation issue - FluentdTransport constructor validates port range (0-65535) and throws RangeError for port 99999 before test assertions run
+  const transport = createFluentdTransport();
+  await transport.close();
+  await transport.close();
+  assert.equal(getFluentdState(transport).socket, null);
 });

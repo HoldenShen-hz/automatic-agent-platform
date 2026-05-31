@@ -30,7 +30,7 @@ describe("fixtures/composite", () => {
       assert.strictEqual(execution.status, "executing");
     });
 
-    it("should use provided overrides", () => {
+    it("createBlockedTask should use provided overrides", () => {
       const { task } = createBlockedTask("task-2", "exec-2", {
         title: "Custom blocked task",
         priority: "high",
@@ -49,7 +49,7 @@ describe("fixtures/composite", () => {
       assert.strictEqual(approval.status, "requested");
     });
 
-    it("should use provided overrides", () => {
+    it("createApprovalRequest should use provided overrides", () => {
       const approval = createApprovalRequest("approval-2", "task-2", "exec-2", {
         status: "approved",
       });
@@ -79,7 +79,7 @@ describe("fixtures/composite", () => {
       assert.ok(task.outputJson !== null);
     });
 
-    it("should use provided overrides", () => {
+    it("createCompletedTask should use provided overrides", () => {
       const { task } = createCompletedTask("task-2", "exec-2", {
         title: "Custom completed task",
       });
@@ -115,7 +115,7 @@ describe("fixtures/composite", () => {
       assert.strictEqual(task.errorCode, "custom.error_code");
     });
 
-    it("should use provided overrides", () => {
+    it("createFailedTask should use provided overrides", () => {
       const { task } = createFailedTask("task-2", "exec-2", "ERR", {
         title: "Custom failed task",
       });

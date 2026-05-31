@@ -297,12 +297,14 @@ test("RegionFailoverOrchestrator.orchestrateFailover triggers listeners on succe
 });
 
 test("RegionFailoverOrchestrator.addFailoverListener and removeFailoverListener work [region-health-check-service]", () => {
-  const orchestrator = new RegionFailoverOrchestrator();
-  const listener = () => {};
+  assert.doesNotThrow(() => {
+    const orchestrator = new RegionFailoverOrchestrator();
+    const listener = () => {};
 
-  orchestrator.addFailoverListener(listener);
-  // Can't easily verify internal state, but verify no error
-  orchestrator.removeFailoverListener(listener);
+    orchestrator.addFailoverListener(listener);
+    // Can't easily verify internal state, but verify no error
+    orchestrator.removeFailoverListener(listener);
+  });
 });
 
 test("RegionFailoverOrchestrator.checkAndFailover returns didFailover false when primary healthy [region-health-check-service]", async () => {

@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useExplainabilityVm } from "../hooks";
 
 export function ExplainabilityWebView(): ReactElement {
   const vm = useExplainabilityVm();
+  const featureCopy = translateFeatureCopy("explainability");
   return (
-    <FeatureScaffold title="Explainability" summary="Explainability viewer 与因果链路展示" status="Planned">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[

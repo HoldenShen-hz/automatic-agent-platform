@@ -23,24 +23,26 @@ async function setupBus(workspace: string) {
 }
 
 test("TypedEventBus.publish validates event schema before publishing", async () => {
-  const workspace = createTempWorkspace("aa-typed-schema-");
+  await assert.doesNotReject(async () => {
+    const workspace = createTempWorkspace("aa-typed-schema-");
 
-  try {
-    const { db, bus } = await setupBus(workspace);
+    try {
+      const { db, bus } = await setupBus(workspace);
 
-    bus.publish({
-      eventType: "task:status_changed",
-      payload: {
-        fromStatus: "queued",
-        toStatus: "in_progress",
-      },
-    });
+      bus.publish({
+        eventType: "task:status_changed",
+        payload: {
+          fromStatus: "queued",
+          toStatus: "in_progress",
+        },
+      });
 
-    bus.dispose();
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+      bus.dispose();
+      db.close();
+    } finally {
+      cleanupPath(workspace);
+    }
+  });
 });
 
 test("TypedEventBus.subscribe receives typed payloads", async () => {

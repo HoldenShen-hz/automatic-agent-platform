@@ -45,13 +45,17 @@ test.describe("AssetProductionAdapter Plugin", () => {
 
 test.describe("AssetProductionAdapter authenticate", () => {
   test("authenticate stores credential fingerprint", async () => {
-    const adapter = createAssetProductionAdapterPlugin();
-    await adapter.authenticate({ token: "figma_token_abc123def456" });
+    await assert.doesNotReject(async () => {
+      const adapter = createAssetProductionAdapterPlugin();
+      await adapter.authenticate({ token: "figma_token_abc123def456" });
+    });
   });
 
   test("authenticate accepts managedSecretRef format", async () => {
-    const adapter = createAssetProductionAdapterPlugin();
-    await adapter.authenticate({ managedSecretRef: "secret://figma-token" });
+    await assert.doesNotReject(async () => {
+      const adapter = createAssetProductionAdapterPlugin();
+      await adapter.authenticate({ managedSecretRef: "secret://figma-token" });
+    });
   });
 
   test("authenticate throws on missing credentials", async () => {
@@ -87,8 +91,10 @@ test.describe("AssetProductionAdapter authenticate", () => {
   });
 
   test("authenticate creates fingerprint with prefix figma_", async () => {
-    const adapter = createAssetProductionAdapterPlugin();
-    await adapter.authenticate({ token: "test_token_value" });
+    await assert.doesNotReject(async () => {
+      const adapter = createAssetProductionAdapterPlugin();
+      await adapter.authenticate({ token: "test_token_value" });
+    });
   });
 });
 

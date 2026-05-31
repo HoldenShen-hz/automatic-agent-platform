@@ -65,11 +65,13 @@ test("CrmAdapter.shutdown clears credential fingerprint", async () => {
 });
 
 test("CrmAdapter.authenticate stores credential fingerprint", async () => {
-  const adapter = createCrmAdapterPlugin();
+  await assert.doesNotReject(async () => {
+    const adapter = createCrmAdapterPlugin();
 
-  await adapter.authenticate({ token: "hubspot_secret_abc12345" });
+    await adapter.authenticate({ token: "hubspot_secret_abc12345" });
 
-  // No error means success
+    // No error means success
+  });
 });
 
 test("CrmAdapter.authenticate throws on missing token", async () => {

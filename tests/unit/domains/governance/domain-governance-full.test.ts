@@ -545,33 +545,37 @@ test("DomainGovernancePolicySchema parses policy with all optional fields", () =
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("DomainGovernancePolicySchema type inference works correctly", () => {
-  const policyData = {
-    policyId: "pol-type",
-    domainId: "domain-type",
-    ownerRoles: ["owner"],
-    operatorRoles: ["operator"],
-    approvalRoles: ["approver"],
-  };
+  assert.doesNotThrow(() => {
+    const policyData = {
+      policyId: "pol-type",
+      domainId: "domain-type",
+      ownerRoles: ["owner"],
+      operatorRoles: ["operator"],
+      approvalRoles: ["approver"],
+    };
 
-  const policy: DomainGovernancePolicy = DomainGovernancePolicySchema.parse(policyData);
+    const policy: DomainGovernancePolicy = DomainGovernancePolicySchema.parse(policyData);
 
-  // Verify type-level access works
-  const _policyId: string = policy.policyId;
-  const _domainId: string = policy.domainId;
-  const _ownerRoles: string[] = policy.ownerRoles;
+    // Verify type-level access works
+    const _policyId: string = policy.policyId;
+    const _domainId: string = policy.domainId;
+    const _ownerRoles: string[] = policy.ownerRoles;
+  });
 });
 
 test("DomainGovernanceRolloutSchema type inference works correctly", () => {
-  const rolloutData = {
-    strategy: "canary" as const,
-    approvalRequired: true,
-    rollbackWindowMinutes: 60,
-  };
+  assert.doesNotThrow(() => {
+    const rolloutData = {
+      strategy: "canary" as const,
+      approvalRequired: true,
+      rollbackWindowMinutes: 60,
+    };
 
-  const rollout: DomainGovernanceRollout = DomainGovernanceRolloutSchema.parse(rolloutData);
+    const rollout: DomainGovernanceRollout = DomainGovernanceRolloutSchema.parse(rolloutData);
 
-  // Verify type-level access works
-  const _strategy: "canary" | "manual" | "shadow" | "supervised_auto" = rollout.strategy;
-  const _approvalRequired: boolean = rollout.approvalRequired;
-  const _rollbackWindowMinutes: number = rollout.rollbackWindowMinutes;
+    // Verify type-level access works
+    const _strategy: "canary" | "manual" | "shadow" | "supervised_auto" = rollout.strategy;
+    const _approvalRequired: boolean = rollout.approvalRequired;
+    const _rollbackWindowMinutes: number = rollout.rollbackWindowMinutes;
+  });
 });

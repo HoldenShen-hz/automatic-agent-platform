@@ -1,11 +1,13 @@
 import type { ReactElement } from "react";
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useCostCenterVm } from "../hooks";
 
 export function CostCenterWebView(): ReactElement {
   const vm = useCostCenterVm();
+  const featureCopy = translateFeatureCopy("cost-center");
   return (
-    <FeatureScaffold title="Cost Center" summary="成本中心与预算视图" status="Planned">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[

@@ -315,39 +315,47 @@ function createTestMemory(overrides: Partial<MemoryRecord> = {}): MemoryRecord {
 }
 
 test("MemoryRetrievalService.initializeFts does not reinitialize if already initialized", () => {
-  const store = createMockStore();
-  const service = new MemoryRetrievalService(store);
+  assert.doesNotThrow(() => {
+    const store = createMockStore();
+    const service = new MemoryRetrievalService(store);
 
-  // First call should initialize
-  service.initializeFts();
-  // Second call should not throw or reinitialize
-  service.initializeFts(); // Should be idempotent
+    // First call should initialize
+    service.initializeFts();
+    // Second call should not throw or reinitialize
+    service.initializeFts(); // Should be idempotent
+  });
 });
 
 test("MemoryRetrievalService.indexMemory calls withConnection with DELETE and INSERT", () => {
-  const store = createMockStore();
-  const service = new MemoryRetrievalService(store);
+  assert.doesNotThrow(() => {
+    const store = createMockStore();
+    const service = new MemoryRetrievalService(store);
 
-  // Should not throw
-  service.indexMemory("mem_1", "test content");
+    // Should not throw
+    service.indexMemory("mem_1", "test content");
+  });
 });
 
 test("MemoryRetrievalService.indexMemoryRecord extracts searchable text and indexes", () => {
-  const store = createMockStore();
-  const service = new MemoryRetrievalService(store);
+  assert.doesNotThrow(() => {
+    const store = createMockStore();
+    const service = new MemoryRetrievalService(store);
 
-  const memory = createTestMemory({ contentJson: '{"workContext": "my important context"}' });
+    const memory = createTestMemory({ contentJson: '{"workContext": "my important context"}' });
 
-  // Should not throw
-  service.indexMemoryRecord(memory);
+    // Should not throw
+    service.indexMemoryRecord(memory);
+  });
 });
 
 test("MemoryRetrievalService.unindexMemory removes memory from index", () => {
-  const store = createMockStore();
-  const service = new MemoryRetrievalService(store);
+  assert.doesNotThrow(() => {
+    const store = createMockStore();
+    const service = new MemoryRetrievalService(store);
 
-  // Should not throw
-  service.unindexMemory("mem_test_1");
+    // Should not throw
+    service.unindexMemory("mem_test_1");
+  });
 });
 
 test("MemoryRetrievalService.unindexMemory escapes single quotes in memoryId", () => {
@@ -617,10 +625,12 @@ test("MemoryRetrievalService.retrieveMemories applies limit and offset to keywor
 });
 
 test("MemoryRetrievalService.rebuildIndex deletes and repopulates index", () => {
-  const memories = [createTestMemory({ id: "mem_1" })];
-  const store = createMockStore(memories);
-  const service = new MemoryRetrievalService(store);
+  assert.doesNotThrow(() => {
+    const memories = [createTestMemory({ id: "mem_1" })];
+    const store = createMockStore(memories);
+    const service = new MemoryRetrievalService(store);
 
-  // Should not throw
-  service.rebuildIndex();
+    // Should not throw
+    service.rebuildIndex();
+  });
 });

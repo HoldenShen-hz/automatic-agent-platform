@@ -412,15 +412,17 @@ test("ReplayRepairControlService.runRecoveryDrill third assertion checks repair 
 });
 
 test("ReplayRepairControlService.runRecoveryDrill sets status failed when any assertion fails", () => {
-  const service = new ReplayRepairControlService();
-  const findings: StartupConsistencyFinding[] = [
-    makeFinding({ severity: "p0", recoverable: true }), // recoverable P0 may fail the manual handoff assertion
-  ];
+  assert.doesNotThrow(() => {
+    const service = new ReplayRepairControlService();
+    const findings: StartupConsistencyFinding[] = [
+      makeFinding({ severity: "p0", recoverable: true }), // recoverable P0 may fail the manual handoff assertion
+    ];
 
-  const result = service.runRecoveryDrill({ scenario: "Test", findings });
+    const result = service.runRecoveryDrill({ scenario: "Test", findings });
 
-  // This finding is recoverable, so disposition won't be manual_handoff,
-  // but the assertion about non-recoverable P0 won't trigger since it's recoverable
+    // This finding is recoverable, so disposition won't be manual_handoff,
+    // but the assertion about non-recoverable P0 won't trigger since it's recoverable
+  });
 });
 
 test("ReplayRepairControlService.runRecoveryDrill includes candidateCount", () => {

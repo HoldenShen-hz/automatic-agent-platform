@@ -174,25 +174,27 @@ test("ServiceRegistry initializeAll initializes all bootstrap services", async (
 });
 
 test("ServiceRegistry teardownAll completes without error", async () => {
-  await import("../../../../../src/platform/shared/lifecycle/service-registry-bootstrap.js");
+  await assert.doesNotReject(async () => {
+    await import("../../../../../src/platform/shared/lifecycle/service-registry-bootstrap.js");
 
-  const { ServiceRegistry } = await import("../../../../../src/platform/shared/lifecycle/service-registry.js");
+    const { ServiceRegistry } = await import("../../../../../src/platform/shared/lifecycle/service-registry.js");
 
-  const registry = ServiceRegistry.getInstance();
+    const registry = ServiceRegistry.getInstance();
 
-  // Initialize services first
-  try {
-    await registry.initializeAll();
-  } catch {
-    // May fail if services require external deps
-  }
+    // Initialize services first
+    try {
+      await registry.initializeAll();
+    } catch {
+      // May fail if services require external deps
+    }
 
-  // Teardown should complete without throwing
-  try {
-    await registry.teardownAll();
-  } catch {
-    // May throw if teardown has issues
-  }
+    // Teardown should complete without throwing
+    try {
+      await registry.teardownAll();
+    } catch {
+      // May throw if teardown has issues
+    }
+  });
 });
 
 test("ServiceRegistry reset can be called multiple times", async () => {
@@ -284,24 +286,26 @@ test("ServiceRegistry handles service with no dependencies", async () => {
 });
 
 test("ServiceRegistry teardownAll reverses initialization order", async () => {
-  await import("../../../../../src/platform/shared/lifecycle/service-registry-bootstrap.js");
+  await assert.doesNotReject(async () => {
+    await import("../../../../../src/platform/shared/lifecycle/service-registry-bootstrap.js");
 
-  const { ServiceRegistry } = await import("../../../../../src/platform/shared/lifecycle/service-registry.js");
+    const { ServiceRegistry } = await import("../../../../../src/platform/shared/lifecycle/service-registry.js");
 
-  const registry = ServiceRegistry.getInstance();
+    const registry = ServiceRegistry.getInstance();
 
-  // Initialize services
-  try {
-    await registry.initializeAll();
-  } catch {
-    // May fail if external deps required
-  }
+    // Initialize services
+    try {
+      await registry.initializeAll();
+    } catch {
+      // May fail if external deps required
+    }
 
-  // Track teardown order by registering interceptors
-  // For this test, we just verify teardownAll doesn't throw
-  try {
-    await registry.teardownAll();
-  } catch {
-    // May throw if services have teardown issues
-  }
+    // Track teardown order by registering interceptors
+    // For this test, we just verify teardownAll doesn't throw
+    try {
+      await registry.teardownAll();
+    } catch {
+      // May throw if services have teardown issues
+    }
+  });
 });

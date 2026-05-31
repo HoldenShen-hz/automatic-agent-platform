@@ -19,13 +19,13 @@ test("aggregateCostAttribution returns empty object for empty input", () => {
   assert.deepEqual(result, {});
 });
 
-test("aggregateCostAttribution handles single entry", () => {
+test("aggregateCostAttribution handles single entry [ops-maturity-attribution-engine]", () => {
   const entries: CostAttributionEntry[] = [{ subjectId: "agent-x", amountUsd: 42.99 }];
   const result = aggregateCostAttribution(entries);
   assert.equal(result["agent-x"], 42.99);
 });
 
-test("aggregateCostAttribution rounds to 4 decimal places", () => {
+test("aggregateCostAttribution rounds to 4 decimal places [ops-maturity-attribution-engine]", () => {
   const entries: CostAttributionEntry[] = [
     { subjectId: "agent-y", amountUsd: 0.12345 },
     { subjectId: "agent-y", amountUsd: 0.6789 },
@@ -34,7 +34,7 @@ test("aggregateCostAttribution rounds to 4 decimal places", () => {
   assert.equal(result["agent-y"], 0.8024);
 });
 
-test("aggregateCostAttribution handles many entries for same subject", () => {
+test("aggregateCostAttribution handles many entries for same subject [ops-maturity-attribution-engine]", () => {
   const entries: CostAttributionEntry[] = [
     { subjectId: "agent-z", amountUsd: 1 },
     { subjectId: "agent-z", amountUsd: 2 },

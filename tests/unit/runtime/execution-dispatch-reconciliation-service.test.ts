@@ -183,19 +183,71 @@ function createLease(
 // ============================================================================
 
 test("isTerminalExecutionStatus returns true for succeeded status [execution-dispatch-reconciliation-service]", () => {
-  // This is tested via the detect scenario
+  const harness = createReconciliationServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const ticketId = newId("ticket");
+
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId, executionStatus: "succeeded" });
+    createTicket(harness.store, harness.db, { ticketId, executionId, taskId, status: "pending" });
+
+    const issues = harness.service.scanPaginated(100);
+    assert.ok(issues.some((issue) => issue.executionId === executionId && issue.reasonCode === "execution_terminal"));
+  } finally {
+    harness.close();
+  }
 });
 
 test("isTerminalExecutionStatus returns true for failed status [execution-dispatch-reconciliation-service]", () => {
-  // This is tested via the detect scenario
+  const harness = createReconciliationServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const ticketId = newId("ticket");
+
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId, executionStatus: "failed" });
+    createTicket(harness.store, harness.db, { ticketId, executionId, taskId, status: "pending" });
+
+    const issues = harness.service.scanPaginated(100);
+    assert.ok(issues.some((issue) => issue.executionId === executionId && issue.reasonCode === "execution_terminal"));
+  } finally {
+    harness.close();
+  }
 });
 
 test("isTerminalExecutionStatus returns true for cancelled status [execution-dispatch-reconciliation-service]", () => {
-  // This is tested via the detect scenario
+  const harness = createReconciliationServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const ticketId = newId("ticket");
+
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId, executionStatus: "cancelled" });
+    createTicket(harness.store, harness.db, { ticketId, executionId, taskId, status: "pending" });
+
+    const issues = harness.service.scanPaginated(100);
+    assert.ok(issues.some((issue) => issue.executionId === executionId && issue.reasonCode === "execution_terminal"));
+  } finally {
+    harness.close();
+  }
 });
 
 test("isTerminalExecutionStatus returns true for superseded status [execution-dispatch-reconciliation-service]", () => {
-  // This is tested via the detect scenario
+  const harness = createReconciliationServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const ticketId = newId("ticket");
+
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId, executionStatus: "superseded" });
+    createTicket(harness.store, harness.db, { ticketId, executionId, taskId, status: "pending" });
+
+    const issues = harness.service.scanPaginated(100);
+    assert.ok(issues.some((issue) => issue.executionId === executionId && issue.reasonCode === "execution_terminal"));
+  } finally {
+    harness.close();
+  }
 });
 
 // ============================================================================

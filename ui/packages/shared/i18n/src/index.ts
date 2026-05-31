@@ -1,6 +1,6 @@
 import IntlMessageFormat from "intl-messageformat";
-import { enUsCatalog } from "./catalogs/en-US";
-import { zhCnCatalog } from "./catalogs/zh-CN";
+import { enUsCatalog } from "./catalogs/en-US.ts";
+import { zhCnCatalog } from "./catalogs/zh-CN.ts";
 
 export interface TranslationCatalog {
   readonly locale: string;
@@ -68,10 +68,10 @@ export class TranslationService {
   private readonly formatterCache = new Map<string, IntlMessageFormat>();
   private readonly diagnosticsReporter: TranslationDiagnosticsReporter | null;
   private appliedDocumentSnapshot: AppliedDocumentSnapshot | null = null;
-  private currentLocale = "en-US";
+  private currentLocale = "zh-CN";
 
   public constructor(options: { readonly locale?: string; readonly diagnosticsReporter?: TranslationDiagnosticsReporter | null; } = {}) {
-    this.currentLocale = options.locale ?? "en-US";
+    this.currentLocale = options.locale ?? "zh-CN";
     this.diagnosticsReporter = options.diagnosticsReporter ?? null;
   }
 
@@ -275,7 +275,7 @@ export class TranslationService {
 
 export function createDefaultTranslationService(): TranslationService {
   const service = new TranslationService({
-    locale: detectPreferredLocale(),
+    locale: "zh-CN",
   });
   service.register(enUsCatalog, {
     direction: "ltr",
@@ -285,15 +285,15 @@ export function createDefaultTranslationService(): TranslationService {
     direction: "ltr",
     nativeLabel: "简体中文",
   });
-  service.registerLoader("en-US", async () => (await import("./catalogs/en-US")).enUsCatalog, {
+  service.registerLoader("en-US", async () => (await import("./catalogs/en-US.ts")).enUsCatalog, {
     direction: "ltr",
     nativeLabel: "English (US)",
   });
-  service.registerLoader("zh-CN", async () => (await import("./catalogs/zh-CN")).zhCnCatalog, {
+  service.registerLoader("zh-CN", async () => (await import("./catalogs/zh-CN.ts")).zhCnCatalog, {
     direction: "ltr",
     nativeLabel: "简体中文",
   });
-  service.registerLoader("ar-SA", async () => (await import("./catalogs/ar-SA")).arSaCatalog, {
+  service.registerLoader("ar-SA", async () => (await import("./catalogs/ar-SA.ts")).arSaCatalog, {
     direction: "rtl",
     nativeLabel: "العربية",
   });
@@ -343,13 +343,13 @@ export function translateFeatureCopy(featureId: string): FeatureTranslationCopy 
 
 function detectPreferredLocale(): string {
   if (typeof navigator === "undefined") {
-    return "en-US";
+    return "zh-CN";
   }
   const candidates = [
     ...(Array.isArray(navigator.languages) ? navigator.languages : []),
     navigator.language,
   ].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
-  return candidates[0] ?? "en-US";
+  return candidates[0] ?? "zh-CN";
 }
 
 function formatIntlMessage(value: unknown): string {

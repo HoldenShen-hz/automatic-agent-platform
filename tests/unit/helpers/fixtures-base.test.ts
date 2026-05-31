@@ -33,7 +33,7 @@ describe("fixtures/base", () => {
       assert.strictEqual(task.inputJson, "{}");
     });
 
-    it("should use provided overrides", () => {
+    it("createMinimalTask should use provided overrides", () => {
       const task = createMinimalTask({
         id: "custom-id",
         title: "Custom title",
@@ -89,7 +89,7 @@ describe("fixtures/base", () => {
       assert.strictEqual(approval.timeoutPolicy, "remain_pending");
     });
 
-    it("should use provided overrides", () => {
+    it("createMinimalApproval should use provided overrides", () => {
       const approval = createMinimalApproval({
         id: "custom-approval",
         status: "approved",
@@ -108,7 +108,7 @@ describe("fixtures/base", () => {
       assert.strictEqual(hrun.currentSeq, 0);
     });
 
-    it("should use provided overrides", () => {
+    it("createMinimalHarnessRun should use provided overrides", () => {
       const hrun = createMinimalHarnessRun({
         harnessRunId: "custom-hrun",
         status: "running",
@@ -128,7 +128,7 @@ describe("fixtures/base", () => {
       assert.strictEqual(node.riskClass, "low");
     });
 
-    it("should use provided overrides", () => {
+    it("createMinimalPlanNode should use provided overrides", () => {
       const node = createMinimalPlanNode("node-2", {
         nodeType: "llm",
         timeoutMs: 60000,
@@ -149,7 +149,7 @@ describe("fixtures/base", () => {
       assert.strictEqual(edge.dependencyType, "hard");
     });
 
-    it("should use provided overrides", () => {
+    it("createMinimalPlanEdge should use provided overrides", () => {
       const edge = createMinimalPlanEdge("edge-2", "node-x", "node-y", {
         condition: false,
         dependencyType: "soft",
@@ -174,7 +174,7 @@ describe("fixtures/base", () => {
       assert.strictEqual(bundle.graph.edges.length, 1);
     });
 
-    it("should use provided overrides", () => {
+    it("createMinimalPlanGraphBundle should use provided overrides", () => {
       const bundle = createMinimalPlanGraphBundle("hrun-2", {
         planGraphBundleId: "custom-bundle",
       });
@@ -192,7 +192,7 @@ describe("fixtures/base", () => {
       assert.strictEqual(nrun.currentSeq, 0);
     });
 
-    it("should use provided overrides", () => {
+    it("createMinimalNodeRun should use provided overrides", () => {
       const nrun = createMinimalNodeRun("hrun-2", "bundle-2", {
         nodeId: "custom-node",
         status: "running",
@@ -212,7 +212,7 @@ describe("fixtures/base", () => {
       assert.strictEqual(ledger.status, "open");
     });
 
-    it("should use provided overrides", () => {
+    it("createMinimalBudgetLedger should use provided overrides", () => {
       const ledger = createMinimalBudgetLedger("hrun-2", {
         hardCap: 5000,
         reservedAmount: 100,
@@ -232,7 +232,7 @@ describe("fixtures/base", () => {
       assert.strictEqual(res.status, "reserved");
     });
 
-    it("should use provided overrides", () => {
+    it("createMinimalBudgetReservation should use provided overrides", () => {
       const res = createMinimalBudgetReservation("ledger-2", "hrun-2", {
         amount: 500,
         resourceKind: "compute",

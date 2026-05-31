@@ -1,9 +1,19 @@
 import { createMobileFeatureCard } from "@aa/ui-mobile";
+import { translateMessage } from "@aa/shared-i18n";
 
 export function createGovernanceComplianceMobileCards() {
   return [
-    createMobileFeatureCard("Compliance Score", "Cross-standard status"),
-    createMobileFeatureCard("Redaction", "Field visibility and PII policy"),
-    createMobileFeatureCard("Delegation", "Escalation and delegated governance"),
+    createMobileFeatureCard(
+      translateMessage("ui.governanceCompliance.mobile.score.title"),
+      translateMessage("ui.governanceCompliance.mobile.score.description"),
+    ),
+    createMobileFeatureCard(
+      translateMessage("ui.governanceCompliance.mobile.redaction.title"),
+      translateMessage("ui.governanceCompliance.mobile.redaction.description"),
+    ),
+    createMobileFeatureCard(
+      translateMessage("ui.governanceCompliance.mobile.delegation.title"),
+      translateMessage("ui.governanceCompliance.mobile.delegation.description"),
+    ),
   ] as const;
 }

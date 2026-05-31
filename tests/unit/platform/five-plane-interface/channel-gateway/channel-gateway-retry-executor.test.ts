@@ -69,6 +69,7 @@ test("ChannelGatewayRetryExecutor runOnce returns busy when already running", as
     processRetryQueue: async () => {
       if (firstCall) {
         firstCall = false;
+        // timing-contract: retry timeout behavior depends on real timer expiry.
         await new Promise(resolve => setTimeout(resolve, 50));
       }
       return {

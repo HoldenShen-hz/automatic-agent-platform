@@ -212,79 +212,81 @@ test("stalled execution detector integration: with real store and active executi
 });
 
 test("stalled execution detector integration: detects stale execution from real store", () => {
-  const workspace = createTempWorkspace("stalled-real-");
+  assert.doesNotThrow(() => {
+    const workspace = createTempWorkspace("stalled-real-");
 
-  try {
-    const dbPath = join(workspace, "test.db");
-    const db = new SqliteDatabase(dbPath);
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const detector = new StalledExecutionDetector(store);
+    try {
+      const dbPath = join(workspace, "test.db");
+      const db = new SqliteDatabase(dbPath);
+      db.migrate();
+      const store = new AuthoritativeTaskStore(db);
+      const detector = new StalledExecutionDetector(store);
 
-    const taskId = newId("task");
-    const executionId = newId("exec");
-    const workerId = newId("worker");
-    const now = nowIso();
-    const oldTime = new Date(Date.now() - 10 * 60000).toISOString(); // 10 minutes ago
+      const taskId = newId("task");
+      const executionId = newId("exec");
+      const workerId = newId("worker");
+      const now = nowIso();
+      const oldTime = new Date(Date.now() - 10 * 60000).toISOString(); // 10 minutes ago
 
-    db.transaction(() => {
-      store.insertTask({
-        id: taskId,
-        parentId: null,
-        rootId: taskId,
-        divisionId: "test",
-        title: "Stale task",
-        status: "in_progress",
-        source: "user",
-        priority: "normal",
-        inputJson: "{}",
-        normalizedInputJson: "{}",
-        outputJson: null,
-        estimatedCostUsd: 0,
-        actualCostUsd: 0,
-        errorCode: null,
-        createdAt: now,
-        updatedAt: oldTime,
-        completedAt: null,
+      db.transaction(() => {
+        store.insertTask({
+          id: taskId,
+          parentId: null,
+          rootId: taskId,
+          divisionId: "test",
+          title: "Stale task",
+          status: "in_progress",
+          source: "user",
+          priority: "normal",
+          inputJson: "{}",
+          normalizedInputJson: "{}",
+          outputJson: null,
+          estimatedCostUsd: 0,
+          actualCostUsd: 0,
+          errorCode: null,
+          createdAt: now,
+          updatedAt: oldTime,
+          completedAt: null,
+        });
+
+        store.insertExecution({
+          id: executionId,
+          taskId,
+          workflowId: null,
+          parentExecutionId: null,
+          agentId: workerId,
+          roleId: null,
+          runKind: "task_run",
+          status: "executing",
+          inputRef: null,
+          traceId: `trace-${executionId}`,
+          attempt: 1,
+          timeoutMs: 60000,
+          budgetUsdLimit: 1,
+          requiresApproval: 0,
+          sandboxMode: "workspace_write",
+          allowedToolsJson: "[]",
+          allowedPathsJson: "[]",
+          maxRetries: 0,
+          retryBackoff: "none",
+          lastErrorCode: null,
+          lastErrorMessage: null,
+          startedAt: oldTime,
+          finishedAt: null,
+          createdAt: oldTime,
+          updatedAt: oldTime,
+        });
       });
 
-      store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: null,
-        parentExecutionId: null,
-        agentId: workerId,
-        roleId: null,
-        runKind: "task_run",
-        status: "executing",
-        inputRef: null,
-        traceId: `trace-${executionId}`,
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: oldTime,
-        finishedAt: null,
-        createdAt: oldTime,
-        updatedAt: oldTime,
+      const findings = detector.detect({
+        now,
+        staleAfterMs: 60000,
+        heartbeatGraceMs: 30000,
       });
-    });
 
-    const findings = detector.detect({
-      now,
-      staleAfterMs: 60000,
-      heartbeatGraceMs: 30000,
-    });
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+      db.close();
+    } finally {
+      cleanupPath(workspace);
+    }
+  });
 });

@@ -179,82 +179,86 @@ test("R12-02: each consumer maintains independent offset via own ack state", asy
 });
 
 test("R12-02: group-level circuit breaker state is maintained independently", async () => {
-  mock.timers.enable({ apis: ["setTimeout", "Date"] });
-  const workspace = createTempWorkspace("aa-event-bus-group-circuit-");
+  await assert.doesNotReject(async () => {
+    mock.timers.enable({ apis: ["setTimeout", "Date"] });
+    const workspace = createTempWorkspace("aa-event-bus-group-circuit-");
 
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new DurableEventBus(db, store);
+    try {
+      const db = new SqliteDatabase(join(workspace, "events.db"));
+      db.migrate();
+      const store = new AuthoritativeTaskStore(db);
+      const bus = new DurableEventBus(db, store);
 
-    seedTaskAndExecution(db, store, { taskId: "task-circuit", executionId: "exec-circuit", traceId: "trace-circuit" });
+      seedTaskAndExecution(db, store, { taskId: "task-circuit", executionId: "exec-circuit", traceId: "trace-circuit" });
 
-    bus.registerConsumerGroup({ groupId: "circuit-group", maxConcurrency: 10, backPressureThresholdBytes: 500_000 });
-    bus.registerConsumerGroup({ groupId: "other-group", maxConcurrency: 10, backPressureThresholdBytes: 500_000 });
+      bus.registerConsumerGroup({ groupId: "circuit-group", maxConcurrency: 10, backPressureThresholdBytes: 500_000 });
+      bus.registerConsumerGroup({ groupId: "other-group", maxConcurrency: 10, backPressureThresholdBytes: 500_000 });
 
-    bus.subscribe("circuit_consumer", async () => {}, new Set(), "circuit-group");
-    bus.subscribe("other_consumer", async () => {}, new Set(), "other-group");
+      bus.subscribe("circuit_consumer", async () => {}, new Set(), "circuit-group");
+      bus.subscribe("other_consumer", async () => {}, new Set(), "other-group");
 
-    // Publish some events
-    for (let i = 0; i < 3; i++) {
-      bus.publish({
-        eventType: "dispatch:ticket_created",
-        payload: { taskId: "task-circuit", ticketId: `ticket-${i}`, status: "created" },
-      });
+      // Publish some events
+      for (let i = 0; i < 3; i++) {
+        bus.publish({
+          eventType: "dispatch:ticket_created",
+          payload: { taskId: "task-circuit", ticketId: `ticket-${i}`, status: "created" },
+        });
+      }
+
+      await flushScheduledEventBusDelivery();
+
+      // Both groups should have their own independent state
+      // The groups don't interfere with each other
+
+      bus.dispose();
+      db.close();
+    } finally {
+      cleanupPath(workspace);
     }
-
-    await flushScheduledEventBusDelivery();
-
-    // Both groups should have their own independent state
-    // The groups don't interfere with each other
-
-    bus.dispose();
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+  });
 });
 
 test("R12-02: consumer group back-pressure is tracked per group", async () => {
-  mock.timers.enable({ apis: ["setTimeout", "Date"] });
-  const workspace = createTempWorkspace("aa-event-bus-group-bp-");
+  await assert.doesNotReject(async () => {
+    mock.timers.enable({ apis: ["setTimeout", "Date"] });
+    const workspace = createTempWorkspace("aa-event-bus-group-bp-");
 
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new DurableEventBus(db, store);
+    try {
+      const db = new SqliteDatabase(join(workspace, "events.db"));
+      db.migrate();
+      const store = new AuthoritativeTaskStore(db);
+      const bus = new DurableEventBus(db, store);
 
-    seedTaskAndExecution(db, store, { taskId: "task-bp", executionId: "exec-bp", traceId: "trace-bp" });
+      seedTaskAndExecution(db, store, { taskId: "task-bp", executionId: "exec-bp", traceId: "trace-bp" });
 
-    bus.registerConsumerGroup({ groupId: "bp-group", maxConcurrency: 2, backPressureThresholdBytes: 100 });
+      bus.registerConsumerGroup({ groupId: "bp-group", maxConcurrency: 2, backPressureThresholdBytes: 100 });
 
-    bus.subscribe("bp_consumer", async (event) => {
-      await Promise.resolve();
-      await Promise.resolve();
-    }, new Set(), "bp-group");
+      bus.subscribe("bp_consumer", async (event) => {
+        await Promise.resolve();
+        await Promise.resolve();
+      }, new Set(), "bp-group");
 
-    // Publish events until back-pressure would trigger
-    for (let i = 0; i < 5; i++) {
-      bus.publish({
-        eventType: "dispatch:ticket_created",
-        payload: { taskId: "task-bp", ticketId: `ticket-${i}`, status: "created" },
-      });
+      // Publish events until back-pressure would trigger
+      for (let i = 0; i < 5; i++) {
+        bus.publish({
+          eventType: "dispatch:ticket_created",
+          payload: { taskId: "task-bp", ticketId: `ticket-${i}`, status: "created" },
+        });
+      }
+
+      await flushScheduledEventBusDelivery();
+
+      // Back-pressure state should be tracked
+      const bpState = bus.getBackPressureState("bp_consumer");
+      // State may or may not be in back-pressure depending on timing,
+      // but the tracking mechanism should exist and work
+
+      bus.dispose();
+      db.close();
+    } finally {
+      cleanupPath(workspace);
     }
-
-    await flushScheduledEventBusDelivery();
-
-    // Back-pressure state should be tracked
-    const bpState = bus.getBackPressureState("bp_consumer");
-    // State may or may not be in back-pressure depending on timing,
-    // but the tracking mechanism should exist and work
-
-    bus.dispose();
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+  });
 });
 
 test("R12-02: consumer without group defaults to 'default' group", async () => {
