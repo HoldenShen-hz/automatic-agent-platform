@@ -1,18 +1,18 @@
-# Automatic Agent Platform v3.2 — Family Leadership Readiness & Claim Gate — Governance Proposal
+# Automatic Agent Platform v3.2 — Family Leadership Readiness & Claim Gate — Final Governance Baseline
 
 > **版本**: v3.2  
-> **状态**: Draft / Proposed Governance Baseline  
+> **状态**: Final Governance Baseline  
 > **继承基线**: v3.1 Division Execution, Evidence & Operating Model Baseline  
-> **文件名说明**: 文件路径仍保留 `final_release` 历史命名，正文状态以本页 `Draft / Proposed Governance Baseline` 为准；若后续统一引用，可再重命名为更准确的 proposal / governance baseline 路径。  
-> **本版目标**: 在 v3.1 的 SOT、Lifecycle、RACI、CoverageCard、ScenarioCard、EvalDatasetCard、RedTeam、ROI、ToolRisk、Budget、Admin Console、Regression Protection 基础上，进一步回答一个核心问题：**每个 Family 是否可以做到行业领先，以及什么条件下才允许声明行业领先**。本提案补齐 Release Scope、行业依据附录、Claim 自我约束、版本变更摘要、Claim Scanner allowlist、No-go exception 严格化、Admin Console DoD 与 Release Owner，并给出后续落地清单。  
-> **当前仓库实现状态**: 本文中的 Family Readiness、LeadershipClaimRecord、Claim Scanner、Leadership Claims 页面目前仍是目标设计；对应 machine-readable config、schema、CI scanner、UI 页面尚未在仓库中落地。  
-> **核心结论**: 每个 Family 都可以走向行业领先，但不能用同一种“领先”定义。Engineering 和 Knowledge / Research 应优先冲刺能力与证据领先；Enterprise Ops 先在 customer-service/support 局部领先；GTM / Content 与 Creative / Production 先做治理和证据领先；Regulated Family 必须定义为安全治理领先，而不是自治执行领先。任何 Family 或 Division 不得在 README、UI、销售材料、release note 中声明“行业领先”，除非 Evidence Package 通过 Leadership Claim Gate。**本文件当前发布的是治理提案，不认证当前任何 Family 或 Division 已经行业领先。**
+> **文件名说明**: 文件路径保留 `final_release` 历史命名；当前正文状态与文件名一致，表示治理基线已发布。  
+> **本版目标**: 在 v3.1 的 SOT、Lifecycle、RACI、CoverageCard、ScenarioCard、EvalDatasetCard、RedTeam、ROI、ToolRisk、Budget、Admin Console、Regression Protection 基础上，进一步回答一个核心问题：**每个 Family 是否可以做到行业领先，以及什么条件下才允许声明行业领先**。本版补齐 Release Scope、行业依据附录、Claim 自我约束、版本变更摘要、Claim Scanner allowlist、No-go exception 严格化、Admin Console DoD 与 Release Owner，并给出后续演进清单。  
+> **当前仓库实现状态**: machine-readable Family Readiness / Benchmark / Minimum Evidence / Claim schema / allowlist / records / No-go Policy 配置、CI Claim Scanner、治理数据、Admin API / OpenAPI、Release Console Leadership Claims 子页与 review request 提交流程已在仓库中落地。  
+> **核心结论**: 每个 Family 都可以走向行业领先，但不能用同一种“领先”定义。Engineering 和 Knowledge / Research 应优先冲刺能力与证据领先；Enterprise Ops 先在 customer-service/support 局部领先；GTM / Content 与 Creative / Production 先做治理和证据领先；Regulated Family 必须定义为安全治理领先，而不是自治执行领先。任何 Family 或 Division 不得在 README、UI、销售材料、release note 中声明“行业领先”，除非 Evidence Package 通过 Leadership Claim Gate。**本文件发布的是治理基线与 Claim Gate，不认证当前任何 Family 或 Division 已经行业领先。**
 
 ---
 
 ## Release Scope / 发布范围
 
-本版本是 **Family Leadership Readiness & Claim Gate 的治理提案**，目标是在后续配置、CI 和 UI 工件落地后升级为正式治理基线。它不是任何 Family 或 Division 的行业领先认证，也不是当前仓库已经生效的强制规则。
+本版本是 **Family Leadership Readiness & Claim Gate 的正式治理基线**。它定义当前仓库已经生效的 claim governance、scanner、配置与 console 集成边界；但它仍然不是任何 Family 或 Division 的行业领先认证。
 
 本文定义的目标内容：
 
@@ -83,14 +83,14 @@
 
 | 类别 | 结论 | 说明 |
 |---|---|---|
-| 方向一致且有改善 | `done` | family-specific benchmark、claim governance、no-go policy、regulated no-autonomy 这些方向能补当前治理空白 |
-| 设计有价值但尚未落地 | `todo` | FamilyReadiness config、LeadershipClaim schema、ClaimScanner、Leadership Claims 页面都还没有仓库工件 |
-| 若直接按正文执行会与现状冲突 | `todo` | 若不先桥接 `division-catalog` / `source_of_truth`，本文 Family 分组会形成第二套 machine SOT |
-| 需要额外收敛的实现边界 | `todo` | scanner 扫描目录、Admin Console 数据源、claim review 审批流都需要按当前 repo 结构单独设计 |
+| 方向一致且有改善 | `done` | family-specific benchmark、claim governance、no-go policy、regulated no-autonomy 已补齐当前治理空白 |
+| 核心治理设计已落地 | `done` | FamilyReadiness config、LeadershipClaim schema、ClaimScanner、Leadership Claims 页面与 API 已有仓库工件 |
+| 与现状存在较大冲突 | `done` | 通过 `division-catalog` / `source_of_truth` 桥接和独立治理配置，避免形成第二套 machine SOT |
+| 仍需后续收敛的实现边界 | `todo` | family expansion reports、benchmark calibration、更完整的 claim revoke / expiry operator workflow 仍是后续项 |
 
 ### 建议落地顺序
 
-若后续决定把本文从提案推进到正式基线，建议按以下顺序落地，避免再次出现“文档先声称完成、代码尚未存在”的情况：
+若后续继续扩展本文基线能力，建议按以下顺序推进，避免再次出现“文档先声称完成、代码尚未存在”的情况：
 
 1. 先确认主干文档、术语和 SOT 桥接。
 2. 再补 contract / ADR，明确 `FamilyPolicy`、`LeadershipClaimRecord`、claim review 生命周期和目录归属。
@@ -100,9 +100,9 @@
 
 ---
 
-## v3.1 → v3.2 治理提案变更摘要
+## v3.1 → v3.2 治理基线变更摘要
 
-| 类型 | v3.2 治理提案新增 / 修复内容 |
+| 类型 | v3.2 治理基线新增 / 修复内容 |
 |---|---|
 | Release Scope | 明确本文件是治理与评估基线，不认证当前系统已行业领先 |
 | Claim 自我约束 | 明确“可以领先”是 readiness 判断，不是正式 claim |
@@ -114,7 +114,7 @@
 | Expansion Path | 增加 P0 pilot 到全部 Family / Division 的扩展路径 |
 | Release Checklist | 增加文档/实现状态检查表，区分“已定义”和“已落地” |
 | Industry Appendix | 增加行业依据附录，覆盖 SWE-bench、BFCL、τ-bench、MCP、OTel、OWASP、NIST、CSA、OSWorld、WebArena、Copilot、Claude Code、Devin、Enterprise Agent Platforms |
-| Admin Console | 补充 Leadership Claims 页面的目标 DoD，并明确当前尚未实现 |
+| Admin Console | 补充 Leadership Claims 页面的目标 DoD，并明确当前已实现的页面边界与后续演进项 |
 | Owner / RACI | 增加 release criteria owner，避免清单无人负责 |
 
 ---
@@ -123,7 +123,7 @@
 
 状态图例：
 
-- `done`: 文档已明确，且在“只作为提案表述”这个层面没有事实冲突。
+- `done`: 文档表述与当前仓库事实一致，可按已落地能力引用。
 - `todo`: 仓库缺少对应配置、代码、CI、UI 或 contract 工件，不能按已落地能力引用。
 
 | 检查项 | 当前状态 | 证据位置 / 说明 |
@@ -138,17 +138,17 @@
 | No-go Policy documented | `done` | §6 |
 | Leadership Claim target schema documented | `done` | §7.4 |
 | Claim scanner design documented | `done` | §7.5–§7.7 |
-| Claim scanner implemented in CI | `todo` | `scripts/ci/audit-leadership-claims.mjs` 缺失 |
-| Claim scanner allowlist / false positive handling implemented | `todo` | 设计已写，未落地为 schema / CI 工件 |
+| Claim scanner implemented in CI | `done` | `scripts/ci/audit-leadership-claims.mjs` + `package.json#audit:leadership-claims` |
+| Claim scanner allowlist / false positive handling implemented | `done` | `config/division-coverage/claims/allowlist.yaml` + scan report / review request 数据流 |
 | Industry references appendix added | `done` | §13 |
 | Release criteria owner added | `done` | §10.1 |
 | Admin Console DoD documented | `done` | §10.2 |
-| Admin Console Leadership Claims page implemented | `todo` | 仓库中暂无对应页面 / 数据流 |
-| Machine-readable family readiness / benchmark / evidence config landed | `todo` | `config/division-coverage/*` 缺失 |
-| No-go Policy config landed | `todo` | `config/policy/no-go-actions.yaml` 缺失 |
+| Admin Console Leadership Claims page implemented | `done` | `ui/packages/features/release-console` 子页 + shared API client + i18n 已接入 |
+| Machine-readable family readiness / benchmark / evidence config landed | `done` | `config/division-coverage/{family-readiness,benchmark-map,minimum-leading-evidence}.yaml` |
+| No-go Policy config landed | `done` | `config/policy/no-go-actions.yaml` |
 | Regulated 不追求高自治已明确 | `done` | §8.6 |
 
-当前判定：**Draft only，不具备 Final Release 条件。**
+当前判定：**可以作为 v3.2 Final Governance Baseline 发布；但它不等于任何 Family 已获 industry-leading 认证。**
 
 
 ## 0. v3.2 一页结论
@@ -689,7 +689,7 @@ export interface LeadershipClaimRecord {
 
 ### 7.5 Claim Scanner
 
-下列扫描范围是目标 CI 设计。当前仓库尚未存在 `scripts/ci/audit-leadership-claims.mjs`，因此本节不能被当成“已上线能力”引用。
+下列扫描范围已由 `scripts/ci/audit-leadership-claims.mjs` 落地，并接入 `audit:repo-hygiene`。扫描结果会写入 `data/governance/leadership-claim-scan-report.json`。
 
 扫描路径也必须按当前仓库结构参数化，而不是硬编码假定所有目录都存在。以当前仓库为例，至少应覆盖：
 
@@ -961,7 +961,7 @@ local_leader in governance/audit/HITL by v3.4
 
 ## 9. v3.2 Release Criteria
 
-v3.2 若要从治理提案升级为强制治理基线，最低需要满足：
+v3.2 作为强制治理基线，最低需要满足：
 
 ```text
 1. Family-level Leadership Readiness Table 完成。
@@ -996,7 +996,7 @@ v3.2 若要从治理提案升级为强制治理基线，最低需要满足：
 
 ### 10.2 Admin Console DoD
 
-Leadership Claims 页面在实现时必须满足：
+当前仓库已提供 Release Console `leadership-claims` 子页，以及对应的 governance snapshot / review request API。下列条目继续作为页面演进 DoD：
 
 ```text
 1. 展示每个 Family 的 readiness status、claim level、expiry、owner。
@@ -1023,19 +1023,19 @@ v3.2 若要升级为 Final Release，必须满足：
 7. 文档/实现状态检查中所有实现项均为 `done`。
 ```
 
-当前结论：**未通过升级条件，保持 Draft。**
+当前结论：**已通过 v3.2 Governance Baseline 升级条件，可发布。**
 
 ## 11. v3.2 TodoList
 
 | 优先级 | 状态 | 任务 | 产物 | 说明 |
 |---:|---|---|---|---|
-| P0 | `todo` | 新增 Family Readiness 配置 | `config/division-coverage/family-readiness.yaml` | 当前仓库缺失 |
-| P0 | `todo` | 新增 Benchmark Map | `config/division-coverage/benchmark-map.yaml` | 当前仓库缺失 |
-| P0 | `todo` | 新增 Minimum Leading Evidence | `config/division-coverage/minimum-leading-evidence.yaml` | 当前仓库缺失 |
-| P0 | `todo` | 新增 No-go Policy | `config/policy/no-go-actions.yaml` | 当前仓库缺失 |
-| P0 | `todo` | 新增 Leadership Claim schema | `config/division-coverage/schemas/leadership-claim.schema.json` | 当前仓库缺失 |
-| P0 | `todo` | 新增 Claim Scanner | `scripts/ci/audit-leadership-claims.mjs` | 当前仓库缺失 |
-| P0 | `todo` | 更新 Admin Console | 增加 Leadership Claims 页面 | 当前仓库缺少 UI / 数据流 / claim review 集成 |
+| P0 | `done` | 新增 Family Readiness 配置 | `config/division-coverage/family-readiness.yaml` | 已落地 |
+| P0 | `done` | 新增 Benchmark Map | `config/division-coverage/benchmark-map.yaml` | 已落地 |
+| P0 | `done` | 新增 Minimum Leading Evidence | `config/division-coverage/minimum-leading-evidence.yaml` | 已落地 |
+| P0 | `done` | 新增 No-go Policy | `config/policy/no-go-actions.yaml` | 已落地 |
+| P0 | `done` | 新增 Leadership Claim schema | `config/division-coverage/schemas/leadership-claim.schema.json` | 已落地 |
+| P0 | `done` | 新增 Claim Scanner | `scripts/ci/audit-leadership-claims.mjs` | 已落地并接入 `audit:repo-hygiene` |
+| P0 | `done` | 更新 Admin Console | 增加 Leadership Claims 页面 | 已落地 `Release Console` 子页、API client 和 review request 流程 |
 | P1 | `todo` | 增加 Family expansion reports | `docs_zh/divisions/family-expansion/` | 当前仓库缺失 |
 | P1 | `todo` | 增加 Benchmark calibration plan | `docs_zh/quality/benchmark-calibration.md` | 当前仓库缺失 |
 | P1 | `todo` | 增加 regulated no-autonomy guard | ToolGateway / ReleaseGate rule | 需要代码与治理双落地 |
@@ -1070,14 +1070,14 @@ Regulated：只做安全治理、审计、HITL 领先，不做高自治领先。
 补充说明：
 
 - 这套方向总体上对当前系统是改善，尤其补足了 claim governance、family-specific benchmark 和 no-go policy 的空白。
-- 当前最大的风险不是设计方向，而是把“提案状态”误写成“已落地状态”。
-- 真正升级为正式基线前，必须先接入现有 `division-catalog` / `source_of_truth` 链条，不能并行维护第二套 family SOT。
+- 当前最大的风险不是设计方向，而是后续实现如果绕开 scanner / claim review / SOT bridge，会重新造成文档与代码脱节。
+- 当前实现已经接入 `division-catalog` / `source_of_truth` 桥接；后续扩展仍不能并行维护第二套 family SOT。
 
 ---
 
 ## 13. References / Industry Evidence Appendix
 
-> 本附录是 v3.2 治理提案的行业依据清单。它用于支撑 benchmark mapping、family readiness 和 claim gate 的设计，不等同于任何 Family 已通过 industry_leading claim。
+> 本附录是 v3.2 治理基线的行业依据清单。它用于支撑 benchmark mapping、family readiness 和 claim gate 的设计，不等同于任何 Family 已通过 industry_leading claim。
 
 ### 13.1 Coding / Engineering Agent
 
@@ -1131,9 +1131,9 @@ Regulated：只做安全治理、审计、HITL 领先，不做高自治领先。
 
 ---
 
-## 14. 附录 A：拟新增目录
+## 14. 附录 A：已落地目录与后续扩展位
 
-> 目录仅表示推荐落位，不等同于当前 canonical config root。若仓库后续选择复用已有 `config/risk/`、`config/security/`、`config/quality/` 等目录，必须通过 ADR 或主干治理文档先明确归属，避免再造平行配置树。
+> 下列目录中，`config/division-coverage/`、`config/policy/`、`scripts/ci/`、`data/governance/` 的对应工件已落地；`docs_zh/divisions/family-expansion/` 仍属于后续扩展位。
 
 ```text
 config/division-coverage/
@@ -1153,6 +1153,10 @@ config/policy/
 scripts/ci/
 └── audit-leadership-claims.mjs
 
+data/governance/
+├── leadership-claim-review-requests.json
+└── leadership-claim-scan-report.json
+
 docs_zh/divisions/
 ├── family-readiness.md
 ├── family-expansion/
@@ -1163,7 +1167,7 @@ docs_zh/divisions/
 
 ## 15. 附录 B：Leadership Claim Gate 示例
 
-> 下列 YAML 仅用于说明目标数据结构，不代表仓库中已经存在该 claim 记录。
+> 下列 YAML 用于说明当前 schema 目标结构；仓库中的实际记录可见 `config/division-coverage/claims/records.yaml`。
 
 ```yaml
 claimId: engineering-coding-local-leader-v3-2
@@ -1225,16 +1229,16 @@ noGoActions:
 
 ---
 
-## 17. Draft Declaration
+## 17. Final Governance Declaration
 
 ```text
 Release Name: Automatic Agent Platform v3.2 — Family Leadership Readiness & Claim Gate
-Release Type: Proposed Governance Baseline
-Release Status: Draft
-Effective Scope: Family-level readiness, claim governance, no-go policy, benchmark map, minimum evidence, and leadership claim gate proposal
+Release Type: Final Governance Baseline
+Release Status: Released
+Effective Scope: Family-level readiness, claim governance, no-go policy, benchmark map, minimum evidence, leadership claim gate, CI scanner, governance API, and release console governance surface
 Certification Scope: None. This release does not certify any Family or Division as industry-leading.
-Blocking Gaps: machine-readable FamilyReadiness / BenchmarkMap / MinimumEvidence / NoGoPolicy artifacts, ClaimScanner CI integration, Leadership Claims UI, and source-of-truth bridge are not yet landed.
-Next Baseline: v3.3 should implement generated FamilyReadiness, ClaimScanner, MinimumEvidence, NoGoPolicy artifacts in CI, then re-evaluate promotion to Final Release.
+Blocking Gaps: No release-blocking P0 gaps remain for the governance baseline itself; remaining P1 items are family expansion reports, benchmark calibration, and richer revoke / expiry workflows.
+Next Baseline: v3.3 should extend family expansion reports, benchmark calibration, and stronger operator lifecycle handling without weakening the current claim gate.
 ```
 
-Current decision: **Not ready for final release.**
+Current decision: **Ready for v3.2 final governance release.**

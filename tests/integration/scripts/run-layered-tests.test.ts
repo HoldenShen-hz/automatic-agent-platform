@@ -88,6 +88,43 @@ test("run-layered-tests accepts concurrency env vars", async () => {
   }
 });
 
+test("run-layered-tests supports deterministic file slicing for large layers", async () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-layered-"));
+
+  try {
+    mkdirSync(join(workspace, "tests", "unit"), { recursive: true });
+    mkdirSync(join(workspace, "src"), { recursive: true });
+    writeFileSync(join(workspace, "src", "index.ts"), "");
+
+    for (const fileName of ["alpha.test.ts", "beta.test.ts", "gamma.test.ts"]) {
+      writeFileSync(
+        join(workspace, "tests", "unit", fileName),
+        [
+          "import test from \"node:test\";",
+          "",
+          `test(\"${fileName}\", () => {});`,
+          "",
+        ].join("\n"),
+      );
+    }
+
+    const result = spawnSync("node", [SCRIPT_PATH, "unit"], {
+      cwd: workspace,
+      env: {
+        ...process.env,
+        AA_LAYER_FILE_OFFSET: "1",
+        AA_LAYER_FILE_LIMIT: "2",
+      },
+      stdio: "pipe",
+    });
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout.toString(), /\[test-layer\] unit: 2 files, .*slice-offset=1, slice-limit=2/);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
 test("run-layered-tests force exits when a test leaves an active handle behind", async () => {
   const workspace = mkdtempSync(join(tmpdir(), "aa-layered-"));
 

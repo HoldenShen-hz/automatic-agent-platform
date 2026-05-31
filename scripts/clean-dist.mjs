@@ -5,17 +5,16 @@ const distPath = resolve(process.cwd(), "dist");
 const tsBuildInfoPath = resolve(process.cwd(), ".cache", "tsconfig.tsbuildinfo");
 const dryRun = process.argv.includes("--dry-run");
 const explicitPreserveDist = process.env.AA_PRESERVE_DIST;
-const preserveDist =
-  explicitPreserveDist === "1"
-  || (
-    explicitPreserveDist !== "0"
-    && (
+const preserveDist = explicitPreserveDist === "0"
+  ? false
+  : explicitPreserveDist === "1"
+    ? true
+    : (
       process.env.AA_RUNNING_TESTS === "1"
       || (process.env.npm_lifecycle_event ?? "").startsWith("test")
-    )
-  )
-  || process.env.C8_PROCESS_INFO != null
-  || process.env.NODE_V8_COVERAGE != null;
+      || process.env.C8_PROCESS_INFO != null
+      || process.env.NODE_V8_COVERAGE != null
+    );
 
 const shouldPruneStaleDistTests =
   preserveDist

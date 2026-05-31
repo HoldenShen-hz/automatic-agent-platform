@@ -520,16 +520,59 @@ test("OpenAIEmbeddingProvider constructor accepts custom model", () => {
 });
 
 test("OpenAIEmbeddingProvider embedBatch splits into batches", async () => {
+  const originalFetch = globalThis.fetch;
+  const requestInputs: string[][] = [];
   const provider = new OpenAIEmbeddingProvider({
     apiKey: "test-key",
     batchSize: 2,
   });
 
-  // This will fail at fetch but we can verify batching logic
-  await assert.rejects(
-    () => provider.embedBatch(["a", "b", "c", "d"]),
-    /fetch|network|failed/,
-  );
+  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    const payload = JSON.parse(String(init?.body ?? "{}")) as { input?: string[] };
+    const batch = payload.input ?? [];
+    requestInputs.push(batch);
+    return {
+      ok: true,
+      json: async () => ({
+        data: batch.map((text, index) => ({
+          index,
+          embedding: [text.length, index],
+        })),
+        usage: { total_tokens: batch.length },
+      }),
+    } as Response;
+  }) as typeof fetch;
+
+  try {
+    const results = await provider.embedBatch(["a", "bb", "ccc", "dddd"]);
+    assert.deepEqual(requestInputs, [["a", "bb"], ["ccc", "dddd"]]);
+    assert.equal(results.length, 4);
+    assert.deepEqual(
+      results.map((result) => result.vector),
+      [[1, 0], [2, 1], [3, 0], [4, 1]],
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("OpenAIEmbeddingProvider wraps timeout failures with stable request_failed error", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    throw new DOMException("aborted", "AbortError");
+  }) as typeof fetch;
+
+  try {
+    const provider = new OpenAIEmbeddingProvider({
+      apiKey: "test-key",
+    });
+    await assert.rejects(
+      () => provider.embedBatch(["a", "b", "c", "d"]),
+      /embedding\.openai\.request_failed:timeout/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 /* ============================================================

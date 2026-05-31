@@ -18,15 +18,32 @@ export const EMBEDDING_PROVIDER_TYPES = ["hash", "openai", "minimax"] as const;
 export type EmbeddingProviderType = (typeof EMBEDDING_PROVIDER_TYPES)[number];
 const EMBEDDING_REQUEST_TIMEOUT_MS = 10_000;
 
-async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs = EMBEDDING_REQUEST_TIMEOUT_MS): Promise<Response> {
+function buildEmbeddingRequestError(provider: string, error: unknown): Error {
+  const message = error instanceof Error ? error.message : String(error);
+  if (error instanceof Error && error.name === "AbortError") {
+    return new Error(`embedding.${provider}.request_failed:timeout`);
+  }
+  return new Error(`embedding.${provider}.request_failed:${sanitizeErrorBody(message)}`);
+}
+
+async function fetchWithTimeout(
+  provider: string,
+  input: string,
+  init: RequestInit,
+  timeoutMs = EMBEDDING_REQUEST_TIMEOUT_MS,
+): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   timeout.unref?.();
   try {
-    return await fetch(input, {
-      ...init,
-      signal: controller.signal,
-    });
+    try {
+      return await fetch(input, {
+        ...init,
+        signal: controller.signal,
+      });
+    } catch (error) {
+      throw buildEmbeddingRequestError(provider, error);
+    }
   } finally {
     clearTimeout(timeout);
   }
@@ -147,7 +164,7 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
   }
 
   async #fetch(texts: string[]): Promise<EmbeddingResult[]> {
-    const response = await fetchWithTimeout(`${this.#baseUrl}/v1/embeddings`, {
+    const response = await fetchWithTimeout("openai", `${this.#baseUrl}/v1/embeddings`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -273,7 +290,7 @@ export class MiniMaxEmbeddingProvider implements EmbeddingProvider {
   }
 
   async #fetch(texts: string[]): Promise<EmbeddingResult[]> {
-    const response = await fetchWithTimeout(`${this.#baseUrl}/embeddings`, {
+    const response = await fetchWithTimeout("minimax", `${this.#baseUrl}/embeddings`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

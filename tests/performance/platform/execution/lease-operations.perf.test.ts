@@ -18,26 +18,27 @@ import { reportSoftPerformanceMiss } from "../../../helpers/performance.js";
  */
 class MockLeaseService {
   private leases: Map<string, { executionId: string; workerId: string; status: string; expiresAt: string }> = new Map();
+  private activeLeaseIdsByExecutionId: Map<string, string> = new Map();
   private fenceTokens: Map<string, number> = new Map();
+  private leaseSequence = 0;
 
   public acquireLease(executionId: string, workerId: string, ttlMs: number): { success: boolean; fenceToken: number } {
-    // Check for existing active lease
-    for (const lease of this.leases.values()) {
-      if (lease.executionId === executionId && lease.status === "active") {
-        return { success: false, fenceToken: 0 };
-      }
+    if (this.activeLeaseIdsByExecutionId.has(executionId)) {
+      return { success: false, fenceToken: 0 };
     }
 
     const fenceToken = (this.fenceTokens.get(executionId) ?? 0) + 1;
     this.fenceTokens.set(executionId, fenceToken);
 
-    const leaseId = `lease-${executionId}-${Date.now()}`;
+    const leaseId = `lease-${executionId}-${this.leaseSequence}`;
+    this.leaseSequence += 1;
     this.leases.set(leaseId, {
       executionId,
       workerId,
       status: "active",
       expiresAt: new Date(Date.now() + ttlMs).toISOString(),
     });
+    this.activeLeaseIdsByExecutionId.set(executionId, leaseId);
 
     return { success: true, fenceToken };
   }
@@ -59,18 +60,27 @@ class MockLeaseService {
     }
 
     lease.status = "released";
+    if (this.activeLeaseIdsByExecutionId.get(lease.executionId) === leaseId) {
+      this.activeLeaseIdsByExecutionId.delete(lease.executionId);
+    }
     return { success: true };
   }
 
   public validateWriteAccess(executionId: string, workerId: string, fenceToken: number): { allowed: boolean } {
-    for (const lease of this.leases.values()) {
-      if (lease.executionId === executionId && lease.status === "active") {
-        const expectedToken = this.fenceTokens.get(executionId);
-        if (lease.workerId === workerId && fenceToken === expectedToken) {
-          return { allowed: true };
-        }
-        return { allowed: false };
-      }
+    const leaseId = this.activeLeaseIdsByExecutionId.get(executionId);
+    if (leaseId == null) {
+      return { allowed: false };
+    }
+
+    const lease = this.leases.get(leaseId);
+    if (!lease || lease.status !== "active") {
+      this.activeLeaseIdsByExecutionId.delete(executionId);
+      return { allowed: false };
+    }
+
+    const expectedToken = this.fenceTokens.get(executionId);
+    if (lease.workerId === workerId && fenceToken === expectedToken) {
+      return { allowed: true };
     }
     return { allowed: false };
   }
