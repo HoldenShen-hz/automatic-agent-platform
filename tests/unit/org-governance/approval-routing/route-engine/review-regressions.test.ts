@@ -59,6 +59,7 @@ test("AmountBasedRoutingStrategy uses provided fx snapshot instead of legacy def
   const strategy = new AmountBasedRoutingStrategy([
     { maxAmountUsd: 100, targetNodeTypes: ["department"] },
   ]);
+  const capturedAt = new Date().toISOString();
 
   const selected = strategy.selectNode(nodes, ApprovalRouteRequestSchema.parse({
     requesterId: "user-1",
@@ -72,7 +73,7 @@ test("AmountBasedRoutingStrategy uses provided fx snapshot instead of legacy def
         quoteCurrency: "CNY",
         rate: 8,
         source: "treasury",
-        capturedAt: "2026-05-01T00:00:00.000Z",
+        capturedAt,
       },
     },
   }));

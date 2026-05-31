@@ -147,7 +147,7 @@ Constraints:
 
 | Level | AI Autonomous Permission | Human Approval |
 |-------|-------------------------|----------------|
-| L0-L1 | Fully autonomous (record only) | Not needed |
+| L0-L1 | Record-only autonomy within approved bounds | Not needed |
 | L2-L3 | Parameter adjustment, strategy selection | Needed for critical/high |
 | L4-L5 | Configuration changes | Required for all |
 

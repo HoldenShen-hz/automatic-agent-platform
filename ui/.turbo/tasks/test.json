@@ -3,10 +3,8 @@
   "command": [
     "vitest",
     "run",
-    "tests/unit/ui/packages/features/release-console/hooks.test.tsx",
-    "tests/unit/ui/packages/features/release-console/web.test.tsx",
-    "tests/features/release-console.test.tsx"
+    "tests/unit/ui/packages/features/release-console/web.test.tsx"
   ],
-  "startedAt": "2026-05-31T02:34:04.300Z",
-  "completedAt": "2026-05-31T02:34:05.521Z"
+  "startedAt": "2026-05-31T02:49:30.890Z",
+  "completedAt": "2026-05-31T02:49:31.718Z"
 }

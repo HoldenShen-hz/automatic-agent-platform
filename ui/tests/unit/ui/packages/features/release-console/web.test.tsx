@@ -38,7 +38,7 @@ vi.mock("../../../../../../packages/features/release-console/src/hooks", () => (
       families: [{ familyId: "engineering", displayName: "Engineering", readinessStatus: "local_leadership_ready", targetClaimLevel: "local_leader", owner: "owner", canonicalFamilies: [], canonicalDivisions: ["coding"], benchmarkRefs: [], minimumEvidenceRef: "engineering-core", notes: "", benchmarks: [], internalMappings: [], mvpThresholds: [], leadershipThresholds: [] }],
       claims: [{ claimId: "claim-1", familyId: "engineering", divisionId: "coding", scenarioId: "issue", claimLevel: "local_leader", claimText: "claim text", allowedSurfaces: ["docs"], evidenceRefs: [], reviewedBy: [], expiresAt: null, status: "approved", effectiveStatus: "approved" }],
       allowlist: [],
-      scannerHits: [{ filePath: "docs_zh/reference/release.md", matchedText: "industry-leading", lineNumber: 9, excerpt: "claim wording", surface: "docs", status: "allowlisted", claimId: null, reason: "governance_rule_definition" }],
+      scannerHits: [{ filePath: "docs_zh/reference/release.md", matchedText: "claim-term", lineNumber: 9, excerpt: "claim wording", surface: "docs", status: "allowlisted", claimId: null, reason: "governance_rule_definition" }],
       scannerGeneratedAt: "2026-05-31T00:00:00.000Z",
       reviewRequests: [{ requestId: "review-1", familyId: "engineering", divisionId: "coding", scenarioId: "issue", requestedClaimLevel: "local_leader", requestedSurfaces: ["docs"], requestedBy: "release-owner", rationale: "rationale", requestedAt: "2026-05-31T00:00:00.000Z", status: "pending" }],
       noGoActions: [{ familyId: null, id: "no-auto-payment", description: "No automated payment", riskClass: "R5", scopes: [], enforcementSurfaces: [], blockModes: ["autonomous_execution"] }],
@@ -72,7 +72,7 @@ describe("LeadershipClaimsWebView", () => {
     expect(screen.queryByText("Family readiness")).not.toBeNull();
     expect(screen.queryByText("Engineering · local_leadership_ready")).not.toBeNull();
     expect(screen.queryByText("engineering · local_leader · approved")).not.toBeNull();
-    expect(screen.queryByText("allowlisted · industry-leading")).not.toBeNull();
+    expect(screen.queryByText("allowlisted · claim-term")).not.toBeNull();
     expect(screen.queryByText("engineering · local_leader · pending")).not.toBeNull();
     expect(screen.queryByText("no-auto-payment · R5")).not.toBeNull();
   });
