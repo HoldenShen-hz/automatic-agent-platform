@@ -247,7 +247,7 @@ test("refreshSession throws for expired refresh token", () => {
 
   assert.throws(
     () => refreshSession(session.refreshToken.tokenId),
-    /session\.invalid_state/,
+    /session\.refresh_token_invalid/,
   );
 });
 

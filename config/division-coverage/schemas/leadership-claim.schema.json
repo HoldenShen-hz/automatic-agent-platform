@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent-platform.local/schemas/leadership-claim.schema.json",
+  "title": "Leadership Claim Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "claimId",
+    "familyId",
+    "claimLevel",
+    "claimText",
+    "allowedSurfaces",
+    "evidenceRefs",
+    "reviewedBy",
+    "expiresAt",
+    "status"
+  ],
+  "properties": {
+    "claimId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "familyId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "divisionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scenarioId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "claimLevel": {
+      "type": "string",
+      "enum": [
+        "designed",
+        "pilot_ready",
+        "local_leader",
+        "industry_comparable",
+        "industry_leading"
+      ]
+    },
+    "claimText": {
+      "type": "string",
+      "minLength": 1
+    },
+    "allowedSurfaces": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "docs",
+          "ui",
+          "release_note",
+          "sales_material",
+          "readme"
+        ]
+      }
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "reviewedBy": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "rejected",
+        "expired",
+        "revoked"
+      ]
+    }
+  }
+}

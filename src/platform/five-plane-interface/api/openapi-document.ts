@@ -119,6 +119,8 @@ const ROUTES: ApiRouteSpec[] = [
   { method: "GET", path: "/v1/admin/inventories/schema", summary: "List authoritative schema inventory records", tags: ["admin"] },
   { method: "GET", path: "/v1/admin/judges", summary: "List judge provider descriptors", tags: ["admin"] },
   { method: "GET", path: "/v1/admin/compliance/program-templates", summary: "List compliance program templates", tags: ["admin"] },
+  { method: "GET", path: "/v1/admin/governance/leadership-claims", summary: "Read leadership claim governance console snapshot", tags: ["admin"] },
+  { method: "POST", path: "/v1/admin/governance/leadership-claims/review-requests", summary: "Submit leadership claim review request", tags: ["admin"] },
 ];
 
 export function buildOpenApiDocument() {

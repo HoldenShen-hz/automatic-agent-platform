@@ -1,0 +1,45 @@
+version: 1
+updatedAt: "2026-05-31T00:00:00Z"
+globalActions:
+  - id: no-auto-payment
+    description: "禁止自动付款、转账、退款、财务结算。"
+    riskClass: R5
+    scopes: [finance, commerce, regulated]
+    enforcementSurfaces: [ToolRisk, ReleaseGate, ClaimScanner]
+    blockModes: [autonomous_execution, prepared_action_without_hitl]
+  - id: no-untrusted-command-execution
+    description: "禁止把 untrusted issue / PR / comment / log 内容直接转成 shell 或 workflow 执行。"
+    riskClass: R4
+    scopes: [engineering, operations, regulated]
+    enforcementSurfaces: [ToolRisk, ReleaseGate]
+    blockModes: [shell_execution, workflow_write, external_request]
+  - id: no-final-high-impact-advice
+    description: "禁止自动输出最终医疗、法律、金融高影响结论。"
+    riskClass: R5
+    scopes: [legal, healthcare, finance, regulated]
+    enforcementSurfaces: [ToolRisk, ReleaseGate, ClaimScanner]
+    blockModes: [autonomous_final_decision, external_publish]
+familyActions:
+  - familyId: regulated
+    actions:
+      - id: regulated-no-autonomous-high-impact-action
+        description: "Regulated family 不允许高影响自治执行；仅允许 advisory、audit、evidence collection、HITL acceleration。"
+        riskClass: R5
+        scopes: [legal, healthcare, financial-services, security]
+        enforcementSurfaces: [ToolRisk, ReleaseGate]
+        blockModes: [autonomous_final_decision, autonomous_external_write, unrestricted_model_routing]
+  - familyId: gtm-content
+    actions:
+      - id: no-unreviewed-public-publishing
+        description: "GTM / Content 不允许未经人工审查直接对外发布内容或修改关键 CRM 字段。"
+        riskClass: R4
+        scopes: [advertising, content, ecommerce]
+        enforcementSurfaces: [ToolRisk, ReleaseGate]
+        blockModes: [public_publish, crm_critical_write]
+exceptionPolicy:
+  requiresPreparedAction: true
+  requiresNamedApprover: true
+  requiresExpiry: true
+  requiresAuditEvent: true
+  requiresPostActionVerification: true
+  forbidsBlanketApproval: true

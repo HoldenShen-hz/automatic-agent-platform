@@ -1,0 +1,113 @@
+version: 1
+updatedAt: "2026-05-31T00:00:00Z"
+families:
+  - familyId: engineering
+    benchmarks:
+      - benchmarkId: swe-bench-verified
+        label: SWE-bench Verified
+        url: "https://www.swebench.com/verified.html"
+        purpose: "issue-to-patch correctness and heldout evaluation"
+      - benchmarkId: bfcl-v4
+        label: Berkeley Function Calling Leaderboard V4
+        url: "https://gorilla.cs.berkeley.edu/leaderboard.html"
+        purpose: "tool selection and argument correctness"
+      - benchmarkId: aidev-github
+        label: AIDev Studying AI Coding Agents on GitHub
+        url: "https://arxiv.org/abs/2602.09185"
+        purpose: "real PR acceptance and review dynamics"
+    internalMappings:
+      - metricId: patch_correctness
+        description: "patched repo remains semantically correct after tests"
+      - metricId: pr_acceptance
+        description: "human reviewers accept or minimally edit PR output"
+  - familyId: knowledge-research
+    benchmarks:
+      - benchmarkId: rag-citation-eval
+        label: RAG citation evaluation
+        url: "https://arxiv.org/abs/2401.15884"
+        purpose: "citation grounding and source reliability"
+      - benchmarkId: source-grounding
+        label: Source grounding evaluation
+        url: "https://arxiv.org/abs/2406.16890"
+        purpose: "claim-to-source traceability"
+      - benchmarkId: otel-genai-spans
+        label: OpenTelemetry GenAI spans
+        url: "https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-agent-spans/"
+        purpose: "observability and evidence trace semantics"
+    internalMappings:
+      - metricId: citation_verifier_pass_rate
+        description: "citations resolve to authoritative and current sources"
+      - metricId: experiment_link_coverage
+        description: "conclusions link to experiment or decision artifacts"
+  - familyId: enterprise-ops
+    benchmarks:
+      - benchmarkId: tau-bench
+        label: tau-bench
+        url: "https://github.com/sierra-research/tau-bench"
+        purpose: "dynamic user-agent-tool interaction and policy adherence"
+      - benchmarkId: enterprise-workflow-eval
+        label: Enterprise workflow benchmark set
+        url: "https://arxiv.org/abs/2406.07496"
+        purpose: "workflow completion under policy and state changes"
+    internalMappings:
+      - metricId: policy_adherence
+        description: "customer-service scenarios remain within refund/order policy"
+      - metricId: sla_handoff
+        description: "handoff latency and SLA compliance"
+  - familyId: gtm-content
+    benchmarks:
+      - benchmarkId: tau-bench-retail
+        label: tau-bench retail workflows
+        url: "https://github.com/sierra-research/tau-bench"
+        purpose: "CRM and ecommerce workflow safety"
+      - benchmarkId: brand-safety-eval
+        label: Brand safety evaluation
+        url: "https://research.google/pubs/responsible-generative-ai-for-marketing/"
+        purpose: "brand policy compliance"
+      - benchmarkId: copyright-eval
+        label: Copyright risk evaluation
+        url: "https://arxiv.org/abs/2407.21046"
+        purpose: "copyright and attribution risk screening"
+    internalMappings:
+      - metricId: draft_only_compliance
+        description: "customer-visible content remains draft-only until approval"
+      - metricId: roi_attribution
+        description: "campaign actions map to measurable ROI"
+  - familyId: creative-production
+    benchmarks:
+      - benchmarkId: osworld
+        label: OSWorld
+        url: "https://os-world.github.io/"
+        purpose: "computer-use task execution"
+      - benchmarkId: webarena
+        label: WebArena
+        url: "https://webarena.dev/"
+        purpose: "browser workflow execution"
+      - benchmarkId: visualwebarena
+        label: VisualWebArena
+        url: "https://arxiv.org/abs/2401.13649"
+        purpose: "visual grounding and multimodal action quality"
+    internalMappings:
+      - metricId: visual_grounding
+        description: "Figma/DOM/screenshot evidence correctly aligns to output"
+      - metricId: asset_provenance
+        description: "published assets preserve provenance and review trail"
+  - familyId: regulated
+    benchmarks:
+      - benchmarkId: nist-genai-profile
+        label: NIST AI RMF Generative AI Profile
+        url: "https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence"
+        purpose: "risk management and control mapping"
+      - benchmarkId: owasp-ai-agent
+        label: OWASP AI Agent Security Cheat Sheet
+        url: "https://cheatsheetseries.owasp.org/cheatsheets/AI_Agent_Security_Cheat_Sheet.html"
+        purpose: "agent security, least privilege, prompt injection defense"
+      - benchmarkId: csa-agentic-rmf
+        label: CSA Agentic NIST AI RMF Profile
+        url: "https://labs.cloudsecurityalliance.org/agentic/agentic-nist-ai-rmf-profile-v1/"
+        purpose: "runtime governance and accountability"
+    internalMappings:
+      - metricId: hitl_coverage
+        description: "high-impact actions remain fully human gated"
+      - metricId: audit_export_completeness
+        description: "claim, approval, and policy decisions export with evidence"

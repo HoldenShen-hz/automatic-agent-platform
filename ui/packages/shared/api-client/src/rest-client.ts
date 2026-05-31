@@ -8,6 +8,7 @@ import type {
   ExplanationDTO,
   FeatureFlagDTO,
   IncidentDTO,
+  LeadershipClaimsConsoleDTO,
   MarketplacePackDTO,
   ModelConfigDTO,
   QueueDTO,
@@ -138,6 +139,8 @@ export class MockTransport {
     | readonly UserDTO[]
     | SystemConfigDTO
     | UserPreferenceDTO
+    | LeadershipClaimsConsoleDTO
+    | { reviewRequest: { requestId: string; familyId: string; requestedBy: string; status: string } }
     | { ok: true; body?: unknown } {
     if (path.includes("/dashboard")) {
       return this.data.dashboard;
@@ -205,6 +208,20 @@ export class MockTransport {
     }
     if (path.includes("/preferences")) {
       return this.data.preferences;
+    }
+    if (path.includes("/admin/governance/leadership-claims/review-requests")) {
+      const requestBody = body != null && typeof body === "object" ? body as Record<string, unknown> : {};
+      return {
+        reviewRequest: {
+          requestId: generateStableId("leadership-claim-review"),
+          familyId: typeof requestBody.familyId === "string" ? requestBody.familyId : "unknown-family",
+          requestedBy: "mock-admin",
+          status: "pending",
+        },
+      };
+    }
+    if (path.includes("/admin/governance/leadership-claims")) {
+      return this.data.leadershipClaims;
     }
     return { ok: true, body };
   }

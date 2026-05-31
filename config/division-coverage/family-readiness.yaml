@@ -1,0 +1,63 @@
+version: 1
+updatedAt: "2026-05-31T00:00:00Z"
+families:
+  - familyId: engineering
+    displayName: Engineering
+    readinessStatus: local_leadership_ready
+    targetClaimLevel: local_leader
+    owner: engineering-platform-owner
+    canonicalFamilies: [engineering, data, operations, quality]
+    canonicalDivisions: [coding, data-engineering, devops, engineering_ops, quality-assurance]
+    benchmarkRefs: [swe-bench-verified, bfcl-v4, aidev-github]
+    minimumEvidenceRef: engineering-core
+    notes: "最快形成 issue-to-patch、CI failure、patch correctness 闭环。"
+  - familyId: knowledge-research
+    displayName: Knowledge / Research
+    readinessStatus: local_leadership_ready
+    targetClaimLevel: local_leader
+    owner: knowledge-governance-owner
+    canonicalFamilies: [knowledge, research, analytics]
+    canonicalDivisions: [knowledge-base, academic-research, industry-research, research, analytics]
+    benchmarkRefs: [rag-citation-eval, otel-genai-spans, source-grounding]
+    minimumEvidenceRef: knowledge-core
+    notes: "适合先做 evidence、citation、experiment trace 领先。"
+  - familyId: enterprise-ops
+    displayName: Enterprise Ops
+    readinessStatus: pilot_ready
+    targetClaimLevel: pilot_ready
+    owner: enterprise-ops-owner
+    canonicalFamilies: [customer-ops, operations, delivery, people]
+    canonicalDivisions: [customer-service, support, user-operations, project-management, operations]
+    benchmarkRefs: [tau-bench, enterprise-workflow-eval]
+    minimumEvidenceRef: enterprise-ops-core
+    notes: "只对 customer-service / support 局部场景给出 readiness。"
+  - familyId: gtm-content
+    displayName: GTM / Content
+    readinessStatus: governance_ready
+    targetClaimLevel: designed
+    owner: growth-content-owner
+    canonicalFamilies: [growth, content, commerce]
+    canonicalDivisions: [advertising, content, ecommerce]
+    benchmarkRefs: [tau-bench-retail, brand-safety-eval, copyright-eval]
+    minimumEvidenceRef: gtm-content-core
+    notes: "先做 draft-only、brand safety、ROI attribution。"
+  - familyId: creative-production
+    displayName: Creative / Production
+    readinessStatus: governance_ready
+    targetClaimLevel: designed
+    owner: creative-platform-owner
+    canonicalFamilies: [product, media, content]
+    canonicalDivisions: [design, live-streaming, content]
+    benchmarkRefs: [osworld, webarena, visualwebarena]
+    minimumEvidenceRef: creative-production-core
+    notes: "先做 multimodal evidence 与 asset provenance。"
+  - familyId: regulated
+    displayName: Regulated
+    readinessStatus: governance_ready
+    targetClaimLevel: designed
+    owner: regulated-governance-owner
+    canonicalFamilies: [legal, finance, healthcare, security]
+    canonicalDivisions: [legal, finance-accounting, financial-services, healthcare, security]
+    benchmarkRefs: [nist-genai-profile, owasp-ai-agent, csa-agentic-rmf]
+    minimumEvidenceRef: regulated-core
+    notes: "只追求安全治理领先，不追求高自治执行。"

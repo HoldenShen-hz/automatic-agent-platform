@@ -149,6 +149,8 @@ test("golden: OpenAPI document has admin control plane endpoints", () => {
   assert.ok(document.paths["/v1/admin/inventories/schema"], "Schema inventory endpoint should exist");
   assert.ok(document.paths["/v1/admin/judges"], "Judge registry endpoint should exist");
   assert.ok(document.paths["/v1/admin/compliance/program-templates"], "Compliance template endpoint should exist");
+  assert.ok(document.paths["/v1/admin/governance/leadership-claims"], "Leadership claims endpoint should exist");
+  assert.ok(document.paths["/v1/admin/governance/leadership-claims/review-requests"], "Leadership claim review endpoint should exist");
 });
 
 test("golden: listApiRoutes returns all routes", () => {
@@ -170,6 +172,7 @@ test("golden: listApiRoutes returns all routes", () => {
   assert.ok(pathMethods.includes("POST:/v1/approvals/{approvalId}/decision"), "Should have POST approval decision");
   assert.ok(pathMethods.includes("GET:/v1/workbench/snapshot"), "Should have GET /v1/workbench/snapshot");
   assert.ok(pathMethods.includes("GET:/v1/admin/judges"), "Should have GET /v1/admin/judges");
+  assert.ok(pathMethods.includes("GET:/v1/admin/governance/leadership-claims"), "Should have GET leadership claims");
 });
 
 test("golden: all routes have required fields", () => {

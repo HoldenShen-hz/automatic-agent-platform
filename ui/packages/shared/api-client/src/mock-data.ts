@@ -8,6 +8,7 @@ import type {
   ExplanationDTO,
   FeatureFlagDTO,
   IncidentDTO,
+  LeadershipClaimsConsoleDTO,
   MarketplacePackDTO,
   ModelConfigDTO,
   QueueDTO,
@@ -46,6 +47,7 @@ export interface MockApiShape {
   readonly users: readonly UserDTO[];
   readonly systemConfig: SystemConfigDTO;
   readonly preferences: UserPreferenceDTO;
+  readonly leadershipClaims: LeadershipClaimsConsoleDTO;
 }
 
 export const defaultMockApiShape: MockApiShape = {
@@ -188,5 +190,130 @@ export const defaultMockApiShape: MockApiShape = {
     locale: "zh-CN",
     theme: "dark",
     defaultDashboardLayout: ["overview", "tasks", "approvals"],
+  },
+  leadershipClaims: {
+    generatedAt: "2026-05-31T00:00:00.000Z",
+    families: [
+      {
+        familyId: "engineering",
+        displayName: "Engineering",
+        readinessStatus: "local_leadership_ready",
+        targetClaimLevel: "local_leader",
+        owner: "engineering-platform-owner",
+        canonicalFamilies: ["engineering", "data", "operations", "quality"],
+        canonicalDivisions: ["coding", "data-engineering", "devops", "engineering_ops", "quality-assurance"],
+        benchmarkRefs: ["swe-bench-verified", "bfcl-v4", "aidev-github"],
+        minimumEvidenceRef: "engineering-core",
+        notes: "issue-to-patch closure is measurable",
+        benchmarks: [
+          { benchmarkId: "swe-bench-verified", label: "SWE-bench Verified", url: "https://www.swebench.com/verified.html", purpose: "issue-to-patch correctness" },
+        ],
+        internalMappings: [
+          { metricId: "patch_correctness", description: "patched repo remains semantically correct after tests" },
+        ],
+        mvpThresholds: [
+          { label: "Internal SWE-style tasks", requirement: ">=50" },
+        ],
+        leadershipThresholds: [
+          { label: "Internal SWE-style tasks", requirement: ">=200" },
+        ],
+      },
+      {
+        familyId: "regulated",
+        displayName: "Regulated",
+        readinessStatus: "governance_ready",
+        targetClaimLevel: "designed",
+        owner: "regulated-governance-owner",
+        canonicalFamilies: ["legal", "finance", "healthcare", "security"],
+        canonicalDivisions: ["legal", "finance-accounting", "healthcare", "security"],
+        benchmarkRefs: ["nist-genai-profile", "owasp-ai-agent", "csa-agentic-rmf"],
+        minimumEvidenceRef: "regulated-core",
+        notes: "lead through HITL and audit, not autonomy",
+        benchmarks: [
+          { benchmarkId: "nist-genai-profile", label: "NIST AI RMF GenAI Profile", url: "https://www.nist.gov/", purpose: "control mapping" },
+        ],
+        internalMappings: [
+          { metricId: "hitl_coverage", description: "high-impact actions remain human gated" },
+        ],
+        mvpThresholds: [
+          { label: "High-impact action HITL coverage", requirement: "100%" },
+        ],
+        leadershipThresholds: [
+          { label: "Audit export completeness", requirement: ">=99.9%" },
+        ],
+      },
+    ],
+    claims: [
+      {
+        claimId: "engineering-coding-local-leader-v3-2",
+        familyId: "engineering",
+        divisionId: "coding",
+        scenarioId: "issue-to-patch",
+        claimLevel: "local_leader",
+        claimText: "coding division 在内部 issue-to-patch pilot 中达到局部领先。",
+        allowedSurfaces: ["docs", "ui"],
+        evidenceRefs: ["eval://divisions/coding/swe-style/report-2026-05-01"],
+        reviewedBy: ["engineering-platform-owner"],
+        expiresAt: "2026-08-01T00:00:00.000Z",
+        status: "approved",
+        effectiveStatus: "approved",
+      },
+    ],
+    allowlist: [
+      {
+        filePath: "docs_zh/reference/automatic_agent_platform_v3_2_final_release.md",
+        matchedText: "industry-leading",
+        reason: "governance_rule_definition",
+        owner: "platform-governance-owner",
+        expiresAt: "2027-12-31T00:00:00.000Z",
+        expired: false,
+      },
+    ],
+    scannerHits: [
+      {
+        filePath: "docs_zh/reference/automatic_agent_platform_v3_2_final_release.md",
+        matchedText: "industry-leading",
+        lineNumber: 8,
+        excerpt: "claim wording is allowlisted only for governance definition",
+        surface: "docs",
+        status: "allowlisted",
+        claimId: null,
+        reason: "governance_rule_definition",
+      },
+    ],
+    scannerGeneratedAt: "2026-05-31T00:00:00.000Z",
+    reviewRequests: [
+      {
+        requestId: "review-1",
+        familyId: "engineering",
+        divisionId: "coding",
+        scenarioId: "issue-to-patch",
+        requestedClaimLevel: "local_leader",
+        requestedSurfaces: ["docs", "ui"],
+        requestedBy: "release-owner",
+        rationale: "evidence package is complete",
+        requestedAt: "2026-05-30T16:00:00.000Z",
+        status: "pending",
+      },
+    ],
+    noGoActions: [
+      {
+        familyId: null,
+        id: "no-auto-payment",
+        description: "禁止自动付款、转账、退款、财务结算。",
+        riskClass: "R5",
+        scopes: ["finance", "commerce", "regulated"],
+        enforcementSurfaces: ["ToolRisk", "ReleaseGate", "ClaimScanner"],
+        blockModes: ["autonomous_execution"],
+      },
+    ],
+    summary: {
+      familyCount: 2,
+      approvedClaimCount: 1,
+      expiringClaimCount: 1,
+      pendingReviewRequestCount: 1,
+      blockedScannerHitCount: 0,
+      expiredAllowlistCount: 0,
+    },
   },
 };

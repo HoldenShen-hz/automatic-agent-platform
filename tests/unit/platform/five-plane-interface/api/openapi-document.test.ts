@@ -97,6 +97,8 @@ describe("openapi-document", () => {
       assert.ok(doc.paths["/v1/admin/inventories/schema"]);
       assert.ok(doc.paths["/v1/admin/judges"]);
       assert.ok(doc.paths["/v1/admin/compliance/program-templates"]);
+      assert.ok(doc.paths["/v1/admin/governance/leadership-claims"]);
+      assert.ok(doc.paths["/v1/admin/governance/leadership-claims/review-requests"]);
     });
 
     it("should include knowledge plane endpoints", () => {

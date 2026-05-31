@@ -28,6 +28,7 @@
 - oapeflir loop management
 - rollout management
 - feedback / learning management
+- leadership claims governance
 
 ## 4. Human Takeover 最小动作
 
@@ -74,6 +75,8 @@
 - 当前 OAPEFLIR stage / loop iteration / timeline
 - 当前告警和限制原因
 - 当前 tenant / workspace 归属和 capability / entitlement 限制
+- Leadership Claims 页面中的 readiness status、claim level、expiry、scanner 命中与 allowlist 状态
+- claim review 请求入口，以及与 CI gate 对齐的 review / revoke / expiry 提示
 
 ## 8. 收口结论
 

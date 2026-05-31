@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import test from "node:test";
 
 import { createAdminRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/admin-routes.js";
@@ -121,10 +124,12 @@ test("createAdminRoutes returns all registered admin routes", () => {
     coordinatorLoadBalancingService: createMockLoadBalancingService(),
   };
   const routes = createAdminRoutes(deps);
-  assert.equal(routes.length, 28);
+  assert.equal(routes.length, 30);
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/queues"));
   assert.ok(routes.some((route) => route.pathname === "/v1/preferences" && route.method === "GET"));
   assert.ok(routes.some((route) => route.pathname === "/v1/preferences" && route.method === "PUT"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/admin/governance/leadership-claims" && route.method === "GET"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/admin/governance/leadership-claims/review-requests" && route.method === "POST"));
 });
 
 test("GET /v1/stability returns stability panel", async () => {
@@ -577,4 +582,77 @@ test("GET /v1/admin/compliance/program-templates returns compliance templates", 
   assert.equal(response.statusCode, 200);
   assert.equal(body.data.length, 3);
   assert.equal(body.data[0]?.templateId != null, true);
+});
+
+test("GET /v1/admin/governance/leadership-claims returns governance snapshot", async () => {
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["admin"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/admin/governance/leadership-claims", ["v1", "admin", "governance", "leadership-claims"]));
+  if (!response) throw new Error("Handler returned null");
+  const body = JSON.parse(response.body) as {
+    data: {
+      families: Array<Record<string, unknown>>;
+      claims: Array<Record<string, unknown>>;
+      summary: { familyCount: number };
+    };
+  };
+  assert.equal(response.statusCode, 200);
+  assert.ok(body.data.summary.familyCount >= 1);
+  assert.ok(body.data.families.length >= 1);
+  assert.ok(Array.isArray(body.data.claims));
+});
+
+test("POST /v1/admin/governance/leadership-claims/review-requests persists a review request", async () => {
+  const originalDataRoot = process.env.AA_DATA_ROOT;
+  const workspace = mkdtempSync(join(tmpdir(), "aa-admin-leadership-review-"));
+  process.env.AA_DATA_ROOT = workspace;
+
+  try {
+    const routes = createAdminRoutes({
+      authService: createMockAuthService(["admin"]),
+      missionControlService: createMockMissionControlService(),
+      coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    });
+    const response = await callRoute(
+      routes,
+      createMockContext(
+        "/v1/admin/governance/leadership-claims/review-requests",
+        ["v1", "admin", "governance", "leadership-claims", "review-requests"],
+        { "content-type": "application/json" },
+        JSON.stringify({
+          familyId: "engineering",
+          divisionId: "coding",
+          scenarioId: "issue-to-patch",
+          requestedClaimLevel: "local_leader",
+          requestedSurfaces: ["docs", "ui"],
+          rationale: "evidence package is complete",
+        }),
+      ),
+    );
+    if (!response) throw new Error("Handler returned null");
+    const body = JSON.parse(response.body) as {
+      data: {
+        reviewRequest: {
+          familyId: string;
+          requestedBy: string;
+          status: string;
+        };
+      };
+    };
+    assert.equal(response.statusCode, 201);
+    assert.equal(body.data.reviewRequest.familyId, "engineering");
+    assert.equal(body.data.reviewRequest.requestedBy, "actor-1");
+    assert.equal(body.data.reviewRequest.status, "pending");
+  } finally {
+    if (originalDataRoot == null) {
+      delete process.env.AA_DATA_ROOT;
+    } else {
+      process.env.AA_DATA_ROOT = originalDataRoot;
+    }
+    rmSync(workspace, { recursive: true, force: true });
+  }
 });

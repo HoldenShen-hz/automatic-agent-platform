@@ -151,6 +151,34 @@ test("integration: GET /v1/admin/workers returns workers list", async () => {
   }
 });
 
+test("integration: GET /v1/admin/governance/leadership-claims returns leadership governance snapshot", async () => {
+  const workspace = createTempWorkspace("aa-admin-leadership-claims-");
+  const context = createSeededApiContext(workspace);
+  const server = context.createServer();
+
+  try {
+    const accessToken = await getAccessToken(server);
+
+    const response = await server.inject({
+      url: "/v1/admin/governance/leadership-claims",
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    assert.equal(response.statusCode, 200);
+    const payload = readJson<{
+      summary: { familyCount: number; approvedClaimCount: number };
+      families: Array<{ familyId: string }>;
+      claims: Array<{ claimId: string }>;
+    }>(response);
+    assert.ok(payload.data.summary.familyCount >= 1);
+    assert.ok(payload.data.summary.approvedClaimCount >= 1);
+    assert.ok(payload.data.families.some((family) => family.familyId === "engineering"));
+    assert.ok(payload.data.claims.length >= 1);
+  } finally {
+    context.db.close();
+    cleanupPath(workspace);
+  }
+});
+
 test("integration: POST /v1/admin/config updates configuration", async () => {
   const workspace = createTempWorkspace("aa-admin-config-");
   const context = createSeededApiContext(workspace);

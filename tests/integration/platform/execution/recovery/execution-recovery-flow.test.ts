@@ -20,7 +20,7 @@ import { createValidationReport, type ValidationReport, type CheckResult } from 
 import { createReviewReport, type ReviewReport, type ReviewIssue } from "../../../../../src/platform/five-plane-execution/recovery/review-report.js";
 import { classifyFailure, shouldEscalate, type FailureCategory } from "../../../../../src/platform/five-plane-execution/recovery/failure-classification.js";
 import { RuntimeRepairService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-repair-service.js";
-import { RuntimeRecoveryService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service.js";
+import { DefaultCompensationExecutor, RuntimeRecoveryService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service.js";
 import type { StartupConsistencyReport } from "../../../../../src/platform/five-plane-execution/startup/startup-consistency-checker.js";
 import type { ApprovalRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
@@ -660,7 +660,7 @@ test("recovery: stale execution detection works correctly", () => {
   }
 });
 
-test("recovery: RuntimeRepairService.apply handles requeue_execution action", () => {
+test("recovery: RuntimeRepairService.apply handles requeue_execution action", async () => {
   const workspace = createTempWorkspace("aa-runtime-repair-");
 
   try {
@@ -740,57 +740,39 @@ test("recovery: RuntimeRepairService.apply handles requeue_execution action", ()
       ],
     };
 
-    return repairService.apply(report).then(async (results) => {
-      const repairedExecution = store.getExecution(executionId);
-      const repairedTask = store.getTask(taskId);
-      const tickets = store.listExecutionTicketsByExecution(executionId);
-      const repairEvents = store.listEventsForTask(taskId).filter((event) => event.eventType === "recovery:repair_applied");
+    const results = await repairService.apply(report);
+    const repairedExecution = store.getExecution(executionId);
+    const repairedTask = store.getTask(taskId);
+    const tickets = store.listExecutionTicketsByExecution(executionId);
+    const repairEvents = store.listEventsForTask(taskId).filter((event) => event.eventType === "recovery:repair_applied");
 
-      assert.equal(results.length, 1);
-      assert.deepEqual(results[0], {
-        action: "requeue_execution",
-        targetId: executionId,
-        applied: true,
-        detail: "execution requeued",
-      });
-      assert.equal(repairedExecution?.status, "created");
-      assert.equal(repairedTask?.status, "pending");
-      assert.ok(tickets.some((ticket) => ticket.status === "pending"));
-      assert.equal(repairEvents.length, 1);
-
-      await repairService.dispose();
-      db.close();
+    assert.equal(results.length, 1);
+    assert.deepEqual(results[0], {
+      action: "requeue_execution",
+      targetId: executionId,
+      applied: true,
+      detail: "execution requeued",
     });
+    assert.equal(repairedExecution?.status, "created");
+    assert.equal(repairedTask?.status, "pending");
+    assert.ok(tickets.some((ticket) => ticket.status === "pending"));
+    assert.equal(repairEvents.length, 1);
+
+    await repairService.dispose();
+    db.close();
   } finally {
     cleanupPath(workspace);
   }
 });
 
 test("recovery: checkpoint creation and restoration workflow", () => {
-  const recoveryService = new RuntimeRecoveryService({
-    operations: {
-      listStaleRuns: () => [],
-      listDeadLetters: () => [],
-      listWorkflowArtifactsForTask: () => [],
-    },
-    task: {
-      listTasks: () => [],
-      getTask: () => null,
-    },
-    event: {
-      listEventsByTask: () => [],
-    },
-    approval: {
-      listApprovalsByTask: () => [],
-    },
-    execution: {
-      listExecutionsByTask: () => [],
-    },
-  } as unknown as AuthoritativeTaskStore);
-
-  const overview = recoveryService.getDivisionOverview("general_ops");
-
-  assert.equal(overview.divisionId, "general_ops");
-  assert.equal(overview.activeCandidateCount, 0);
-  assert.deepEqual(overview.taskIds, []);
+  const executor = new DefaultCompensationExecutor();
+  return executor.restoreCheckpoint("checkpoint-1", {
+    traceId: "trace-1",
+    tenantId: "general_ops",
+    emittedBy: "test",
+    principal: "operator:test",
+  }).then((restored) => {
+    assert.equal(restored, true);
+  });
 });

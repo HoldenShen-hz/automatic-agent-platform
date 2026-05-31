@@ -12,6 +12,8 @@
     "/v1/admin/compliance/program-templates",
     "/v1/admin/control-plane/load-balancing",
     "/v1/admin/control-plane/load-balancing/select",
+    "/v1/admin/governance/leadership-claims",
+    "/v1/admin/governance/leadership-claims/review-requests",
     "/v1/admin/inventories/benchmarks",
     "/v1/admin/inventories/deployments",
     "/v1/admin/inventories/projections",

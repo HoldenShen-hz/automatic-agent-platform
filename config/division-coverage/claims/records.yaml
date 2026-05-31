@@ -1,0 +1,43 @@
+version: 1
+updatedAt: "2026-05-31T00:00:00Z"
+claims:
+  - claimId: engineering-coding-local-leader-v3-2
+    familyId: engineering
+    divisionId: coding
+    scenarioId: issue-to-patch
+    claimLevel: local_leader
+    claimText: "coding division 在内部 issue-to-patch pilot 中达到局部领先。"
+    allowedSurfaces: [docs, ui, release_note]
+    evidenceRefs:
+      - eval://divisions/coding/swe-style/report-2026-05-01
+      - redteam://families/engineering/awi/report-2026-05-01
+      - dashboard://divisions/coding/roi/week-2026-05-01
+    reviewedBy: [engineering-platform-owner, security-governance-owner]
+    expiresAt: "2026-08-01T00:00:00Z"
+    status: approved
+  - claimId: enterprise-ops-customer-service-pilot-v3-2
+    familyId: enterprise-ops
+    divisionId: customer-service
+    scenarioId: policy-handoff
+    claimLevel: pilot_ready
+    claimText: "customer-service division 已具备进入真实 pilot 的治理与证据基础。"
+    allowedSurfaces: [docs, ui]
+    evidenceRefs:
+      - eval://divisions/customer-service/tau-style/report-2026-05-15
+      - dashboard://divisions/customer-service/sla/week-2026-05-15
+    reviewedBy: [enterprise-ops-owner, quality-owner]
+    expiresAt: "2026-09-01T00:00:00Z"
+    status: approved
+  - claimId: regulated-advisory-governance-v3-2
+    familyId: regulated
+    divisionId: legal
+    scenarioId: advisory-policy-mapping
+    claimLevel: designed
+    claimText: "regulated family 仅就 advisory / HITL / audit 能力完成设计收口。"
+    allowedSurfaces: [docs, ui]
+    evidenceRefs:
+      - policy://regulated/no-autonomy
+      - audit://regulated/advisory/design-2026-05-20
+    reviewedBy: [regulated-governance-owner]
+    expiresAt: "2026-12-01T00:00:00Z"
+    status: approved

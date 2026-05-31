@@ -79,6 +79,8 @@ test("buildOpenApiDocument includes admin endpoints", () => {
   assert.ok(doc.paths["/v1/admin/control-plane/load-balancing"]);
   assert.ok(doc.paths["/v1/admin/inventories/benchmarks"]);
   assert.ok(doc.paths["/v1/admin/inventories/deployments"]);
+  assert.ok(doc.paths["/v1/admin/governance/leadership-claims"]);
+  assert.ok(doc.paths["/v1/admin/governance/leadership-claims/review-requests"]);
 });
 
 test("buildOpenApiDocument includes knowledge endpoints", () => {

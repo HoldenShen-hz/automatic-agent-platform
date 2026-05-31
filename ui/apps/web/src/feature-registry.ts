@@ -251,7 +251,7 @@ const featureDescriptors: readonly LazyFeatureDescriptor[] = [
     id: "release-console",
     group: "Operations",
     path: "/operations/release-console",
-    status: "Planned",
+    status: "Implemented/Internal",
     load: async () => import("@aa/feature-release-console"),
   },
   {

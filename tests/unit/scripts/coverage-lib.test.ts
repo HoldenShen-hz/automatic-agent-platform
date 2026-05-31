@@ -52,12 +52,15 @@ type CoverageLibModule = {
   buildCoverageReport: (summary: Record<string, CoverageMetricSet>) => CoverageReport;
   buildBaseline: (report: CoverageReport) => CoverageBaseline;
   compareAgainstBaseline: (report: CoverageReport, baseline: CoverageBaseline) => CoverageComparison;
+  mergeCoverageSummaries: (
+    summaries: Array<Record<string, CoverageMetricSet>>,
+  ) => Record<string, CoverageMetricSet>;
 };
 
 const coverageLib = await import(
   new URL("../../../scripts/ci/coverage-lib.mjs", import.meta.url).href
 ) as CoverageLibModule;
-const { buildCoverageReport, buildBaseline, compareAgainstBaseline } = coverageLib;
+const { buildCoverageReport, buildBaseline, compareAgainstBaseline, mergeCoverageSummaries } = coverageLib;
 
 test("buildCoverageReport aggregates metrics by directory", () => {
   const summary = {
@@ -150,6 +153,51 @@ test("buildCoverageReport normalizes dist/src coverage entries", () => {
   const report = buildCoverageReport(summary);
   const platformDir = report.directories.find((d) => d.directory === "src/platform");
   assert.ok(platformDir, "dist/src entries should be normalized to src/");
+});
+
+test("mergeCoverageSummaries aggregates per-layer totals and file metrics", () => {
+  const merged = mergeCoverageSummaries([
+    {
+      total: {
+        lines: { covered: 10, total: 20, pct: 50 },
+        statements: { covered: 10, total: 20, pct: 50 },
+        functions: { covered: 4, total: 8, pct: 50 },
+        branches: { covered: 6, total: 12, pct: 50 },
+      },
+      "src/platform/index.ts": {
+        lines: { covered: 10, total: 20, pct: 50 },
+        statements: { covered: 10, total: 20, pct: 50 },
+        functions: { covered: 4, total: 8, pct: 50 },
+        branches: { covered: 6, total: 12, pct: 50 },
+      },
+    },
+    {
+      total: {
+        lines: { covered: 15, total: 30, pct: 50 },
+        statements: { covered: 15, total: 30, pct: 50 },
+        functions: { covered: 6, total: 12, pct: 50 },
+        branches: { covered: 8, total: 16, pct: 50 },
+      },
+      "src/platform/index.ts": {
+        lines: { covered: 5, total: 10, pct: 50 },
+        statements: { covered: 5, total: 10, pct: 50 },
+        functions: { covered: 2, total: 4, pct: 50 },
+        branches: { covered: 2, total: 4, pct: 50 },
+      },
+      "src/domains/index.ts": {
+        lines: { covered: 10, total: 20, pct: 50 },
+        statements: { covered: 10, total: 20, pct: 50 },
+        functions: { covered: 4, total: 8, pct: 50 },
+        branches: { covered: 6, total: 12, pct: 50 },
+      },
+    },
+  ]);
+
+  assert.equal(merged.total.lines.covered, 25);
+  assert.equal(merged.total.lines.total, 50);
+  assert.equal(merged["src/platform/index.ts"]!.functions.covered, 6);
+  assert.equal(merged["src/platform/index.ts"]!.functions.total, 12);
+  assert.equal(merged["src/domains/index.ts"]!.branches.covered, 6);
 });
 
 test("buildBaseline creates valid baseline structure", () => {

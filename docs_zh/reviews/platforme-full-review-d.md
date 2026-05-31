@@ -1750,7 +1750,7 @@
 | 1367 | test:ui-p1-features 引用 5 个测试，同目录另 4 个未覆盖 | `done` | UI P1 脚本曾遗漏新增测试入口；现已补齐到 9 个现存特性测试文件。 |
 | 1368 | cache-metrics-collector.test.ts 0 字节空文件 | `done` | cache metrics 测试曾是空壳；现已补为 snapshot/reset 行为断言。 |
 | 1369 | domains/onboarding/index.test.ts 仅 re-export 无用例 | `done` | onboarding barrel 测试曾只有空转发；现已补真实导出断言。 |
-| 1370 | 多个测试调用函数无 assert 断言 | `todo` | 根因是仓库内存在一批“仅覆盖不校验”的 smoke/shape 测试，没有统一的 assertion-presence 审核。 |
+| 1370 | 多个测试调用函数无 assert 断言 | `done` | 根因是仓库内存在一批“仅覆盖不校验”的 smoke/shape 测试，没有统一的 assertion-presence 审核；本轮已批量把无断言 smoke/shape 用例补成显式 `assert.doesNotThrow/doesNotReject` 或真实行为断言，补齐空壳占位测试，并将 `audit:test-assertions` 重新接回 `audit:repo-hygiene`。 |
 | 1371 | artifact:integrity 引用文件及目录均不存在 | `done` | 历史脚本点名了已迁移的测试路径；现已改到现存 artifact 相关用例入口。 |
 | 1372 | 测试中遗留大量 console.log/warn，含调试残留 | `done` | 根因是历史排障时把调试输出直接留在测试与脚本中，缺少测试日志清洁门禁；本轮已移除真实业务测试中的调试输出，并新增 `audit:test-console-usage`，仅对性能基准测试保留受控例外。 |
 | 1373 | 多处测试硬等 50–1600ms 时序，存在抖动 | `done` | 根因是异步测试混用了真实睡眠与轮询语义而没有统一门禁；本轮已新增 `audit:test-hard-waits`，把非性能类测试里的 50ms+ 直接 sleep 收口为显式 `timing-contract` 或可控时钟/条件轮询，并清掉 ingress/circuit-breaker 等首批抖动点。 |

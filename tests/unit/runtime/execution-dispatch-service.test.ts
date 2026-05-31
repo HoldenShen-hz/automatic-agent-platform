@@ -165,8 +165,42 @@ function registerWorker(
     runningExecutionIds: input.runningExecutionIds ?? [],
     cpuPct: input.cpuPct ?? null,
     toolBacklogCount: input.toolBacklogCount ?? 0,
-    registrationVerifiedAt: input.registrationVerifiedAt ?? (isRemote ? nowIso() : null),
+    registrationVerifiedAt:
+      input.registrationVerifiedAt === undefined
+        ? (isRemote ? nowIso() : null)
+        : input.registrationVerifiedAt,
     occurredAt: nowIso(),
+  });
+}
+
+function createActiveLease(
+  store: AuthoritativeTaskStore,
+  db: SqliteDatabase,
+  input: {
+    leaseId: string;
+    executionId: string;
+    workerId: string;
+    queueName?: string | null;
+    occurredAt?: string;
+    expiresAt?: string;
+  },
+): void {
+  const occurredAt = input.occurredAt ?? nowIso();
+  db.transaction(() => {
+    store.worker.insertExecutionLease({
+      id: input.leaseId,
+      executionId: input.executionId,
+      workerId: input.workerId,
+      attempt: 1,
+      fencingToken: 1,
+      queueName: input.queueName ?? "default",
+      status: "active",
+      leasedAt: occurredAt,
+      expiresAt: input.expiresAt ?? new Date(Date.now() + 60_000).toISOString(),
+      lastHeartbeatAt: occurredAt,
+      releasedAt: null,
+      reasonCode: null,
+    });
   });
 }
 
@@ -376,9 +410,41 @@ test("dispatchNext dispatches ticket to eligible worker [execution-dispatch-serv
 });
 
 test("dispatchNext selects worker based on load balancing score [execution-dispatch-service]", () => {
-  // NOTE: This test has known issues with multiple worker registration
-  // where the internal WorkerRegistryService doesn't properly see all workers.
-  // Skipping for now - core single-worker dispatch is tested by other tests.
+  const harness = createDispatchServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId });
+
+    registerWorker(harness.workerRegistry, {
+      workerId: "worker-high-load",
+      maxConcurrency: 4,
+      activeLeaseCount: 3,
+      runningExecutionIds: ["exec-1", "exec-2", "exec-3"],
+      saturation: 0.9,
+      toolBacklogCount: 15,
+    });
+    registerWorker(harness.workerRegistry, {
+      workerId: "worker-low-load",
+      maxConcurrency: 4,
+      activeLeaseCount: 1,
+      runningExecutionIds: ["exec-4"],
+      saturation: 0.1,
+      toolBacklogCount: 1,
+    });
+
+    harness.service.createTicket({ executionId });
+    const decision = harness.service.dispatchNext({ leaseTtlMs: 30000 });
+
+    assert.equal(decision.outcome, "dispatched");
+    assert.equal(decision.worker?.workerId, "worker-low-load");
+    const highLoad = decision.trace?.evaluations.find((item) => item.workerId === "worker-high-load");
+    const lowLoad = decision.trace?.evaluations.find((item) => item.workerId === "worker-low-load");
+    assert.ok(highLoad && lowLoad);
+    assert.ok((lowLoad.dispatchScore ?? Number.NEGATIVE_INFINITY) > (highLoad.dispatchScore ?? Number.NEGATIVE_INFINITY));
+  } finally {
+    harness.close();
+  }
 });
 
 test("dispatchNext applies queue affinity bonus [execution-dispatch-service]", () => {
@@ -858,11 +924,55 @@ test("dispatchNext blocks for require_remote when no remote workers exist [execu
 });
 
 test("dispatchNext prefer_remote selects remote worker when available [execution-dispatch-service]", () => {
-  // NOTE: Skipped - requires further investigation of multi-worker registration issue
+  const harness = createDispatchServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId });
+
+    registerWorker(harness.workerRegistry, { workerId: "worker-local", placement: "local" });
+    registerWorker(harness.workerRegistry, {
+      workerId: "worker-remote",
+      placement: "remote",
+      registrationVerifiedAt: nowIso(),
+    });
+
+    harness.service.createTicket({
+      executionId,
+      dispatchTarget: "prefer_remote",
+    });
+    const decision = harness.service.dispatchNext({ leaseTtlMs: 30000 });
+
+    assert.equal(decision.outcome, "dispatched");
+    assert.equal(decision.worker?.workerId, "worker-remote");
+    assert.equal(decision.reasonCode, null);
+  } finally {
+    harness.close();
+  }
 });
 
 test("dispatchNext prefer_remote falls back to local when no remote workers [execution-dispatch-service]", () => {
-  // NOTE: Skipped - requires further investigation of multi-worker registration issue
+  const harness = createDispatchServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId });
+
+    registerWorker(harness.workerRegistry, { workerId: "worker-local", placement: "local" });
+
+    harness.service.createTicket({
+      executionId,
+      dispatchTarget: "prefer_remote",
+    });
+    const decision = harness.service.dispatchNext({ leaseTtlMs: 30000 });
+
+    assert.equal(decision.outcome, "dispatched");
+    assert.equal(decision.worker?.workerId, "worker-local");
+    assert.equal(decision.reasonCode, "remote.fallback_local.unavailable");
+    assert.equal(decision.trace?.remoteAvailability, "unavailable");
+  } finally {
+    harness.close();
+  }
 });
 
 // ============================================================================
@@ -870,23 +980,166 @@ test("dispatchNext prefer_remote falls back to local when no remote workers [exe
 // ============================================================================
 
 test("dispatchNext rejects untrusted remote workers [execution-dispatch-service]", () => {
-  // NOTE: Skipped - requires further investigation of multi-worker registration issue
+  const harness = createDispatchServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId });
+
+    registerWorker(harness.workerRegistry, {
+      workerId: "worker-remote-untrusted",
+      placement: "remote",
+      registrationVerifiedAt: null,
+    });
+
+    harness.service.createTicket({
+      executionId,
+      dispatchTarget: "require_remote",
+    });
+    const decision = harness.service.dispatchNext({ leaseTtlMs: 30000 });
+
+    assert.equal(decision.outcome, "blocked");
+    assert.equal(decision.reasonCode, "remote.untrusted");
+    assert.ok(decision.trace?.evaluations.some(
+      (item) => item.workerId === "worker-remote-untrusted" && item.rejectionReason === "worker_untrusted",
+    ));
+  } finally {
+    harness.close();
+  }
 });
 
 test("dispatchNext rejects remote worker with viewer_only session [execution-dispatch-service]", () => {
-  // NOTE: Skipped - requires further investigation of multi-worker registration issue
+  const harness = createDispatchServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId });
+
+    registerWorker(harness.workerRegistry, {
+      workerId: "worker-remote-viewer-only",
+      placement: "remote",
+      remoteSessionStatus: "viewer_only",
+      lastAcknowledgedStreamOffset: "stream:50",
+    });
+
+    harness.service.createTicket({
+      executionId,
+      dispatchTarget: "require_remote",
+    });
+    const decision = harness.service.dispatchNext({ leaseTtlMs: 30000 });
+
+    assert.equal(decision.outcome, "blocked");
+    assert.equal(decision.reasonCode, "remote.session_unready");
+    assert.ok(decision.trace?.evaluations.some(
+      (item) =>
+        item.workerId === "worker-remote-viewer-only"
+        && item.rejectionReason === "worker_remote_session_unready"
+        && item.remoteSessionStatus === "viewer_only",
+    ));
+  } finally {
+    harness.close();
+  }
 });
 
 test("dispatchNext rejects remote worker with session consistency mismatch [execution-dispatch-service]", () => {
-  // NOTE: Skipped - requires further investigation of multi-worker registration issue
+  const harness = createDispatchServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId });
+
+    registerWorker(harness.workerRegistry, {
+      workerId: "worker-remote-mismatch",
+      placement: "remote",
+      remoteSessionStatus: "connected",
+      lastAcknowledgedStreamOffset: "stream:61",
+      sessionConsistencyCheckStatus: "mismatch",
+    });
+
+    harness.service.createTicket({
+      executionId,
+      dispatchTarget: "require_remote",
+    });
+    const decision = harness.service.dispatchNext({ leaseTtlMs: 30000 });
+
+    assert.equal(decision.outcome, "blocked");
+    assert.equal(decision.reasonCode, "remote.session_unready");
+    assert.ok(decision.trace?.evaluations.some(
+      (item) =>
+        item.workerId === "worker-remote-mismatch"
+        && item.rejectionReason === "worker_remote_session_unready"
+        && item.sessionConsistencyCheckStatus === "mismatch",
+    ));
+  } finally {
+    harness.close();
+  }
 });
 
 test("dispatchNext rejects remote worker with workspace sync conflict [execution-dispatch-service]", () => {
-  // NOTE: Skipped - requires further investigation of multi-worker registration issue
+  const harness = createDispatchServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId });
+
+    registerWorker(harness.workerRegistry, {
+      workerId: "worker-remote-workspace-conflict",
+      placement: "remote",
+      remoteSessionStatus: "connected",
+      lastAcknowledgedStreamOffset: "stream:71",
+      workspaceSyncStatus: "conflict",
+    });
+
+    harness.service.createTicket({
+      executionId,
+      dispatchTarget: "require_remote",
+    });
+    const decision = harness.service.dispatchNext({ leaseTtlMs: 30000 });
+
+    assert.equal(decision.outcome, "blocked");
+    assert.equal(decision.reasonCode, "remote.session_unready");
+    assert.ok(decision.trace?.evaluations.some(
+      (item) =>
+        item.workerId === "worker-remote-workspace-conflict"
+        && item.rejectionReason === "worker_remote_session_unready"
+        && item.workspaceSyncStatus === "conflict",
+    ));
+  } finally {
+    harness.close();
+  }
 });
 
 test("dispatchNext rejects remote worker missing lastAcknowledgedStreamOffset [execution-dispatch-service]", () => {
-  // NOTE: Skipped - requires further investigation of multi-worker registration issue
+  const harness = createDispatchServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId });
+
+    registerWorker(harness.workerRegistry, {
+      workerId: "worker-remote-offset-missing",
+      placement: "remote",
+      remoteSessionStatus: "connected",
+      lastAcknowledgedStreamOffset: "",
+    });
+
+    harness.service.createTicket({
+      executionId,
+      dispatchTarget: "require_remote",
+    });
+    const decision = harness.service.dispatchNext({ leaseTtlMs: 30000 });
+
+    assert.equal(decision.outcome, "blocked");
+    assert.equal(decision.reasonCode, "remote.session_unready");
+    assert.ok(decision.trace?.evaluations.some(
+      (item) =>
+        item.workerId === "worker-remote-offset-missing"
+        && item.rejectionReason === "worker_remote_session_unready"
+        && item.lastAcknowledgedStreamOffset === "",
+    ));
+  } finally {
+    harness.close();
+  }
 });
 
 // ============================================================================
@@ -1091,11 +1344,59 @@ test("dispatchNext ignores queue affinity when ticket has no queue [execution-di
 // ============================================================================
 
 test("dispatchNext retries next ticket when lease acquisition fails [execution-dispatch-service]", () => {
-  // NOTE: Skipped - requires further investigation of multi-worker registration issue
+  const harness = createDispatchServiceHarness();
+  try {
+    const blockedTaskId = newId("task");
+    const blockedExecutionId = newId("exec");
+    const nextTaskId = newId("task");
+    const nextExecutionId = newId("exec");
+
+    seedTaskAndExecution(harness.store, harness.db, { taskId: blockedTaskId, executionId: blockedExecutionId });
+    seedTaskAndExecution(harness.store, harness.db, { taskId: nextTaskId, executionId: nextExecutionId });
+    registerWorker(harness.workerRegistry, { workerId: "worker-1" });
+
+    createActiveLease(harness.store, harness.db, {
+      leaseId: newId("lease"),
+      executionId: blockedExecutionId,
+      workerId: "worker-existing",
+    });
+
+    harness.service.createTicket({ executionId: blockedExecutionId, priority: "urgent" });
+    harness.service.createTicket({ executionId: nextExecutionId, priority: "normal" });
+
+    const decision = harness.service.dispatchNext({ leaseTtlMs: 30000 });
+
+    assert.equal(decision.outcome, "dispatched");
+    assert.equal(decision.ticket?.executionId, nextExecutionId);
+    assert.equal(decision.worker?.workerId, "worker-1");
+  } finally {
+    harness.close();
+  }
 });
 
 test("dispatchNext blocks when active lease already exists for execution [execution-dispatch-service]", () => {
-  // NOTE: Skipped - requires further investigation of multi-worker registration issue
+  const harness = createDispatchServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId });
+    registerWorker(harness.workerRegistry, { workerId: "worker-1" });
+
+    createActiveLease(harness.store, harness.db, {
+      leaseId: newId("lease"),
+      executionId,
+      workerId: "worker-existing",
+    });
+    harness.service.createTicket({ executionId });
+
+    const decision = harness.service.dispatchNext({ leaseTtlMs: 30000 });
+
+    assert.equal(decision.outcome, "blocked");
+    assert.equal(decision.reasonCode, "active_lease_exists");
+    assert.equal(decision.ticket?.status, "pending");
+  } finally {
+    harness.close();
+  }
 });
 
 // ============================================================================
@@ -1139,7 +1440,35 @@ test("dispatchNext processes tickets in priority order [execution-dispatch-servi
 });
 
 test("dispatchNext skips blocked tickets and processes next [execution-dispatch-service]", () => {
-  // NOTE: Skipped - requires further investigation of multi-worker registration issue
+  const harness = createDispatchServiceHarness();
+  try {
+    const blockedTaskId = newId("task");
+    const blockedExecutionId = newId("exec");
+    const nextTaskId = newId("task");
+    const nextExecutionId = newId("exec");
+
+    seedTaskAndExecution(harness.store, harness.db, { taskId: blockedTaskId, executionId: blockedExecutionId });
+    seedTaskAndExecution(harness.store, harness.db, { taskId: nextTaskId, executionId: nextExecutionId });
+    registerWorker(harness.workerRegistry, { workerId: "worker-local", placement: "local" });
+
+    harness.service.createTicket({
+      executionId: blockedExecutionId,
+      dispatchTarget: "require_remote",
+      priority: "urgent",
+    });
+    harness.service.createTicket({
+      executionId: nextExecutionId,
+      priority: "normal",
+    });
+
+    const decision = harness.service.dispatchNext({ leaseTtlMs: 30000 });
+
+    assert.equal(decision.outcome, "dispatched");
+    assert.equal(decision.ticket?.executionId, nextExecutionId);
+    assert.equal(decision.worker?.workerId, "worker-local");
+  } finally {
+    harness.close();
+  }
 });
 
 // ============================================================================
@@ -1147,11 +1476,57 @@ test("dispatchNext skips blocked tickets and processes next [execution-dispatch-
 // ============================================================================
 
 test("dispatchNext reports remote availability as degraded when workers filtered [execution-dispatch-service]", () => {
-  // NOTE: Skipped - requires further investigation of multi-worker registration issue
+  const harness = createDispatchServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId });
+
+    registerWorker(harness.workerRegistry, {
+      workerId: "worker-remote-degraded",
+      placement: "remote",
+      status: "degraded",
+    });
+
+    harness.service.createTicket({
+      executionId,
+      dispatchTarget: "require_remote",
+    });
+    const decision = harness.service.dispatchNext({ leaseTtlMs: 30000 });
+
+    assert.equal(decision.outcome, "blocked");
+    assert.equal(decision.reasonCode, "remote.degraded");
+    assert.equal(decision.trace?.remoteAvailability, "degraded");
+  } finally {
+    harness.close();
+  }
 });
 
 test("dispatchNext reports remote availability as unavailable when all remote workers unavailable [execution-dispatch-service]", () => {
-  // NOTE: Skipped - requires further investigation of multi-worker registration issue
+  const harness = createDispatchServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId });
+
+    registerWorker(harness.workerRegistry, {
+      workerId: "worker-remote-offline",
+      placement: "remote",
+      status: "offline",
+    });
+
+    harness.service.createTicket({
+      executionId,
+      dispatchTarget: "require_remote",
+    });
+    const decision = harness.service.dispatchNext({ leaseTtlMs: 30000 });
+
+    assert.equal(decision.outcome, "blocked");
+    assert.equal(decision.reasonCode, "remote.unavailable");
+    assert.equal(decision.trace?.remoteAvailability, "unavailable");
+  } finally {
+    harness.close();
+  }
 });
 
 // ============================================================================
@@ -1239,7 +1614,46 @@ test("dispatchNext records ticket_created event when ticket is created [executio
 // ============================================================================
 
 test("dispatchNext applies load skew penalty to heavily loaded workers [execution-dispatch-service]", () => {
-  // NOTE: Skipped - requires further investigation of multi-worker registration issue
+  const harness = createDispatchServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId });
+
+    registerWorker(harness.workerRegistry, {
+      workerId: "worker-affinity-hotspot",
+      maxConcurrency: 12,
+      queueAffinity: "default",
+      activeLeaseCount: 9,
+      runningExecutionIds: Array.from({ length: 9 }, (_, index) => `exec-hot-${index}`),
+      saturation: 0.8,
+    });
+    registerWorker(harness.workerRegistry, {
+      workerId: "worker-general-spare",
+      maxConcurrency: 12,
+      queueAffinity: "default",
+      activeLeaseCount: 1,
+      runningExecutionIds: ["exec-spare-1"],
+      saturation: 0.1,
+    });
+
+    harness.service.createTicket({
+      executionId,
+      queueName: "default",
+    });
+    const decision = harness.service.dispatchNext({ leaseTtlMs: 30000 });
+
+    assert.equal(decision.outcome, "dispatched");
+    assert.equal(decision.worker?.workerId, "worker-general-spare");
+    assert.ok(decision.trace?.evaluations.some(
+      (item) =>
+        item.workerId === "worker-affinity-hotspot"
+        && item.affinityMatched === true
+        && item.loadSkewPenaltyApplied === true,
+    ));
+  } finally {
+    harness.close();
+  }
 });
 
 test("dispatchNext does not apply load skew penalty when no alternative capacity exists [execution-dispatch-service]", () => {

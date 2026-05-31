@@ -437,6 +437,147 @@ export interface UserPreferenceDTO {
   readonly defaultDashboardLayout: readonly string[];
 }
 
+export type LeadershipClaimLevelDTO =
+  | "designed"
+  | "pilot_ready"
+  | "local_leader"
+  | "industry_comparable"
+  | "industry_leading"
+  | (string & {});
+
+export type LeadershipClaimStatusDTO =
+  | "draft"
+  | "approved"
+  | "expired"
+  | "revoked"
+  | "rejected"
+  | (string & {});
+
+export type LeadershipClaimSurfaceDTO =
+  | "docs"
+  | "ui"
+  | "release_note"
+  | "sales_material"
+  | (string & {});
+
+export type FamilyReadinessStatusDTO =
+  | "governance_ready"
+  | "pilot_ready"
+  | "local_leadership_ready"
+  | "industry_ready"
+  | (string & {});
+
+export interface LeadershipBenchmarkDTO {
+  readonly benchmarkId: string;
+  readonly label: string;
+  readonly url: string;
+  readonly purpose: string;
+}
+
+export interface LeadershipMetricMappingDTO {
+  readonly metricId: string;
+  readonly description: string;
+}
+
+export interface LeadershipEvidenceThresholdDTO {
+  readonly label: string;
+  readonly requirement: string;
+}
+
+export interface FamilyLeadershipReadinessDTO {
+  readonly familyId: string;
+  readonly displayName: string;
+  readonly readinessStatus: FamilyReadinessStatusDTO;
+  readonly targetClaimLevel: LeadershipClaimLevelDTO;
+  readonly owner: string;
+  readonly canonicalFamilies: readonly string[];
+  readonly canonicalDivisions: readonly string[];
+  readonly benchmarkRefs: readonly string[];
+  readonly minimumEvidenceRef: string;
+  readonly notes: string;
+  readonly benchmarks: readonly LeadershipBenchmarkDTO[];
+  readonly internalMappings: readonly LeadershipMetricMappingDTO[];
+  readonly mvpThresholds: readonly LeadershipEvidenceThresholdDTO[];
+  readonly leadershipThresholds: readonly LeadershipEvidenceThresholdDTO[];
+}
+
+export interface LeadershipClaimRecordDTO {
+  readonly claimId: string;
+  readonly familyId: string;
+  readonly divisionId: string | null;
+  readonly scenarioId: string | null;
+  readonly claimLevel: LeadershipClaimLevelDTO;
+  readonly claimText: string;
+  readonly allowedSurfaces: readonly LeadershipClaimSurfaceDTO[];
+  readonly evidenceRefs: readonly string[];
+  readonly reviewedBy: readonly string[];
+  readonly expiresAt: string | null;
+  readonly status: LeadershipClaimStatusDTO;
+  readonly effectiveStatus: LeadershipClaimStatusDTO;
+}
+
+export interface LeadershipClaimAllowlistEntryDTO {
+  readonly filePath: string;
+  readonly matchedText: string;
+  readonly reason: string;
+  readonly owner: string;
+  readonly expiresAt: string | null;
+  readonly expired: boolean;
+}
+
+export interface LeadershipClaimScannerHitDTO {
+  readonly filePath: string;
+  readonly matchedText: string;
+  readonly lineNumber: number;
+  readonly excerpt: string;
+  readonly surface: LeadershipClaimSurfaceDTO;
+  readonly status: "blocked" | "allowlisted" | "expired_allowlist" | "approved_claim";
+  readonly claimId: string | null;
+  readonly reason: string | null;
+}
+
+export interface LeadershipClaimReviewRequestDTO {
+  readonly requestId: string;
+  readonly familyId: string;
+  readonly divisionId: string | null;
+  readonly scenarioId: string | null;
+  readonly requestedClaimLevel: LeadershipClaimLevelDTO;
+  readonly requestedSurfaces: readonly LeadershipClaimSurfaceDTO[];
+  readonly requestedBy: string;
+  readonly rationale: string;
+  readonly requestedAt: string;
+  readonly status: "pending" | "approved" | "rejected";
+}
+
+export interface LeadershipNoGoActionDTO {
+  readonly familyId: string | null;
+  readonly id: string;
+  readonly description: string;
+  readonly riskClass: string;
+  readonly scopes: readonly string[];
+  readonly enforcementSurfaces: readonly string[];
+  readonly blockModes: readonly string[];
+}
+
+export interface LeadershipClaimsConsoleDTO {
+  readonly generatedAt: string;
+  readonly families: readonly FamilyLeadershipReadinessDTO[];
+  readonly claims: readonly LeadershipClaimRecordDTO[];
+  readonly allowlist: readonly LeadershipClaimAllowlistEntryDTO[];
+  readonly scannerHits: readonly LeadershipClaimScannerHitDTO[];
+  readonly scannerGeneratedAt: string | null;
+  readonly reviewRequests: readonly LeadershipClaimReviewRequestDTO[];
+  readonly noGoActions: readonly LeadershipNoGoActionDTO[];
+  readonly summary: {
+    readonly familyCount: number;
+    readonly approvedClaimCount: number;
+    readonly expiringClaimCount: number;
+    readonly pendingReviewRequestCount: number;
+    readonly blockedScannerHitCount: number;
+    readonly expiredAllowlistCount: number;
+  };
+}
+
 export interface SystemStatusVM {
   readonly wsStatus: string;
   readonly offlineQueueSize: number;

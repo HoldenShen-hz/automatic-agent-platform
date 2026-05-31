@@ -3,8 +3,10 @@
   "command": [
     "vitest",
     "run",
-    "tests/apps/web-e2e-smoke.test.tsx"
+    "tests/unit/ui/packages/features/release-console/hooks.test.tsx",
+    "tests/unit/ui/packages/features/release-console/web.test.tsx",
+    "tests/features/release-console.test.tsx"
   ],
-  "startedAt": "2026-05-30T13:37:53.976Z",
-  "completedAt": "2026-05-30T13:37:54.615Z"
+  "startedAt": "2026-05-31T02:34:04.300Z",
+  "completedAt": "2026-05-31T02:34:05.521Z"
 }

@@ -133,6 +133,48 @@ export function loadCoverageSummary() {
   return readJsonFile(COVERAGE_SUMMARY_PATH);
 }
 
+function normalizeMetric(metric) {
+  return {
+    covered: metric?.covered ?? 0,
+    total: metric?.total ?? 0,
+    skipped: metric?.skipped ?? 0,
+    pct: computePct(metric?.covered ?? 0, metric?.total ?? 0),
+  };
+}
+
+export function mergeCoverageSummaries(summaries) {
+  const merged = new Map();
+
+  for (const summary of summaries) {
+    for (const [filePath, entry] of Object.entries(summary)) {
+      const accumulator = merged.get(filePath) ?? Object.fromEntries(
+        METRIC_KEYS.map((key) => [key, emptyMetricTotals()]),
+      );
+
+      for (const key of METRIC_KEYS) {
+        const metric = entry?.[key];
+        accumulator[key].covered += metric?.covered ?? 0;
+        accumulator[key].total += metric?.total ?? 0;
+        accumulator[key].skipped += metric?.skipped ?? 0;
+      }
+
+      merged.set(filePath, accumulator);
+    }
+  }
+
+  return Object.fromEntries(
+    [...merged.entries()].map(([filePath, entry]) => [
+      filePath,
+      Object.fromEntries(METRIC_KEYS.map((key) => [key, normalizeMetric(entry[key])])),
+    ]),
+  );
+}
+
+export function writeCoverageSummary(summary) {
+  ensureCoverageDir();
+  writeJsonFile(COVERAGE_SUMMARY_PATH, summary);
+}
+
 export function buildCoverageReport(summary) {
   const directoryAccumulators = new Map();
 

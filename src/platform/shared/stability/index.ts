@@ -58,3 +58,4 @@ export {
 } from "../../stability/bulkhead-isolation.js";
 
 export * from "./release-gate.js";
+export * from "./leadership-claims-governance-service.js";

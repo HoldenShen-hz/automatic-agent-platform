@@ -1,0 +1,99 @@
+version: 1
+updatedAt: "2026-05-31T00:00:00Z"
+families:
+  - familyId: engineering
+    minimumEvidenceId: engineering-core
+    mvpThresholds:
+      - label: Internal SWE-style tasks
+        requirement: ">=50"
+      - label: AWI red-team cases
+        requirement: ">=30"
+      - label: Real pilot PRs
+        requirement: ">=10"
+    leadershipThresholds:
+      - label: Internal SWE-style tasks
+        requirement: ">=200"
+      - label: AWI red-team cases
+        requirement: ">=100"
+      - label: Real pilot PRs
+        requirement: ">=50"
+  - familyId: knowledge-research
+    minimumEvidenceId: knowledge-core
+    mvpThresholds:
+      - label: Citation evaluation cases
+        requirement: ">=100"
+      - label: Experiment-linked conclusions
+        requirement: ">=20"
+      - label: Stale doc checks
+        requirement: "required"
+    leadershipThresholds:
+      - label: Citation evaluation cases
+        requirement: ">=500"
+      - label: Experiment-linked conclusions
+        requirement: ">=100"
+      - label: Stale doc checks
+        requirement: "automated"
+  - familyId: enterprise-ops
+    minimumEvidenceId: enterprise-ops-core
+    mvpThresholds:
+      - label: Tau-style cases
+        requirement: ">=100"
+      - label: Policy tests
+        requirement: ">=50"
+      - label: Pilot tasks
+        requirement: ">=50"
+    leadershipThresholds:
+      - label: Tau-style cases
+        requirement: ">=500"
+      - label: Policy tests
+        requirement: ">=300"
+      - label: Pilot tasks
+        requirement: ">=500"
+  - familyId: gtm-content
+    minimumEvidenceId: gtm-content-core
+    mvpThresholds:
+      - label: Brand safety cases
+        requirement: ">=100"
+      - label: Copyright risk cases
+        requirement: ">=50"
+      - label: CRM or ecommerce action cases
+        requirement: ">=50"
+    leadershipThresholds:
+      - label: Brand safety cases
+        requirement: ">=1000"
+      - label: Copyright risk cases
+        requirement: ">=500"
+      - label: CRM or ecommerce action cases
+        requirement: ">=500"
+  - familyId: creative-production
+    minimumEvidenceId: creative-production-core
+    mvpThresholds:
+      - label: Visual grounding cases
+        requirement: ">=50"
+      - label: Visual regression cases
+        requirement: ">=50"
+      - label: Asset provenance samples
+        requirement: ">=50"
+    leadershipThresholds:
+      - label: Visual grounding cases
+        requirement: ">=300"
+      - label: Visual regression cases
+        requirement: ">=300"
+      - label: Asset provenance samples
+        requirement: ">=500"
+  - familyId: regulated
+    minimumEvidenceId: regulated-core
+    mvpThresholds:
+      - label: High-impact action HITL coverage
+        requirement: "100%"
+      - label: Critical red-team success
+        requirement: "0"
+      - label: Audit export completeness
+        requirement: ">=98%"
+    leadershipThresholds:
+      - label: High-impact action HITL coverage
+        requirement: "100%"
+      - label: Critical red-team success
+        requirement: "0"
+      - label: Audit export completeness
+        requirement: ">=99.9%"

@@ -8,6 +8,7 @@ import type {
   ExplanationDTO,
   FeatureFlagDTO,
   IncidentDTO,
+  LeadershipClaimsConsoleDTO,
   KnowledgeItemDTO,
   MarketplacePackDTO,
   MissionBudgetSummaryDTO,
@@ -172,6 +173,18 @@ type EndpointCatalogDefinition = {
   preferences: EndpointDefinition<UserPreferenceDTO>;
   workflowBuilder: EndpointDefinition<readonly WorkflowDTO[]>;
   contractVersion: EndpointDefinition<ContractVersionResponse>;
+  leadershipClaimsConsole: EndpointDefinition<LeadershipClaimsConsoleDTO>;
+  leadershipClaimsReviewRequest: EndpointDefinition<
+    { reviewRequest: { requestId: string; familyId: string; requestedBy: string; status: string } },
+    {
+      familyId: string;
+      divisionId?: string;
+      scenarioId?: string;
+      requestedClaimLevel: string;
+      requestedSurfaces: readonly string[];
+      rationale: string;
+    }
+  >;
 };
 
 export const endpointCatalog = {
@@ -238,6 +251,8 @@ export const endpointCatalog = {
   preferences: { id: "user.preferences", path: "/v1/preferences", method: "GET", apiLayer: "C", planned: false },
   workflowBuilder: { id: "workflow-builder", path: "/v1/workflows/builder", method: "GET", apiLayer: "C", planned: false },
   contractVersion: { id: "meta.contract-version", path: "/v1/meta/contract-version", method: "GET", apiLayer: "A", planned: false },
+  leadershipClaimsConsole: { id: "admin.governance.leadership-claims", path: "/v1/admin/governance/leadership-claims", method: "GET", apiLayer: "C", planned: false },
+  leadershipClaimsReviewRequest: { id: "admin.governance.leadership-claims.review-request", path: "/v1/admin/governance/leadership-claims/review-requests", method: "POST", apiLayer: "C", planned: false },
 } satisfies EndpointCatalogDefinition;
 
 function buildQueryString(params: ListQueryParams): string {
@@ -627,4 +642,22 @@ export async function updatePreferences(
 
 export async function fetchContractVersion(client: RESTClient): Promise<{ contractVersion: string; minServerVersion?: string }> {
   return client.get<{ contractVersion: string; minServerVersion?: string }>(endpointCatalog.contractVersion.path);
+}
+
+export async function fetchLeadershipClaimsConsole(client: RESTClient): Promise<LeadershipClaimsConsoleDTO> {
+  return client.get<LeadershipClaimsConsoleDTO>(endpointCatalog.leadershipClaimsConsole.path);
+}
+
+export async function submitLeadershipClaimReviewRequest(
+  client: RESTClient,
+  body: {
+    familyId: string;
+    divisionId?: string;
+    scenarioId?: string;
+    requestedClaimLevel: string;
+    requestedSurfaces: readonly string[];
+    rationale: string;
+  },
+): Promise<{ reviewRequest: { requestId: string; familyId: string; requestedBy: string; status: string } }> {
+  return client.post(endpointCatalog.leadershipClaimsReviewRequest.path, body);
 }

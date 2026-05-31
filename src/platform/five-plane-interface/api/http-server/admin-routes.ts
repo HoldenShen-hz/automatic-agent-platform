@@ -36,6 +36,7 @@ import type { AdminRuntimeDirectiveService } from "../admin-runtime-directive-se
 import { ChargebackService } from "../../../model-gateway/cost-tracker/chargeback-service.js";
 import { BenchmarkInventoryService } from "../../../shared/stability/benchmark-inventory-service.js";
 import { DeploymentInventoryService } from "../../../shared/stability/deployment-inventory-service.js";
+import { LeadershipClaimsGovernanceService } from "../../../shared/stability/leadership-claims-governance-service.js";
 import { ProjectionInventoryService } from "../../../five-plane-state-evidence/events/projection-inventory-service.js";
 import { SchemaInventoryService } from "../../../five-plane-state-evidence/truth/schema-inventory-service.js";
 import { JudgeProviderRegistryService } from "../../../prompt-engine/eval/judge-provider-registry-service.js";
@@ -97,6 +98,30 @@ const resumeDirectiveSchema = z.object({
   rollbackPlanReady: z.boolean(),
   validationRunPassed: z.boolean(),
   createdAt: z.string().optional(),
+}).strict();
+
+const leadershipClaimLevelSchema = z.enum([
+  "designed",
+  "pilot_ready",
+  "local_leader",
+  "industry_comparable",
+  "industry_leading",
+]);
+
+const leadershipClaimSurfaceSchema = z.enum([
+  "docs",
+  "ui",
+  "release_note",
+  "sales_material",
+]);
+
+const leadershipClaimReviewRequestSchema = z.object({
+  familyId: nonEmptyStringSchema,
+  divisionId: nonEmptyStringSchema.optional(),
+  scenarioId: nonEmptyStringSchema.optional(),
+  requestedClaimLevel: leadershipClaimLevelSchema,
+  requestedSurfaces: z.array(leadershipClaimSurfaceSchema).min(1),
+  rationale: nonEmptyStringSchema,
 }).strict();
 
 export interface AdminConfigUpdatePayload {
@@ -673,6 +698,36 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "compliance program templates");
         return buildJsonResponse(ctx.requestId, 200, new ComplianceProgramTemplateService().listTemplates());
+      },
+    },
+    {
+      method: "GET",
+      pathname: "/v1/admin/governance/leadership-claims",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "leadership claims governance");
+        const service = new LeadershipClaimsGovernanceService();
+        return buildJsonResponse(ctx.requestId, 200, service.buildConsoleSnapshot());
+      },
+    },
+    {
+      method: "POST",
+      pathname: "/v1/admin/governance/leadership-claims/review-requests",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "leadership claims governance");
+        const payload = readValidatedJsonBody(ctx.request.body, leadershipClaimReviewRequestSchema.parse);
+        const service = new LeadershipClaimsGovernanceService();
+        const reviewRequest = service.submitReviewRequest({
+          familyId: payload.familyId,
+          ...(payload.divisionId != null ? { divisionId: payload.divisionId } : {}),
+          ...(payload.scenarioId != null ? { scenarioId: payload.scenarioId } : {}),
+          requestedClaimLevel: payload.requestedClaimLevel,
+          requestedSurfaces: payload.requestedSurfaces,
+          requestedBy: principal.actorId,
+          rationale: payload.rationale,
+        });
+        return buildJsonResponse(ctx.requestId, 201, { reviewRequest });
       },
     },
   ];

@@ -1,0 +1,93 @@
+version: 1
+updatedAt: "2026-05-31T00:00:00Z"
+entries:
+  - filePath: docs_zh/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: industry-leading
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: 行业领先
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: production-ready
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: 企业级就绪
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: best-in-class
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: state-of-the-art
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: regulated-ready
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: fully autonomous
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/governance/autonomy_boundary_policy.md
+    matchedText: fully autonomous
+    reason: governance_matrix_definition
+    owner: policy-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/governance/rollout_release_policy.md
+    matchedText: fully autonomous
+    reason: governance_matrix_definition
+    owner: policy-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/architecture/02-code-architecture-reference.md
+    matchedText: production-ready
+    reason: architecture_readiness_definition
+    owner: architecture-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/architecture/02-code-architecture-reference.md
+    matchedText: production-ready
+    reason: architecture_readiness_definition
+    owner: architecture-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/governance/glossary_and_terminology.md
+    matchedText: production-ready
+    reason: glossary_definition
+    owner: governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/governance/glossary_and_terminology.md
+    matchedText: production-ready
+    reason: glossary_definition
+    owner: governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/governance/terminology-bilingual.md
+    matchedText: production-ready
+    reason: glossary_definition
+    owner: governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/governance/terminology-bilingual.md
+    matchedText: production-ready
+    reason: glossary_definition
+    owner: governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/contracts/tool_metadata_and_recovery_contract.md
+    matchedText: production-ready
+    reason: contract_definition
+    owner: platform-quality-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/contracts/tool_metadata_and_recovery_contract.md
+    matchedText: production-ready
+    reason: contract_definition
+    owner: platform-quality-owner
+    expiresAt: "2027-12-31T00:00:00Z"
