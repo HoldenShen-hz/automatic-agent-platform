@@ -150,6 +150,13 @@
 
 当前判定：**可以作为 v3.2 Final Governance Baseline 发布；但它不等于任何 Family 已获 industry-leading 认证。**
 
+2026-06-01 复核补充：
+
+- `config/division-coverage/claims/` 当前权威结构已确认为 `records.yaml + allowlist.yaml`，并不存在附录 A 旧版描述中的 family-scoped claim YAML 集合。
+- `docs_zh/divisions/family-readiness.md` 与 `docs_zh/divisions/leadership-claims.md` 已补齐，用于固定本版 release 文档引用的目录真相。
+- 英文版同步补齐 `docs_en/divisions/family-readiness.md` 与 `docs_en/divisions/leadership-claims.md`，并修正附录 A 对 division 文档目录的路径说明。
+- 已补齐 claim scanner allowlist 的中英文治理文档对等项，避免英文 v3.2 / v3.3 governance 文档因治理性用语而被误判为对外 claim。
+
 
 ## 0. v3.2 一页结论
 
@@ -1166,9 +1173,8 @@ config/division-coverage/
 ├── schemas/
 │   └── leadership-claim.schema.json
 └── claims/
-    ├── engineering.yaml
-    ├── knowledge-research.yaml
-    └── ...
+    ├── allowlist.yaml
+    └── records.yaml
 
 config/policy/
 └── no-go-actions.yaml
@@ -1182,8 +1188,11 @@ data/governance/
 └── leadership-claim-scan-report.json
 
 docs_zh/divisions/
-├── family-readiness.md
+├── coding/
+├── customer-service/
 ├── family-expansion/
+├── family-readiness.md
+├── knowledge-base/
 └── leadership-claims.md
 ```
 

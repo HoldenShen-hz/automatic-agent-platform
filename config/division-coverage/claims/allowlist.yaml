@@ -1,5 +1,5 @@
 version: 1
-updatedAt: "2026-06-01T00:00:00Z"
+updatedAt: "2026-06-01T12:00:00Z"
 entries:
   - filePath: docs_zh/reference/automatic_agent_platform_v3_2_final_release.md
     matchedText: industry-leading
@@ -37,6 +37,46 @@ entries:
     owner: platform-governance-owner
     expiresAt: "2027-12-31T00:00:00Z"
   - filePath: docs_zh/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: fully autonomous
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: industry-leading
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: 行业领先
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: production-ready
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: 企业级就绪
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: best-in-class
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: state-of-the-art
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reference/automatic_agent_platform_v3_2_final_release.md
+    matchedText: regulated-ready
+    reason: governance_rule_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reference/automatic_agent_platform_v3_2_final_release.md
     matchedText: fully autonomous
     reason: governance_rule_definition
     owner: platform-governance-owner
@@ -96,6 +136,11 @@ entries:
     reason: governance_definition_reference
     owner: platform-governance-owner
     expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/governance/division-coverage-sot.md
+    matchedText: industry-leading
+    reason: governance_definition_reference
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
   - filePath: docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md
     matchedText: industry-leading
     reason: governance_todo_definition
@@ -121,6 +166,31 @@ entries:
     reason: governance_todo_definition
     owner: platform-governance-owner
     expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reference/automatic_agent_platform_v3_3_detailed_todolist.md
+    matchedText: industry-leading
+    reason: governance_todo_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reference/automatic_agent_platform_v3_3_detailed_todolist.md
+    matchedText: 行业领先
+    reason: governance_todo_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reference/automatic_agent_platform_v3_3_detailed_todolist.md
+    matchedText: production-ready
+    reason: governance_todo_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reference/automatic_agent_platform_v3_3_detailed_todolist.md
+    matchedText: best-in-class
+    reason: governance_todo_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reference/automatic_agent_platform_v3_3_detailed_todolist.md
+    matchedText: fully autonomous
+    reason: governance_todo_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
   - filePath: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
     matchedText: 行业领先
     reason: release_readiness_negative_statement
@@ -131,12 +201,32 @@ entries:
     reason: release_readiness_negative_statement
     owner: release-owner
     expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/releases/automatic_agent_platform_v3_3_release_readiness.md
+    matchedText: industry-leading
+    reason: release_readiness_negative_statement
+    owner: release-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/releases/automatic_agent_platform_v3_3_release_readiness.md
+    matchedText: production-ready
+    reason: release_readiness_negative_statement
+    owner: release-owner
+    expiresAt: "2027-12-31T00:00:00Z"
   - filePath: docs_zh/reviews/v3_2_release_baseline_verification.md
     matchedText: industry-leading
     reason: review_negative_statement
     owner: architecture-owner
     expiresAt: "2027-12-31T00:00:00Z"
   - filePath: docs_zh/reviews/v3_2_release_baseline_verification.md
+    matchedText: production-ready
+    reason: review_negative_statement
+    owner: architecture-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reviews/v3_2_release_baseline_verification.md
+    matchedText: industry-leading
+    reason: review_negative_statement
+    owner: architecture-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reviews/v3_2_release_baseline_verification.md
     matchedText: production-ready
     reason: review_negative_statement
     owner: architecture-owner

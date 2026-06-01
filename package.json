@@ -222,6 +222,8 @@
     "workflow-recording:data-boundary": "node scripts/validation/mission-operating-model-closure.mjs workflow-recording-data-boundary",
     "workflow-recording:retention": "node scripts/validation/mission-operating-model-closure.mjs workflow-recording-retention",
     "docs:markdown-render": "node scripts/validation/mission-operating-model-closure.mjs markdown-render",
+    "pilot:evidence:p0:init": "node --import tsx scripts/validation/init-p0-pilot-evidence.ts",
+    "pilot:evidence:p0": "node --import tsx scripts/validation/run-p0-pilot-evidence.ts",
     "platform-registry:closure": "node scripts/validation/platform-validation-closure.mjs registry",
     "validation:artifacts": "node --import tsx scripts/validation/export-platform-validation-artifacts.ts",
     "contract:validate": "node scripts/run-node-tests.mjs tests/integration/platform/contracts/api-openapi-contract.test.ts tests/unit/platform/state-evidence/events/event-registry.test.ts",

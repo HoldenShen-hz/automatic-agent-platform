@@ -30,6 +30,10 @@
   作用：一键启动本地 API、metrics 和 Web UI，并自动清理当前仓库残留的旧进程。
 - `npm run dev:stack:stop`
   作用：停止 `dev:stack` 拉起的本地服务。
+- `npm run pilot:evidence:p0:init`
+  作用：初始化 `coding / knowledge-base / customer-service` 三条 P0 真实样本输入模板目录。
+- `npm run pilot:evidence:p0`
+  作用：把真实 pilot / eval / red-team / ROI / benchmark 输入聚合成统一 evidence package。
 
 默认地址：
 
@@ -41,3 +45,4 @@
 
 - [operations-checklist.md](./operations-checklist.md)
 - [test_coverage_baseline_gate.md](./test_coverage_baseline_gate.md)
+- [../quality/p0-pilot-evidence-runbook.md](../quality/p0-pilot-evidence-runbook.md)

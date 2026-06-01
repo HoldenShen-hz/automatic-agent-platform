@@ -152,6 +152,13 @@ Status legend:
 
 Current determination: **May be released as v3.2 Final Governance Baseline; but it does not equal any Family having obtained industry-leading certification.**
 
+2026-06-01 re-audit addendum:
+
+- The authoritative structure of `config/division-coverage/claims/` has been re-confirmed as `records.yaml + allowlist.yaml`; the older Appendix A wording about family-scoped claim YAML files was not the current repository truth.
+- `docs_zh/divisions/family-readiness.md` and `docs_zh/divisions/leadership-claims.md` have been added to anchor the Chinese release doc references.
+- `docs_en/divisions/family-readiness.md` and `docs_en/divisions/leadership-claims.md` have also been added, and the English appendix path has been corrected to `docs_en/divisions/`.
+- Claim scanner allowlist parity has been restored for the English governance counterparts, so governance-only wording in the v3.2 / v3.3 governance docs is no longer misclassified as an external leadership claim.
+
 
 ## 0. v3.2 One-Page Conclusion
 
@@ -1060,7 +1067,7 @@ Current conclusion: **Has passed v3.2 Governance Baseline promotion conditions a
 | P0 | `done` | Add Leadership Claim schema | `config/division-coverage/schemas/leadership-claim.schema.json` | Implemented |
 | P0 | `done` | Add Claim Scanner | `scripts/ci/audit-leadership-claims.mjs` | Implemented and integrated into `audit:repo-hygiene` |
 | P0 | `done` | Update Admin Console | Added Leadership Claims page | Implemented `Release Console` subpage, API client, and review request flow |
-| P1 | `done` | Add Family expansion reports | `docs_zh/divisions/family-expansion/` | Six family reports completed |
+| P1 | `done` | Add Family expansion reports | `docs_en/divisions/family-expansion/` | Six family reports completed |
 | P1 | `done` | Add Benchmark calibration plan | `docs_zh/quality/benchmark-calibration.md` | Completed as matrix-style calibration document |
 | P1 | `done` | Add regulated no-autonomy guard | ToolGateway / ReleaseGate rule | ToolGateway and StableReleaseGate forcibly integrated |
 | P1 | `done` | Complete claim review / revoke / expiry operator workflow | governance service / admin API / UI / scanner | review request approval, claim revoke, and derived expiry have closed the loop |
@@ -1168,9 +1175,8 @@ config/division-coverage/
 ├── schemas/
 │   └── leadership-claim.schema.json
 └── claims/
-    ├── engineering.yaml
-    ├── knowledge-research.yaml
-    └── ...
+    ├── allowlist.yaml
+    └── records.yaml
 
 config/policy/
 └── no-go-actions.yaml
@@ -1183,9 +1189,12 @@ data/governance/
 ├── leadership-claim-status-overrides.json
 └── leadership-claim-scan-report.json
 
-docs_zh/divisions/
-├── family-readiness.md
+docs_en/divisions/
+├── coding/
+├── customer-service/
 ├── family-expansion/
+├── family-readiness.md
+├── knowledge-base/
 └── leadership-claims.md
 ```
 
