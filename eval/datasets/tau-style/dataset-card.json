@@ -1,0 +1,16 @@
+{
+  "datasetId": "tau-style-heldout-v1",
+  "divisionId": "customer-service",
+  "scenarioId": "customer-refund-policy",
+  "version": "2026.06",
+  "source": "redacted_support_cases",
+  "taskCount": 120,
+  "split": "heldout",
+  "contaminationStatus": "clean",
+  "privacyStatus": "redacted",
+  "labelingMethod": "policy_team_review",
+  "allowedForTraining": false,
+  "allowedForReleaseGate": true,
+  "retentionPolicyRef": "training-data-policy/revocation.yaml",
+  "frozenHash": "sha256:tau-style-heldout-v1"
+}

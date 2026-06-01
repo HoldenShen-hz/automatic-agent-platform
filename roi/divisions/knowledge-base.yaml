@@ -1,0 +1,9 @@
+divisionId: knowledge-base
+method: assisted_vs_manual
+sampleWindow: 14d
+minimumSampleSize: 100
+metrics:
+  - answer_turnaround_delta
+  - citation_quality_delta
+  - stale_source_escape_delta
+confidence: medium

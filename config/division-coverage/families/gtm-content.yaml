@@ -1,0 +1,13 @@
+familyId: gtm-content
+defaultRiskLevel: high
+defaultAutonomyBoundary: hitl_required
+requiredEvalSuites: []
+requiredRedTeamSuites: []
+defaultToolPolicyRef: config/tool-risk/taxonomy.yaml
+defaultMemoryPolicyRef: docs_zh/governance/autonomy_boundary_policy.md
+defaultTrainingDataPolicyRef: training-data-policy/revocation.yaml
+defaultReleaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+leadershipTargetsRef: docs_zh/divisions/family-expansion/gtm-content-expansion.md
+highRiskOverrides:
+  unrestrictedModelRouting: restricted
+  trainingExportPolicy: redacted_only

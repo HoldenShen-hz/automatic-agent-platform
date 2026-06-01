@@ -1,0 +1,24 @@
+toolId: test-runner
+actions:
+  - actionId: run_targeted_tests
+    riskClass: R2
+    sideEffect: local_write
+    reversible: true
+    requiresHITL: false
+    requiresPreparedAction: false
+    rollbackPolicyRef: docs_zh/pilots/engineering-pilot.md
+    dataClassesTouched:
+      - test_results
+    allowedFamilies:
+      - engineering
+  - actionId: analyze_failure
+    riskClass: R1
+    sideEffect: none
+    reversible: true
+    requiresHITL: false
+    requiresPreparedAction: false
+    rollbackPolicyRef: docs_zh/pilots/engineering-pilot.md
+    dataClassesTouched:
+      - test_results
+    allowedFamilies:
+      - engineering

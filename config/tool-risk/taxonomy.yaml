@@ -1,0 +1,55 @@
+version: 1
+classes:
+  - riskClass: R0
+    label: Read-only
+    definition: Read-only observation or lookup with no durable side effect.
+    examples:
+      - retrieve_sources
+      - read_order
+    defaultPolicy: allow
+  - riskClass: R1
+    label: Draft-only
+    definition: Creates non-executing drafts or recommendations.
+    examples:
+      - draft_conclusion
+      - analyze_failure
+    defaultPolicy: allow_with_receipt
+  - riskClass: R2
+    label: Internal Write
+    definition: Writes to internal state or local workspace but remains reversible.
+    examples:
+      - apply_patch
+      - run_targeted_tests
+      - create_handoff_draft
+    defaultPolicy: allow_with_verification
+  - riskClass: R3
+    label: External Write
+    definition: Writes to external systems or creates durable review artifacts.
+    examples:
+      - create_pr_draft
+      - draft_refund
+      - assign_ticket
+    defaultPolicy: hitl_or_prepared_action
+  - riskClass: R4
+    label: Destructive
+    definition: Deletes, overwrites, or executes high-blast-radius actions.
+    examples:
+      - destructive_shell
+      - force_merge
+    defaultPolicy: hitl_required
+  - riskClass: R5
+    label: Regulated / Financial / Legal
+    definition: High-impact regulated or financial actions that cannot run autonomously.
+    examples:
+      - finalize_refund
+      - final_legal_answer
+    defaultPolicy: autonomous_denied
+defaults:
+  requiresHitlFor:
+    - R3
+    - R4
+  requiresPreparedActionFor:
+    - R3
+    - R4
+  autonomousDeniedFor:
+    - R5

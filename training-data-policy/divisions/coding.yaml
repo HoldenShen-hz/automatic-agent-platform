@@ -1,0 +1,9 @@
+divisionId: coding
+policyMode: redacted_only
+allowedSources:
+  - synthetic_patch_review
+  - redacted_repository_snapshots
+forbiddenSources:
+  - raw_secrets
+  - production_logs_unredacted
+  - heldout_eval

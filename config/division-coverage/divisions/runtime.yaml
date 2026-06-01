@@ -1,0 +1,89 @@
+autonomyBoundary: draft_only
+blockers:
+  - missing_division_yaml
+  - missing_family_policy
+  - unknown_family
+divisionId: runtime
+evidence:
+  design:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "docs://docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md#runtime"
+    score: 2
+  evaluation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-eval"
+    score: 0
+  flywheel:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-training-policy"
+    score: 0
+  implementation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "inventory://config/division-coverage/inventory/division-inventory.generated.json#runtime"
+    score: 1
+  operation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-redteam"
+    score: 0
+familyId: unknown-family
+generator:
+  generatedAt: "2026-06-01T00:00:00.000Z"
+  managedBy: scripts/generate-division-coverage-cards.mjs
+inventoryRefs:
+  docRefs:
+    - docs_en/adr/030-runtime-execution-plane.md
+    - docs_en/adr/086-scale-ecosystem-and-cross-region-runtime.md
+    - docs_en/adr/087-ops-maturity-runtime.md
+    - docs_en/adr/090-runtime-data-reliability-and-operations.md
+    - docs_en/adr/098-harness-hitl-runtime.md
+    - docs_en/adr/110-runtime-state-machine-authority.md
+    - docs_en/architecture/04-runtime-sequence.md
+    - docs_en/architecture/runtime-audit-and-soft-delete.md
+    - docs_en/contracts/edge_runtime_and_sync_contract.md
+    - docs_en/contracts/runtime_execution_contract.md
+    - docs_en/contracts/runtime_repository_and_migration_contract.md
+    - docs_en/contracts/runtime_state_machine_contract.md
+    - docs_zh/adr/030-runtime-execution-plane.md
+    - docs_zh/adr/086-scale-ecosystem-and-cross-region-runtime.md
+    - docs_zh/adr/087-ops-maturity-runtime.md
+    - docs_zh/adr/090-runtime-data-reliability-and-operations.md
+    - docs_zh/adr/098-harness-hitl-runtime.md
+    - docs_zh/adr/110-runtime-state-machine-authority.md
+    - docs_zh/architecture/04-runtime-sequence.md
+    - docs_zh/architecture/runtime-audit-and-soft-delete.md
+    - docs_zh/contracts/edge_runtime_and_sync_contract.md
+    - docs_zh/contracts/runtime_execution_contract.md
+    - docs_zh/contracts/runtime_repository_and_migration_contract.md
+    - docs_zh/contracts/runtime_state_machine_contract.md
+  evalRefs: []
+  redTeamRefs: []
+  scenarioRefs: []
+  trainingPolicyRefs: []
+notes: "Coverage card generated from inventory; blockers require follow-up before promotion."
+owner: TBD-owner
+raci:
+  approver: unknown-family-approver
+  consulted:
+    - architecture-owner
+    - security-owner
+  informed:
+    - release-owner
+  owner: TBD-owner
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+riskLevel: medium
+status: untracked

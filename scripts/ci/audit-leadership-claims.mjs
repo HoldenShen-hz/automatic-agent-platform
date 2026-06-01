@@ -239,8 +239,9 @@ function loadAllowlist(configRoot, now) {
   }));
 }
 
-function loadApprovedClaims(configRoot, now) {
+function loadApprovedClaims(configRoot, dataRoot, now) {
   const claims = loadYamlObject(join(configRoot, "claims", "records.yaml"));
+  const revokedClaimIds = loadStatusOverrides(dataRoot);
   return toObjectArray(claims.claims)
     .map((claim) => ({
       claimId: typeof claim.claimId === "string" ? claim.claimId : "unknown-claim",
@@ -249,7 +250,20 @@ function loadApprovedClaims(configRoot, now) {
       expiresAt: normalizeIsoOrNull(claim.expiresAt),
       allowedSurfaces: toStringArray(claim.allowedSurfaces),
     }))
-    .filter((claim) => claim.status === "approved" && !isExpired(claim.expiresAt, now));
+    .filter((claim) => claim.status === "approved" && !isExpired(claim.expiresAt, now) && !revokedClaimIds.has(claim.claimId));
+}
+
+function loadStatusOverrides(dataRoot) {
+  const path = join(dataRoot, "governance", "leadership-claim-status-overrides.json");
+  if (!existsSync(path)) {
+    return new Set();
+  }
+  const parsed = JSON.parse(readFileSync(path, "utf8"));
+  return new Set(
+    toObjectArray(parsed)
+      .filter((entry) => entry.status === "revoked" && typeof entry.claimId === "string")
+      .map((entry) => entry.claimId),
+  );
 }
 
 function resolveMatchDisposition(relativePath, matchedText, surface, content, allowlistEntries, approvedClaims) {
@@ -277,7 +291,7 @@ export function buildLeadershipClaimScanReport(options = {}) {
   const schemaPath = join(configRoot, "schemas", "leadership-claim.schema.json");
   const schema = existsSync(schemaPath) ? JSON.parse(readFileSync(schemaPath, "utf8")) : {};
   const allowlistEntries = loadAllowlist(configRoot, now);
-  const approvedClaims = loadApprovedClaims(configRoot, now);
+  const approvedClaims = loadApprovedClaims(configRoot, dataRoot, now);
   const hits = [];
 
   for (const absolutePath of enumerateFiles(rootDir, scanRoots)) {

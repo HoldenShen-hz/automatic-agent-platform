@@ -1,5 +1,5 @@
 {
-  "totalRoutes": 92,
+  "totalRoutes": 95,
   "routes": [
     "DELETE:/v1/missions/{missionId}/members/{membershipId}",
     "GET:/health",

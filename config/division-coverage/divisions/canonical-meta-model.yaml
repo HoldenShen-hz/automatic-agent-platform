@@ -1,0 +1,65 @@
+autonomyBoundary: draft_only
+blockers:
+  - missing_division_yaml
+  - missing_family_policy
+  - unknown_family
+divisionId: canonical-meta-model
+evidence:
+  design:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "docs://docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md#canonical-meta-model"
+    score: 2
+  evaluation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-eval"
+    score: 0
+  flywheel:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-training-policy"
+    score: 0
+  implementation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "inventory://config/division-coverage/inventory/division-inventory.generated.json#canonical-meta-model"
+    score: 1
+  operation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-redteam"
+    score: 0
+familyId: unknown-family
+generator:
+  generatedAt: "2026-06-01T00:00:00.000Z"
+  managedBy: scripts/generate-division-coverage-cards.mjs
+inventoryRefs:
+  docRefs: []
+  evalRefs: []
+  redTeamRefs: []
+  scenarioRefs: []
+  trainingPolicyRefs: []
+notes: "Coverage card generated from inventory; blockers require follow-up before promotion."
+owner: TBD-owner
+raci:
+  approver: unknown-family-approver
+  consulted:
+    - architecture-owner
+    - security-owner
+  informed:
+    - release-owner
+  owner: TBD-owner
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+riskLevel: medium
+status: untracked

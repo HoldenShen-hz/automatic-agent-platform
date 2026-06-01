@@ -1,0 +1,16 @@
+{
+  "datasetId": "swe-style-heldout-v1",
+  "divisionId": "coding",
+  "scenarioId": "issue-to-patch",
+  "version": "2026.06",
+  "source": "internal_repository_snapshots",
+  "taskCount": 60,
+  "split": "heldout",
+  "contaminationStatus": "clean",
+  "privacyStatus": "restricted",
+  "labelingMethod": "maintainer_review",
+  "allowedForTraining": false,
+  "allowedForReleaseGate": true,
+  "retentionPolicyRef": "training-data-policy/revocation.yaml",
+  "frozenHash": "sha256:swe-style-heldout-v1"
+}

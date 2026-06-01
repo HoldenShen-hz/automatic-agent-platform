@@ -1,0 +1,36 @@
+toolId: knowledge-search
+actions:
+  - actionId: retrieve_sources
+    riskClass: R0
+    sideEffect: none
+    reversible: true
+    requiresHITL: false
+    requiresPreparedAction: false
+    rollbackPolicyRef: docs_zh/pilots/knowledge-pilot.md
+    dataClassesTouched:
+      - citation
+      - public_source
+    allowedFamilies:
+      - knowledge-research
+  - actionId: draft_conclusion
+    riskClass: R1
+    sideEffect: none
+    reversible: true
+    requiresHITL: false
+    requiresPreparedAction: false
+    rollbackPolicyRef: docs_zh/pilots/knowledge-pilot.md
+    dataClassesTouched:
+      - citation
+    allowedFamilies:
+      - knowledge-research
+  - actionId: draft_experiment
+    riskClass: R1
+    sideEffect: none
+    reversible: true
+    requiresHITL: false
+    requiresPreparedAction: false
+    rollbackPolicyRef: docs_zh/pilots/knowledge-pilot.md
+    dataClassesTouched:
+      - citation
+    allowedFamilies:
+      - knowledge-research

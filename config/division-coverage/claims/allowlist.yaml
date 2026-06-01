@@ -1,5 +1,5 @@
 version: 1
-updatedAt: "2026-05-31T00:00:00Z"
+updatedAt: "2026-06-01T00:00:00Z"
 entries:
   - filePath: docs_zh/reference/automatic_agent_platform_v3_2_final_release.md
     matchedText: industry-leading
@@ -90,4 +90,54 @@ entries:
     matchedText: production-ready
     reason: contract_definition
     owner: platform-quality-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/governance/division-coverage-sot.md
+    matchedText: industry-leading
+    reason: governance_definition_reference
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md
+    matchedText: industry-leading
+    reason: governance_todo_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md
+    matchedText: 行业领先
+    reason: governance_todo_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md
+    matchedText: production-ready
+    reason: governance_todo_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md
+    matchedText: best-in-class
+    reason: governance_todo_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md
+    matchedText: fully autonomous
+    reason: governance_todo_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+    matchedText: 行业领先
+    reason: release_readiness_negative_statement
+    owner: release-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+    matchedText: production-ready
+    reason: release_readiness_negative_statement
+    owner: release-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reviews/v3_2_release_baseline_verification.md
+    matchedText: industry-leading
+    reason: review_negative_statement
+    owner: architecture-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reviews/v3_2_release_baseline_verification.md
+    matchedText: production-ready
+    reason: review_negative_statement
+    owner: architecture-owner
     expiresAt: "2027-12-31T00:00:00Z"

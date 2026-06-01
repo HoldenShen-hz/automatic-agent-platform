@@ -1,0 +1,15 @@
+familyId: knowledge-research
+defaultRiskLevel: medium
+defaultAutonomyBoundary: draft_only
+requiredEvalSuites:
+  - eval/divisions/knowledge-base/eval-suite.yaml
+requiredRedTeamSuites:
+  - redteam/divisions/knowledge-base/redteam-suite.yaml
+defaultToolPolicyRef: config/tool-risk/taxonomy.yaml
+defaultMemoryPolicyRef: docs_zh/governance/source_of_truth.md
+defaultTrainingDataPolicyRef: training-data-policy/divisions/knowledge-base.yaml
+defaultReleaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+leadershipTargetsRef: docs_zh/divisions/knowledge-base/leadership-evidence/release-readiness.md
+highRiskOverrides:
+  unrestrictedModelRouting: restricted
+  trainingExportPolicy: public_or_redacted_only

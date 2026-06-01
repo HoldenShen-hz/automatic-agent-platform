@@ -584,6 +584,7 @@ function buildSandboxReadRoots(workspaceRoot: string, execArgs: readonly string[
     resolve(workspaceRoot, "src"),
     resolve(workspaceRoot, "dist"),
     resolve(workspaceRoot, "node_modules"),
+    resolve(workspaceRoot, "divisions"),
     resolve(workspaceRoot, "package.json"),
   ];
   for (const arg of execArgs) {
@@ -717,6 +718,7 @@ function buildPluginRuntimeEnvironment(options: BuildPluginRuntimeEnvironmentOpt
     env.AA_PLUGIN_SANDBOX_ROOT = options.sandboxRoot;
   }
   env.AA_PLUGIN_WORKSPACE_ROOT = options.workspaceRoot;
+  env.AA_DIVISIONS_ROOT = resolve(options.workspaceRoot, "divisions");
   return env;
 }
 

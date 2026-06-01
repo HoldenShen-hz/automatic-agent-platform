@@ -16,6 +16,7 @@ import test from "node:test";
 import { newId } from "../../../../src/platform/contracts/types/ids.js";
 import { GoalDecompositionService, type Goal, type LlmPlanGenerator } from "../../../../src/interaction/goal-decomposer/index.js";
 import type { LlmPlan } from "../../../../src/interaction/goal-decomposer/llm-plan-generator.js";
+import { reportSoftPerformanceMiss } from "../../../helpers/performance.js";
 
 // ─── Test Factories ───────────────────────────────────────────────────────────
 

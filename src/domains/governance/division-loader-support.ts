@@ -87,6 +87,10 @@ export interface RawWorkflowConfig {
 }
 
 function resolveDefaultDivisionsRoot(): string {
+  const envOverride = process.env.AA_DIVISIONS_ROOT?.trim();
+  if (envOverride) {
+    return envOverride;
+  }
   const startDir = dirname(fileURLToPath(import.meta.url));
   const candidates = [
     join(process.cwd(), "divisions"),

@@ -35,6 +35,13 @@ export interface StableReleaseGateOptions {
   evidenceRootDir?: string;
   /** Target status to evaluate promotion toward */
   targetStatus?: StableGateTargetStatus;
+  /** Optional governance assertions used by family-specific release guards */
+  governanceContext?: {
+    readonly familyId?: string | null;
+    readonly autonomousFinalDecisionEnabled?: boolean;
+    readonly autonomousExternalWriteEnabled?: boolean;
+    readonly unrestrictedModelRoutingEnabled?: boolean;
+  };
 }
 
 /** A single gate criterion with pass/fail/partial status */
@@ -57,6 +64,7 @@ export interface StableGateCriterion {
     | "queue_delivery_tested"
     | "migration_compatibility_tested"
     | "stable_acceptance_line"
+    | "regulated_no_autonomy_guard"
     | "runbooks_documented"
     | "rollback_tested"
     | "ownership_defined";
@@ -270,6 +278,7 @@ export function buildStableReleaseGateReport(options: StableReleaseGateOptions):
   const targetStatus = options.targetStatus ?? "canary";
   const requiredCriterionIds = resolveRequiredCriterionIds(targetStatus);
   const requiredProfiles = resolveRequiredProfiles(targetStatus);
+  const governanceContext = options.governanceContext;
   const reports = collectEvidenceReports(options.evidenceRootDir ?? resolveDefaultEvidenceRootDir(), requiredProfiles);
   const checkedAt = new Date().toISOString();
 
@@ -318,6 +327,13 @@ export function buildStableReleaseGateReport(options: StableReleaseGateOptions):
   const acceptanceAvailable = acceptanceSnapshots.length > 0;
   const documentedRunbooks = REQUIRED_RUNBOOK_REFS.filter((ref) => existsSync(ref));
   const missingRunbooks = REQUIRED_RUNBOOK_REFS.filter((ref) => !existsSync(ref));
+  const regulatedGuardViolated =
+    governanceContext?.familyId === "regulated"
+    && (
+      governanceContext.autonomousFinalDecisionEnabled === true
+      || governanceContext.autonomousExternalWriteEnabled === true
+      || governanceContext.unrestrictedModelRoutingEnabled === true
+    );
   const acceptanceDetail =
     acceptancePassed
       ? acceptanceSnapshots.find((snapshot) => snapshot.status === "pass")?.detail ?? "stable acceptance line passed"
@@ -619,6 +635,22 @@ export function buildStableReleaseGateReport(options: StableReleaseGateOptions):
       evidenceRefs: acceptanceEvidenceRefs,
     },
     {
+      criterionId: "regulated_no_autonomy_guard",
+      status:
+        governanceContext?.familyId !== "regulated"
+          ? "pass"
+          : regulatedGuardViolated
+            ? "fail"
+            : "pass",
+      detail:
+        governanceContext?.familyId !== "regulated"
+          ? "regulated no-autonomy guard not applicable for this family"
+          : regulatedGuardViolated
+            ? "regulated family release enables autonomous final decision, external write, or unrestricted model routing"
+            : "regulated family release keeps autonomous final decision, external write, and unrestricted model routing disabled",
+      evidenceRefs: [],
+    },
+    {
       criterionId: "runbooks_documented",
       status: missingRunbooks.length === 0 ? "pass" : "fail",
       detail:
@@ -653,6 +685,10 @@ export function buildStableReleaseGateReport(options: StableReleaseGateOptions):
     },
   ];
 
+  if (governanceContext?.familyId === "regulated") {
+    requiredCriterionIds.add("regulated_no_autonomy_guard");
+  }
+
   // Split into required and optional criteria
   const requiredCriteria = criteria.filter((criterion) => requiredCriterionIds.has(criterion.criterionId));
   const optionalCriteria = criteria.filter((criterion) => !requiredCriterionIds.has(criterion.criterionId));
@@ -661,6 +697,10 @@ export function buildStableReleaseGateReport(options: StableReleaseGateOptions):
   const hasRequiredFailures = requiredCriteria.some((criterion) => criterion.status === "fail");
   const hasRequiredPartials = requiredCriteria.some((criterion) => criterion.status === "partial");
   const grayCriterion = criteria.find((criterion) => criterion.criterionId === "tenant_gray_rollout_tested");
+
+  if (regulatedGuardViolated) {
+    blockers.push("regulated no-autonomy guard violated");
+  }
 
   const overallVerdict: StableGateVerdict =
     !smokeReport || hasRequiredFailures

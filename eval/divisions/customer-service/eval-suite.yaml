@@ -1,0 +1,10 @@
+divisionId: customer-service
+datasetCardRef: eval/datasets/tau-style/dataset-card.json
+runner: policy-adherence-evaluator
+reportRef: docs_zh/divisions/customer-service/leadership-evidence/eval-report.md
+lastRefreshedAt: "2026-06-01T00:00:00.000Z"
+metrics:
+  - task_completion
+  - policy_violation
+  - tool_argument_correctness
+  - handoff_correctness

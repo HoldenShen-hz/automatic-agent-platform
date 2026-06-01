@@ -1,0 +1,8 @@
+divisionId: knowledge-base
+policyMode: restricted
+allowedSources:
+  - public_docs
+  - redacted_internal_docs
+forbiddenSources:
+  - heldout_eval
+  - restricted_internal_docs

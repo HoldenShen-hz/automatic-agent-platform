@@ -514,6 +514,10 @@ export interface LeadershipClaimRecordDTO {
   readonly expiresAt: string | null;
   readonly status: LeadershipClaimStatusDTO;
   readonly effectiveStatus: LeadershipClaimStatusDTO;
+  readonly effectiveStatusReasonCode: string | null;
+  readonly revokedBy: string | null;
+  readonly revokedAt: string | null;
+  readonly replacementRequired: boolean;
 }
 
 export interface LeadershipClaimAllowlistEntryDTO {
@@ -547,6 +551,10 @@ export interface LeadershipClaimReviewRequestDTO {
   readonly rationale: string;
   readonly requestedAt: string;
   readonly status: "pending" | "approved" | "rejected";
+  readonly reviewedBy: string | null;
+  readonly reviewedAt: string | null;
+  readonly decisionReasonCode: string | null;
+  readonly decisionComment: string | null;
 }
 
 export interface LeadershipNoGoActionDTO {
@@ -575,6 +583,44 @@ export interface LeadershipClaimsConsoleDTO {
     readonly pendingReviewRequestCount: number;
     readonly blockedScannerHitCount: number;
     readonly expiredAllowlistCount: number;
+    readonly revokedClaimCount: number;
+    readonly expiredClaimCount: number;
+  };
+}
+
+export interface DivisionInventoryRecordDTO {
+  readonly divisionId: string;
+  readonly normalizedDivisionId: string;
+  readonly familyId: string | null;
+  readonly legacyFamily?: string | null;
+  readonly status: string;
+  readonly riskLevel: string;
+  readonly hasDivisionYaml: boolean;
+  readonly hasCoverageCard: boolean;
+  readonly hasScenarioCard: boolean;
+  readonly hasEval: boolean;
+  readonly hasRedTeam: boolean;
+  readonly hasTrainingPolicy: boolean;
+  readonly hasOwner: boolean;
+  readonly coverageCardPath?: string | null;
+  readonly scenarioRefs?: readonly string[];
+  readonly evalRefs?: readonly string[];
+  readonly redTeamRefs?: readonly string[];
+  readonly trainingPolicyRefs?: readonly string[];
+  readonly docRefs?: readonly string[];
+  readonly testRefs?: readonly string[];
+  readonly uiRefs?: readonly string[];
+  readonly blockers: readonly string[];
+}
+
+export interface DivisionInventorySnapshotDTO {
+  readonly generatedAt: string;
+  readonly records: readonly DivisionInventoryRecordDTO[];
+  readonly summary: {
+    readonly totalDivisions: number;
+    readonly p0Divisions: number;
+    readonly blockedDivisions: number;
+    readonly orphanSourceModules: number;
   };
 }
 

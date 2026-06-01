@@ -4,7 +4,7 @@
     "title": "Automatic Agent API",
     "version": "0.1.0"
   },
-  "pathCount": 84,
+  "pathCount": 87,
   "pathKeys": [
     "/health",
     "/healthz",
@@ -15,6 +15,9 @@
     "/v1/admin/control-plane/load-balancing/select",
     "/v1/admin/governance/leadership-claims",
     "/v1/admin/governance/leadership-claims/review-requests",
+    "/v1/admin/governance/leadership-claims/review-requests/{requestId}/approve",
+    "/v1/admin/governance/leadership-claims/review-requests/{requestId}/reject",
+    "/v1/admin/governance/leadership-claims/{claimId}/revoke",
     "/v1/admin/inventories/benchmarks",
     "/v1/admin/inventories/deployments",
     "/v1/admin/inventories/projections",

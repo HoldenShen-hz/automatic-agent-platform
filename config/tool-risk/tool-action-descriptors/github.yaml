@@ -1,0 +1,15 @@
+toolId: github
+actions:
+  - actionId: create_pr_draft
+    riskClass: R3
+    sideEffect: external_write
+    reversible: true
+    requiresHITL: false
+    requiresPreparedAction: true
+    rollbackPolicyRef: docs_zh/pilots/engineering-pilot.md
+    dataClassesTouched:
+      - source_code
+      - metadata
+    allowedFamilies:
+      - engineering
+    trustedSourcesOnly: true

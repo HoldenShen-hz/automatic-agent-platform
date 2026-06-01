@@ -1,7 +1,47 @@
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel, KeyValueTable, ListCard } from "@aa/ui-core";
 import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
 import { useReleaseConsoleVm } from "../hooks";
+
+function statusTone(status: string): string {
+  if (status === "revoked" || status === "expired" || status === "blocked" || status === "expired_allowlist" || status === "rejected") {
+    return "#9f1239";
+  }
+  if (status === "pending" || status === "partial") {
+    return "#92400e";
+  }
+  return "#166534";
+}
+
+function GovernanceSection(props: {
+  readonly title: string;
+  readonly children: ReactNode;
+}): ReactElement {
+  return (
+    <section style={{ display: "grid", gap: 12, padding: 16, border: "1px solid #d6d3d1", borderRadius: 12, background: "#fffdf8" }}>
+      <h3 style={{ margin: 0 }}>{props.title}</h3>
+      {props.children}
+    </section>
+  );
+}
+
+function GovernanceRow(props: {
+  readonly title: string;
+  readonly description: string;
+  readonly status: string;
+  readonly action?: ReactNode;
+}): ReactElement {
+  return (
+    <div style={{ display: "grid", gap: 8, padding: 12, borderRadius: 10, background: "#ffffff", border: "1px solid #e7e5e4" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+        <strong>{props.title}</strong>
+        <span style={{ color: statusTone(props.status), fontWeight: 700 }}>{props.status}</span>
+      </div>
+      <div style={{ color: "#44403c", whiteSpace: "pre-wrap" }}>{props.description}</div>
+      {props.action ?? null}
+    </div>
+  );
+}
 
 export function ReleaseConsoleWebView(): ReactElement {
   const vm = useReleaseConsoleVm();
@@ -18,15 +58,16 @@ export function ReleaseConsoleWebView(): ReactElement {
         ]}
       />
       <div style={{ display: "grid", gap: 16, marginTop: 24 }}>
-        <div>
-          <h3>{translateMessage("ui.releaseConsole.summary.title")}</h3>
+        <GovernanceSection title={translateMessage("ui.releaseConsole.summary.title")}>
           {vm.loading ? <p>{translateMessage("ui.releaseConsole.loading")}</p> : <KeyValueTable rows={vm.summaryRows} />}
-        </div>
+        </GovernanceSection>
         {vm.leadershipClaims != null ? (
-          <ListCard items={vm.leadershipClaims.families.map((family) => ({
-            title: family.displayName,
-            description: `${family.readinessStatus} / ${family.targetClaimLevel} / ${family.owner}`,
-          }))} />
+          <GovernanceSection title="Family readiness">
+            <ListCard items={vm.leadershipClaims.families.map((family) => ({
+              title: family.displayName,
+              description: `${family.readinessStatus} / ${family.targetClaimLevel} / ${family.owner}`,
+            }))} />
+          </GovernanceSection>
         ) : null}
       </div>
     </FeatureScaffold>
@@ -42,45 +83,114 @@ export function LeadershipClaimsWebView(): ReactElement {
         <p>{translateMessage("ui.releaseConsole.loading")}</p>
       ) : (
         <div style={{ display: "grid", gap: 24 }}>
-          <div>
-            <h3>{translateMessage("ui.releaseConsole.summary.title")}</h3>
+          <GovernanceSection title={translateMessage("ui.releaseConsole.summary.title")}>
             <KeyValueTable rows={vm.summaryRows} />
-          </div>
-          <div>
-            <h3>{translateMessage("ui.releaseConsole.claims.families")}</h3>
-            <ListCard items={vm.leadershipClaims.families.map((family) => ({
-              title: `${family.displayName} · ${family.readinessStatus}`,
-              description: `${family.targetClaimLevel} / ${family.canonicalDivisions.join(", ")}`,
-            }))} />
-          </div>
-          <div>
-            <h3>{translateMessage("ui.releaseConsole.claims.records")}</h3>
-            <ListCard items={vm.leadershipClaims.claims.map((claim) => ({
-              title: `${claim.familyId} · ${claim.claimLevel} · ${claim.effectiveStatus}`,
-              description: claim.claimText,
-            }))} />
-          </div>
-          <div>
-            <h3>{translateMessage("ui.releaseConsole.claims.scannerHits")}</h3>
-            <ListCard items={vm.leadershipClaims.scannerHits.map((hit) => ({
-              title: `${hit.status} · ${hit.matchedText}`,
-              description: `${hit.filePath}:${hit.lineNumber} · ${hit.reason ?? "unreviewed"}`,
-            }))} />
-          </div>
-          <div>
-            <h3>{translateMessage("ui.releaseConsole.claims.reviewRequests")}</h3>
-            <ListCard items={vm.leadershipClaims.reviewRequests.map((request) => ({
-              title: `${request.familyId} · ${request.requestedClaimLevel} · ${request.status}`,
-              description: `${request.requestedBy} / ${request.rationale}`,
-            }))} />
-          </div>
-          <div>
-            <h3>{translateMessage("ui.releaseConsole.claims.noGoActions")}</h3>
-            <ListCard items={vm.leadershipClaims.noGoActions.map((action) => ({
-              title: `${action.id} · ${action.riskClass}`,
-              description: `${action.description} / ${action.blockModes.join(", ")}`,
-            }))} />
-          </div>
+            {vm.errorMessage != null ? <p style={{ color: "#9f1239", margin: 0 }}>{vm.errorMessage}</p> : null}
+          </GovernanceSection>
+
+          <GovernanceSection title="Family readiness">
+            <div style={{ display: "grid", gap: 12 }}>
+              {vm.leadershipClaims.families.map((family) => (
+                <GovernanceRow
+                  key={family.familyId}
+                  title={`${family.displayName} · ${family.readinessStatus}`}
+                  status={family.targetClaimLevel}
+                  description={[
+                    `Owner: ${family.owner}`,
+                    `Divisions: ${family.canonicalDivisions.join(", ") || "n/a"}`,
+                    `MVP thresholds: ${family.mvpThresholds.map((item) => `${item.label} ${item.requirement}`).join(" / ") || "n/a"}`,
+                    `Leadership thresholds: ${family.leadershipThresholds.map((item) => `${item.label} ${item.requirement}`).join(" / ") || "n/a"}`,
+                  ].join("\n")}
+                />
+              ))}
+            </div>
+          </GovernanceSection>
+
+          <GovernanceSection title="Claim records">
+            <div style={{ display: "grid", gap: 12 }}>
+              {vm.leadershipClaims.claims.map((claim) => (
+                <GovernanceRow
+                  key={claim.claimId}
+                  title={`${claim.familyId} · ${claim.claimLevel} · ${claim.effectiveStatus}`}
+                  status={claim.effectiveStatus}
+                  description={[
+                    claim.claimText,
+                    `Evidence: ${claim.evidenceRefs.join(", ") || "n/a"}`,
+                    `Expires: ${claim.expiresAt ?? "none"}`,
+                    `Reason: ${claim.effectiveStatusReasonCode ?? "n/a"}`,
+                    `Revoked by: ${claim.revokedBy ?? "n/a"}`,
+                  ].join("\n")}
+                  action={
+                    claim.effectiveStatus === "approved" ? (
+                      <button type="button" disabled={vm.mutating} onClick={() => void vm.revokeClaim(claim.claimId)}>
+                        Revoke claim
+                      </button>
+                    ) : undefined
+                  }
+                />
+              ))}
+            </div>
+          </GovernanceSection>
+
+          <GovernanceSection title="Scanner hits">
+            <div style={{ display: "grid", gap: 12 }}>
+              {vm.leadershipClaims.scannerHits.map((hit) => (
+                <GovernanceRow
+                  key={`${hit.filePath}:${hit.lineNumber}:${hit.matchedText}`}
+                  title={`${hit.status} · ${hit.matchedText}`}
+                  status={hit.status}
+                  description={`${hit.filePath}:${hit.lineNumber}\n${hit.excerpt}\n${hit.reason ?? "unreviewed"}`}
+                />
+              ))}
+            </div>
+          </GovernanceSection>
+
+          <GovernanceSection title="Review requests">
+            <div style={{ display: "grid", gap: 12 }}>
+              {vm.leadershipClaims.reviewRequests.map((request) => (
+                <GovernanceRow
+                  key={request.requestId}
+                  title={`${request.familyId} · ${request.requestedClaimLevel} · ${request.status}`}
+                  status={request.status}
+                  description={[
+                    `${request.requestedBy} / ${request.rationale}`,
+                    `Surfaces: ${request.requestedSurfaces.join(", ")}`,
+                    `Decision: ${request.decisionReasonCode ?? "pending"}`,
+                  ].join("\n")}
+                  action={
+                    request.status === "pending" ? (
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button type="button" disabled={vm.mutating} onClick={() => void vm.approveReviewRequest(request.requestId)}>
+                          Approve review
+                        </button>
+                        <button type="button" disabled={vm.mutating} onClick={() => void vm.rejectReviewRequest(request.requestId)}>
+                          Reject review
+                        </button>
+                      </div>
+                    ) : undefined
+                  }
+                />
+              ))}
+            </div>
+          </GovernanceSection>
+
+          <GovernanceSection title="No-go actions">
+            <div style={{ display: "grid", gap: 12 }}>
+              {vm.leadershipClaims.noGoActions.map((action) => (
+                <GovernanceRow
+                  key={`${action.familyId ?? "global"}:${action.id}`}
+                  title={`${action.id} · ${action.riskClass}`}
+                  status={action.familyId ?? "global"}
+                  description={[
+                    action.description,
+                    `Scopes: ${action.scopes.join(", ") || "n/a"}`,
+                    `Surfaces: ${action.enforcementSurfaces.join(", ") || "n/a"}`,
+                    `Block modes: ${action.blockModes.join(", ") || "n/a"}`,
+                  ].join("\n")}
+                />
+              ))}
+            </div>
+          </GovernanceSection>
         </div>
       )}
     </FeatureScaffold>

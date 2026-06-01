@@ -1,0 +1,66 @@
+autonomyBoundary: no_autonomous_high_impact_action
+blockers: []
+divisionId: financial-services
+evidence:
+  design:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "docs://docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md#financial-services"
+    score: 2
+  evaluation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-eval"
+    score: 0
+  flywheel:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-training-policy"
+    score: 0
+  implementation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "inventory://config/division-coverage/inventory/division-inventory.generated.json#financial-services"
+    score: 2
+  operation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-redteam"
+    score: 0
+familyId: regulated
+generator:
+  generatedAt: "2026-06-01T00:00:00.000Z"
+  managedBy: scripts/generate-division-coverage-cards.mjs
+inventoryRefs:
+  docRefs:
+    - docs_en/adr/107-financial-services-explainable-decisions.md
+    - docs_en/domains/financial-services/domain-spec.md
+    - docs_zh/adr/107-financial-services-explainable-decisions.md
+    - docs_zh/domains/financial-services/domain-spec.md
+  evalRefs: []
+  redTeamRefs: []
+  scenarioRefs: []
+  trainingPolicyRefs: []
+notes: "Coverage card generated from inventory with no open structural blocker."
+owner: finance-owner
+raci:
+  approver: regulated-approver
+  consulted:
+    - architecture-owner
+    - security-owner
+  informed:
+    - release-owner
+  owner: finance-owner
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+riskLevel: critical
+status: coverage_draft

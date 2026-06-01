@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aa://eval/eval-dataset-card.schema.json",
+  "type": "object",
+  "required": [
+    "datasetId",
+    "divisionId",
+    "scenarioId",
+    "version",
+    "source",
+    "taskCount",
+    "split",
+    "contaminationStatus",
+    "privacyStatus",
+    "labelingMethod",
+    "allowedForTraining",
+    "allowedForReleaseGate",
+    "retentionPolicyRef",
+    "frozenHash"
+  ],
+  "properties": {
+    "datasetId": { "type": "string" },
+    "divisionId": { "type": "string" },
+    "scenarioId": { "type": "string" },
+    "version": { "type": "string" },
+    "source": { "type": "string" },
+    "taskCount": { "type": "integer", "minimum": 1 },
+    "split": { "type": "string", "enum": ["train", "heldout", "release", "shadow"] },
+    "contaminationStatus": { "type": "string", "enum": ["clean", "suspected", "unknown"] },
+    "privacyStatus": { "type": "string", "enum": ["public", "internal", "redacted", "restricted"] },
+    "labelingMethod": { "type": "string" },
+    "allowedForTraining": { "type": "boolean" },
+    "allowedForReleaseGate": { "type": "boolean" },
+    "retentionPolicyRef": { "type": "string" },
+    "frozenHash": { "type": "string" }
+  },
+  "additionalProperties": true
+}

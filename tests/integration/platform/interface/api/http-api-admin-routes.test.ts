@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import test from "node:test";
 
 import type { InjectResponse } from "../../../../../src/platform/five-plane-interface/api/http-api-server.js";
-import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
+import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 import { createSeededApiContext } from "../../../../helpers/api.js";
 
 interface Envelope<T> {
@@ -174,6 +175,88 @@ test("integration: GET /v1/admin/governance/leadership-claims returns leadership
     assert.ok(payload.data.families.some((family) => family.familyId === "engineering"));
     assert.ok(payload.data.claims.length >= 1);
   } finally {
+    context.db.close();
+    cleanupPath(workspace);
+  }
+});
+
+test("integration: GET /v1/admin/governance/division-inventory returns generated inventory", async () => {
+  const originalPlatformRoot = process.env.AA_PLATFORM_ROOT;
+  const workspace = createTempWorkspace("aa-admin-division-inventory-int-");
+  createFile(join(workspace, "config", "division-coverage", "inventory", "division-inventory.generated.json"), JSON.stringify({
+    generatedAt: "2026-06-01T00:00:00.000Z",
+    records: [{ divisionId: "coding", normalizedDivisionId: "coding", familyId: "engineering", status: "pilot_ready", riskLevel: "high", hasDivisionYaml: true, hasCoverageCard: true, hasScenarioCard: true, hasEval: true, hasRedTeam: true, hasTrainingPolicy: true, hasOwner: true, blockers: [] }],
+    summary: { totalDivisions: 1, p0Divisions: 1, blockedDivisions: 0, orphanSourceModules: 0 },
+  }, null, 2));
+  process.env.AA_PLATFORM_ROOT = workspace;
+  const context = createSeededApiContext(workspace);
+  const server = context.createServer();
+
+  try {
+    const accessToken = await getAccessToken(server);
+
+    const response = await server.inject({
+      url: "/v1/admin/governance/division-inventory",
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    assert.equal(response.statusCode, 200);
+    const payload = readJson<{ summary: { totalDivisions: number }; records: Array<{ divisionId: string }> }>(response);
+    assert.equal(payload.data.summary.totalDivisions, 1);
+    assert.equal(payload.data.records[0]?.divisionId, "coding");
+  } finally {
+    if (originalPlatformRoot == null) {
+      delete process.env.AA_PLATFORM_ROOT;
+    } else {
+      process.env.AA_PLATFORM_ROOT = originalPlatformRoot;
+    }
+    context.db.close();
+    cleanupPath(workspace);
+  }
+});
+
+test("integration: POST /v1/admin/governance/leadership-claims/review-requests/:requestId/approve updates a pending request", async () => {
+  const originalDataRoot = process.env.AA_DATA_ROOT;
+  const workspace = createTempWorkspace("aa-admin-leadership-approve-int-");
+  createFile(join(workspace, "data", "governance", "leadership-claim-review-requests.json"), JSON.stringify([
+    {
+      requestId: "req-1",
+      familyId: "engineering",
+      requestedClaimLevel: "local_leader",
+      requestedSurfaces: ["docs"],
+      requestedBy: "release-owner",
+      rationale: "ready",
+      requestedAt: "2026-05-31T00:00:00.000Z",
+      status: "pending",
+    },
+  ], null, 2));
+  process.env.AA_DATA_ROOT = join(workspace, "data");
+  const context = createSeededApiContext(workspace);
+  const server = context.createServer();
+
+  try {
+    const accessToken = await getAccessToken(server);
+
+    const response = await server.inject({
+      url: "/v1/admin/governance/leadership-claims/review-requests/req-1/approve",
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+        "idempotency-key": "leadership-claim-approve-1",
+      },
+      body: JSON.stringify({ reasonCode: "operator.approved" }),
+    });
+    assert.equal(response.statusCode, 200);
+    const payload = readJson<{ reviewRequest: { requestId: string; status: string; reviewedBy: string | null } }>(response);
+    assert.equal(payload.data.reviewRequest.requestId, "req-1");
+    assert.equal(payload.data.reviewRequest.status, "approved");
+    assert.equal(payload.data.reviewRequest.reviewedBy, "operator-1");
+  } finally {
+    if (originalDataRoot == null) {
+      delete process.env.AA_DATA_ROOT;
+    } else {
+      process.env.AA_DATA_ROOT = originalDataRoot;
+    }
     context.db.close();
     cleanupPath(workspace);
   }

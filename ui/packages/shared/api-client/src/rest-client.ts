@@ -4,6 +4,7 @@ import type {
   ApprovalDTO,
   CostReportDTO,
   DashboardSnapshotDTO,
+  DivisionInventorySnapshotDTO,
   DomainConfigDTO,
   ExplanationDTO,
   FeatureFlagDTO,
@@ -140,7 +141,19 @@ export class MockTransport {
     | SystemConfigDTO
     | UserPreferenceDTO
     | LeadershipClaimsConsoleDTO
+    | DivisionInventorySnapshotDTO
     | { reviewRequest: { requestId: string; familyId: string; requestedBy: string; status: string } }
+    | { reviewRequest: { requestId: string; status: string; reviewedBy: string | null } }
+    | {
+      statusOverride: {
+        claimId: string;
+        status: string;
+        reasonCode: string;
+        revokedBy: string;
+        revokedAt: string;
+        replacementRequired: boolean;
+      };
+    }
     | { ok: true; body?: unknown } {
     if (path.includes("/dashboard")) {
       return this.data.dashboard;
@@ -209,7 +222,20 @@ export class MockTransport {
     if (path.includes("/preferences")) {
       return this.data.preferences;
     }
+    if (path.includes("/admin/governance/division-inventory")) {
+      return this.data.divisionInventory;
+    }
     if (path.includes("/admin/governance/leadership-claims/review-requests")) {
+      if (path.endsWith("/approve") || path.endsWith("/reject")) {
+        const requestId = path.split("/review-requests/")[1]?.split("/")[0] ?? generateStableId("leadership-claim-review");
+        return {
+          reviewRequest: {
+            requestId,
+            status: path.endsWith("/approve") ? "approved" : "rejected",
+            reviewedBy: "mock-admin",
+          },
+        };
+      }
       const requestBody = body != null && typeof body === "object" ? body as Record<string, unknown> : {};
       return {
         reviewRequest: {
@@ -217,6 +243,20 @@ export class MockTransport {
           familyId: typeof requestBody.familyId === "string" ? requestBody.familyId : "unknown-family",
           requestedBy: "mock-admin",
           status: "pending",
+        },
+      };
+    }
+    if (path.includes("/admin/governance/leadership-claims/") && path.endsWith("/revoke")) {
+      const requestBody = body != null && typeof body === "object" ? body as Record<string, unknown> : {};
+      const claimId = path.split("/leadership-claims/")[1]?.split("/")[0] ?? generateStableId("leadership-claim");
+      return {
+        statusOverride: {
+          claimId,
+          status: "revoked",
+          reasonCode: typeof requestBody.reasonCode === "string" ? requestBody.reasonCode : "claim.revoked",
+          revokedBy: "mock-admin",
+          revokedAt: "2026-05-31T00:00:00.000Z",
+          replacementRequired: requestBody.replacementRequired === true,
         },
       };
     }

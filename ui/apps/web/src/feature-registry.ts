@@ -248,6 +248,13 @@ const featureDescriptors: readonly LazyFeatureDescriptor[] = [
     load: async () => import("@aa/feature-memory-review"),
   },
   {
+    id: "division-inventory",
+    group: "Governance",
+    path: "/governance/division-inventory",
+    status: "Implemented/Partial",
+    load: async () => import("@aa/feature-division-inventory"),
+  },
+  {
     id: "release-console",
     group: "Operations",
     path: "/operations/release-console",

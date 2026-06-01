@@ -22,4 +22,4 @@ for file in "${TEST_FILES[@]}"; do
   fi
 done
 
-node --import tsx --test "${TEST_FILES[@]}"
+node scripts/run-node-tests.mjs "${TEST_FILES[@]}"

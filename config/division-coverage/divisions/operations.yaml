@@ -1,0 +1,126 @@
+autonomyBoundary: hitl_required
+blockers: []
+divisionId: operations
+evidence:
+  design:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "docs://docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md#operations"
+    score: 2
+  evaluation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-eval"
+    score: 0
+  flywheel:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-training-policy"
+    score: 0
+  implementation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "inventory://config/division-coverage/inventory/division-inventory.generated.json#operations"
+    score: 2
+  operation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-redteam"
+    score: 0
+familyId: enterprise-ops
+generator:
+  generatedAt: "2026-06-01T00:00:00.000Z"
+  managedBy: scripts/generate-division-coverage-cards.mjs
+inventoryRefs:
+  docRefs:
+    - docs_en/adr/043-unified-operations-dashboard.md
+    - docs_en/adr/089-ai-operations-governance-and-quality.md
+    - docs_en/adr/090-runtime-data-reliability-and-operations.md
+    - docs_en/contracts/enterprise_operations_plane_contract.md
+    - docs_en/domains/it-operations/domain-spec.md
+    - docs_en/domains/user-operations/domain-spec.md
+    - docs_en/operations/archive/current_todo_list-history-2026-05-14.md
+    - docs_en/operations/capacity-planning.md
+    - docs_en/operations/cross-region-validation.md
+    - docs_en/operations/current_todo_list.md
+    - docs_en/operations/dependency-upgrade-plan.md
+    - docs_en/operations/disaster-recovery-runbook.md
+    - docs_en/operations/hot-upgrade-validation.md
+    - docs_en/operations/implementation_plan.md
+    - docs_en/operations/npm-scripts.md
+    - docs_en/operations/operations-checklist.md
+    - docs_en/operations/operations-roadmap.md
+    - docs_en/operations/operations-tracker.md
+    - docs_en/operations/postmortem-template.md
+    - docs_en/operations/project_progress_tracker.md
+    - docs_en/operations/README.md
+    - docs_en/operations/release-versioning.md
+    - docs_en/operations/review-closure-board.md
+    - docs_en/operations/review-prevention-plan.md
+    - docs_en/operations/runbook.md
+    - docs_en/operations/runbooks/incident-response-playbook.md
+    - docs_en/operations/runbooks/runbook-database-issues.md
+    - docs_en/operations/runbooks/runbook-high-error-rate.md
+    - docs_en/operations/runbooks/runbook-memory-pressure.md
+    - docs_en/operations/runbooks/runbook-plugin-failure.md
+    - docs_en/operations/src_module_test_matrix.md
+    - docs_en/operations/test_coverage_baseline_gate.md
+    - docs_zh/adr/043-unified-operations-dashboard.md
+    - docs_zh/adr/089-ai-operations-governance-and-quality.md
+    - docs_zh/adr/090-runtime-data-reliability-and-operations.md
+    - docs_zh/contracts/enterprise_operations_plane_contract.md
+    - docs_zh/domains/it-operations/domain-spec.md
+    - docs_zh/domains/user-operations/domain-spec.md
+    - docs_zh/operations/archive/current_todo_list-history-2026-05-14.md
+    - docs_zh/operations/capacity-planning.md
+    - docs_zh/operations/cross-region-validation.md
+    - docs_zh/operations/current_todo_list.md
+    - docs_zh/operations/dependency-upgrade-plan.md
+    - docs_zh/operations/disaster-recovery-runbook.md
+    - docs_zh/operations/hot-upgrade-validation.md
+    - docs_zh/operations/implementation_plan.md
+    - docs_zh/operations/npm-scripts.md
+    - docs_zh/operations/operations-checklist.md
+    - docs_zh/operations/operations-roadmap.md
+    - docs_zh/operations/operations-tracker.md
+    - docs_zh/operations/postmortem-template.md
+    - docs_zh/operations/project_progress_tracker.md
+    - docs_zh/operations/README.md
+    - docs_zh/operations/release-versioning.md
+    - docs_zh/operations/review-closure-board.md
+    - docs_zh/operations/review-prevention-plan.md
+    - docs_zh/operations/runbook.md
+    - docs_zh/operations/runbooks/incident-response-playbook.md
+    - docs_zh/operations/runbooks/runbook-database-issues.md
+    - docs_zh/operations/runbooks/runbook-high-error-rate.md
+    - docs_zh/operations/runbooks/runbook-memory-pressure.md
+    - docs_zh/operations/runbooks/runbook-plugin-failure.md
+    - docs_zh/operations/src_module_test_matrix.md
+    - docs_zh/operations/test_coverage_baseline_gate.md
+  evalRefs: []
+  redTeamRefs: []
+  scenarioRefs: []
+  trainingPolicyRefs: []
+notes: "Coverage card generated from inventory with no open structural blocker."
+owner: operations-owner
+raci:
+  approver: enterprise-ops-approver
+  consulted:
+    - architecture-owner
+    - security-owner
+  informed:
+    - release-owner
+  owner: operations-owner
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+riskLevel: high
+status: coverage_draft

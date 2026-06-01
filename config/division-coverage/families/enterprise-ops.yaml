@@ -1,0 +1,15 @@
+familyId: enterprise-ops
+defaultRiskLevel: high
+defaultAutonomyBoundary: hitl_required
+requiredEvalSuites:
+  - eval/divisions/customer-service/eval-suite.yaml
+requiredRedTeamSuites:
+  - redteam/divisions/customer-service/redteam-suite.yaml
+defaultToolPolicyRef: config/tool-risk/taxonomy.yaml
+defaultMemoryPolicyRef: docs_zh/governance/autonomy_boundary_policy.md
+defaultTrainingDataPolicyRef: training-data-policy/divisions/customer-service.yaml
+defaultReleaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+leadershipTargetsRef: docs_zh/divisions/customer-service/leadership-evidence/release-readiness.md
+highRiskOverrides:
+  unrestrictedModelRouting: restricted
+  trainingExportPolicy: redacted_only

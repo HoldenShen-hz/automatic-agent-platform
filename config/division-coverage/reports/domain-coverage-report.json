@@ -1,0 +1,12 @@
+{
+  "blockers": [],
+  "generatedAt": "2026-06-01T01:00:45.161Z",
+  "inventorySummary": {
+    "blockedDivisions": 35,
+    "orphanSourceModules": 23,
+    "p0Divisions": 5,
+    "totalDivisions": 56
+  },
+  "mode": "production-ready",
+  "warnings": []
+}

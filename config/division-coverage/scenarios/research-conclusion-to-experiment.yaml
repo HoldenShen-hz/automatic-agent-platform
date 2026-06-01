@@ -1,0 +1,38 @@
+scenarioId: research-conclusion-to-experiment
+divisionId: research
+familyId: knowledge-research
+userGoal: Convert a research conclusion into an evidence-backed next experiment proposal.
+canonicalWorkflow:
+  - hypothesis_capture
+  - source_verification
+  - evidence_graph
+  - experiment_suggestion
+supportedAgentTasks:
+  - research synthesis
+  - citation audit
+  - experiment drafting
+inputDataTypes:
+  - research_question
+  - source_bundle
+outputActions:
+  - conclusion_record
+  - experiment_brief
+toolActions:
+  - toolId: knowledge-search
+    actionId: retrieve_sources
+    riskClass: R0
+  - toolId: knowledge-search
+    actionId: draft_experiment
+    riskClass: R1
+riskLevel: medium
+autonomyAllowed: draft_only
+evalSuiteRef: eval/divisions/knowledge-base/eval-suite.yaml
+redTeamSuiteRef: redteam/divisions/knowledge-base/redteam-suite.yaml
+successMetrics:
+  - evidence_traceability
+  - experiment_relevance
+safetyMetrics:
+  - overclaim_rate
+roiMetrics:
+  - researcher_time_saved
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md

@@ -3,23 +3,25 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 
 import {
+  LeadershipClaimConfigRegistry,
+} from "./leadership-claim-config-registry.js";
+import type {
+  FamilyLeadershipReadiness,
+  LeadershipClaimAllowlistEntry,
+  LeadershipClaimLevel,
+  LeadershipClaimRecord,
+  LeadershipClaimStatus,
+  LeadershipClaimSurface,
+} from "./leadership-claim-config-registry.js";
+import {
+  NoGoPolicyRegistry,
+} from "../../five-plane-control-plane/iam/no-go-policy-registry.js";
+import type { NoGoPolicyAction } from "../../five-plane-control-plane/iam/no-go-policy-registry.js";
+import {
   isPlainObject,
-  parseLimitedYaml,
   toObjectArray,
   toStringArray,
 } from "../../../domains/governance/division-loader-support.js";
-
-type LeadershipClaimLevel =
-  | "designed"
-  | "pilot_ready"
-  | "local_leader"
-  | "industry_comparable"
-  | "industry_leading"
-  | (string & {});
-
-type LeadershipClaimStatus = "draft" | "approved" | "expired" | "revoked" | "rejected" | (string & {});
-type LeadershipClaimSurface = "docs" | "ui" | "release_note" | "sales_material" | (string & {});
-type FamilyReadinessStatus = "governance_ready" | "pilot_ready" | "local_leadership_ready" | "industry_ready" | (string & {});
 
 export interface LeadershipClaimScannerHit {
   readonly filePath: string;
@@ -43,85 +45,39 @@ export interface LeadershipClaimReviewRequest {
   readonly rationale: string;
   readonly requestedAt: string;
   readonly status: "pending" | "approved" | "rejected";
+  readonly reviewedBy: string | null;
+  readonly reviewedAt: string | null;
+  readonly decisionReasonCode: string | null;
+  readonly decisionComment: string | null;
 }
 
-interface LeadershipBenchmark {
-  readonly benchmarkId: string;
-  readonly label: string;
-  readonly url: string;
-  readonly purpose: string;
-}
-
-interface LeadershipMetricMapping {
-  readonly metricId: string;
-  readonly description: string;
-}
-
-interface LeadershipEvidenceThreshold {
-  readonly label: string;
-  readonly requirement: string;
-}
-
-export interface FamilyLeadershipReadiness {
-  readonly familyId: string;
-  readonly displayName: string;
-  readonly readinessStatus: FamilyReadinessStatus;
-  readonly targetClaimLevel: LeadershipClaimLevel;
-  readonly owner: string;
-  readonly canonicalFamilies: readonly string[];
-  readonly canonicalDivisions: readonly string[];
-  readonly benchmarkRefs: readonly string[];
-  readonly minimumEvidenceRef: string;
-  readonly notes: string;
-  readonly benchmarks: readonly LeadershipBenchmark[];
-  readonly internalMappings: readonly LeadershipMetricMapping[];
-  readonly mvpThresholds: readonly LeadershipEvidenceThreshold[];
-  readonly leadershipThresholds: readonly LeadershipEvidenceThreshold[];
-}
-
-export interface LeadershipClaimRecord {
+export interface LeadershipClaimStatusOverride {
   readonly claimId: string;
-  readonly familyId: string;
-  readonly divisionId: string | null;
-  readonly scenarioId: string | null;
-  readonly claimLevel: LeadershipClaimLevel;
-  readonly claimText: string;
-  readonly allowedSurfaces: readonly LeadershipClaimSurface[];
-  readonly evidenceRefs: readonly string[];
-  readonly reviewedBy: readonly string[];
-  readonly expiresAt: string | null;
-  readonly status: LeadershipClaimStatus;
+  readonly status: "revoked";
+  readonly reasonCode: string;
+  readonly comment: string | null;
+  readonly replacementRequired: boolean;
+  readonly revokedBy: string;
+  readonly revokedAt: string;
+}
+
+export interface LeadershipClaimRecordView extends LeadershipClaimRecord {
   readonly effectiveStatus: LeadershipClaimStatus;
-}
-
-export interface LeadershipClaimAllowlistEntry {
-  readonly filePath: string;
-  readonly matchedText: string;
-  readonly reason: string;
-  readonly owner: string;
-  readonly expiresAt: string | null;
-  readonly expired: boolean;
-}
-
-export interface LeadershipNoGoAction {
-  readonly familyId: string | null;
-  readonly id: string;
-  readonly description: string;
-  readonly riskClass: string;
-  readonly scopes: readonly string[];
-  readonly enforcementSurfaces: readonly string[];
-  readonly blockModes: readonly string[];
+  readonly effectiveStatusReasonCode: string | null;
+  readonly revokedBy: string | null;
+  readonly revokedAt: string | null;
+  readonly replacementRequired: boolean;
 }
 
 export interface LeadershipClaimsConsoleSnapshot {
   readonly generatedAt: string;
   readonly families: readonly FamilyLeadershipReadiness[];
-  readonly claims: readonly LeadershipClaimRecord[];
+  readonly claims: readonly LeadershipClaimRecordView[];
   readonly allowlist: readonly LeadershipClaimAllowlistEntry[];
   readonly scannerHits: readonly LeadershipClaimScannerHit[];
   readonly scannerGeneratedAt: string | null;
   readonly reviewRequests: readonly LeadershipClaimReviewRequest[];
-  readonly noGoActions: readonly LeadershipNoGoAction[];
+  readonly noGoActions: readonly NoGoPolicyAction[];
   readonly summary: {
     readonly familyCount: number;
     readonly approvedClaimCount: number;
@@ -129,6 +85,8 @@ export interface LeadershipClaimsConsoleSnapshot {
     readonly pendingReviewRequestCount: number;
     readonly blockedScannerHitCount: number;
     readonly expiredAllowlistCount: number;
+    readonly revokedClaimCount: number;
+    readonly expiredClaimCount: number;
   };
 }
 
@@ -144,31 +102,21 @@ interface LeadershipClaimScanReport {
   readonly hits: readonly LeadershipClaimScannerHit[];
 }
 
-function toNullableString(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+interface ReviewDecisionInput {
+  readonly requestId: string;
+  readonly reviewedBy: string;
+  readonly reviewedAt?: string;
+  readonly reasonCode: string;
+  readonly comment?: string | null;
 }
 
-function toThresholds(value: unknown): LeadershipEvidenceThreshold[] {
-  return toObjectArray(value).map((entry) => ({
-    label: typeof entry.label === "string" ? entry.label : "unnamed-threshold",
-    requirement: typeof entry.requirement === "string" ? entry.requirement : "unspecified",
-  }));
-}
-
-function toBenchmarkEntries(value: unknown): LeadershipBenchmark[] {
-  return toObjectArray(value).map((entry) => ({
-    benchmarkId: typeof entry.benchmarkId === "string" ? entry.benchmarkId : "unknown-benchmark",
-    label: typeof entry.label === "string" ? entry.label : "Unnamed benchmark",
-    url: typeof entry.url === "string" ? entry.url : "",
-    purpose: typeof entry.purpose === "string" ? entry.purpose : "",
-  }));
-}
-
-function toMetricMappings(value: unknown): LeadershipMetricMapping[] {
-  return toObjectArray(value).map((entry) => ({
-    metricId: typeof entry.metricId === "string" ? entry.metricId : "unknown-metric",
-    description: typeof entry.description === "string" ? entry.description : "",
-  }));
+interface ClaimRevokeInput {
+  readonly claimId: string;
+  readonly reasonCode: string;
+  readonly comment?: string | null;
+  readonly replacementRequired: boolean;
+  readonly revokedBy: string;
+  readonly revokedAt?: string;
 }
 
 function readJsonArray(path: string): Record<string, unknown>[] {
@@ -177,6 +125,10 @@ function readJsonArray(path: string): Record<string, unknown>[] {
   }
   const parsed = JSON.parse(readFileSync(path, "utf8")) as unknown;
   return toObjectArray(parsed);
+}
+
+function toNullableString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
 function normalizeIsoOrNull(value: unknown): string | null {
@@ -204,110 +156,60 @@ function resolveDataRoot(platformRoot: string, dataRoot?: string): string {
 }
 
 export class LeadershipClaimsGovernanceService {
-  private readonly platformRoot: string;
-  private readonly configRoot: string;
-  private readonly policyRoot: string;
   private readonly governanceDataRoot: string;
   private readonly reviewRequestsPath: string;
+  private readonly claimStatusOverridesPath: string;
   private readonly scanReportPath: string;
+  private readonly configRegistry: LeadershipClaimConfigRegistry;
+  private readonly noGoPolicyRegistry: NoGoPolicyRegistry;
 
   public constructor(options: LeadershipClaimsGovernanceServiceOptions = {}) {
-    this.platformRoot = resolvePlatformRoot(options.platformRoot);
-    const resolvedDataRoot = resolveDataRoot(this.platformRoot, options.dataRoot);
-    this.configRoot = options.configRoot ?? join(this.platformRoot, "config", "division-coverage");
-    this.policyRoot = options.policyRoot ?? join(this.platformRoot, "config", "policy");
+    const platformRoot = resolvePlatformRoot(options.platformRoot);
+    const resolvedDataRoot = resolveDataRoot(platformRoot, options.dataRoot);
+    this.configRegistry = new LeadershipClaimConfigRegistry({
+      platformRoot,
+      ...(options.configRoot != null ? { configRoot: options.configRoot } : {}),
+    });
+    this.noGoPolicyRegistry = new NoGoPolicyRegistry({
+      platformRoot,
+      ...(options.policyRoot != null ? { policyRoot: options.policyRoot } : {}),
+    });
     this.governanceDataRoot = join(resolvedDataRoot, "governance");
     this.reviewRequestsPath = join(this.governanceDataRoot, "leadership-claim-review-requests.json");
+    this.claimStatusOverridesPath = join(this.governanceDataRoot, "leadership-claim-status-overrides.json");
     this.scanReportPath = join(this.governanceDataRoot, "leadership-claim-scan-report.json");
   }
 
   public listFamilyReadiness(): FamilyLeadershipReadiness[] {
-    const readinessConfig = this.readYamlObject(join(this.configRoot, "family-readiness.yaml"));
-    const benchmarkConfig = this.readYamlObject(join(this.configRoot, "benchmark-map.yaml"));
-    const evidenceConfig = this.readYamlObject(join(this.configRoot, "minimum-leading-evidence.yaml"));
-    const benchmarkByFamily = new Map<string, Record<string, unknown>>();
-    const evidenceByFamily = new Map<string, Record<string, unknown>>();
-
-    for (const family of toObjectArray(benchmarkConfig.families)) {
-      if (typeof family.familyId === "string") {
-        benchmarkByFamily.set(family.familyId, family);
-      }
-    }
-    for (const family of toObjectArray(evidenceConfig.families)) {
-      if (typeof family.familyId === "string") {
-        evidenceByFamily.set(family.familyId, family);
-      }
-    }
-
-    return toObjectArray(readinessConfig.families).map((family) => {
-      const familyId = typeof family.familyId === "string" ? family.familyId : "unknown-family";
-      const benchmark = benchmarkByFamily.get(familyId) ?? {};
-      const evidence = evidenceByFamily.get(familyId) ?? {};
-      return {
-        familyId,
-        displayName: typeof family.displayName === "string" ? family.displayName : familyId,
-        readinessStatus: typeof family.readinessStatus === "string" ? family.readinessStatus as FamilyReadinessStatus : "governance_ready",
-        targetClaimLevel: typeof family.targetClaimLevel === "string" ? family.targetClaimLevel as LeadershipClaimLevel : "designed",
-        owner: typeof family.owner === "string" ? family.owner : "unassigned-owner",
-        canonicalFamilies: toStringArray(family.canonicalFamilies),
-        canonicalDivisions: toStringArray(family.canonicalDivisions),
-        benchmarkRefs: toStringArray(family.benchmarkRefs),
-        minimumEvidenceRef: typeof family.minimumEvidenceRef === "string" ? family.minimumEvidenceRef : familyId,
-        notes: typeof family.notes === "string" ? family.notes : "",
-        benchmarks: toBenchmarkEntries(benchmark.benchmarks),
-        internalMappings: toMetricMappings(benchmark.internalMappings),
-        mvpThresholds: toThresholds(evidence.mvpThresholds),
-        leadershipThresholds: toThresholds(evidence.leadershipThresholds),
-      };
-    });
+    return this.configRegistry.listFamilyReadiness();
   }
 
-  public listClaims(now: Date = new Date()): LeadershipClaimRecord[] {
-    const claimsConfig = this.readYamlObject(join(this.configRoot, "claims", "records.yaml"));
-    return toObjectArray(claimsConfig.claims).map((claim) => {
-      const expiresAt = normalizeIsoOrNull(claim.expiresAt);
-      const rawStatus = typeof claim.status === "string" ? claim.status as LeadershipClaimStatus : "draft";
-      const effectiveStatus = rawStatus === "approved" && isExpired(expiresAt, now) ? "expired" : rawStatus;
+  public listClaims(now: Date = new Date()): LeadershipClaimRecordView[] {
+    const overridesByClaimId = new Map(this.listStatusOverrides().map((override) => [override.claimId, override]));
+    return this.configRegistry.listClaims().map((claim) => {
+      const override = overridesByClaimId.get(claim.claimId) ?? null;
+      const expired = claim.status === "approved" && isExpired(claim.expiresAt, now);
+      const effectiveStatus = override?.status ?? (expired ? "expired" : claim.status);
+      const effectiveStatusReasonCode =
+        override?.reasonCode
+          ?? (expired ? "claim.expired" : null);
       return {
-        claimId: typeof claim.claimId === "string" ? claim.claimId : "unknown-claim",
-        familyId: typeof claim.familyId === "string" ? claim.familyId : "unknown-family",
-        divisionId: toNullableString(claim.divisionId),
-        scenarioId: toNullableString(claim.scenarioId),
-        claimLevel: typeof claim.claimLevel === "string" ? claim.claimLevel as LeadershipClaimLevel : "designed",
-        claimText: typeof claim.claimText === "string" ? claim.claimText : "",
-        allowedSurfaces: toStringArray(claim.allowedSurfaces) as LeadershipClaimSurface[],
-        evidenceRefs: toStringArray(claim.evidenceRefs),
-        reviewedBy: toStringArray(claim.reviewedBy),
-        expiresAt,
-        status: rawStatus,
+        ...claim,
         effectiveStatus,
+        effectiveStatusReasonCode,
+        revokedBy: override?.revokedBy ?? null,
+        revokedAt: override?.revokedAt ?? null,
+        replacementRequired: override?.replacementRequired ?? false,
       };
     });
   }
 
   public listAllowlist(now: Date = new Date()): LeadershipClaimAllowlistEntry[] {
-    const allowlistConfig = this.readYamlObject(join(this.configRoot, "claims", "allowlist.yaml"));
-    return toObjectArray(allowlistConfig.entries).map((entry) => {
-      const expiresAt = normalizeIsoOrNull(entry.expiresAt);
-      return {
-        filePath: typeof entry.filePath === "string" ? entry.filePath : "",
-        matchedText: typeof entry.matchedText === "string" ? entry.matchedText : "",
-        reason: typeof entry.reason === "string" ? entry.reason : "unspecified",
-        owner: typeof entry.owner === "string" ? entry.owner : "unassigned-owner",
-        expiresAt,
-        expired: isExpired(expiresAt, now),
-      };
-    });
+    return this.configRegistry.listAllowlist(now);
   }
 
-  public listNoGoActions(): LeadershipNoGoAction[] {
-    const noGoConfig = this.readYamlObject(join(this.policyRoot, "no-go-actions.yaml"));
-    const globalActions = toObjectArray(noGoConfig.globalActions).map((action) => this.mapNoGoAction(action, null));
-    const familyActions = toObjectArray(noGoConfig.familyActions).flatMap((familyEntry) => {
-      const familyId = typeof familyEntry.familyId === "string" ? familyEntry.familyId : null;
-      return toObjectArray(familyEntry.actions).map((action) => this.mapNoGoAction(action, familyId));
-    });
-    return [...globalActions, ...familyActions];
+  public listNoGoActions(): NoGoPolicyAction[] {
+    return this.noGoPolicyRegistry.listActions();
   }
 
   public listReviewRequests(): LeadershipClaimReviewRequest[] {
@@ -325,6 +227,10 @@ export class LeadershipClaimsGovernanceService {
         rationale: typeof entry.rationale === "string" ? entry.rationale : "",
         requestedAt: normalizeIsoOrNull(entry.requestedAt) ?? new Date(0).toISOString(),
         status: entry.status === "approved" || entry.status === "rejected" ? entry.status : "pending",
+        reviewedBy: toNullableString(entry.reviewedBy),
+        reviewedAt: normalizeIsoOrNull(entry.reviewedAt),
+        decisionReasonCode: toNullableString(entry.decisionReasonCode),
+        decisionComment: toNullableString(entry.decisionComment),
       }));
     return reviewRequests.sort((left, right) => right.requestedAt.localeCompare(left.requestedAt));
   }
@@ -352,9 +258,58 @@ export class LeadershipClaimsGovernanceService {
       rationale: input.rationale.trim(),
       requestedAt: normalizeIsoOrNull(input.requestedAt) ?? new Date().toISOString(),
       status: "pending",
+      reviewedBy: null,
+      reviewedAt: null,
+      decisionReasonCode: null,
+      decisionComment: null,
     };
-    writeFileSync(this.reviewRequestsPath, JSON.stringify([created, ...current], null, 2), "utf8");
+    this.writeReviewRequests([created, ...current]);
     return created;
+  }
+
+  public approveReviewRequest(input: ReviewDecisionInput): LeadershipClaimReviewRequest {
+    return this.applyReviewDecision("approved", input);
+  }
+
+  public rejectReviewRequest(input: ReviewDecisionInput): LeadershipClaimReviewRequest {
+    return this.applyReviewDecision("rejected", input);
+  }
+
+  public listStatusOverrides(): LeadershipClaimStatusOverride[] {
+    return readJsonArray(this.claimStatusOverridesPath).flatMap((entry) => {
+      if (entry.status !== "revoked") {
+        return [];
+      }
+      return [{
+        claimId: typeof entry.claimId === "string" ? entry.claimId : "unknown-claim",
+        status: "revoked" as const,
+        reasonCode: typeof entry.reasonCode === "string" ? entry.reasonCode : "claim.revoked",
+        comment: toNullableString(entry.comment),
+        replacementRequired: entry.replacementRequired === true,
+        revokedBy: typeof entry.revokedBy === "string" ? entry.revokedBy : "unknown-operator",
+        revokedAt: normalizeIsoOrNull(entry.revokedAt) ?? new Date(0).toISOString(),
+      }];
+    });
+  }
+
+  public revokeClaim(input: ClaimRevokeInput): LeadershipClaimStatusOverride {
+    const claim = this.configRegistry.listClaims().find((entry) => entry.claimId === input.claimId);
+    if (claim == null) {
+      throw new Error(`leadership_claim.claim_not_found:${input.claimId}`);
+    }
+    mkdirSync(this.governanceDataRoot, { recursive: true });
+    const overrides = this.listStatusOverrides().filter((entry) => entry.claimId !== input.claimId);
+    const revoked: LeadershipClaimStatusOverride = {
+      claimId: input.claimId,
+      status: "revoked",
+      reasonCode: input.reasonCode.trim(),
+      comment: input.comment?.trim() || null,
+      replacementRequired: input.replacementRequired,
+      revokedBy: input.revokedBy.trim(),
+      revokedAt: normalizeIsoOrNull(input.revokedAt) ?? new Date().toISOString(),
+    };
+    this.writeStatusOverrides([revoked, ...overrides]);
+    return revoked;
   }
 
   public buildConsoleSnapshot(now: Date = new Date()): LeadershipClaimsConsoleSnapshot {
@@ -386,20 +341,42 @@ export class LeadershipClaimsGovernanceService {
         pendingReviewRequestCount: reviewRequests.filter((request) => request.status === "pending").length,
         blockedScannerHitCount: scanReport.hits.filter((hit) => hit.status === "blocked" || hit.status === "expired_allowlist").length,
         expiredAllowlistCount: allowlist.filter((entry) => entry.expired).length,
+        revokedClaimCount: claims.filter((claim) => claim.effectiveStatus === "revoked").length,
+        expiredClaimCount: claims.filter((claim) => claim.effectiveStatus === "expired").length,
       },
     };
   }
 
-  private mapNoGoAction(action: Record<string, unknown>, familyId: string | null): LeadershipNoGoAction {
-    return {
-      familyId,
-      id: typeof action.id === "string" ? action.id : "unnamed-no-go-action",
-      description: typeof action.description === "string" ? action.description : "",
-      riskClass: typeof action.riskClass === "string" ? action.riskClass : "",
-      scopes: toStringArray(action.scopes),
-      enforcementSurfaces: toStringArray(action.enforcementSurfaces),
-      blockModes: toStringArray(action.blockModes),
+  private applyReviewDecision(
+    nextStatus: "approved" | "rejected",
+    input: ReviewDecisionInput,
+  ): LeadershipClaimReviewRequest {
+    const reviewRequests = this.listReviewRequests();
+    const match = reviewRequests.find((request) => request.requestId === input.requestId);
+    if (match == null) {
+      throw new Error(`leadership_claim.review_request_not_found:${input.requestId}`);
+    }
+    if (match.status !== "pending") {
+      throw new Error(`leadership_claim.review_request_not_pending:${input.requestId}`);
+    }
+    const updated: LeadershipClaimReviewRequest = {
+      ...match,
+      status: nextStatus,
+      reviewedBy: input.reviewedBy.trim(),
+      reviewedAt: normalizeIsoOrNull(input.reviewedAt) ?? new Date().toISOString(),
+      decisionReasonCode: input.reasonCode.trim(),
+      decisionComment: input.comment?.trim() || null,
     };
+    this.writeReviewRequests(reviewRequests.map((request) => request.requestId === updated.requestId ? updated : request));
+    return updated;
+  }
+
+  private writeReviewRequests(reviewRequests: readonly LeadershipClaimReviewRequest[]): void {
+    writeFileSync(this.reviewRequestsPath, JSON.stringify(reviewRequests, null, 2), "utf8");
+  }
+
+  private writeStatusOverrides(overrides: readonly LeadershipClaimStatusOverride[]): void {
+    writeFileSync(this.claimStatusOverridesPath, JSON.stringify(overrides, null, 2), "utf8");
   }
 
   private readScanReport(): LeadershipClaimScanReport {
@@ -427,10 +404,13 @@ export class LeadershipClaimsGovernanceService {
       })),
     };
   }
-
-  private readYamlObject(path: string): Record<string, unknown> {
-    const raw = readFileSync(path, "utf8");
-    const parsed = parseLimitedYaml(raw, path);
-    return isPlainObject(parsed) ? parsed : {};
-  }
 }
+
+export type {
+  FamilyLeadershipReadiness,
+  LeadershipClaimAllowlistEntry,
+  LeadershipClaimLevel,
+  LeadershipClaimRecord,
+  LeadershipClaimStatus,
+  LeadershipClaimSurface,
+};

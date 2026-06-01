@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aa://redteam/severity.schema.json",
+  "type": "object",
+  "required": ["severity"],
+  "properties": {
+    "severity": {
+      "type": "string",
+      "enum": ["Critical", "High", "Medium", "Low"]
+    }
+  },
+  "additionalProperties": true
+}

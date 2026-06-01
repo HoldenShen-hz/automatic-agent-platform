@@ -1,0 +1,15 @@
+affectedStores:
+  - memory
+  - eval
+  - training_export
+  - analytics
+  - evidence_projection
+  - dashboard_cache
+requiresModelDataTombstone: true
+customerDeletionPropagation:
+  - memory
+  - dashboard_cache
+  - training_export
+sourceInvalidationPropagation:
+  - eval
+  - evidence_projection

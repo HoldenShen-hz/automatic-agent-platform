@@ -23,8 +23,13 @@ vi.mock("@aa/shared-api-client", () => ({
       pendingReviewRequestCount: 0,
       blockedScannerHitCount: 0,
       expiredAllowlistCount: 0,
+      revokedClaimCount: 0,
+      expiredClaimCount: 0,
     },
   })),
+  approveLeadershipClaimReviewRequest: vi.fn(),
+  rejectLeadershipClaimReviewRequest: vi.fn(),
+  revokeLeadershipClaim: vi.fn(),
 }));
 
 describe("release console feature", () => {

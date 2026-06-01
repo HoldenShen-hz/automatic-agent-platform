@@ -10,3 +10,5 @@ export type KnowledgeBaseDomainPreset = typeof KNOWLEDGE_BASE_DOMAIN_PRESET;
 export function requiresKnowledgeBaseReview(taskType: KnowledgeBaseTaskType): boolean {
   return requiresPresetReview(KNOWLEDGE_BASE_DOMAIN_PRESET, taskType);
 }
+
+export * from "./citation-verifier.js";

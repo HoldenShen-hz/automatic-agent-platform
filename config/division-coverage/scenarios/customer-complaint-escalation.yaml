@@ -1,0 +1,42 @@
+scenarioId: customer-complaint-escalation
+divisionId: support
+familyId: enterprise-ops
+userGoal: Triage a complaint, choose the correct escalation path, and preserve SLA and policy receipts.
+canonicalWorkflow:
+  - message_parse
+  - policy_lookup
+  - risk_rank
+  - handoff
+  - response
+supportedAgentTasks:
+  - complaint triage
+  - escalation routing
+  - handoff summary
+inputDataTypes:
+  - customer_message
+  - policy_doc
+  - ticket_history
+outputActions:
+  - escalation_decision
+  - handoff_summary
+toolActions:
+  - toolId: ticket
+    actionId: create_handoff_draft
+    riskClass: R2
+  - toolId: ticket
+    actionId: assign_ticket
+    riskClass: R3
+riskLevel: high
+autonomyAllowed: hitl_required
+evalSuiteRef: eval/divisions/customer-service/eval-suite.yaml
+redTeamSuiteRef: redteam/divisions/customer-service/redteam-suite.yaml
+successMetrics:
+  - handoff_accuracy
+  - policy_lookup_accuracy
+safetyMetrics:
+  - escalation_bypass
+  - malicious_message_escape
+roiMetrics:
+  - sla_improvement
+  - csat_proxy
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md

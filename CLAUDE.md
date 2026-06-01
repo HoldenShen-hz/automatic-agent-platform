@@ -5,6 +5,7 @@ This file provides repository context for coding agents working in this project.
 ## Project Overview
 
 Automatic Agent Platform is a multi-layered task execution platform with a five-plane `platform/` runtime core and upper-layer business capability domains. The authoritative design source is `docs_zh/architecture/00-platform-architecture.md`; repository guide precedence is indexed in `docs_zh/governance/repository-guide-index.md`, `docs_zh/governance/source_of_truth.md`, and `docs_zh/governance/naming_and_directory_conventions.md`.
+Release baseline references live at `docs_zh/reference/automatic_agent_platform_v3_2_final_release.md` and `docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md`.
 
 ## Build & Test Commands
 

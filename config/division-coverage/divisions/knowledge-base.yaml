@@ -1,0 +1,75 @@
+autonomyBoundary: draft_only
+blockers: []
+divisionId: knowledge-base
+evidence:
+  design:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "docs://docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md#knowledge-base"
+    score: 2
+  evaluation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - eval/divisions/knowledge-base/eval-suite.yaml
+    score: 2
+  flywheel:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - training-data-policy/divisions/knowledge-base.yaml
+    score: 1
+  implementation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "inventory://config/division-coverage/inventory/division-inventory.generated.json#knowledge-base"
+    score: 2
+  operation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - redteam/divisions/knowledge-base/redteam-suite.yaml
+    score: 2
+familyId: knowledge-research
+generator:
+  generatedAt: "2026-06-01T00:00:00.000Z"
+  managedBy: scripts/generate-division-coverage-cards.mjs
+inventoryRefs:
+  docRefs:
+    - docs_en/domains/knowledge-base/domain-spec.md
+    - docs_zh/divisions/knowledge-base/leadership-evidence/coverage-card.yaml
+    - docs_zh/divisions/knowledge-base/leadership-evidence/eval-report.md
+    - docs_zh/divisions/knowledge-base/leadership-evidence/redteam-report.md
+    - docs_zh/divisions/knowledge-base/leadership-evidence/release-readiness.md
+    - docs_zh/divisions/knowledge-base/leadership-evidence/risk-report.md
+    - docs_zh/divisions/knowledge-base/leadership-evidence/roi-report.md
+    - docs_zh/divisions/knowledge-base/leadership-evidence/scenario-index.md
+    - docs_zh/domains/knowledge-base/domain-spec.md
+  evalRefs:
+    - eval/divisions/knowledge-base/eval-suite.yaml
+  redTeamRefs:
+    - redteam/divisions/knowledge-base/redteam-suite.yaml
+  scenarioRefs:
+    - config/division-coverage/scenarios/knowledge-citation-answer.yaml
+  trainingPolicyRefs:
+    - training-data-policy/divisions/knowledge-base.yaml
+notes: "Coverage card generated from inventory with no open structural blocker."
+owner: knowledge-owner
+raci:
+  approver: knowledge-research-approver
+  consulted:
+    - architecture-owner
+    - security-owner
+  informed:
+    - release-owner
+  owner: knowledge-owner
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+riskLevel: medium
+status: pilot_ready

@@ -28,6 +28,7 @@ Related documents:
 - oapeflir loop management
 - rollout management
 - feedback / learning management
+- leadership claims governance
 
 ## 4. Human Takeover Minimum Actions
 
@@ -74,6 +75,15 @@ Administrators should be able to see:
 - Current OAPEFLIR stage / loop iteration / timeline
 - Current alerts and restriction reasons
 - Current tenant / workspace ownership and capability / entitlement restrictions
+- Leadership Claims page readiness status, claim level, expiry, scanner hits, and allowlist status
+- Claim review request entry point, plus review / revoke / expiry guidance aligned with the CI gate
+
+### 7.1 Leadership Claim Operator Workflow
+
+- A `review request` is an operator approval-flow object and does not directly create a new claim that the CI scanner can honor.
+- `approved / rejected` apply only to the `review request` state and do not automatically write back to `config/division-coverage/claims/records.yaml`.
+- `revoked / expired` apply to the claim `effectiveStatus`; `expired` is derived from `expiresAt` and does not support a runtime action that restores it to `approved`.
+- A runtime revoke must record `reason_code / revoked_by / revoked_at / replacement_required`, and must affect both console presentation and scanner allow/deny behavior.
 
 ## 8. Closure Conclusion
 

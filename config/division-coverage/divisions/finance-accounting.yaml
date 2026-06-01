@@ -1,0 +1,65 @@
+autonomyBoundary: no_autonomous_high_impact_action
+blockers:
+  - alias_only_division
+divisionId: finance-accounting
+evidence:
+  design:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "docs://docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md#finance-accounting"
+    score: 2
+  evaluation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-eval"
+    score: 0
+  flywheel:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-training-policy"
+    score: 0
+  implementation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "inventory://config/division-coverage/inventory/division-inventory.generated.json#finance-accounting"
+    score: 2
+  operation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-redteam"
+    score: 0
+familyId: regulated
+generator:
+  generatedAt: "2026-06-01T00:00:00.000Z"
+  managedBy: scripts/generate-division-coverage-cards.mjs
+inventoryRefs:
+  docRefs:
+    - docs_en/domains/finance-accounting/domain-spec.md
+    - docs_zh/domains/finance-accounting/domain-spec.md
+  evalRefs: []
+  redTeamRefs: []
+  scenarioRefs: []
+  trainingPolicyRefs: []
+notes: "Coverage card generated from inventory; blockers require follow-up before promotion."
+owner: finance-owner
+raci:
+  approver: regulated-approver
+  consulted:
+    - architecture-owner
+    - security-owner
+  informed:
+    - release-owner
+  owner: finance-owner
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+riskLevel: high
+status: coverage_draft

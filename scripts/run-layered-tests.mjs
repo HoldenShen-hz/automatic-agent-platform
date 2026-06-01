@@ -1,17 +1,17 @@
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import { availableParallelism } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const workspaceRoot = process.cwd();
 const testsRoot = resolve(workspaceRoot, "tests");
 const scriptPath = fileURLToPath(import.meta.url);
-const defaultRegularConcurrency = readRecommendedRegularConcurrency();
+const DEFAULT_TEST_CONCURRENCY = 12;
+const defaultRegularConcurrency = DEFAULT_TEST_CONCURRENCY;
 const regularConcurrency = readConcurrency("AA_TEST_CONCURRENCY", defaultRegularConcurrency);
-const heavyweightConcurrency = readConcurrency("AA_HEAVY_TEST_CONCURRENCY", Math.max(1, Math.min(2, regularConcurrency)));
-const performanceConcurrency = readConcurrency("AA_PERF_TEST_CONCURRENCY", 1);
-const leakConcurrency = readConcurrency("AA_LEAK_TEST_CONCURRENCY", 1);
+const heavyweightConcurrency = readConcurrency("AA_HEAVY_TEST_CONCURRENCY", DEFAULT_TEST_CONCURRENCY);
+const performanceConcurrency = readConcurrency("AA_PERF_TEST_CONCURRENCY", DEFAULT_TEST_CONCURRENCY);
+const leakConcurrency = readConcurrency("AA_LEAK_TEST_CONCURRENCY", DEFAULT_TEST_CONCURRENCY);
 const testMaxOldSpaceSizeMb = readOptionalPositiveInteger("AA_TEST_MAX_OLD_SPACE_MB", 1536);
 const DEFAULT_LAYER_FILE_SLICE = Object.freeze({
   offset: 0,
@@ -54,13 +54,6 @@ const PRESET_DEFINITIONS = {
   dev: ["leaks", "unit", "invariants", "golden"],
   full: ["leaks", "unit", "invariants", "integration", "golden", "e2e", "performance"],
 };
-
-function readRecommendedRegularConcurrency() {
-  if (typeof availableParallelism !== "function") {
-    return 1;
-  }
-  return Math.max(1, Math.ceil(availableParallelism() / 2));
-}
 
 function readConcurrency(envName, fallback) {
   const raw = process.env[envName];

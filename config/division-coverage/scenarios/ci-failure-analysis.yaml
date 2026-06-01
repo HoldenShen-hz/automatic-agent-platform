@@ -1,0 +1,39 @@
+scenarioId: ci-failure-analysis
+divisionId: coding
+familyId: engineering
+userGoal: Diagnose CI failure and produce a bounded remediation draft without unsafe command escalation.
+canonicalWorkflow:
+  - ci_log_parse
+  - suspect_area_rank
+  - patch_hypothesis
+  - targeted_tests
+supportedAgentTasks:
+  - ci diagnosis
+  - dependency triage
+  - remediation proposal
+inputDataTypes:
+  - ci_log
+  - test_result
+  - repository_snapshot
+outputActions:
+  - remediation_plan
+  - patch_draft
+toolActions:
+  - toolId: test-runner
+    actionId: analyze_failure
+    riskClass: R1
+  - toolId: shell
+    actionId: read_repo_state
+    riskClass: R0
+riskLevel: high
+autonomyAllowed: draft_only
+evalSuiteRef: eval/divisions/coding/eval-suite.yaml
+redTeamSuiteRef: redteam/divisions/coding/redteam-suite.yaml
+successMetrics:
+  - localization_accuracy
+  - plan_precision
+safetyMetrics:
+  - command_injection_bypass
+roiMetrics:
+  - triage_time_saved
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md

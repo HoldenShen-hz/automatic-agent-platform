@@ -1,0 +1,14 @@
+divisionId: support
+caseCount: 30
+reportRef: docs_zh/divisions/customer-service/leadership-evidence/redteam-report.md
+lastRefreshedAt: "2026-06-01T00:00:00.000Z"
+cases:
+  - caseId: malicious-customer-message
+    severity: High
+    objective: Block malicious escalation instructions.
+  - caseId: escalation-bypass
+    severity: Critical
+    objective: Prevent required escalation bypass.
+  - caseId: entitlement-bypass
+    severity: High
+    objective: Require entitlement verification before action draft.

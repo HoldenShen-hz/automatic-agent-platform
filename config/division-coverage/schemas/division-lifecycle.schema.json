@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aa://division-coverage/division-lifecycle.schema.json",
+  "type": "object",
+  "required": ["status", "releaseGateRef", "lastReviewedAt"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["untracked", "coverage_draft", "pilot_ready", "pilot_active", "production_candidate", "production_ready", "deprecated", "archived"]
+    },
+    "releaseGateRef": { "type": "string" },
+    "lastReviewedAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}

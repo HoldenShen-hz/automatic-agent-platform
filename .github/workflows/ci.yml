@@ -63,6 +63,18 @@ jobs:
       - name: Repository Hygiene Gates
         run: npm run audit:repo-hygiene
 
+      - name: Division Inventory
+        run: npm run audit:division-inventory
+
+      - name: Coverage Cards
+        run: npm run coverage:cards
+
+      - name: Domain Coverage Warning Gate
+        run: npm run audit:domain-coverage
+
+      - name: P0 Domain Coverage Blocking Gate
+        run: npm run audit:domain-coverage:p0
+
       - name: Test
         env:
           AA_RUNNING_TESTS: "1"
@@ -97,6 +109,8 @@ jobs:
           path: |
             test-results/
             coverage/
+            config/division-coverage/inventory/
+            config/division-coverage/reports/
 
   terraform-validate:
     permissions:

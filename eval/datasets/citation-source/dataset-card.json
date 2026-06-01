@@ -1,0 +1,16 @@
+{
+  "datasetId": "citation-source-heldout-v1",
+  "divisionId": "knowledge-base",
+  "scenarioId": "knowledge-citation-answer",
+  "version": "2026.06",
+  "source": "internal_plus_public_corpus",
+  "taskCount": 120,
+  "split": "heldout",
+  "contaminationStatus": "clean",
+  "privacyStatus": "redacted",
+  "labelingMethod": "analyst_double_review",
+  "allowedForTraining": false,
+  "allowedForReleaseGate": true,
+  "retentionPolicyRef": "training-data-policy/revocation.yaml",
+  "frozenHash": "sha256:citation-source-heldout-v1"
+}

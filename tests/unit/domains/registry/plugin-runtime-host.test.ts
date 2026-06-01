@@ -56,6 +56,7 @@ test("buildPluginRuntimeExecArgv adds Node permission flags for sandboxed runtim
   assert.ok(args.includes("--allow-fs-read=/workspace/src"));
   assert.ok(args.includes("--allow-fs-read=/workspace/dist"));
   assert.ok(args.includes("--allow-fs-read=/workspace/node_modules"));
+  assert.ok(args.includes("--allow-fs-read=/workspace/divisions"));
   assert.ok(args.includes("--allow-fs-read=/workspace/package.json"));
   assert.ok(args.includes("--allow-fs-read=/workspace/data/plugin-runtime-sandboxes/plugin_a"));
   assert.ok(args.includes("--allow-fs-write=/workspace/data/plugin-runtime-sandboxes/plugin_a"));

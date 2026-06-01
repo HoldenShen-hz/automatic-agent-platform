@@ -1,0 +1,107 @@
+autonomyBoundary: draft_only
+blockers:
+  - missing_division_yaml
+  - missing_family_policy
+  - unknown_family
+divisionId: governance
+evidence:
+  design:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "docs://docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md#governance"
+    score: 2
+  evaluation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-eval"
+    score: 0
+  flywheel:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-training-policy"
+    score: 0
+  implementation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "inventory://config/division-coverage/inventory/division-inventory.generated.json#governance"
+    score: 1
+  operation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-redteam"
+    score: 0
+familyId: unknown-family
+generator:
+  generatedAt: "2026-06-01T00:00:00.000Z"
+  managedBy: scripts/generate-division-coverage-cards.mjs
+inventoryRefs:
+  docRefs:
+    - docs_en/adr/051-tiered-governance-delegation.md
+    - docs_en/adr/085-organization-governance-and-knowledge-boundary.md
+    - docs_en/adr/089-ai-operations-governance-and-quality.md
+    - docs_en/adr/118-panic-allowlist-governance.md
+    - docs_en/contracts/architecture_governance_and_versioning_contract.md
+    - docs_en/contracts/delegated_governance_contract.md
+    - docs_en/contracts/environment_and_configuration_governance_contract.md
+    - docs_en/contracts/governance_control_plane_contract.md
+    - docs_en/contracts/prompt_model_policy_governance_contract.md
+    - docs_en/governance/autonomy_boundary_policy.md
+    - docs_en/governance/change_control.md
+    - docs_en/governance/glossary_and_terminology.md
+    - docs_en/governance/naming_and_directory_conventions.md
+    - docs_en/governance/README.md
+    - docs_en/governance/repository-guide-index.md
+    - docs_en/governance/rollout_release_policy.md
+    - docs_en/governance/security-access-lifecycle.md
+    - docs_en/governance/source_of_truth.md
+    - docs_en/governance/terminology-bilingual.md
+    - docs_en/quality/code-governance.md
+    - docs_zh/adr/051-tiered-governance-delegation.md
+    - docs_zh/adr/085-organization-governance-and-knowledge-boundary.md
+    - docs_zh/adr/089-ai-operations-governance-and-quality.md
+    - docs_zh/adr/118-panic-allowlist-governance.md
+    - docs_zh/contracts/architecture_governance_and_versioning_contract.md
+    - docs_zh/contracts/delegated_governance_contract.md
+    - docs_zh/contracts/environment_and_configuration_governance_contract.md
+    - docs_zh/contracts/governance_control_plane_contract.md
+    - docs_zh/contracts/prompt_model_policy_governance_contract.md
+    - docs_zh/governance/autonomy_boundary_policy.md
+    - docs_zh/governance/change_control.md
+    - docs_zh/governance/division-coverage-sot.md
+    - docs_zh/governance/glossary_and_terminology.md
+    - docs_zh/governance/naming_and_directory_conventions.md
+    - docs_zh/governance/README.md
+    - docs_zh/governance/repository-guide-index.md
+    - docs_zh/governance/rollout_release_policy.md
+    - docs_zh/governance/security-access-lifecycle.md
+    - docs_zh/governance/source_of_truth.md
+    - docs_zh/governance/terminology-bilingual.md
+    - docs_zh/quality/code-governance.md
+    - docs_zh/ui/admin-console-division-governance.md
+  evalRefs: []
+  redTeamRefs: []
+  scenarioRefs: []
+  trainingPolicyRefs: []
+notes: "Coverage card generated from inventory; blockers require follow-up before promotion."
+owner: TBD-owner
+raci:
+  approver: unknown-family-approver
+  consulted:
+    - architecture-owner
+    - security-owner
+  informed:
+    - release-owner
+  owner: TBD-owner
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+riskLevel: medium
+status: untracked

@@ -1,0 +1,13 @@
+toolId: order
+actions:
+  - actionId: read_order
+    riskClass: R0
+    sideEffect: none
+    reversible: true
+    requiresHITL: false
+    requiresPreparedAction: false
+    rollbackPolicyRef: docs_zh/pilots/customer-service-pilot.md
+    dataClassesTouched:
+      - order_record
+    allowedFamilies:
+      - enterprise-ops

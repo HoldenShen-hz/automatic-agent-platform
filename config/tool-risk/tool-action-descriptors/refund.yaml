@@ -1,0 +1,26 @@
+toolId: refund
+actions:
+  - actionId: draft_refund
+    riskClass: R3
+    sideEffect: external_write
+    reversible: true
+    requiresHITL: true
+    requiresPreparedAction: true
+    rollbackPolicyRef: docs_zh/pilots/customer-service-pilot.md
+    dataClassesTouched:
+      - financial_record
+      - customer_record
+    allowedFamilies:
+      - enterprise-ops
+  - actionId: finalize_refund
+    riskClass: R5
+    sideEffect: external_write
+    reversible: false
+    requiresHITL: true
+    requiresPreparedAction: true
+    rollbackPolicyRef: docs_zh/pilots/customer-service-pilot.md
+    dataClassesTouched:
+      - financial_record
+      - customer_record
+    allowedFamilies:
+      - enterprise-ops

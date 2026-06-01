@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aa://division-coverage/division-training-data-policy.schema.json",
+  "type": "object",
+  "required": ["divisionId", "policyMode", "allowedSources", "forbiddenSources"],
+  "properties": {
+    "divisionId": { "type": "string" },
+    "policyMode": {
+      "type": "string",
+      "enum": ["allowed", "redacted_only", "restricted", "no_train"]
+    },
+    "allowedSources": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "forbiddenSources": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}

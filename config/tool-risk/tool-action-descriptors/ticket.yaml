@@ -1,0 +1,24 @@
+toolId: ticket
+actions:
+  - actionId: create_handoff_draft
+    riskClass: R2
+    sideEffect: internal_write
+    reversible: true
+    requiresHITL: false
+    requiresPreparedAction: false
+    rollbackPolicyRef: docs_zh/pilots/customer-service-pilot.md
+    dataClassesTouched:
+      - customer_record
+    allowedFamilies:
+      - enterprise-ops
+  - actionId: assign_ticket
+    riskClass: R3
+    sideEffect: external_write
+    reversible: true
+    requiresHITL: true
+    requiresPreparedAction: true
+    rollbackPolicyRef: docs_zh/pilots/customer-service-pilot.md
+    dataClassesTouched:
+      - customer_record
+    allowedFamilies:
+      - enterprise-ops

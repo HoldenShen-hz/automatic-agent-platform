@@ -18,18 +18,23 @@ import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
 
-function createTempDb(): SqliteDatabase {
+function createTempDb(): { db: SqliteDatabase; workspace: string } {
   const workspace = createTempWorkspace("aa-perf-retry-");
   const db = new SqliteDatabase(join(workspace, "retry-perf.db"));
   db.migrate();
-  return db;
+  return { db, workspace };
 }
 
 test("performance: retry loop should execute exactly MAX_RETRIES times - Issue #2033", async (t) => {
-  const db = createTempDb();
+  const { db, workspace } = createTempDb();
   const store = new AuthoritativeTaskStoreFacade(db);
   const bus = new DurableEventBus(db, store);
-  const workspace = (db as any).dbPath?.replace("/retry-perf.db", "") ?? ".tmp";
+
+  t.after(() => {
+    bus.dispose();
+    db.close();
+    cleanupPath(workspace);
+  });
 
   seedTaskAndExecution(db, store, {
     taskId: "task-retry-perf",
@@ -62,17 +67,18 @@ test("performance: retry loop should execute exactly MAX_RETRIES times - Issue #
   const elapsedMs = Date.now() - startTime;
   t.diagnostic(`retry attempts observed=${attemptCount}, elapsedMs=${elapsedMs}`);
   assert.ok(attemptCount >= 1, "Retry loop should execute at least once");
-
-  bus.dispose();
-  db.close();
-  cleanupPath(workspace);
 });
 
 test("performance: retry backoff timing follows exponential pattern", async (t) => {
-  const db = createTempDb();
+  const { db, workspace } = createTempDb();
   const store = new AuthoritativeTaskStoreFacade(db);
   const bus = new DurableEventBus(db, store);
-  const workspace = (db as any).dbPath?.replace("/backoff-perf.db", "") ?? ".tmp";
+
+  t.after(() => {
+    bus.dispose();
+    db.close();
+    cleanupPath(workspace);
+  });
 
   seedTaskAndExecution(db, store, {
     taskId: "task-backoff",
@@ -114,8 +120,4 @@ test("performance: retry backoff timing follows exponential pattern", async (t) 
       );
     }
   }
-
-  bus.dispose();
-  db.close();
-  cleanupPath(workspace);
 });

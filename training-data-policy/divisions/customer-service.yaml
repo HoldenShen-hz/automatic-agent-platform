@@ -1,0 +1,7 @@
+divisionId: customer-service
+policyMode: redacted_only
+allowedSources:
+  - redacted_support_cases
+forbiddenSources:
+  - raw_customer_pii
+  - heldout_eval

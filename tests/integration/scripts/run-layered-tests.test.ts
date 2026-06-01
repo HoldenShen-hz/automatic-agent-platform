@@ -88,6 +88,36 @@ test("run-layered-tests accepts concurrency env vars", async () => {
   }
 });
 
+test("run-layered-tests defaults unit layer concurrency to 12", async () => {
+  const workspace = mkdtempSync(join(process.cwd(), ".tmp-aa-layered-"));
+
+  try {
+    mkdirSync(join(workspace, "tests", "unit"), { recursive: true });
+    writeFileSync(
+      join(workspace, "tests", "unit", "placeholder.test.ts"),
+      [
+        "import test from \"node:test\";",
+        "",
+        "test(\"placeholder\", () => {});",
+        "",
+      ].join("\n"),
+    );
+    mkdirSync(join(workspace, "src"), { recursive: true });
+    writeFileSync(join(workspace, "src", "index.ts"), "");
+
+    const result = spawnSync("node", [SCRIPT_PATH, "unit"], {
+      cwd: workspace,
+      env: { ...process.env },
+      stdio: "pipe",
+    });
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout.toString(), /\[test-layer\] unit: 1 files, concurrency=12,/);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
 test("run-layered-tests supports deterministic file slicing for large layers", async () => {
   const workspace = mkdtempSync(join(tmpdir(), "aa-layered-"));
 

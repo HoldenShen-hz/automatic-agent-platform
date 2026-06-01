@@ -119,3 +119,47 @@ test("buildLeadershipClaimScanReport fails expired allowlist entries instead of 
     rmSync(workspace, { recursive: true, force: true });
   }
 });
+
+test("buildLeadershipClaimScanReport does not grandfather config-approved claims after runtime revocation", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-leadership-audit-revoked-"));
+  const configRoot = join(workspace, "config", "division-coverage");
+  const dataRoot = join(workspace, "data");
+  const now = new Date("2026-05-31T00:00:00.000Z");
+
+  try {
+    writeFile(join(configRoot, "schemas", "leadership-claim.schema.json"), JSON.stringify({ $id: "aa://leadership-claim.schema.json" }));
+    writeFile(join(configRoot, "claims", "allowlist.yaml"), "entries: []");
+    writeFile(join(configRoot, "claims", "records.yaml"), [
+      "claims:",
+      "  - claimId: coding-ui-approved",
+      "    claimText: \"industry-leading support for coding pilot\"",
+      "    allowedSurfaces: [ui]",
+      "    status: approved",
+      "    expiresAt: \"2027-01-01T00:00:00Z\"",
+    ].join("\n"));
+    writeFile(join(dataRoot, "governance", "leadership-claim-status-overrides.json"), JSON.stringify([
+      {
+        claimId: "coding-ui-approved",
+        status: "revoked",
+        reasonCode: "operator.revoked",
+        revokedBy: "governance-operator",
+        revokedAt: "2026-05-30T00:00:00.000Z",
+        replacementRequired: true,
+      },
+    ], null, 2));
+    writeFile(join(workspace, "ui", "apps", "web", "src", "claim-banner.tsx"), "export const banner = 'industry-leading support for coding pilot';");
+
+    const report = buildLeadershipClaimScanReport({
+      rootDir: workspace,
+      configRoot,
+      dataRoot,
+      scanRoots: ["ui"],
+      now,
+    });
+
+    assert.equal(report.summary.blockedCount, 1);
+    assert.equal(report.hits[0]?.status, "blocked");
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});

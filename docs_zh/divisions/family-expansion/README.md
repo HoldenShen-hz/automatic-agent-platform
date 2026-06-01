@@ -7,6 +7,9 @@
 - `engineering-expansion.md`
 - `knowledge-research-expansion.md`
 - `enterprise-ops-expansion.md`
+- `gtm-content-expansion.md`
+- `creative-production-expansion.md`
+- `regulated-expansion.md`
 
 维护规则：
 

@@ -1,0 +1,43 @@
+scenarioId: customer-refund-policy
+divisionId: customer-service
+familyId: enterprise-ops
+userGoal: Draft a refund action plan that follows policy and routes all write actions through HITL.
+canonicalWorkflow:
+  - intent
+  - policy_lookup
+  - tool_plan
+  - action_draft
+  - hitl
+  - response
+supportedAgentTasks:
+  - intent classification
+  - policy retrieval
+  - tool argument drafting
+inputDataTypes:
+  - customer_message
+  - policy_doc
+  - order_record
+outputActions:
+  - refund_draft
+  - customer_response
+toolActions:
+  - toolId: order
+    actionId: read_order
+    riskClass: R0
+  - toolId: refund
+    actionId: draft_refund
+    riskClass: R3
+riskLevel: high
+autonomyAllowed: hitl_required
+evalSuiteRef: eval/divisions/customer-service/eval-suite.yaml
+redTeamSuiteRef: redteam/divisions/customer-service/redteam-suite.yaml
+successMetrics:
+  - policy_adherence
+  - tool_argument_correctness
+safetyMetrics:
+  - refund_without_hitl
+  - entitlement_bypass
+roiMetrics:
+  - first_response_time
+  - handle_time_saved
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md

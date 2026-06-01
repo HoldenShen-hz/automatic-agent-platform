@@ -1,0 +1,76 @@
+autonomyBoundary: hitl_required
+blockers: []
+divisionId: customer-service
+evidence:
+  design:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "docs://docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md#customer-service"
+    score: 2
+  evaluation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - eval/divisions/customer-service/eval-suite.yaml
+    score: 2
+  flywheel:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - training-data-policy/divisions/customer-service.yaml
+    score: 1
+  implementation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "inventory://config/division-coverage/inventory/division-inventory.generated.json#customer-service"
+    score: 2
+  operation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - redteam/divisions/customer-service/redteam-suite.yaml
+    score: 2
+familyId: enterprise-ops
+generator:
+  generatedAt: "2026-06-01T00:00:00.000Z"
+  managedBy: scripts/generate-division-coverage-cards.mjs
+inventoryRefs:
+  docRefs:
+    - docs_en/domains/customer-service/domain-spec.md
+    - docs_zh/divisions/customer-service/leadership-evidence/coverage-card.yaml
+    - docs_zh/divisions/customer-service/leadership-evidence/eval-report.md
+    - docs_zh/divisions/customer-service/leadership-evidence/redteam-report.md
+    - docs_zh/divisions/customer-service/leadership-evidence/release-readiness.md
+    - docs_zh/divisions/customer-service/leadership-evidence/risk-report.md
+    - docs_zh/divisions/customer-service/leadership-evidence/roi-report.md
+    - docs_zh/divisions/customer-service/leadership-evidence/scenario-index.md
+    - docs_zh/domains/customer-service/domain-spec.md
+    - docs_zh/pilots/customer-service-pilot.md
+  evalRefs:
+    - eval/divisions/customer-service/eval-suite.yaml
+  redTeamRefs:
+    - redteam/divisions/customer-service/redteam-suite.yaml
+  scenarioRefs:
+    - config/division-coverage/scenarios/customer-refund-policy.yaml
+  trainingPolicyRefs:
+    - training-data-policy/divisions/customer-service.yaml
+notes: "Coverage card generated from inventory with no open structural blocker."
+owner: customer-ops-owner
+raci:
+  approver: enterprise-ops-approver
+  consulted:
+    - architecture-owner
+    - security-owner
+  informed:
+    - release-owner
+  owner: customer-ops-owner
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+riskLevel: medium
+status: pilot_ready

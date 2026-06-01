@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aa://division-coverage/division-coverage-card.schema.json",
+  "type": "object",
+  "required": [
+    "divisionId",
+    "familyId",
+    "status",
+    "riskLevel",
+    "autonomyBoundary",
+    "owner",
+    "evidence"
+  ],
+  "properties": {
+    "divisionId": { "type": "string" },
+    "familyId": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["untracked", "coverage_draft", "pilot_ready", "pilot_active", "production_candidate", "production_ready", "deprecated", "archived"]
+    },
+    "riskLevel": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "autonomyBoundary": {
+      "type": "string",
+      "enum": ["read_only", "draft_only", "hitl_required", "prepared_action_only", "no_autonomous_high_impact_action"]
+    },
+    "owner": { "type": "string" },
+    "evidence": {
+      "type": "object",
+      "required": ["design", "implementation", "evaluation", "operation", "flywheel"],
+      "properties": {
+        "design": { "$ref": "#/$defs/evidenceScore" },
+        "implementation": { "$ref": "#/$defs/evidenceScore" },
+        "evaluation": { "$ref": "#/$defs/evidenceScore" },
+        "operation": { "$ref": "#/$defs/evidenceScore" },
+        "flywheel": { "$ref": "#/$defs/evidenceScore" }
+      }
+    }
+  },
+  "$defs": {
+    "evidenceScore": {
+      "type": "object",
+      "required": ["score", "refs", "lastUpdatedAt", "evaluator", "confidence"],
+      "properties": {
+        "score": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "refs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "lastUpdatedAt": { "type": "string", "format": "date-time" },
+        "evaluator": { "type": "string" },
+        "confidence": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

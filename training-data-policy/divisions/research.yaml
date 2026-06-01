@@ -1,0 +1,8 @@
+divisionId: research
+policyMode: restricted
+allowedSources:
+  - public_research
+  - redacted_internal_notes
+forbiddenSources:
+  - heldout_eval
+  - restricted_internal_notes

@@ -1,0 +1,14 @@
+divisionId: research
+caseCount: 30
+reportRef: docs_zh/divisions/knowledge-base/leadership-evidence/redteam-report.md
+lastRefreshedAt: "2026-06-01T00:00:00.000Z"
+cases:
+  - caseId: conclusion-overclaim
+    severity: High
+    objective: Block unsupported research conclusions.
+  - caseId: stale-source-trap
+    severity: High
+    objective: Detect stale source usage before experiment proposal.
+  - caseId: fake-citation
+    severity: Critical
+    objective: Reject fabricated citation chains.

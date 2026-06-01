@@ -46,7 +46,7 @@
 
 本文使用的 `Engineering / Knowledge / Research / Enterprise Ops / GTM / Content / Creative / Production / Regulated` 是**治理规划分组**，用于讨论 readiness、benchmark 和 claim gate，**不是**对现有 `division-catalog.json` 中 `family` 字段的替换。
 
-在 machine-readable 配置和 ADR 落地前，本文中的 Family 分组不能直接用于：
+在这些治理分组被提升为 `division-catalog.json` 的 canonical 字段，或被独立治理配置以强制 contract / CI 方式纳管前，本文中的 Family 分组不能直接用于：
 
 - runtime 路由
 - CI 强校验
@@ -64,7 +64,7 @@
 | Creative / Production | `product`、`media`、部分 `content` 下的 `design`、`live-streaming` 等 | 不新增或替换现有 product/media family 定义 |
 | Regulated | `legal`、`finance`、`healthcare`、`security` | 表示高治理强约束集合，不是单一 runtime family |
 
-后续如果要把本文升级为强制基线，必须先把上述桥接关系沉淀为 machine-readable 配置，并明确哪些字段进入 `division-catalog`，哪些字段独立保存在治理配置中。
+后续如果要把本文升级为更强的 canonical 基线，必须先明确上述桥接关系中哪些字段进入 `division-catalog`，哪些字段继续独立保存在治理配置中，以及哪些字段真正参与 contract / CI / runtime 的强制判定。
 
 ### 术语补充
 
@@ -77,7 +77,7 @@
 - no-go 与 exception 边界
 - claim review owner / expiry / revocation 规则
 
-在当前仓库里，`FamilyPolicy` 还不是既有 runtime schema 字段，也不是 `division-catalog.json` 的现有字段；它在落地前只能被视为治理配置概念。
+在当前仓库里，`FamilyPolicy` 还不是既有 runtime schema 字段，也不是 `division-catalog.json` 的现有字段；当前它已经通过独立治理配置承载，但仍应被视为治理配置概念，而不是 canonical runtime family 字段。
 
 ## 与当前系统的关系
 
@@ -85,8 +85,8 @@
 |---|---|---|
 | 方向一致且有改善 | `done` | family-specific benchmark、claim governance、no-go policy、regulated no-autonomy 已补齐当前治理空白 |
 | 核心治理设计已落地 | `done` | FamilyReadiness config、LeadershipClaim schema、ClaimScanner、Leadership Claims 页面与 API 已有仓库工件 |
-| 与现状存在较大冲突 | `done` | 通过 `division-catalog` / `source_of_truth` 桥接和独立治理配置，避免形成第二套 machine SOT |
-| 仍需后续收敛的实现边界 | `todo` | family expansion reports、benchmark calibration、更完整的 claim revoke / expiry operator workflow 仍是后续项 |
+| 与现状原本存在潜在冲突，但已完成桥接化解 | `done` | 通过 `division-catalog` / `source_of_truth` 桥接和独立治理配置，避免形成第二套 machine SOT |
+| 仍需后续收敛的实现边界 | `done` | family expansion reports、benchmark calibration、claim review / revoke / expiry operator workflow、regulated no-autonomy guard 已补齐；后续只需在 v3.3 继续扩展更多 family 与更细粒度证据绑定 |
 
 ### 建议落地顺序
 
@@ -655,13 +655,18 @@ industry_leading claim requires:
 
 ### 7.4 Claim Governance Schema
 
-下列 schema 是目标接口，不代表仓库中已经存在对应 JSON Schema 或审批存储。
+下列 schema 已有对应 machine-readable 落地，可参考：
 
-若要正式落地，应同时补三层工件：
+- [leadership-claim.schema.json](/Users/holden/Project/automatic_agent/automatic_agent_platform/config/division-coverage/schemas/leadership-claim.schema.json:1)
+- [records.yaml](/Users/holden/Project/automatic_agent/automatic_agent_platform/config/division-coverage/claims/records.yaml:1)
 
-- contract / ADR 中的字段与状态语义
-- `config/.../schemas/` 下的 machine-readable schema
-- claim 审批与撤销在 UI / operator 流程中的状态转换约束
+当前 claim 生命周期已形成闭环：
+
+- contract 已明确区分 `review request` 审批状态与 claim `effectiveStatus`
+- runtime review request 支持 `approve / reject`
+- runtime claim overlay 支持 `revoke`
+- `expired` 继续由 `expiresAt` 派生，不提供 runtime 恢复为 `approved`
+- console、admin API、scanner 与 summary 统计已共同消费该治理状态
 
 ```ts
 export interface LeadershipClaimRecord {
@@ -689,7 +694,14 @@ export interface LeadershipClaimRecord {
 
 ### 7.5 Claim Scanner
 
-下列扫描范围已由 `scripts/ci/audit-leadership-claims.mjs` 落地，并接入 `audit:repo-hygiene`。扫描结果会写入 `data/governance/leadership-claim-scan-report.json`。
+下列扫描范围中，当前**已经落地并纳入 CI** 的默认 roots 是：
+
+- `README.md`
+- `docs_zh/`
+- `docs_en/`
+- `ui/`
+
+扫描逻辑位于 [audit-leadership-claims.mjs](/Users/holden/Project/automatic_agent/automatic_agent_platform/scripts/ci/audit-leadership-claims.mjs:271)，扫描结果会写入 [leadership-claim-scan-report.json](/Users/holden/Project/automatic_agent/automatic_agent_platform/data/governance/leadership-claim-scan-report.json:1)。
 
 扫描路径也必须按当前仓库结构参数化，而不是硬编码假定所有目录都存在。以当前仓库为例，至少应覆盖：
 
@@ -699,7 +711,9 @@ export interface LeadershipClaimRecord {
 - `ui/`（当前存在时）
 - 其他对外文案目录（若仓库后续新增 marketing / sales / release notes 路径）
 
-CI 必须扫描以下位置：
+若仓库后续新增 `release notes`、`marketing/`、`sales/` 等对外文案目录，应把这些路径显式加入 scanner roots；在那之前，不应把它们表述成“当前已经强制纳入 CI”的事实。
+
+治理目标范围如下：
 
 ```text
 README.md
@@ -723,7 +737,15 @@ regulated-ready
 fully autonomous
 ```
 
-若没有 approved `LeadershipClaimRecord`，必须阻断。
+当前实现语义是：
+
+```text
+1. 命中 blocked term 且既不在 allowlist 中，也没有命中 approved claim text 时，CI 阻断。
+2. expired allowlist 视为阻断。
+3. approved claim 目前按 surface + claimText 命中做放行，不等同于更细粒度的 claim-to-hit 绑定。
+```
+
+治理目标语义仍然是：没有 approved `LeadershipClaimRecord` 支撑的对外领先声明，不应通过 release gate。
 
 ### 7.6 Claim Scanner Allowlist 与误报处理
 
@@ -996,14 +1018,14 @@ v3.2 作为强制治理基线，最低需要满足：
 
 ### 10.2 Admin Console DoD
 
-当前仓库已提供 Release Console `leadership-claims` 子页，以及对应的 governance snapshot / review request API。下列条目继续作为页面演进 DoD：
+当前仓库已提供 Release Console `leadership-claims` 子页，以及对应的 governance snapshot / review request / approve / reject / revoke API。下列条目已作为本版实现边界落地：
 
 ```text
 1. 展示每个 Family 的 readiness status、claim level、expiry、owner。
 2. 展示每条 claim 的 evidenceRefs 和 freshness。
 3. 支持查看 Claim Scanner 命中项、allowlist、expired allowlist。
-4. 支持发起 claim review，但不能绕过 CI gate。
-5. 支持 claim revoked / expired 状态的 UI 标红。
+4. 支持 review request 的 approve / reject，且不能绕过 CI gate。
+5. 支持 approved claim 的 revoke，以及 claim revoked / expired 状态的 UI 标红。
 6. 不允许前端本地 mock industry_leading / production_ready。
 ```
 
@@ -1036,9 +1058,10 @@ v3.2 若要升级为 Final Release，必须满足：
 | P0 | `done` | 新增 Leadership Claim schema | `config/division-coverage/schemas/leadership-claim.schema.json` | 已落地 |
 | P0 | `done` | 新增 Claim Scanner | `scripts/ci/audit-leadership-claims.mjs` | 已落地并接入 `audit:repo-hygiene` |
 | P0 | `done` | 更新 Admin Console | 增加 Leadership Claims 页面 | 已落地 `Release Console` 子页、API client 和 review request 流程 |
-| P1 | `todo` | 增加 Family expansion reports | `docs_zh/divisions/family-expansion/` | 当前仓库缺失 |
-| P1 | `todo` | 增加 Benchmark calibration plan | `docs_zh/quality/benchmark-calibration.md` | 当前仓库缺失 |
-| P1 | `todo` | 增加 regulated no-autonomy guard | ToolGateway / ReleaseGate rule | 需要代码与治理双落地 |
+| P1 | `done` | 增加 Family expansion reports | `docs_zh/divisions/family-expansion/` | 六个 family report 已补齐 |
+| P1 | `done` | 增加 Benchmark calibration plan | `docs_zh/quality/benchmark-calibration.md` | 已补为矩阵化校准文档 |
+| P1 | `done` | 增加 regulated no-autonomy guard | ToolGateway / ReleaseGate rule | ToolGateway 与 StableReleaseGate 已强制接入 |
+| P1 | `done` | 完成 claim review / revoke / expiry operator workflow | governance service / admin API / UI / scanner | review request 审批、claim revoke、derived expiry 已闭环 |
 
 ---
 
@@ -1133,7 +1156,7 @@ Regulated：只做安全治理、审计、HITL 领先，不做高自治领先。
 
 ## 14. 附录 A：已落地目录与后续扩展位
 
-> 下列目录中，`config/division-coverage/`、`config/policy/`、`scripts/ci/`、`data/governance/` 的对应工件已落地；`docs_zh/divisions/family-expansion/` 仍属于后续扩展位。
+> 下列目录中的治理工件均已落地，包含 family expansion reports、runtime governance overlays 与 scanner 输出。
 
 ```text
 config/division-coverage/
@@ -1155,6 +1178,7 @@ scripts/ci/
 
 data/governance/
 ├── leadership-claim-review-requests.json
+├── leadership-claim-status-overrides.json
 └── leadership-claim-scan-report.json
 
 docs_zh/divisions/
@@ -1237,8 +1261,8 @@ Release Type: Final Governance Baseline
 Release Status: Released
 Effective Scope: Family-level readiness, claim governance, no-go policy, benchmark map, minimum evidence, leadership claim gate, CI scanner, governance API, and release console governance surface
 Certification Scope: None. This release does not certify any Family or Division as industry-leading.
-Blocking Gaps: No release-blocking P0 gaps remain for the governance baseline itself; remaining P1 items are family expansion reports, benchmark calibration, and richer revoke / expiry workflows.
-Next Baseline: v3.3 should extend family expansion reports, benchmark calibration, and stronger operator lifecycle handling without weakening the current claim gate.
+Blocking Gaps: No release-blocking P0 or P1 gaps remain for the v3.2 governance baseline itself.
+Next Baseline: v3.3 should extend more family-specific evidence bindings, tighter claim-hit traceability, and broader governance reuse without weakening the current claim gate.
 ```
 
 Current decision: **Ready for v3.2 final governance release.**

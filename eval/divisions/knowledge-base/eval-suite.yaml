@@ -1,0 +1,10 @@
+divisionId: knowledge-base
+datasetCardRef: eval/datasets/citation-source/dataset-card.json
+runner: citation-verifier
+reportRef: docs_zh/divisions/knowledge-base/leadership-evidence/eval-report.md
+lastRefreshedAt: "2026-06-01T00:00:00.000Z"
+metrics:
+  - citation_coverage
+  - citation_correctness
+  - source_freshness
+  - hallucinated_claim_rate

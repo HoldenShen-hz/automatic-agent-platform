@@ -1,0 +1,26 @@
+toolId: shell
+actions:
+  - actionId: read_repo_state
+    riskClass: R0
+    sideEffect: none
+    reversible: true
+    requiresHITL: false
+    requiresPreparedAction: false
+    rollbackPolicyRef: docs_zh/pilots/engineering-pilot.md
+    dataClassesTouched:
+      - source_code
+    allowedFamilies:
+      - engineering
+      - enterprise-ops
+  - actionId: apply_patch
+    riskClass: R2
+    sideEffect: local_write
+    reversible: true
+    requiresHITL: false
+    requiresPreparedAction: false
+    rollbackPolicyRef: docs_zh/pilots/engineering-pilot.md
+    dataClassesTouched:
+      - source_code
+    allowedFamilies:
+      - engineering
+    trustedSourcesOnly: true

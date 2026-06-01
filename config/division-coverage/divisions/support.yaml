@@ -1,0 +1,67 @@
+autonomyBoundary: hitl_required
+blockers:
+  - missing_source_module
+divisionId: support
+evidence:
+  design:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "docs://docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md#support"
+    score: 2
+  evaluation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - eval/divisions/support/eval-suite.yaml
+    score: 2
+  flywheel:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - training-data-policy/divisions/support.yaml
+    score: 1
+  implementation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "inventory://config/division-coverage/inventory/division-inventory.generated.json#support"
+    score: 2
+  operation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - redteam/divisions/support/redteam-suite.yaml
+    score: 2
+familyId: enterprise-ops
+generator:
+  generatedAt: "2026-06-01T00:00:00.000Z"
+  managedBy: scripts/generate-division-coverage-cards.mjs
+inventoryRefs:
+  docRefs: []
+  evalRefs:
+    - eval/divisions/support/eval-suite.yaml
+  redTeamRefs:
+    - redteam/divisions/support/redteam-suite.yaml
+  scenarioRefs:
+    - config/division-coverage/scenarios/customer-complaint-escalation.yaml
+  trainingPolicyRefs:
+    - training-data-policy/divisions/support.yaml
+notes: "Coverage card generated from inventory; blockers require follow-up before promotion."
+owner: customer-ops-owner
+raci:
+  approver: enterprise-ops-approver
+  consulted:
+    - architecture-owner
+    - security-owner
+  informed:
+    - release-owner
+  owner: customer-ops-owner
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+riskLevel: medium
+status: coverage_draft

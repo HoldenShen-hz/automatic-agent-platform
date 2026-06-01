@@ -1,0 +1,15 @@
+familyId: engineering
+defaultRiskLevel: high
+defaultAutonomyBoundary: prepared_action_only
+requiredEvalSuites:
+  - eval/divisions/coding/eval-suite.yaml
+requiredRedTeamSuites:
+  - redteam/divisions/coding/redteam-suite.yaml
+defaultToolPolicyRef: config/tool-risk/taxonomy.yaml
+defaultMemoryPolicyRef: docs_zh/governance/autonomy_boundary_policy.md
+defaultTrainingDataPolicyRef: training-data-policy/divisions/coding.yaml
+defaultReleaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+leadershipTargetsRef: docs_zh/divisions/coding/leadership-evidence/release-readiness.md
+highRiskOverrides:
+  unrestrictedModelRouting: restricted
+  trainingExportPolicy: redacted_only

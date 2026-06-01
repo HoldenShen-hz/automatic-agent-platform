@@ -64,6 +64,8 @@ Stable script overview:
 - `docs_zh/governance/repository-guide-index.md` — root guide index for `README` / `CONTRIBUTING` / `AGENTS` / `CLAUDE` / `MEMORY`
 - `docs_zh/governance/source_of_truth.md` — source-of-truth hierarchy
 - `docs_zh/governance/naming_and_directory_conventions.md` — naming and directory constraints
+- `docs_zh/reference/automatic_agent_platform_v3_2_final_release.md` — unique v3.2 governance baseline release document
+- `docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md` — v3.3 implementation baseline + P0 pilot launch readiness
 - `docs_zh/quality/buglist.md` — canonical buglist
 - `docs_zh/reference/docs-sync.md` — zh/en sync rules and delayed-translation policy
 - `docs_zh/reference/division-catalog.md` — division family map, canonical surfaces, and legacy aliases

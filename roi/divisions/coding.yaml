@@ -1,0 +1,9 @@
+divisionId: coding
+method: assisted_vs_manual
+sampleWindow: 14d
+minimumSampleSize: 50
+metrics:
+  - review_time_saved
+  - patch_rework_delta
+  - regression_escape_delta
+confidence: medium

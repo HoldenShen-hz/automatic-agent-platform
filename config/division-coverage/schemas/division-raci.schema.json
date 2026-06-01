@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aa://division-coverage/division-raci.schema.json",
+  "type": "object",
+  "required": ["owner", "approver", "consulted", "informed"],
+  "properties": {
+    "owner": { "type": "string" },
+    "approver": { "type": "string" },
+    "consulted": { "type": "array", "items": { "type": "string" } },
+    "informed": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

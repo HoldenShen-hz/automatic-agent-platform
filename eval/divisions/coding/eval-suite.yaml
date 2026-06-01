@@ -1,0 +1,11 @@
+divisionId: coding
+datasetCardRef: eval/datasets/swe-style/dataset-card.json
+runner: patch-gate
+reportRef: docs_zh/divisions/coding/leadership-evidence/eval-report.md
+lastRefreshedAt: "2026-06-01T00:00:00.000Z"
+metrics:
+  - patch_apply_success
+  - targeted_test_pass
+  - human_edit_distance
+  - pr_draft_rate
+  - failure_taxonomy

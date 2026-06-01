@@ -4,7 +4,7 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import { fileURLToPath, URL } from "node:url";
 
 const configuredMaxWorkers = process.env.VITEST_MAX_WORKERS == null
-  ? undefined
+  ? 12
   : Number.parseInt(process.env.VITEST_MAX_WORKERS, 10);
 
 export default defineConfig({
@@ -20,7 +20,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./tests/setup.ts"],
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
-    ...(configuredMaxWorkers == null ? {} : { maxWorkers: configuredMaxWorkers }),
+    minWorkers: configuredMaxWorkers,
+    maxWorkers: configuredMaxWorkers,
     coverage: {
       provider: "v8",
       reporter: ["text", "json-summary"],

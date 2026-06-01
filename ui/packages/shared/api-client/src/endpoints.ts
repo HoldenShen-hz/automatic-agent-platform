@@ -4,6 +4,7 @@ import type {
   ApprovalDTO,
   CostReportDTO,
   DashboardSnapshotDTO,
+  DivisionInventorySnapshotDTO,
   DomainConfigDTO,
   ExplanationDTO,
   FeatureFlagDTO,
@@ -84,6 +85,8 @@ type TaskPathParams = { taskId: string };
 type WorkflowPathParams = { workflowId: string };
 type WorkflowRunStepPathParams = { workflowRunId: string };
 type ApprovalPathParams = { approvalId: string };
+type LeadershipClaimPathParams = { claimId: string };
+type LeadershipClaimReviewRequestPathParams = { requestId: string };
 type PackVersionPathParams = { packId: string };
 type CompliancePolicyPathParams = { policyId: string };
 type ComplianceExceptionPathParams = { exceptionId: string };
@@ -173,6 +176,7 @@ type EndpointCatalogDefinition = {
   preferences: EndpointDefinition<UserPreferenceDTO>;
   workflowBuilder: EndpointDefinition<readonly WorkflowDTO[]>;
   contractVersion: EndpointDefinition<ContractVersionResponse>;
+  divisionInventorySnapshot: EndpointDefinition<DivisionInventorySnapshotDTO>;
   leadershipClaimsConsole: EndpointDefinition<LeadershipClaimsConsoleDTO>;
   leadershipClaimsReviewRequest: EndpointDefinition<
     { reviewRequest: { requestId: string; familyId: string; requestedBy: string; status: string } },
@@ -184,6 +188,30 @@ type EndpointCatalogDefinition = {
       requestedSurfaces: readonly string[];
       rationale: string;
     }
+  >;
+  leadershipClaimsApproveReviewRequest: EndpointDefinition<
+    { reviewRequest: { requestId: string; status: string; reviewedBy: string | null } },
+    { reasonCode: string; comment?: string },
+    LeadershipClaimReviewRequestPathParams
+  >;
+  leadershipClaimsRejectReviewRequest: EndpointDefinition<
+    { reviewRequest: { requestId: string; status: string; reviewedBy: string | null } },
+    { reasonCode: string; comment?: string },
+    LeadershipClaimReviewRequestPathParams
+  >;
+  leadershipClaimsRevoke: EndpointDefinition<
+    {
+      statusOverride: {
+        claimId: string;
+        status: string;
+        reasonCode: string;
+        revokedBy: string;
+        revokedAt: string;
+        replacementRequired: boolean;
+      };
+    },
+    { reasonCode: string; comment?: string; replacementRequired: boolean },
+    LeadershipClaimPathParams
   >;
 };
 
@@ -251,8 +279,12 @@ export const endpointCatalog = {
   preferences: { id: "user.preferences", path: "/v1/preferences", method: "GET", apiLayer: "C", planned: false },
   workflowBuilder: { id: "workflow-builder", path: "/v1/workflows/builder", method: "GET", apiLayer: "C", planned: false },
   contractVersion: { id: "meta.contract-version", path: "/v1/meta/contract-version", method: "GET", apiLayer: "A", planned: false },
+  divisionInventorySnapshot: { id: "admin.governance.division-inventory", path: "/v1/admin/governance/division-inventory", method: "GET", apiLayer: "C", planned: false },
   leadershipClaimsConsole: { id: "admin.governance.leadership-claims", path: "/v1/admin/governance/leadership-claims", method: "GET", apiLayer: "C", planned: false },
   leadershipClaimsReviewRequest: { id: "admin.governance.leadership-claims.review-request", path: "/v1/admin/governance/leadership-claims/review-requests", method: "POST", apiLayer: "C", planned: false },
+  leadershipClaimsApproveReviewRequest: { id: "admin.governance.leadership-claims.review-request.approve", path: "/v1/admin/governance/leadership-claims/review-requests/:requestId/approve", method: "POST", apiLayer: "C", planned: false },
+  leadershipClaimsRejectReviewRequest: { id: "admin.governance.leadership-claims.review-request.reject", path: "/v1/admin/governance/leadership-claims/review-requests/:requestId/reject", method: "POST", apiLayer: "C", planned: false },
+  leadershipClaimsRevoke: { id: "admin.governance.leadership-claims.revoke", path: "/v1/admin/governance/leadership-claims/:claimId/revoke", method: "POST", apiLayer: "C", planned: false },
 } satisfies EndpointCatalogDefinition;
 
 function buildQueryString(params: ListQueryParams): string {
@@ -648,6 +680,10 @@ export async function fetchLeadershipClaimsConsole(client: RESTClient): Promise<
   return client.get<LeadershipClaimsConsoleDTO>(endpointCatalog.leadershipClaimsConsole.path);
 }
 
+export async function fetchDivisionInventorySnapshot(client: RESTClient): Promise<DivisionInventorySnapshotDTO> {
+  return client.get<DivisionInventorySnapshotDTO>(endpointCatalog.divisionInventorySnapshot.path);
+}
+
 export async function submitLeadershipClaimReviewRequest(
   client: RESTClient,
   body: {
@@ -660,4 +696,37 @@ export async function submitLeadershipClaimReviewRequest(
   },
 ): Promise<{ reviewRequest: { requestId: string; familyId: string; requestedBy: string; status: string } }> {
   return client.post(endpointCatalog.leadershipClaimsReviewRequest.path, body);
+}
+
+export async function approveLeadershipClaimReviewRequest(
+  client: RESTClient,
+  requestId: string,
+  body: { reasonCode: string; comment?: string },
+): Promise<{ reviewRequest: { requestId: string; status: string; reviewedBy: string | null } }> {
+  return client.post(resolvePath(endpointCatalog.leadershipClaimsApproveReviewRequest.path, { requestId }), body);
+}
+
+export async function rejectLeadershipClaimReviewRequest(
+  client: RESTClient,
+  requestId: string,
+  body: { reasonCode: string; comment?: string },
+): Promise<{ reviewRequest: { requestId: string; status: string; reviewedBy: string | null } }> {
+  return client.post(resolvePath(endpointCatalog.leadershipClaimsRejectReviewRequest.path, { requestId }), body);
+}
+
+export async function revokeLeadershipClaim(
+  client: RESTClient,
+  claimId: string,
+  body: { reasonCode: string; comment?: string; replacementRequired: boolean },
+): Promise<{
+  statusOverride: {
+    claimId: string;
+    status: string;
+    reasonCode: string;
+    revokedBy: string;
+    revokedAt: string;
+    replacementRequired: boolean;
+  };
+}> {
+  return client.post(resolvePath(endpointCatalog.leadershipClaimsRevoke.path, { claimId }), body);
 }

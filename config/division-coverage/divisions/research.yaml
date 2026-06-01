@@ -1,0 +1,75 @@
+autonomyBoundary: draft_only
+blockers:
+  - alias_only_division
+  - missing_source_module
+divisionId: research
+evidence:
+  design:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "docs://docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md#research"
+    score: 2
+  evaluation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - eval/divisions/research/eval-suite.yaml
+    score: 2
+  flywheel:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - training-data-policy/divisions/research.yaml
+    score: 1
+  implementation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "inventory://config/division-coverage/inventory/division-inventory.generated.json#research"
+    score: 2
+  operation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - redteam/divisions/research/redteam-suite.yaml
+    score: 2
+familyId: knowledge-research
+generator:
+  generatedAt: "2026-06-01T00:00:00.000Z"
+  managedBy: scripts/generate-division-coverage-cards.mjs
+inventoryRefs:
+  docRefs:
+    - docs_en/architecture/v3.0-domain-research.md
+    - docs_en/domains/academic-research/domain-spec.md
+    - docs_en/domains/industry-research/domain-spec.md
+    - docs_zh/architecture/v3.0-domain-research.md
+    - docs_zh/divisions/family-expansion/knowledge-research-expansion.md
+    - docs_zh/domains/academic-research/domain-spec.md
+    - docs_zh/domains/industry-research/domain-spec.md
+  evalRefs:
+    - eval/divisions/research/eval-suite.yaml
+  redTeamRefs:
+    - redteam/divisions/research/redteam-suite.yaml
+  scenarioRefs:
+    - config/division-coverage/scenarios/research-conclusion-to-experiment.yaml
+  trainingPolicyRefs:
+    - training-data-policy/divisions/research.yaml
+notes: "Coverage card generated from inventory; blockers require follow-up before promotion."
+owner: research-owner
+raci:
+  approver: knowledge-research-approver
+  consulted:
+    - architecture-owner
+    - security-owner
+  informed:
+    - release-owner
+  owner: research-owner
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+riskLevel: medium
+status: untracked

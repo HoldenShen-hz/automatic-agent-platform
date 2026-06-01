@@ -1,0 +1,9 @@
+divisionId: customer-service
+method: assisted_vs_manual
+sampleWindow: 14d
+minimumSampleSize: 100
+metrics:
+  - handle_time_delta
+  - csat_proxy_delta
+  - policy_violation_delta
+confidence: medium

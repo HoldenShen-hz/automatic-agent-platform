@@ -4,6 +4,7 @@ import type {
   ApprovalDTO,
   CostReportDTO,
   DashboardSnapshotDTO,
+  DivisionInventorySnapshotDTO,
   DomainConfigDTO,
   ExplanationDTO,
   FeatureFlagDTO,
@@ -47,6 +48,7 @@ export interface MockApiShape {
   readonly users: readonly UserDTO[];
   readonly systemConfig: SystemConfigDTO;
   readonly preferences: UserPreferenceDTO;
+  readonly divisionInventory: DivisionInventorySnapshotDTO;
   readonly leadershipClaims: LeadershipClaimsConsoleDTO;
 }
 
@@ -191,6 +193,66 @@ export const defaultMockApiShape: MockApiShape = {
     theme: "dark",
     defaultDashboardLayout: ["overview", "tasks", "approvals"],
   },
+  divisionInventory: {
+    generatedAt: "2026-06-01T00:00:00.000Z",
+    records: [
+      {
+        divisionId: "coding",
+        normalizedDivisionId: "coding",
+        familyId: "engineering",
+        status: "pilot_ready",
+        riskLevel: "high",
+        hasDivisionYaml: true,
+        hasCoverageCard: true,
+        hasScenarioCard: true,
+        hasEval: true,
+        hasRedTeam: true,
+        hasTrainingPolicy: true,
+        hasOwner: true,
+        blockers: [],
+        coverageCardPath: "config/division-coverage/divisions/coding.yaml",
+        scenarioRefs: ["config/division-coverage/scenarios/issue-to-patch.yaml"],
+      },
+      {
+        divisionId: "customer-service",
+        normalizedDivisionId: "customer-service",
+        familyId: "enterprise-ops",
+        status: "pilot_ready",
+        riskLevel: "high",
+        hasDivisionYaml: true,
+        hasCoverageCard: true,
+        hasScenarioCard: true,
+        hasEval: true,
+        hasRedTeam: true,
+        hasTrainingPolicy: true,
+        hasOwner: true,
+        blockers: [],
+        coverageCardPath: "config/division-coverage/divisions/customer-service.yaml",
+      },
+      {
+        divisionId: "legal",
+        normalizedDivisionId: "legal",
+        familyId: "regulated",
+        status: "coverage_draft",
+        riskLevel: "critical",
+        hasDivisionYaml: true,
+        hasCoverageCard: true,
+        hasScenarioCard: false,
+        hasEval: false,
+        hasRedTeam: false,
+        hasTrainingPolicy: false,
+        hasOwner: true,
+        blockers: ["missing_scenario_card", "missing_eval", "missing_redteam", "missing_training_policy"],
+        coverageCardPath: "config/division-coverage/divisions/legal.yaml",
+      },
+    ],
+    summary: {
+      totalDivisions: 32,
+      p0Divisions: 5,
+      blockedDivisions: 1,
+      orphanSourceModules: 0,
+    },
+  },
   leadershipClaims: {
     generatedAt: "2026-05-31T00:00:00.000Z",
     families: [
@@ -257,6 +319,10 @@ export const defaultMockApiShape: MockApiShape = {
         expiresAt: "2026-08-01T00:00:00.000Z",
         status: "approved",
         effectiveStatus: "approved",
+        effectiveStatusReasonCode: null,
+        revokedBy: null,
+        revokedAt: null,
+        replacementRequired: false,
       },
     ],
     allowlist: [
@@ -294,6 +360,10 @@ export const defaultMockApiShape: MockApiShape = {
         rationale: "evidence package is complete",
         requestedAt: "2026-05-30T16:00:00.000Z",
         status: "pending",
+        reviewedBy: null,
+        reviewedAt: null,
+        decisionReasonCode: null,
+        decisionComment: null,
       },
     ],
     noGoActions: [
@@ -314,6 +384,8 @@ export const defaultMockApiShape: MockApiShape = {
       pendingReviewRequestCount: 1,
       blockedScannerHitCount: 0,
       expiredAllowlistCount: 0,
+      revokedClaimCount: 0,
+      expiredClaimCount: 0,
     },
   },
 };

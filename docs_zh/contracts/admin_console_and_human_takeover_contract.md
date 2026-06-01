@@ -78,6 +78,13 @@
 - Leadership Claims 页面中的 readiness status、claim level、expiry、scanner 命中与 allowlist 状态
 - claim review 请求入口，以及与 CI gate 对齐的 review / revoke / expiry 提示
 
+### 7.1 Leadership Claim Operator Workflow
+
+- `review request` 是 operator 审批流对象，不直接生成可被 CI scanner 承认的新 claim。
+- `approved / rejected` 只作用于 `review request` 状态，不自动写回 `config/division-coverage/claims/records.yaml`。
+- `revoked / expired` 作用于 claim 的 `effectiveStatus`；其中 `expired` 由 `expiresAt` 派生，不提供 runtime 手工恢复为 `approved`。
+- runtime revoke 必须记录 `reason_code / revoked_by / revoked_at / replacement_required`，并同步影响 console 展示与 scanner 放行判断。
+
 ## 8. 收口结论
 
 工业级系统必须默认考虑“自动化会失败”，并给人类一个安全、可审计、可收口的接管入口。

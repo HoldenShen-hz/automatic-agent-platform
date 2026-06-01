@@ -204,6 +204,33 @@ test("buildStableReleaseGateReport with passing smoke evidence returns promote_a
   }
 });
 
+test("buildStableReleaseGateReport blocks regulated releases that enable autonomous no-go assertions [stable-release-gate-logic]", () => {
+  const dir = createTempEvidenceDir();
+  try {
+    const smokeDir = createProfileDir(dir, "smoke");
+    const report = createMockEvidenceReport({ passed: true });
+    writeFileSync(join(smokeDir, "stable-evidence-report.json"), JSON.stringify(report));
+
+    const gateReport = buildStableReleaseGateReport({
+      evidenceRootDir: dir,
+      targetStatus: "canary",
+      governanceContext: {
+        familyId: "regulated",
+        autonomousFinalDecisionEnabled: true,
+      },
+    });
+
+    assert.equal(gateReport.overallVerdict, "promote_blocked");
+    assert.ok(gateReport.blockers.includes("regulated no-autonomy guard violated"));
+    assert.equal(
+      gateReport.requiredCriteria.find((criterion) => criterion.criterionId === "regulated_no_autonomy_guard")?.status,
+      "fail",
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("buildStableReleaseGateReport with partial evidence returns conditional [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {

@@ -28,3 +28,5 @@
 - [../adr/README.md](../adr/README.md)
 - [../contracts/README.md](../contracts/README.md)
 - [../reviews/README.md](../reviews/README.md)
+- [../reference/automatic_agent_platform_v3_2_final_release.md](../reference/automatic_agent_platform_v3_2_final_release.md)
+- [../releases/automatic_agent_platform_v3_3_release_readiness.md](../releases/automatic_agent_platform_v3_3_release_readiness.md)

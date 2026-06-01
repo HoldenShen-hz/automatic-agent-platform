@@ -60,6 +60,7 @@
       "@aa/feature-governance-compliance": ["packages/features/governance-compliance/src/index.tsx"],
       "@aa/feature-feature-flags": ["packages/features/feature-flags/src/index.tsx"],
       "@aa/feature-memory-review": ["packages/features/memory-review/src/index.tsx"],
+      "@aa/feature-division-inventory": ["packages/features/division-inventory/src/index.tsx"],
       "@aa/feature-release-console": ["packages/features/release-console/src/index.tsx"],
       "@aa/feature-trace-explorer": ["packages/features/trace-explorer/src/index.tsx"],
       "@aa/mock-server": ["tools/mock-server/src/index.ts"],

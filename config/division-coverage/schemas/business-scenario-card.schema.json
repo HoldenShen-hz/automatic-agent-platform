@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aa://division-coverage/business-scenario-card.schema.json",
+  "type": "object",
+  "required": [
+    "scenarioId",
+    "divisionId",
+    "familyId",
+    "userGoal",
+    "canonicalWorkflow",
+    "supportedAgentTasks",
+    "inputDataTypes",
+    "outputActions",
+    "toolActions",
+    "riskLevel",
+    "autonomyAllowed",
+    "evalSuiteRef",
+    "redTeamSuiteRef",
+    "successMetrics",
+    "safetyMetrics",
+    "roiMetrics",
+    "releaseGateRef"
+  ],
+  "properties": {
+    "scenarioId": { "type": "string" },
+    "divisionId": { "type": "string" },
+    "familyId": { "type": "string" },
+    "riskLevel": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "autonomyAllowed": {
+      "type": "string",
+      "enum": ["read_only", "draft_only", "hitl_required", "prepared_action_only", "no_autonomous_high_impact_action"]
+    },
+    "toolActions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["toolId", "actionId", "riskClass"],
+        "properties": {
+          "toolId": { "type": "string" },
+          "actionId": { "type": "string" },
+          "riskClass": { "type": "string", "enum": ["R0", "R1", "R2", "R3", "R4", "R5"] }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

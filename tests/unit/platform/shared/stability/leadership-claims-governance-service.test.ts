@@ -121,6 +121,21 @@ test("LeadershipClaimsGovernanceService builds a console snapshot from config an
         rationale: "ready for review",
         requestedAt: "2026-05-30T00:00:00.000Z",
         status: "pending",
+        reviewedBy: null,
+        reviewedAt: null,
+        decisionReasonCode: null,
+        decisionComment: null,
+      },
+    ], null, 2));
+    writeFile(join(dataRoot, "governance", "leadership-claim-status-overrides.json"), JSON.stringify([
+      {
+        claimId: "coding-local-leader",
+        status: "revoked",
+        reasonCode: "operator.revoked",
+        comment: "copy must be replaced",
+        replacementRequired: true,
+        revokedBy: "governance-operator",
+        revokedAt: "2026-05-30T12:00:00.000Z",
       },
     ], null, 2));
     writeFile(join(dataRoot, "governance", "leadership-claim-scan-report.json"), JSON.stringify({
@@ -161,13 +176,17 @@ test("LeadershipClaimsGovernanceService builds a console snapshot from config an
     assert.equal(snapshot.families[0]?.benchmarks.length, 1);
     assert.equal(snapshot.claims.length, 2);
     assert.equal(snapshot.claims.find((claim) => claim.claimId === "coding-expired")?.effectiveStatus, "expired");
+    assert.equal(snapshot.claims.find((claim) => claim.claimId === "coding-local-leader")?.effectiveStatus, "revoked");
+    assert.equal(snapshot.claims.find((claim) => claim.claimId === "coding-local-leader")?.replacementRequired, true);
     assert.equal(snapshot.allowlist.filter((entry) => entry.expired).length, 1);
     assert.equal(snapshot.reviewRequests.length, 1);
     assert.equal(snapshot.noGoActions.length, 2);
-    assert.equal(snapshot.summary.approvedClaimCount, 1);
-    assert.equal(snapshot.summary.expiringClaimCount, 1);
+    assert.equal(snapshot.summary.approvedClaimCount, 0);
+    assert.equal(snapshot.summary.expiringClaimCount, 0);
     assert.equal(snapshot.summary.blockedScannerHitCount, 1);
     assert.equal(snapshot.summary.expiredAllowlistCount, 1);
+    assert.equal(snapshot.summary.revokedClaimCount, 1);
+    assert.equal(snapshot.summary.expiredClaimCount, 1);
   } finally {
     rmSync(workspace, { recursive: true, force: true });
   }
@@ -208,6 +227,82 @@ test("LeadershipClaimsGovernanceService persists review requests without touchin
     assert.equal(reviewRequest.status, "pending");
     assert.equal(service.listReviewRequests().length, 1);
     assert.equal(service.listReviewRequests()[0]?.requestedBy, "release-owner");
+    const approved = service.approveReviewRequest({
+      requestId: reviewRequest.requestId,
+      reviewedBy: "governance-operator",
+      reasonCode: "operator.approved",
+    });
+    assert.equal(approved.status, "approved");
+    assert.equal(approved.reviewedBy, "governance-operator");
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("LeadershipClaimsGovernanceService rejects non-pending review decisions and persists claim revocations", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-leadership-review-decision-"));
+  const configRoot = join(workspace, "config", "division-coverage");
+  const policyRoot = join(workspace, "config", "policy");
+  const dataRoot = join(workspace, "data");
+
+  try {
+    writeFile(join(configRoot, "family-readiness.yaml"), "families: []");
+    writeFile(join(configRoot, "benchmark-map.yaml"), "families: []");
+    writeFile(join(configRoot, "minimum-leading-evidence.yaml"), "families: []");
+    writeFile(join(configRoot, "claims", "records.yaml"), [
+      "claims:",
+      "  - claimId: coding-local-leader",
+      "    familyId: engineering",
+      "    claimLevel: local_leader",
+      "    claimText: \"coding division achieves local leader status\"",
+      "    allowedSurfaces: [docs]",
+      "    evidenceRefs: [eval://coding]",
+      "    reviewedBy: [platform-owner]",
+      "    expiresAt: \"2026-06-15T00:00:00Z\"",
+      "    status: approved",
+    ].join("\n"));
+    writeFile(join(configRoot, "claims", "allowlist.yaml"), "entries: []");
+    writeFile(join(policyRoot, "no-go-actions.yaml"), "globalActions: []");
+    writeFile(join(dataRoot, "governance", "leadership-claim-review-requests.json"), JSON.stringify([
+      {
+        requestId: "req-1",
+        familyId: "engineering",
+        requestedClaimLevel: "local_leader",
+        requestedSurfaces: ["docs"],
+        requestedBy: "release-owner",
+        rationale: "ready for review",
+        requestedAt: "2026-05-30T00:00:00.000Z",
+        status: "approved",
+        reviewedBy: "governance-operator",
+        reviewedAt: "2026-05-30T01:00:00.000Z",
+        decisionReasonCode: "operator.approved",
+        decisionComment: null,
+      },
+    ], null, 2));
+
+    const service = new LeadershipClaimsGovernanceService({
+      platformRoot: workspace,
+      configRoot,
+      policyRoot,
+      dataRoot,
+    });
+
+    assert.throws(() => service.rejectReviewRequest({
+      requestId: "req-1",
+      reviewedBy: "governance-operator",
+      reasonCode: "operator.rejected",
+    }), /review_request_not_pending/);
+
+    const revoked = service.revokeClaim({
+      claimId: "coding-local-leader",
+      reasonCode: "operator.revoked",
+      replacementRequired: true,
+      revokedBy: "governance-operator",
+      comment: "replace marketing copy",
+    });
+    assert.equal(revoked.status, "revoked");
+    assert.equal(service.listClaims()[0]?.effectiveStatus, "revoked");
+    assert.equal(service.listClaims()[0]?.effectiveStatusReasonCode, "operator.revoked");
   } finally {
     rmSync(workspace, { recursive: true, force: true });
   }

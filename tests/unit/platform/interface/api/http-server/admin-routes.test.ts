@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
@@ -14,6 +14,11 @@ import type { CoordinatorLoadBalancingService } from "../../../../../../src/plat
 import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 import { StorageError } from "../../../../../../src/platform/contracts/errors.js";
+
+function writeFile(path: string, contents: string): void {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, contents, "utf8");
+}
 
 function createMockMissionControlService(): MissionControlService {
   return {
@@ -124,12 +129,14 @@ test("createAdminRoutes returns all registered admin routes", () => {
     coordinatorLoadBalancingService: createMockLoadBalancingService(),
   };
   const routes = createAdminRoutes(deps);
-  assert.equal(routes.length, 30);
+  assert.equal(routes.length, 33);
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/queues"));
   assert.ok(routes.some((route) => route.pathname === "/v1/preferences" && route.method === "GET"));
   assert.ok(routes.some((route) => route.pathname === "/v1/preferences" && route.method === "PUT"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/admin/governance/division-inventory" && route.method === "GET"));
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/governance/leadership-claims" && route.method === "GET"));
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/governance/leadership-claims/review-requests" && route.method === "POST"));
+  assert.ok(routes.some((route) => route.segments === true && route.method === "POST"));
 });
 
 test("GET /v1/stability returns stability panel", async () => {
@@ -606,6 +613,38 @@ test("GET /v1/admin/governance/leadership-claims returns governance snapshot", a
   assert.ok(Array.isArray(body.data.claims));
 });
 
+test("GET /v1/admin/governance/division-inventory returns generated snapshot", async () => {
+  const originalPlatformRoot = process.env.AA_PLATFORM_ROOT;
+  const workspace = mkdtempSync(join(tmpdir(), "aa-admin-division-inventory-"));
+  process.env.AA_PLATFORM_ROOT = workspace;
+  writeFile(join(workspace, "config", "division-coverage", "inventory", "division-inventory.generated.json"), JSON.stringify({
+    generatedAt: "2026-06-01T00:00:00.000Z",
+    records: [{ divisionId: "coding", normalizedDivisionId: "coding", familyId: "engineering", status: "pilot_ready", riskLevel: "high", hasDivisionYaml: true, hasCoverageCard: true, hasScenarioCard: true, hasEval: true, hasRedTeam: true, hasTrainingPolicy: true, hasOwner: true, blockers: [] }],
+    summary: { totalDivisions: 1, p0Divisions: 1, blockedDivisions: 0, orphanSourceModules: 0 },
+  }, null, 2));
+
+  try {
+    const routes = createAdminRoutes({
+      authService: createMockAuthService(["admin"]),
+      missionControlService: createMockMissionControlService(),
+      coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    });
+    const response = await callRoute(routes, createMockContext("/v1/admin/governance/division-inventory", ["v1", "admin", "governance", "division-inventory"]));
+    if (!response) throw new Error("Handler returned null");
+    const body = JSON.parse(response.body) as { data: { records: Array<{ divisionId: string }>; summary: { totalDivisions: number } } };
+    assert.equal(response.statusCode, 200);
+    assert.equal(body.data.summary.totalDivisions, 1);
+    assert.equal(body.data.records[0]?.divisionId, "coding");
+  } finally {
+    if (originalPlatformRoot == null) {
+      delete process.env.AA_PLATFORM_ROOT;
+    } else {
+      process.env.AA_PLATFORM_ROOT = originalPlatformRoot;
+    }
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
 test("POST /v1/admin/governance/leadership-claims/review-requests persists a review request", async () => {
   const originalDataRoot = process.env.AA_DATA_ROOT;
   const workspace = mkdtempSync(join(tmpdir(), "aa-admin-leadership-review-"));
@@ -652,6 +691,118 @@ test("POST /v1/admin/governance/leadership-claims/review-requests persists a rev
       delete process.env.AA_DATA_ROOT;
     } else {
       process.env.AA_DATA_ROOT = originalDataRoot;
+    }
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("POST /v1/admin/governance/leadership-claims/review-requests/:requestId/approve updates review status", async () => {
+  const originalDataRoot = process.env.AA_DATA_ROOT;
+  const workspace = mkdtempSync(join(tmpdir(), "aa-admin-leadership-review-approve-"));
+  process.env.AA_DATA_ROOT = workspace;
+  writeFile(join(workspace, "governance", "leadership-claim-review-requests.json"), JSON.stringify([
+    {
+      requestId: "req-1",
+      familyId: "engineering",
+      requestedClaimLevel: "local_leader",
+      requestedSurfaces: ["docs"],
+      requestedBy: "release-owner",
+      rationale: "ready",
+      requestedAt: "2026-05-31T00:00:00.000Z",
+      status: "pending",
+    },
+  ], null, 2));
+
+  try {
+    const routes = createAdminRoutes({
+      authService: createMockAuthService(["admin"]),
+      missionControlService: createMockMissionControlService(),
+      coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    });
+    const response = await callRoute(
+      routes,
+      createMockContext(
+        "/v1/admin/governance/leadership-claims/review-requests/req-1/approve",
+        ["v1", "admin", "governance", "leadership-claims", "review-requests", "req-1", "approve"],
+        { "content-type": "application/json" },
+        JSON.stringify({ reasonCode: "operator.approved" }),
+      ),
+    );
+    if (!response) throw new Error("Handler returned null");
+    const body = JSON.parse(response.body) as {
+      data: { reviewRequest: { requestId: string; status: string; reviewedBy: string | null } };
+    };
+    assert.equal(response.statusCode, 200);
+    assert.equal(body.data.reviewRequest.requestId, "req-1");
+    assert.equal(body.data.reviewRequest.status, "approved");
+    assert.equal(body.data.reviewRequest.reviewedBy, "actor-1");
+  } finally {
+    if (originalDataRoot == null) {
+      delete process.env.AA_DATA_ROOT;
+    } else {
+      process.env.AA_DATA_ROOT = originalDataRoot;
+    }
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("POST /v1/admin/governance/leadership-claims/:claimId/revoke persists a runtime override", async () => {
+  const originalDataRoot = process.env.AA_DATA_ROOT;
+  const originalPlatformRoot = process.env.AA_PLATFORM_ROOT;
+  const workspace = mkdtempSync(join(tmpdir(), "aa-admin-leadership-revoke-"));
+  process.env.AA_DATA_ROOT = join(workspace, "data");
+  process.env.AA_PLATFORM_ROOT = workspace;
+  writeFile(join(workspace, "config", "division-coverage", "family-readiness.yaml"), "families: []");
+  writeFile(join(workspace, "config", "division-coverage", "benchmark-map.yaml"), "families: []");
+  writeFile(join(workspace, "config", "division-coverage", "minimum-leading-evidence.yaml"), "families: []");
+  writeFile(join(workspace, "config", "division-coverage", "claims", "allowlist.yaml"), "entries: []");
+  writeFile(join(workspace, "config", "policy", "no-go-actions.yaml"), "globalActions: []");
+  writeFile(join(workspace, "config", "division-coverage", "claims", "records.yaml"), [
+    "claims:",
+    "  - claimId: claim-1",
+    "    familyId: engineering",
+    "    claimLevel: local_leader",
+    "    claimText: \"claim text\"",
+    "    allowedSurfaces: [docs]",
+    "    evidenceRefs: [eval://coding]",
+    "    reviewedBy: [platform-owner]",
+    "    expiresAt: \"2026-06-15T00:00:00Z\"",
+    "    status: approved",
+  ].join("\n"));
+
+  try {
+    const routes = createAdminRoutes({
+      authService: createMockAuthService(["admin"]),
+      missionControlService: createMockMissionControlService(),
+      coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    });
+    const response = await callRoute(
+      routes,
+      createMockContext(
+        "/v1/admin/governance/leadership-claims/claim-1/revoke",
+        ["v1", "admin", "governance", "leadership-claims", "claim-1", "revoke"],
+        { "content-type": "application/json" },
+        JSON.stringify({ reasonCode: "operator.revoked", replacementRequired: true }),
+      ),
+    );
+    if (!response) throw new Error("Handler returned null");
+    const body = JSON.parse(response.body) as {
+      data: { statusOverride: { claimId: string; status: string; replacementRequired: boolean } };
+    };
+    assert.equal(response.statusCode, 200);
+    assert.equal(body.data.statusOverride.claimId, "claim-1");
+    assert.equal(body.data.statusOverride.status, "revoked");
+    assert.equal(body.data.statusOverride.replacementRequired, true);
+  } finally {
+    if (originalDataRoot == null) {
+      delete process.env.AA_DATA_ROOT;
+    } else {
+      process.env.AA_DATA_ROOT = originalDataRoot;
+    }
+    if (originalPlatformRoot == null) {
+      delete process.env.AA_PLATFORM_ROOT;
+    } else {
+      process.env.AA_PLATFORM_ROOT = originalPlatformRoot;
     }
     rmSync(workspace, { recursive: true, force: true });
   }

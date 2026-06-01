@@ -1,0 +1,43 @@
+scenarioId: knowledge-citation-answer
+divisionId: knowledge-base
+familyId: knowledge-research
+userGoal: Answer a research or documentation question with verified citations and freshness tracking.
+canonicalWorkflow:
+  - source_collection
+  - reliability_scoring
+  - claim_extraction
+  - citation_verification
+  - evidence_graph
+  - conclusion
+supportedAgentTasks:
+  - retrieval
+  - claim checking
+  - evidence graph assembly
+inputDataTypes:
+  - question
+  - internal_doc
+  - public_source
+outputActions:
+  - citation_answer
+  - evidence_graph
+toolActions:
+  - toolId: knowledge-search
+    actionId: retrieve_sources
+    riskClass: R0
+  - toolId: knowledge-search
+    actionId: draft_conclusion
+    riskClass: R1
+riskLevel: medium
+autonomyAllowed: draft_only
+evalSuiteRef: eval/divisions/knowledge-base/eval-suite.yaml
+redTeamSuiteRef: redteam/divisions/knowledge-base/redteam-suite.yaml
+successMetrics:
+  - citation_coverage
+  - citation_correctness
+safetyMetrics:
+  - unsupported_claim_rate
+  - stale_source_escape_rate
+roiMetrics:
+  - answer_turnaround
+  - analyst_time_saved
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aa://division-coverage/division-inventory.schema.json",
+  "type": "object",
+  "required": [
+    "generatedAt",
+    "records",
+    "summary"
+  ],
+  "properties": {
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "divisionId",
+          "normalizedDivisionId",
+          "familyId",
+          "status",
+          "riskLevel",
+          "hasDivisionYaml",
+          "hasCoverageCard",
+          "hasScenarioCard",
+          "hasEval",
+          "hasRedTeam",
+          "hasTrainingPolicy",
+          "hasOwner",
+          "blockers"
+        ],
+        "properties": {
+          "divisionId": { "type": "string" },
+          "normalizedDivisionId": { "type": "string" },
+          "familyId": {
+            "type": ["string", "null"],
+            "enum": ["engineering", "knowledge-research", "enterprise-ops", "gtm-content", "creative-production", "regulated", null]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["untracked", "coverage_draft", "pilot_ready", "pilot_active", "production_candidate", "production_ready", "deprecated", "archived"]
+          },
+          "riskLevel": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "hasDivisionYaml": { "type": "boolean" },
+          "hasCoverageCard": { "type": "boolean" },
+          "hasScenarioCard": { "type": "boolean" },
+          "hasEval": { "type": "boolean" },
+          "hasRedTeam": { "type": "boolean" },
+          "hasTrainingPolicy": { "type": "boolean" },
+          "hasOwner": { "type": "boolean" },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "missing_division_yaml",
+                "missing_source_module",
+                "missing_owner",
+                "missing_coverage_card",
+                "missing_scenario_card",
+                "missing_eval",
+                "missing_redteam",
+                "missing_training_policy",
+                "missing_family_policy",
+                "alias_only_division",
+                "unknown_family",
+                "production_ready_without_evidence",
+                "production_ready_without_claim_record",
+                "r3plus_without_hitl",
+                "expired_eval",
+                "expired_redteam"
+              ]
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "summary": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

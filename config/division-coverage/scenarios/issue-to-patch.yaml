@@ -1,0 +1,49 @@
+scenarioId: issue-to-patch
+divisionId: coding
+familyId: engineering
+userGoal: Turn an issue or CI failure into a reviewed patch draft with targeted validation evidence.
+canonicalWorkflow:
+  - repo_map
+  - fault_localization
+  - plan
+  - patch
+  - targeted_tests
+  - patch_gate
+  - pr_draft
+supportedAgentTasks:
+  - repository analysis
+  - patch drafting
+  - targeted validation
+inputDataTypes:
+  - issue
+  - ci_log
+  - repository_snapshot
+outputActions:
+  - patch_draft
+  - test_report
+  - pr_draft
+toolActions:
+  - toolId: github
+    actionId: create_pr_draft
+    riskClass: R3
+  - toolId: shell
+    actionId: apply_patch
+    riskClass: R2
+  - toolId: test-runner
+    actionId: run_targeted_tests
+    riskClass: R2
+riskLevel: high
+autonomyAllowed: prepared_action_only
+evalSuiteRef: eval/divisions/coding/eval-suite.yaml
+redTeamSuiteRef: redteam/divisions/coding/redteam-suite.yaml
+successMetrics:
+  - patch_apply_success
+  - targeted_test_pass
+  - pr_draft_rate
+safetyMetrics:
+  - secret_diff_leak
+  - unsafe_command_rate
+roiMetrics:
+  - edit_distance
+  - review_time_saved
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md

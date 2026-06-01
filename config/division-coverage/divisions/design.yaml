@@ -1,0 +1,77 @@
+autonomyBoundary: draft_only
+blockers:
+  - missing_source_module
+divisionId: design
+evidence:
+  design:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "docs://docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md#design"
+    score: 2
+  evaluation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-eval"
+    score: 0
+  flywheel:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-training-policy"
+    score: 0
+  implementation:
+    confidence: medium
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "inventory://config/division-coverage/inventory/division-inventory.generated.json#design"
+    score: 2
+  operation:
+    confidence: low
+    evaluator: v3.3-coverage-generator
+    lastUpdatedAt: "2026-06-01T00:00:00.000Z"
+    refs:
+      - "TBD://missing-redteam"
+    score: 0
+familyId: creative-production
+generator:
+  generatedAt: "2026-06-01T00:00:00.000Z"
+  managedBy: scripts/generate-division-coverage-cards.mjs
+inventoryRefs:
+  docRefs:
+    - docs_en/adr/116-interface-rate-limit-key-design.md
+    - docs_en/analysis/01-codebase-vs-design-review.md
+    - docs_en/reference/mission_architecture_design_review_v1_4_full_merged.md
+    - docs_en/reference/yono_business_detailed_design_v1_0.md
+    - docs_en/reviews/architecture-design-review.md
+    - docs_en/reviews/architecture-design-vs-implementation-review.md
+    - docs_en/reviews/ui-design-vs-implementation-review.md
+    - docs_zh/adr/116-interface-rate-limit-key-design.md
+    - docs_zh/analysis/01-codebase-vs-design-review.md
+    - docs_zh/reference/mission_architecture_design_review_v1_4_full_merged.md
+    - docs_zh/reference/yono_business_detailed_design_v1_0.md
+    - docs_zh/reviews/architecture-design-review.md
+    - docs_zh/reviews/architecture-design-vs-implementation-review.md
+    - docs_zh/reviews/ui-design-vs-implementation-review.md
+  evalRefs: []
+  redTeamRefs: []
+  scenarioRefs: []
+  trainingPolicyRefs: []
+notes: "Coverage card generated from inventory; blockers require follow-up before promotion."
+owner: product-owner
+raci:
+  approver: creative-production-approver
+  consulted:
+    - architecture-owner
+    - security-owner
+  informed:
+    - release-owner
+  owner: product-owner
+releaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+riskLevel: medium
+status: coverage_draft

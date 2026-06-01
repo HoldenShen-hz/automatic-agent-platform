@@ -1,0 +1,14 @@
+familyId: regulated
+defaultRiskLevel: critical
+defaultAutonomyBoundary: no_autonomous_high_impact_action
+requiredEvalSuites: []
+requiredRedTeamSuites: []
+defaultToolPolicyRef: config/tool-risk/taxonomy.yaml
+defaultMemoryPolicyRef: docs_zh/governance/autonomy_boundary_policy.md
+defaultTrainingDataPolicyRef: training-data-policy/revocation.yaml
+defaultReleaseGateRef: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
+leadershipTargetsRef: docs_zh/divisions/family-expansion/regulated-expansion.md
+noAutonomousHighImpactAction: true
+highRiskOverrides:
+  unrestrictedModelRouting: denied
+  trainingExportPolicy: no_train

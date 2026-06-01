@@ -21,6 +21,8 @@
  * Part of §6 API Endpoints - Missing endpoints implementation
  */
 
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseControlPlaneLoadBalancingSelectionPayload } from "./schemas.js";
@@ -124,6 +126,17 @@ const leadershipClaimReviewRequestSchema = z.object({
   rationale: nonEmptyStringSchema,
 }).strict();
 
+const leadershipClaimReviewDecisionSchema = z.object({
+  reasonCode: nonEmptyStringSchema,
+  comment: z.string().trim().optional(),
+}).strict();
+
+const leadershipClaimRevokeSchema = z.object({
+  reasonCode: nonEmptyStringSchema,
+  comment: z.string().trim().optional(),
+  replacementRequired: z.boolean(),
+}).strict();
+
 export interface AdminConfigUpdatePayload {
   key: string;
   value: unknown;
@@ -141,6 +154,27 @@ let userPreferenceState: UserPreferenceState = {
   theme: "dark",
   defaultDashboardLayout: ["overview", "tasks", "approvals"],
 };
+
+function resolvePlatformRoot(): string {
+  return process.env.AA_PLATFORM_ROOT ?? process.cwd();
+}
+
+function readDivisionInventorySnapshot(): unknown {
+  const snapshotPath = join(resolvePlatformRoot(), "config", "division-coverage", "inventory", "division-inventory.generated.json");
+  if (!existsSync(snapshotPath)) {
+    return {
+      generatedAt: new Date(0).toISOString(),
+      records: [],
+      summary: {
+        totalDivisions: 0,
+        p0Divisions: 0,
+        blockedDivisions: 0,
+        orphanSourceModules: 0,
+      },
+    };
+  }
+  return JSON.parse(readFileSync(snapshotPath, "utf8")) as unknown;
+}
 
 // ─── Route Deps ─────────────────────────────────────────────────────────────
 
@@ -702,6 +736,15 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     },
     {
       method: "GET",
+      pathname: "/v1/admin/governance/division-inventory",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "division inventory governance");
+        return buildJsonResponse(ctx.requestId, 200, readDivisionInventorySnapshot());
+      },
+    },
+    {
+      method: "GET",
       pathname: "/v1/admin/governance/leadership-claims",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
@@ -728,6 +771,92 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
           rationale: payload.rationale,
         });
         return buildJsonResponse(ctx.requestId, 201, { reviewRequest });
+      },
+    },
+    {
+      method: "POST",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (
+          segments[0] !== "v1"
+          || segments[1] !== "admin"
+          || segments[2] !== "governance"
+          || segments[3] !== "leadership-claims"
+          || segments[4] !== "review-requests"
+          || segments.length !== 7
+          || !["approve", "reject"].includes(segments[6] ?? "")
+        ) {
+          return null;
+        }
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "leadership claims governance");
+        const payload = readValidatedJsonBody(ctx.request.body, leadershipClaimReviewDecisionSchema.parse);
+        const service = new LeadershipClaimsGovernanceService();
+        try {
+          const reviewRequest = segments[6] === "approve"
+            ? service.approveReviewRequest({
+              requestId: segments[5] ?? "",
+              reviewedBy: principal.actorId,
+              reasonCode: payload.reasonCode,
+              ...(payload.comment != null ? { comment: payload.comment } : {}),
+            })
+            : service.rejectReviewRequest({
+              requestId: segments[5] ?? "",
+              reviewedBy: principal.actorId,
+              reasonCode: payload.reasonCode,
+              ...(payload.comment != null ? { comment: payload.comment } : {}),
+            });
+          return buildJsonResponse(ctx.requestId, 200, { reviewRequest });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "leadership_claim.review_request_failed";
+          if (message.includes("review_request_not_found")) {
+            throw new ApiError(404, "api.leadership_claim_review_not_found", "Leadership claim review request was not found.");
+          }
+          if (message.includes("review_request_not_pending")) {
+            throw new ApiError(409, "api.leadership_claim_review_not_pending", "Leadership claim review request is no longer pending.");
+          }
+          throw error;
+        }
+      },
+    },
+    {
+      method: "POST",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (
+          segments[0] !== "v1"
+          || segments[1] !== "admin"
+          || segments[2] !== "governance"
+          || segments[3] !== "leadership-claims"
+          || segments.length !== 6
+          || segments[5] !== "revoke"
+        ) {
+          return null;
+        }
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "leadership claims governance");
+        const payload = readValidatedJsonBody(ctx.request.body, leadershipClaimRevokeSchema.parse);
+        const service = new LeadershipClaimsGovernanceService();
+        try {
+          const statusOverride = service.revokeClaim({
+            claimId: segments[4] ?? "",
+            reasonCode: payload.reasonCode,
+            replacementRequired: payload.replacementRequired,
+            revokedBy: principal.actorId,
+            ...(payload.comment != null ? { comment: payload.comment } : {}),
+          });
+          return buildJsonResponse(ctx.requestId, 200, { statusOverride });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "leadership_claim.revoke_failed";
+          if (message.includes("claim_not_found")) {
+            throw new ApiError(404, "api.leadership_claim_not_found", "Leadership claim was not found.");
+          }
+          throw error;
+        }
       },
     },
   ];

@@ -7,6 +7,11 @@ import type {
   ToolExecutionItem,
 } from "../tool-executor/tool-parallel-executor.js";
 import type { OutboxRecord } from "../../shared/outbox/outbox-types.js";
+import { NoGoPolicyRegistry } from "../../five-plane-control-plane/iam/no-go-policy-registry.js";
+import {
+  ToolRiskEnforcer,
+  type ToolRiskDecision,
+} from "./tool-risk-enforcer.js";
 import {
   createBaseReceiptMinimal,
   type BaseReceiptMinimal,
@@ -79,6 +84,14 @@ export {
   type ToolExecutionMetadata,
 } from "../tool-executor/tool-metadata.js";
 export { ToolExecutor, type ToolExecutorOptions } from "../tool-executor/tool-executor.js";
+export {
+  ToolRiskEnforcer,
+  type ToolActionDescriptor,
+  type ToolRiskAssessmentInput,
+  type ToolRiskClass,
+  type ToolRiskDecision,
+  type ToolRiskEnforcerOptions,
+} from "./tool-risk-enforcer.js";
 
 export type ToolGatewayActionPhase = "prepare" | "commit" | "verify" | "compensate";
 
@@ -100,10 +113,18 @@ export interface ToolGatewayOutboxPort {
 
 export interface ToolGatewayActionContext {
   toolName: string;
+  actionId?: string | null;
   tenantId: string;
   missionId: string;
   traceId: string;
   actorId: string;
+  familyId?: string | null;
+  divisionId?: string | null;
+  blockMode?: string | null;
+  preparedActionApproved?: boolean;
+  hitlApproved?: boolean;
+  modelRoutingMode?: string | null;
+  requestSource?: "trusted" | "untrusted" | (string & {});
   taskId?: string;
   sessionId?: string;
   executionId?: string | null;
@@ -128,11 +149,29 @@ export interface ToolGatewayOptions extends Omit<ToolExecutorOptions, "commandEx
   commandExecutor?: CommandExecutor;
   executor?: ToolExecutor;
   outbox?: ToolGatewayOutboxPort;
+  noGoPolicyRegistry?: NoGoPolicyRegistry;
+  toolRiskEnforcer?: ToolRiskEnforcer;
+}
+
+export class ToolGatewayGovernanceError extends Error {
+  public readonly receipt: BaseReceiptMinimal;
+  public readonly outboxRecord: OutboxRecord | null;
+  public readonly governanceCode: string;
+
+  public constructor(message: string, governanceCode: string, receipt: BaseReceiptMinimal, outboxRecord: OutboxRecord | null) {
+    super(message);
+    this.name = "ToolGatewayGovernanceError";
+    this.governanceCode = governanceCode;
+    this.receipt = receipt;
+    this.outboxRecord = outboxRecord;
+  }
 }
 
 export class ToolGateway {
   private readonly executor: ToolExecutor | null;
   private readonly outbox: ToolGatewayOutboxPort | null;
+  private readonly noGoPolicyRegistry: NoGoPolicyRegistry;
+  private readonly toolRiskEnforcer: ToolRiskEnforcer;
 
   public constructor(options: ToolGatewayOptions = {}) {
     this.executor = options.executor
@@ -143,6 +182,8 @@ export class ToolGateway {
         )
         : null);
     this.outbox = options.outbox ?? null;
+    this.noGoPolicyRegistry = options.noGoPolicyRegistry ?? new NoGoPolicyRegistry();
+    this.toolRiskEnforcer = options.toolRiskEnforcer ?? new ToolRiskEnforcer();
   }
 
   public executeCommand(request: CommandToolRequest, signal?: AbortSignal): Promise<CommandExecutionResult> {
@@ -163,10 +204,14 @@ export class ToolGateway {
   }
 
   public prepareToolAction(context: ToolGatewayActionContext): ToolGatewayShadow {
+    this.assertToolRiskAllowed("prepare", context);
+    this.assertNoGoAllowed("prepare", context);
     return this.buildPhaseShadow("prepare", context, "prepared");
   }
 
   public commitToolAction(context: ToolGatewayActionContext): ToolGatewayShadow {
+    this.assertToolRiskAllowed("commit", context);
+    this.assertNoGoAllowed("commit", context);
     return this.buildPhaseShadow("commit", context, "committed");
   }
 
@@ -228,5 +273,112 @@ export class ToolGateway {
       context.traceId,
     ) ?? null;
     return { phase, receipt, outboxRecord };
+  }
+
+  private assertNoGoAllowed(phase: "prepare" | "commit", context: ToolGatewayActionContext): void {
+    const blockMode = this.resolveBlockMode(context);
+    if ((context.familyId?.trim() ?? "") !== "regulated" || blockMode == null) {
+      return;
+    }
+    const matches = this.noGoPolicyRegistry.findMatchingActions({
+      ...(context.familyId != null ? { familyId: context.familyId } : {}),
+      enforcementSurface: "ToolRisk",
+      blockMode,
+    });
+    if (matches.length === 0 || context.preparedActionApproved === true) {
+      return;
+    }
+    const actionIds = matches.map((action) => action.id).join(", ");
+    throw this.buildGovernanceError(
+      context,
+      phase,
+      `tool_gateway.no_go_policy_denied:${actionIds}:${blockMode}`,
+      "tool_gateway.no_go_policy_denied",
+      {
+        ruleIds: actionIds,
+        blockMode,
+      },
+    );
+  }
+
+  private resolveBlockMode(context: ToolGatewayActionContext): string | null {
+    if (context.blockMode != null && context.blockMode.trim().length > 0) {
+      return context.blockMode.trim();
+    }
+    if (context.modelRoutingMode === "unrestricted") {
+      return "unrestricted_model_routing";
+    }
+    return null;
+  }
+
+  private assertToolRiskAllowed(phase: "prepare" | "commit", context: ToolGatewayActionContext): void {
+    const decision = this.toolRiskEnforcer.evaluate({
+      toolName: context.toolName,
+      ...(context.actionId !== undefined ? { actionId: context.actionId } : {}),
+      familyId: context.familyId ?? null,
+      ...(context.preparedActionApproved !== undefined ? { preparedActionApproved: context.preparedActionApproved } : {}),
+      ...(context.hitlApproved !== undefined ? { hitlApproved: context.hitlApproved } : {}),
+      ...(context.requestSource !== undefined ? { requestSource: context.requestSource } : {}),
+    });
+    if (!decision.allow) {
+      throw this.buildToolRiskError(context, phase, decision);
+    }
+  }
+
+  private buildToolRiskError(
+    context: ToolGatewayActionContext,
+    phase: "prepare" | "commit",
+    decision: ToolRiskDecision,
+  ): ToolGatewayGovernanceError {
+    return this.buildGovernanceError(
+      context,
+      phase,
+      `tool_gateway.tool_risk_denied:${decision.code}:${context.toolName}:${context.actionId ?? "unknown"}`,
+      decision.code,
+      {
+        reason: decision.reason,
+        riskClass: decision.riskClass,
+        toolName: context.toolName,
+        actionId: context.actionId ?? null,
+      },
+    );
+  }
+
+  private buildGovernanceError(
+    context: ToolGatewayActionContext,
+    phase: "prepare" | "commit",
+    message: string,
+    governanceCode: string,
+    details: Record<string, unknown>,
+  ): ToolGatewayGovernanceError {
+    const receipt = createBaseReceiptMinimal({
+      tenantId: context.tenantId,
+      missionId: context.missionId,
+      traceId: context.traceId,
+      actorId: context.actorId,
+      actionType: `tool.${phase}_denied:${context.toolName}`,
+      status: "failed",
+      ...(context.taskId != null ? { taskId: context.taskId } : {}),
+      ...(context.sessionId != null ? { sessionId: context.sessionId } : {}),
+      ...(context.schemaVersion != null ? { schemaVersion: context.schemaVersion } : {}),
+      ...(context.evidenceIds != null ? { evidenceIds: context.evidenceIds } : {}),
+      ...(context.inputHash != null ? { inputHash: context.inputHash } : {}),
+      ...(context.outputHash != null ? { outputHash: context.outputHash } : {}),
+    });
+    const outboxRecord = this.outbox?.writeOutboxEntry(
+      context.executionId != null ? "execution" : "task",
+      context.executionId ?? context.taskId ?? receipt.receiptId,
+      "tool_gateway:governance_denied",
+      {
+        receipt,
+        toolName: context.toolName,
+        actionId: context.actionId ?? null,
+        phase,
+        governanceCode,
+        details,
+      },
+      context.traceId,
+    ) ?? null;
+    return new ToolGatewayGovernanceError(message, governanceCode, receipt, outboxRecord);
   }
 }

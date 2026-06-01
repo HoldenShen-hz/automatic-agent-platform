@@ -35,8 +35,8 @@
 | `gate:stable` | `npm run build && node --enable-source-maps dist/src/sdk/cli/stable-gate.js` |
 | `validate:stable:compiled` | `node --enable-source-maps dist/src/sdk/cli/stable-validate.js` |
 | `prompt-injection:stable` | `npm run build && node --enable-source-maps dist/src/sdk/cli/stable-prompt-injection.js` |
-| `security:tenant` | `node --import tsx --test tests/e2e/tenant-boundary-flow.test.ts tests/unit/platform/control-plane/iam/access-model-authorization.test.ts` |
-| `observability:smoke` | `node scripts/validation/platform-validation-closure.mjs monitoring && node --import tsx --test tests/golden/deploy/prometheus-alerts.test.ts tests/golden/deploy/alertmanager-receivers.test.ts` |
+| `security:tenant` | `node scripts/run-node-tests.mjs tests/e2e/tenant-boundary-flow.test.ts tests/unit/platform/control-plane/iam/access-model-authorization.test.ts` |
+| `observability:smoke` | `node scripts/validation/platform-validation-closure.mjs monitoring && node scripts/run-node-tests.mjs tests/golden/deploy/prometheus-alerts.test.ts tests/golden/deploy/alertmanager-receivers.test.ts` |
 | `docs:markdown-render` | `node scripts/validation/mission-operating-model-closure.mjs markdown-render` |
 | `lint:architecture-boundary` | `node scripts/architecture-boundary-scan.mjs` |
 | `scan:current-codebase-gap` | `node scripts/scan-current-codebase-gap.mjs` |

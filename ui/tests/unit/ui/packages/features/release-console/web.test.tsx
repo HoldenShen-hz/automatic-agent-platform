@@ -29,20 +29,25 @@ vi.mock("../../../../../../packages/features/release-console/src/hooks", () => (
   useReleaseConsoleVm: () => ({
     items: [{ title: "Manifest Draft Queue", description: "desc" }],
     loading: false,
+    mutating: false,
     summaryRows: [
       { key: "Families", value: "2" },
       { key: "Approved claims", value: "1" },
     ],
+    errorMessage: null,
+    approveReviewRequest: vi.fn(async () => undefined),
+    rejectReviewRequest: vi.fn(async () => undefined),
+    revokeClaim: vi.fn(async () => undefined),
     leadershipClaims: {
       generatedAt: "2026-05-31T00:00:00.000Z",
       families: [{ familyId: "engineering", displayName: "Engineering", readinessStatus: "local_leadership_ready", targetClaimLevel: "local_leader", owner: "owner", canonicalFamilies: [], canonicalDivisions: ["coding"], benchmarkRefs: [], minimumEvidenceRef: "engineering-core", notes: "", benchmarks: [], internalMappings: [], mvpThresholds: [], leadershipThresholds: [] }],
-      claims: [{ claimId: "claim-1", familyId: "engineering", divisionId: "coding", scenarioId: "issue", claimLevel: "local_leader", claimText: "claim text", allowedSurfaces: ["docs"], evidenceRefs: [], reviewedBy: [], expiresAt: null, status: "approved", effectiveStatus: "approved" }],
+      claims: [{ claimId: "claim-1", familyId: "engineering", divisionId: "coding", scenarioId: "issue", claimLevel: "local_leader", claimText: "claim text", allowedSurfaces: ["docs"], evidenceRefs: [], reviewedBy: [], expiresAt: null, status: "approved", effectiveStatus: "approved", effectiveStatusReasonCode: null, revokedBy: null, revokedAt: null, replacementRequired: false }],
       allowlist: [],
       scannerHits: [{ filePath: "docs_zh/reference/release.md", matchedText: "claim-term", lineNumber: 9, excerpt: "claim wording", surface: "docs", status: "allowlisted", claimId: null, reason: "governance_rule_definition" }],
       scannerGeneratedAt: "2026-05-31T00:00:00.000Z",
-      reviewRequests: [{ requestId: "review-1", familyId: "engineering", divisionId: "coding", scenarioId: "issue", requestedClaimLevel: "local_leader", requestedSurfaces: ["docs"], requestedBy: "release-owner", rationale: "rationale", requestedAt: "2026-05-31T00:00:00.000Z", status: "pending" }],
+      reviewRequests: [{ requestId: "review-1", familyId: "engineering", divisionId: "coding", scenarioId: "issue", requestedClaimLevel: "local_leader", requestedSurfaces: ["docs"], requestedBy: "release-owner", rationale: "rationale", requestedAt: "2026-05-31T00:00:00.000Z", status: "pending", reviewedBy: null, reviewedAt: null, decisionReasonCode: null, decisionComment: null }],
       noGoActions: [{ familyId: null, id: "no-auto-payment", description: "No automated payment", riskClass: "R5", scopes: [], enforcementSurfaces: [], blockModes: ["autonomous_execution"] }],
-      summary: { familyCount: 2, approvedClaimCount: 1, expiringClaimCount: 1, pendingReviewRequestCount: 1, blockedScannerHitCount: 0, expiredAllowlistCount: 0 },
+      summary: { familyCount: 2, approvedClaimCount: 1, expiringClaimCount: 1, pendingReviewRequestCount: 1, blockedScannerHitCount: 0, expiredAllowlistCount: 0, revokedClaimCount: 0, expiredClaimCount: 0 },
     },
   }),
 }));
@@ -75,5 +80,7 @@ describe("LeadershipClaimsWebView", () => {
     expect(screen.queryByText("allowlisted · claim-term")).not.toBeNull();
     expect(screen.queryByText("engineering · local_leader · pending")).not.toBeNull();
     expect(screen.queryByText("no-auto-payment · R5")).not.toBeNull();
+    expect(screen.queryByText("Approve review")).not.toBeNull();
+    expect(screen.queryByText("Revoke claim")).not.toBeNull();
   });
 });

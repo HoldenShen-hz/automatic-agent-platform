@@ -13,6 +13,7 @@ import { existsSync, mkdirSync } from "node:fs";
 
 import { StructuredLogger } from "../../../../src/platform/shared/observability/structured-logger.js";
 import { cleanupPath } from "../../../helpers/fs.js";
+import { waitForCondition } from "../../../helpers/wait.js";
 
 function createRelativeWorkspace(prefix: string): string {
   const workspace = join(
@@ -138,7 +139,7 @@ test("[SYS-PERF-3.1] logger does not block during high-frequency writes", () => 
   }
 });
 
-test("[SYS-PERF-3.1] structured logger in-memory buffer is not affected by file sink", () => {
+test("[SYS-PERF-3.1] structured logger in-memory buffer is not affected by file sink", async () => {
   const workspace = createRelativeWorkspace("aa-logger-memory-");
 
   try {
@@ -161,7 +162,13 @@ test("[SYS-PERF-3.1] structured logger in-memory buffer is not affected by file 
     const recent = logger.recent(10);
     assert.equal(recent.length, 10, "Should have 10 recent entries in buffer");
 
-    // File sink should also have entries
+    // Buffered sinks write asynchronously, so wait for the file to materialize.
+    await waitForCondition(() => existsSync(logFilePath), {
+      timeoutMs: 1_000,
+      intervalMs: 10,
+      description: "buffered logger file creation",
+    });
+
     assert.ok(existsSync(logFilePath), "Log file should exist");
 
     StructuredLogger.configureGlobalFileSink(null);

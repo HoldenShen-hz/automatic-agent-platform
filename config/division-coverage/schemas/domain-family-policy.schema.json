@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aa://division-coverage/domain-family-policy.schema.json",
+  "type": "object",
+  "required": [
+    "familyId",
+    "defaultRiskLevel",
+    "defaultAutonomyBoundary",
+    "requiredEvalSuites",
+    "requiredRedTeamSuites",
+    "defaultToolPolicyRef",
+    "defaultMemoryPolicyRef",
+    "defaultTrainingDataPolicyRef",
+    "defaultReleaseGateRef",
+    "leadershipTargetsRef"
+  ],
+  "properties": {
+    "familyId": {
+      "type": "string",
+      "enum": ["engineering", "knowledge-research", "enterprise-ops", "gtm-content", "creative-production", "regulated"]
+    },
+    "defaultRiskLevel": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "defaultAutonomyBoundary": {
+      "type": "string",
+      "enum": ["read_only", "draft_only", "hitl_required", "prepared_action_only", "no_autonomous_high_impact_action"]
+    },
+    "requiredEvalSuites": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "requiredRedTeamSuites": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "defaultToolPolicyRef": { "type": "string" },
+    "defaultMemoryPolicyRef": { "type": "string" },
+    "defaultTrainingDataPolicyRef": { "type": "string" },
+    "defaultReleaseGateRef": { "type": "string" },
+    "leadershipTargetsRef": { "type": "string" }
+  },
+  "additionalProperties": true
+}
