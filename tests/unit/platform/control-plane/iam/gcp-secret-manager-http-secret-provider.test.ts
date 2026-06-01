@@ -48,6 +48,15 @@ test("GcpSecretManagerHttpSecretProvider.providerKind is secret_manager", () => 
   assert.equal(provider.providerKind, "secret_manager");
 });
 
+test("GcpSecretManagerHttpSecretProvider rejects unsafe token fetch URL", () => {
+  assert.throws(
+    () => createProvider(createMockEnv({
+      AA_GCP_TOKEN_FETCH_URL: "ftp://attacker.example.com/token",
+    })),
+    /gcp_secret_manager\.invalid_token_fetch_url/,
+  );
+});
+
 test("GcpSecretManagerHttpSecretProvider.describeSecret returns unresolved metadata", async () => {
   const provider = createProvider(createMockEnv({ AA_GCP_PROJECT_ID: "my-project" }));
 

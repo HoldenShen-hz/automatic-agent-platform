@@ -8,6 +8,7 @@ import {
 } from "../../model-gateway/provider-registry/unified-chat-provider.js";
 import { AppError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { extractAndParseGuardedJson } from "../oapeflir/safe-llm-json.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
 
@@ -111,13 +112,9 @@ Return a JSON array of LearningObjects, one per signal.`;
 
   private parseImprovementsFromResponse(content: string, signals: readonly LearningSignal[]): LearningObject[] {
     try {
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        logger.warn("[LLMImprovementGenerationService] No JSON array found in LLM response, falling back to template");
-        return this.fallbackTemplateGeneration(signals);
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]) as Array<Record<string, unknown>>;
+      const parsed = extractAndParseGuardedJson<Array<Record<string, unknown>>>(content, {
+        root: "array",
+      });
       return parsed.map((item, index) => {
         const signal = signals[index];
         if (!signal) {

@@ -66,6 +66,15 @@ test("AwsKmsHttpSecretProvider.isConfigured returns true when credentials are se
   assert.equal(provider.isConfigured(), true);
 });
 
+test("AwsKmsHttpSecretProvider rejects invalid custom endpoint protocol", () => {
+  assert.throws(
+    () => createProvider(createMockEnv({
+      AA_AWS_KMS_ENDPOINT: "file:///tmp/not-allowed",
+    })),
+    /kms\.invalid_endpoint/,
+  );
+});
+
 test("AwsKmsHttpSecretProvider.describeSecret returns unresolved metadata", async () => {
   const provider = createProvider(createMockEnv({
     AA_AWS_ACCESS_KEY_ID: "test-key",

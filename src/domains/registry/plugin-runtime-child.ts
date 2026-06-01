@@ -109,6 +109,9 @@ function installRuntimeGuards(): void {
   const https = require("node:https") as typeof import("node:https");
   const net = require("node:net") as typeof import("node:net");
   const tls = require("node:tls") as typeof import("node:tls");
+  const dgram = require("node:dgram") as typeof import("node:dgram");
+  const childProcess = require("node:child_process") as typeof import("node:child_process");
+  const workerThreads = require("node:worker_threads") as typeof import("node:worker_threads");
 
   http.request = deny as typeof http.request;
   http.get = deny as typeof http.get;
@@ -117,21 +120,31 @@ function installRuntimeGuards(): void {
   net.connect = deny as typeof net.connect;
   net.createConnection = deny as typeof net.createConnection;
   tls.connect = deny as typeof tls.connect;
+  dgram.createSocket = deny as typeof dgram.createSocket;
+  childProcess.spawn = deny as typeof childProcess.spawn;
+  childProcess.exec = deny as unknown as typeof childProcess.exec;
+  childProcess.execFile = deny as unknown as typeof childProcess.execFile;
+  childProcess.fork = deny as typeof childProcess.fork;
+  childProcess.spawnSync = deny as typeof childProcess.spawnSync;
+  childProcess.execSync = deny as typeof childProcess.execSync;
+  childProcess.execFileSync = deny as typeof childProcess.execFileSync;
+  workerThreads.Worker = class ForbiddenWorker {
+    public constructor() {
+      deny();
+    }
+  } as unknown as typeof workerThreads.Worker;
+  if ("WebSocket" in globalThis) {
+    (globalThis as { WebSocket?: unknown }).WebSocket = class ForbiddenWebSocket {
+      public constructor() {
+        deny();
+      }
+    };
+  }
   globalThis.fetch = async (..._args) => {
     deny();
     throw new Error("plugin_runtime_child:network_denied");
   };
   syncBuiltinESMExports();
-}
-
-function installStdioProtocolConsoleRedirection(): void {
-  if (process.send) {
-    return;
-  }
-  const directEntry = process.argv[1];
-  if (directEntry == null || resolve(directEntry) !== runtimeChildEntryPath) {
-    return;
-  }
 }
 
 function withStructuredConsoleForCurrentRequest<T>(run: () => Promise<T>): Promise<T> {
@@ -222,9 +235,10 @@ function handleFatalRuntimeError(kind: "unhandledRejection" | "uncaughtException
     });
   }
   process.exitCode = 1;
-  setImmediate(() => {
-    process.exit(1);
-  });
+  process.stdin.pause();
+  process.stdin.removeAllListeners("data");
+  process.removeAllListeners("message");
+  process.disconnect?.();
 }
 
 export function bootstrapPluginRuntimeChild(): void {
@@ -233,7 +247,6 @@ export function bootstrapPluginRuntimeChild(): void {
   }
   bootstrapInstalled = true;
   installRuntimeGuards();
-  installStdioProtocolConsoleRedirection();
   process.on("unhandledRejection", (error) => {
     handleFatalRuntimeError("unhandledRejection", error);
   });

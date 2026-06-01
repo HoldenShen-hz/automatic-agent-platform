@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { PlatformAppKind } from "../../src/platform-architecture-types.js";
 
 import {
   buildPlatformRootSummary,
@@ -183,7 +184,7 @@ test("integration: getPlatformApplicationKernel getApp throws for invalid kind",
   const kernel = getPlatformApplicationKernel();
 
   assert.throws(
-    () => kernel.getApp("nonexistent" as any),
+    () => kernel.getApp("nonexistent" as PlatformAppKind),
     /Unknown platform app kind/,
   );
 });

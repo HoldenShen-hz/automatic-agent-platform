@@ -97,6 +97,16 @@ test("createHarnessRunsRoutes - POST /v1/harness-runs with invalid JSON throws e
   );
 });
 
+test("createHarnessRunsRoutes - POST /v1/harness-runs rejects non-object JSON bodies", async () => {
+  const routes = createHarnessRunsRoutes({ authService: createMockAuthService() });
+  const ctx = createMockContext("/v1/harness-runs", ["v1", "harness-runs"], {}, JSON.stringify(["not-an-object"]));
+
+  await assert.rejects(
+    async () => callRoute(routes, ctx, "POST"),
+    (err: unknown) => err instanceof HarnessRunsApiError && err.statusCode === 400 && err.code === "api.invalid_json",
+  );
+});
+
 test("createHarnessRunsRoutes - GET /v1/harness-runs/:id returns 404 for non-existent run", async () => {
   const routes = createHarnessRunsRoutes({ authService: createMockAuthServiceViewer() });
   const ctx = createMockContext("/v1/harness-runs/hrun_nonexistent", ["v1", "harness-runs", "hrun_nonexistent"]);

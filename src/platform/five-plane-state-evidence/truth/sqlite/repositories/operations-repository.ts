@@ -19,6 +19,7 @@ import {
   type ExecutionAuthoritativeView,
   type OrphanSessionRecord,
   type RuntimeRecoveryRecord,
+  type RuntimeRecoveryOverviewRecord,
   type StaleExecutionRecord,
   type TaskBoardItem,
   type TaskSnapshot,
@@ -551,6 +552,150 @@ export class OperationsRepository {
        ) < ?`,
       [staleBefore],
     );
+  }
+
+  public listRuntimeRecoveryOverviewRecords(
+    now: string,
+    staleBefore: string,
+    tenantId?: string | null,
+  ): RuntimeRecoveryOverviewRecord[] {
+    const scopedTenantId = resolveTenantScope(tenantId);
+    const tenantClause = scopedTenantId !== undefined ? " AND t.tenant_id = ?" : "";
+    const params = scopedTenantId !== undefined
+      ? [staleBefore, now, scopedTenantId]
+      : [staleBefore, now];
+    return this.db.connection
+      .prepare(
+        `SELECT
+          e.id AS executionId,
+          e.task_id AS taskId,
+          t.division_id AS divisionId,
+          t.status AS taskStatus,
+          e.status AS status,
+          e.attempt AS attempt,
+          e.trace_id AS traceId,
+          e.workflow_id AS workflowId,
+          e.last_error_code AS latestErrorCode,
+          e.updated_at AS updatedAt,
+          (
+            SELECT MAX(h.sampled_at)
+            FROM heartbeat_snapshots h
+            WHERE h.execution_id = e.id
+          ) AS lastHeartbeatAt,
+          (
+            SELECT a.id
+            FROM approvals a
+            WHERE a.execution_id = e.id
+              AND a.status = 'requested'
+            ORDER BY a.created_at DESC
+            LIMIT 1
+          ) AS pendingApprovalId,
+          (
+            SELECT p.id
+            FROM execution_prechecks p
+            WHERE p.execution_id = e.id
+            ORDER BY p.checked_at DESC
+            LIMIT 1
+          ) AS precheckId,
+          (
+            SELECT p.execution_id
+            FROM execution_prechecks p
+            WHERE p.execution_id = e.id
+            ORDER BY p.checked_at DESC
+            LIMIT 1
+          ) AS precheckExecutionId,
+          (
+            SELECT p.allowed
+            FROM execution_prechecks p
+            WHERE p.execution_id = e.id
+            ORDER BY p.checked_at DESC
+            LIMIT 1
+          ) AS precheckAllowed,
+          (
+            SELECT p.reason_code
+            FROM execution_prechecks p
+            WHERE p.execution_id = e.id
+            ORDER BY p.checked_at DESC
+            LIMIT 1
+          ) AS precheckReasonCode,
+          (
+            SELECT p.resolved_budget_usd
+            FROM execution_prechecks p
+            WHERE p.execution_id = e.id
+            ORDER BY p.checked_at DESC
+            LIMIT 1
+          ) AS precheckResolvedBudgetUsd,
+          (
+            SELECT p.resolved_timeout_ms
+            FROM execution_prechecks p
+            WHERE p.execution_id = e.id
+            ORDER BY p.checked_at DESC
+            LIMIT 1
+          ) AS precheckResolvedTimeoutMs,
+          (
+            SELECT p.resolved_sandbox_mode
+            FROM execution_prechecks p
+            WHERE p.execution_id = e.id
+            ORDER BY p.checked_at DESC
+            LIMIT 1
+          ) AS precheckResolvedSandboxMode,
+          (
+            SELECT p.resolved_tools_json
+            FROM execution_prechecks p
+            WHERE p.execution_id = e.id
+            ORDER BY p.checked_at DESC
+            LIMIT 1
+          ) AS precheckResolvedToolsJson,
+          (
+            SELECT p.resolved_paths_json
+            FROM execution_prechecks p
+            WHERE p.execution_id = e.id
+            ORDER BY p.checked_at DESC
+            LIMIT 1
+          ) AS precheckResolvedPathsJson,
+          (
+            SELECT p.checked_at
+            FROM execution_prechecks p
+            WHERE p.execution_id = e.id
+            ORDER BY p.checked_at DESC
+            LIMIT 1
+          ) AS precheckCheckedAt,
+          CASE
+            WHEN e.status = 'blocked'
+             AND EXISTS (
+               SELECT 1
+               FROM approvals a
+               WHERE a.execution_id = e.id
+                 AND a.status = 'requested'
+             )
+            THEN 1 ELSE 0
+          END AS isBlockedAwaitingApproval,
+          CASE
+            WHEN COALESCE(
+              (
+                SELECT MAX(h.sampled_at)
+                FROM heartbeat_snapshots h
+                WHERE h.execution_id = e.id
+              ),
+              e.updated_at
+            ) < ?
+            THEN 1 ELSE 0
+          END AS isStale
+         FROM executions e
+         JOIN tasks t ON t.id = e.task_id
+         WHERE e.status IN ('created', 'prechecking', 'executing', 'blocked')
+           AND e.created_at <= ?${tenantClause}`,
+      )
+      .all(...params)
+      .map((row) => {
+        const baseRecord = mapRuntimeRecoveryRecord(row as Record<string, unknown>);
+        const record = row as Record<string, unknown>;
+        return {
+          ...baseRecord,
+          isBlockedAwaitingApproval: Number(record.isBlockedAwaitingApproval) === 1,
+          isStale: Number(record.isStale) === 1,
+        };
+      });
   }
 
   public buildRuntimeRecoveryView(taskId: string, tenantId?: string | null): RuntimeRecoveryRecord[] {

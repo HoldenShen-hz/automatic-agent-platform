@@ -148,7 +148,9 @@ test("CDCReplicationService persists checkpoint and pending queue state atomical
 
   const beforeAckRestart = new CDCReplicationService({ database: db });
   assert.equal(beforeAckRestart.getQueueDepth("us-east", "eu-west"), 1);
-  assert.equal(beforeAckRestart.prepareBatch("us-east", "eu-west", events), null);
+  const resumedPendingBatch = beforeAckRestart.prepareBatch("us-east", "eu-west", events);
+  assert.ok(resumedPendingBatch);
+  assert.equal(resumedPendingBatch?.batchId, pendingBatch?.batchId);
 
   beforeAckRestart.confirmBatch("us-east", "eu-west", pendingBatch!);
 
@@ -213,7 +215,7 @@ test("CDCReplicationService does not enqueue a second batch while one is already
   const secondBatch = service.prepareBatch("us-east", "eu-west", events);
 
   assert.ok(firstBatch != null);
-  assert.equal(secondBatch, null);
+  assert.equal(secondBatch?.batchId, firstBatch?.batchId);
 });
 
 test("CDCReplicationService isEnabled returns correct value [cdc-replication-service]", () => {

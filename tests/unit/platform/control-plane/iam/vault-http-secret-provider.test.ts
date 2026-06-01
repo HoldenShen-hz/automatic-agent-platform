@@ -36,6 +36,11 @@ test("VaultHttpSecretProvider.isConfigured returns true when AA_VAULT_ADDR is se
   assert.equal(provider.isConfigured(), true);
 });
 
+test("VaultHttpSecretProvider rejects invalid address protocol", () => {
+  const provider = createProvider(createMockEnv({ AA_VAULT_ADDR: "ftp://vault.example.com" }));
+  assert.throws(() => (provider as any).addr, /vault\.invalid_addr/);
+});
+
 test("VaultHttpSecretProvider.isConfigured returns true when AA_VAULT_ADDR is whitespace-only after trim", () => {
   // isConfigured checks .trim().length > 0, so whitespace-only should return false
   const provider = createProvider(createMockEnv({ AA_VAULT_ADDR: "   " }));

@@ -6,6 +6,7 @@ export const OidcProviderConfigSchema = z.object({
   clientId: z.string().min(1),
   clientSecret: z.string().min(1).optional(),
   redirectUri: z.string().min(1),
+  allowedRedirectOrigins: z.array(z.string().min(1)).optional(),
   authorizationEndpoint: z.string().min(1).optional(),
   tokenEndpoint: z.string().min(1).optional(),
   userInfoEndpoint: z.string().min(1).optional(),

@@ -116,6 +116,9 @@ const SERVER_HEADERS_TIMEOUT_MS = SERVER_REQUEST_TIMEOUT_MS + SERVER_HEADERS_TIM
 const SERVER_MAX_HEADERS_COUNT = 2_000;
 const SERVER_MAX_REQUESTS_PER_SOCKET = 1_000;
 const SHUTDOWN_DRAIN_TIMEOUT_MS = 10_000;
+const PATH_SEGMENT_TOKEN_PATTERN = /^[A-Za-z0-9_-]+$/;
+const PATH_SEGMENT_NUMERIC_PATTERN = /^[0-9]+$/;
+const PATH_SEGMENT_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export type {
   HttpApiServerOptions,
@@ -180,7 +183,7 @@ export class HttpApiServer {
       ? parseAllowedOrigins(this.env["AA_API_ALLOWED_ORIGINS"])
       : [];
     this.requestDeduplication = createDeduplicationMiddleware({
-      allowInMemoryInProduction: true,
+      allowInMemoryInProduction: this.env["AA_ALLOW_IN_MEMORY_REQUEST_DEDUPLICATION"] === "true",
       isProduction: this.env["NODE_ENV"] === "production",
     });
     const allowedOrigins = (options.cors?.allowedOrigins ?? envOrigins);
@@ -210,7 +213,14 @@ export class HttpApiServer {
       void this.handleRequest(request, response).catch((error: unknown) => {
         const normalized = normalizeError(error);
         if (response.headersSent) {
-          response.end();
+          logger.error("http.request_failed_after_headers_sent", {
+            error: normalized.message,
+            statusCode: normalized.statusCode,
+            code: normalized.code,
+            method: request.method,
+            url: request.url,
+          });
+          response.destroy(normalized);
           return;
         }
         response.writeHead(normalized.statusCode, { "content-type": "application/json; charset=utf-8" });
@@ -1233,13 +1243,13 @@ export class HttpApiServer {
 }
 
 function isLikelyPathIdentifier(segment: string): boolean {
-  if (segment.length >= 12 && /^[A-Za-z0-9_-]+$/.test(segment)) {
+  if (segment.length >= 12 && PATH_SEGMENT_TOKEN_PATTERN.test(segment)) {
     return true;
   }
-  if (/^[0-9]+$/.test(segment)) {
+  if (PATH_SEGMENT_NUMERIC_PATTERN.test(segment)) {
     return true;
   }
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(segment);
+  return PATH_SEGMENT_UUID_PATTERN.test(segment);
 }
 
 function normalizeApiTimeout(value: number | undefined, fallback: number, max: number): number {

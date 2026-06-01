@@ -126,6 +126,14 @@ test("plugin runtime child installs fatal rejection isolation hooks", () => {
   assert.match(source, /handleFatalRuntimeError/);
 });
 
+test("ForkedPluginRuntimeHost bounds pending invocations with an explicit request timeout", () => {
+  const source = readFileSync("src/domains/registry/plugin-runtime-host.ts", "utf8");
+
+  assert.match(source, /plugin_runtime\.request_timeout/);
+  assert.match(source, /this\.sandboxPolicy\.timeoutMs \+ 1_000/);
+  assert.match(source, /clearTimeout\(pending\.timeoutHandle\)/);
+});
+
 test("ForkedPluginRuntimeHost executes presenter plugin through a sandboxed child runtime", async () => {
   const host = new ForkedPluginRuntimeHost({
     pluginId: "plugin.coding.presenter",

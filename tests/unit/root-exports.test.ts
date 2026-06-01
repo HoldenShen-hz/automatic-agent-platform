@@ -5,6 +5,7 @@ import {
   getPlatformApplicationKernel,
   registerPlatformApplicationKernel,
 } from "../../src/platform-application-kernel.js";
+import type { PlatformAppKind } from "../../src/platform-architecture-types.js";
 import {
   buildPlatformArchitectureBootstrapSummary,
   assertStartupOrderEnforced,
@@ -44,7 +45,7 @@ test("apps.resolvePlatformAppManifest returns null for unknown selector", () => 
 
 test("apps.getPlatformAppManifestByKind throws for unknown kind", () => {
   assert.throws(
-    () => apps.getPlatformAppManifestByKind("unknown" as any),
+    () => apps.getPlatformAppManifestByKind("unknown" as PlatformAppKind),
     /Unknown platform app kind/,
   );
 });
@@ -105,7 +106,7 @@ test("getPlatformApplicationKernel getApp returns app by kind", () => {
 test("getPlatformApplicationKernel getApp throws for unknown kind", () => {
   const kernel = getPlatformApplicationKernel();
   assert.throws(
-    () => kernel.getApp("nonexistent" as any),
+    () => kernel.getApp("nonexistent" as PlatformAppKind),
     /Unknown platform app kind/,
   );
 });

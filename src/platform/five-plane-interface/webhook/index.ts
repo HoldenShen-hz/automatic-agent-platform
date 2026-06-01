@@ -253,6 +253,7 @@ export class WebhookIngressService {
     }
     const nextFailures = (this.failureCounts.get(endpointId) ?? 0) + 1;
     this.failureCounts.set(endpointId, nextFailures);
+    this.enforceFailureCountCapacity();
     const threshold = endpoint.maxConsecutiveFailures ?? this.options.maxConsecutiveFailures ?? DEFAULT_MAX_CONSECUTIVE_FAILURES;
     const updatedEndpoint = nextFailures >= threshold
       ? { ...endpoint, enabled: false }
@@ -314,6 +315,16 @@ export class WebhookIngressService {
     this.acceptedEnvelopeIndexById.clear();
     for (let index = 0; index < this.acceptedEnvelopes.length; index += 1) {
       this.acceptedEnvelopeIndexById.set(this.acceptedEnvelopes[index]!.envelopeId, index);
+    }
+  }
+
+  private enforceFailureCountCapacity(): void {
+    while (this.failureCounts.size > this.endpoints.size) {
+      const oldestKey = this.failureCounts.keys().next().value;
+      if (oldestKey == null) {
+        return;
+      }
+      this.failureCounts.delete(oldestKey);
     }
   }
 }

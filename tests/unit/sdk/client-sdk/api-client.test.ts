@@ -55,6 +55,46 @@ test("parseRetryAfterDelayMs returns null for invalid headers", () => {
   assert.equal(parseRetryAfterDelayMs("not-a-date"), null);
 });
 
+test("buildApiUrl rejects non-http base URLs", () => {
+  assert.throws(
+    () => buildApiUrl({
+      baseUrl: "file:///tmp/api",
+      apiVersion: "v1",
+      bearerToken: "test-token",
+    }, {
+      path: "/healthz",
+      method: "GET",
+    }),
+    /client_sdk\.invalid_base_url|client_sdk\.blocked_base_url/,
+  );
+});
+
+test("RetryableApiClient.request disables redirects", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  let capturedRedirect: RequestRedirect | undefined;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, options) => {
+    capturedRedirect = options?.redirect;
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    await client.get("/health");
+    assert.equal(capturedRedirect, "error");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("RetryableApiClient createExecutionTicket targets the dispatch ticket endpoint", async () => {
   const config: ApiClientConfig = {
     baseUrl: "https://api.example.com",

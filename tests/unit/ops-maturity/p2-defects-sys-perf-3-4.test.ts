@@ -9,25 +9,20 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 
 import { AnomalyDetectionService } from "../../../src/ops-maturity/monitoring/anomaly-detection-service.js";
 
-/**
- * Helper to access internal metricBuffer size via inspection.
- * Since the service doesn't expose getMetricBufferSize(), we test the
- * observable behavior: after ingesting many unique metrics rapidly,
- * the service should remain functional and not OOM.
- *
- * The internal maxBufferEntries is 500 with 20% eviction when exceeded.
- * Due to the 30-second cleanup guard, rapid ingestion won't trigger eviction.
- * We use setTimeout to allow the cleanup interval to pass.
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+test.afterEach(() => {
+  try {
+    mock.timers.reset();
+  } catch {
+    // Individual tests enable mocked timers only when needed.
+  }
+});
 
 test("[SYS-PERF-3.4] anomaly detection metricBuffer has size limit", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const service = new AnomalyDetectionService();
 
   // Ingest 100,000 unique metrics
@@ -36,7 +31,7 @@ test("[SYS-PERF-3.4] anomaly detection metricBuffer has size limit", async () =>
   }
 
   // Wait for cleanup interval (30s) to pass so evictExpired can run
-  await sleep(31_000);
+  mock.timers.tick(31_000);
 
   // After ingesting 100k unique metrics and waiting for cleanup,
   // the buffer should be bounded. We verify by checking that
@@ -61,6 +56,7 @@ test("[SYS-PERF-3.4] anomaly detection metricBuffer has size limit", async () =>
 });
 
 test("[SYS-PERF-3.4] metricBuffer eviction triggers after size exceeds maxBufferEntries", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const service = new AnomalyDetectionService();
 
   // Ingest enough unique metrics to exceed maxBufferEntries (500)
@@ -70,7 +66,7 @@ test("[SYS-PERF-3.4] metricBuffer eviction triggers after size exceeds maxBuffer
   }
 
   // Trigger eviction by waiting for cleanup interval
-  await sleep(31_000);
+  mock.timers.tick(31_000);
 
   // After eviction, ingest more metrics with new names
   for (let i = 0; i < 100; i++) {
@@ -87,6 +83,7 @@ test("[SYS-PERF-3.4] metricBuffer eviction triggers after size exceeds maxBuffer
 });
 
 test("[SYS-PERF-3.4] rapid ingestion with many unique keys does not cause memory issues", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const service = new AnomalyDetectionService();
 
   // Simulate rapid ingestion of many unique metrics
@@ -102,7 +99,7 @@ test("[SYS-PERF-3.4] rapid ingestion with many unique keys does not cause memory
   }, "Service should handle rapid ingestion of many unique metrics without throwing");
 
   // After waiting for cleanup, verify service is still functional
-  await sleep(31_000);
+  mock.timers.tick(31_000);
 
   assert.doesNotThrow(() => {
     service.ingestMetric("final-verification", 1.0);

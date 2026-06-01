@@ -260,6 +260,28 @@ test("mapStepOutputRecord handles invalid dataJson gracefully", () => {
   assert.equal(result.validationPassed, false);
 });
 
+test("mapStepOutputRecord falls back when dataJson exceeds size guard", () => {
+  const record: StepOutputRecord = {
+    id: "sor_oversized",
+    stepId: "step_oversized",
+    taskId: "task_oversized",
+    roleId: "agent",
+    status: "succeeded",
+    dataJson: JSON.stringify({ payload: "x".repeat(300_000) }),
+    artifactsJson: null,
+    summary: "Oversized payload",
+    durationMs: 1,
+    tokenCost: 1,
+    validationJson: "{\"valid\":true}",
+    producedAt: "2026-04-01T00:00:00.000Z",
+  };
+
+  const result = mapStepOutputRecord(record);
+
+  assert.deepEqual(result.outputs, {});
+  assert.equal(result.validationPassed, true);
+});
+
 test("mapStepOutputRecord handles invalid artifactsJson gracefully", () => {
   const record: StepOutputRecord = {
     id: "sor_3",

@@ -52,6 +52,7 @@ export interface WebSearchToolResult {
 const DEFAULT_TIMEOUT_MS = 15000;
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 30;
+const MAX_WEB_SEARCH_RESPONSE_BYTES = 512 * 1024;
 
 // DuckDuckGo HTML search endpoint
 const DUCKDUCKGO_HTML_URL = "https://duckduckgo.com/html/";
@@ -298,7 +299,48 @@ export function createWebSearchTool(options?: WebSearchOptions) {
 
       let html: string;
       try {
-        html = await response.text();
+        const chunks: Buffer[] = [];
+        let totalBytes = 0;
+        const reader = response.body?.getReader();
+        if (reader != null) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              break;
+            }
+            const buffer = Buffer.from(value);
+            totalBytes += buffer.length;
+            if (totalBytes > MAX_WEB_SEARCH_RESPONSE_BYTES) {
+              await reader.cancel();
+              return {
+                success: false,
+                results: [],
+                count: 0,
+                query: request.query,
+                error: "Response body exceeded maximum allowed size",
+                errorCode: "BODY_TOO_LARGE",
+                durationMs: Date.now() - startTime,
+              };
+            }
+            chunks.push(buffer);
+          }
+        } else {
+          const buffer = Buffer.from(await response.arrayBuffer());
+          totalBytes = buffer.length;
+          if (totalBytes > MAX_WEB_SEARCH_RESPONSE_BYTES) {
+            return {
+              success: false,
+              results: [],
+              count: 0,
+              query: request.query,
+              error: "Response body exceeded maximum allowed size",
+              errorCode: "BODY_TOO_LARGE",
+              durationMs: Date.now() - startTime,
+            };
+          }
+          chunks.push(buffer);
+        }
+        html = Buffer.concat(chunks).toString("utf8");
       } catch (err) {
         webSearchLogger.debug("web_search: failed to read response body", { error: err instanceof Error ? err.message : String(err) });
         return {

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 import {
   assertValidStartupEnv,
   validateStartupEnv,
@@ -202,44 +203,17 @@ test("validateStartupEnv returns structured errors with key and message", () => 
   }
 });
 
-test("requireValidStartupEnv exits process on invalid env", () => {
-  // Mock process.exit to capture the call
-  let exitCalled = false;
-  let exitCode: number | undefined;
-
-  const originalExit = process.exit;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (process.exit as any) = ((code?: number) => { exitCalled = true; exitCode = code; }) as typeof process.exit;
-
-  try {
-    requireValidStartupEnv({ AA_DB_PATH: "" });
-    // If we get here without process.exit being called in the same tick, the function is async
-    // But requireValidStartupEnv is synchronous and calls process.exit
-  } catch {
-    // process.exit doesn't return, so this is expected
-  } finally {
-    process.exit = originalExit;
-  }
-
-  assert.equal(exitCalled, true, "process.exit should have been called");
-  assert.equal(exitCode, 1, "Exit code should be 1");
+test("requireValidStartupEnv throws validation error on invalid env instead of exiting inline", () => {
+  assert.throws(
+    () => requireValidStartupEnv({ AA_DB_PATH: "" }),
+    (error: unknown) => error instanceof ValidationError && error.code === "startup_env.validation_failed",
+  );
 });
 
-test("requireValidStartupEnv does not exit for valid env", () => {
-  let exitCalled = false;
-  const originalExit = process.exit;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (process.exit as any) = (() => { exitCalled = true; }) as typeof process.exit;
-
-  try {
+test("requireValidStartupEnv returns for valid env without forcing process exit", () => {
+  assert.doesNotThrow(() => {
     requireValidStartupEnv({ AA_DB_PATH: "/tmp/db" });
-  } catch {
-    // Not expected
-  } finally {
-    process.exit = originalExit;
-  }
-
-  assert.equal(exitCalled, false, "process.exit should NOT have been called for valid env");
+  });
 });
 
 test("assertValidStartupEnv throws typed validation error instead of exiting", () => {

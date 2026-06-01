@@ -14,6 +14,10 @@ function createMockStore(overrides: {
   operations?: {
     listRecoverableExecutingRuns?: () => RuntimeRecoveryRecord[];
     listStaleRuns?: () => RuntimeRecoveryRecord[];
+    listRuntimeRecoveryOverviewRecords?: () => Array<RuntimeRecoveryRecord & {
+      isBlockedAwaitingApproval: boolean;
+      isStale: boolean;
+    }>;
     buildRuntimeRecoveryView?: () => RuntimeRecoveryRecord[];
   };
   event?: { listEventsForTask?: () => Array<{ id: string; eventType: string; payloadJson: string; createdAt: string; traceId?: string | null }> };
@@ -35,6 +39,7 @@ function createMockStore(overrides: {
     operations: {
       listRecoverableExecutingRuns: overrides.operations?.listRecoverableExecutingRuns ?? (() => []),
       listStaleRuns: overrides.operations?.listStaleRuns ?? (() => []),
+      listRuntimeRecoveryOverviewRecords: overrides.operations?.listRuntimeRecoveryOverviewRecords,
       buildRuntimeRecoveryView: overrides.operations?.buildRuntimeRecoveryView ?? (() => []),
     },
     listBlockedRunsAwaitingApproval: () => overrides.operations?.listBlockedRunsAwaitingApproval?.() ?? [],
@@ -307,6 +312,41 @@ test("RuntimeRecoveryService.listDivisionRecoveryOverview tracks stale and block
   assert.equal(overview.length, 1);
   assert.equal(overview[0]!.staleExecutionCount, 1);
   assert.equal(overview[0]!.blockedApprovalCount, 1);
+});
+
+test("RuntimeRecoveryService.listDivisionRecoveryOverview uses aggregated store query when available [runtime-recovery-service]", () => {
+  let aggregatedCalls = 0;
+  let fallbackCalls = 0;
+  const activeRecord = makeRecoveryRecord({ executionId: "exec-agg", taskId: "task-agg", divisionId: "div-agg" });
+  const store = createMockStore({
+    operations: {
+      listRuntimeRecoveryOverviewRecords: () => {
+        aggregatedCalls += 1;
+        return [{ ...activeRecord, isBlockedAwaitingApproval: true, isStale: true }];
+      },
+      listRecoverableExecutingRuns: () => {
+        fallbackCalls += 1;
+        return [activeRecord];
+      },
+      listStaleRuns: () => {
+        fallbackCalls += 1;
+        return [activeRecord];
+      },
+      listBlockedRunsAwaitingApproval: () => {
+        fallbackCalls += 1;
+        return [activeRecord];
+      },
+    },
+  });
+  const service = new RuntimeRecoveryService(store);
+
+  const overview = service.listDivisionRecoveryOverview("2025-01-01T00:00:00.000Z");
+
+  assert.equal(aggregatedCalls, 1);
+  assert.equal(fallbackCalls, 0);
+  assert.equal(overview.length, 1);
+  assert.equal(overview[0]!.blockedApprovalCount, 1);
+  assert.equal(overview[0]!.staleExecutionCount, 1);
 });
 
 test("RuntimeRecoveryService.listDivisionRecoveryOverview handles null divisionId as unassigned [runtime-recovery-service]", () => {

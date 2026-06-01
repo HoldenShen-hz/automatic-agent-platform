@@ -203,9 +203,13 @@ export class AwsKmsHttpSecretProvider implements ManagedSecretProvider {
 
   public constructor(options: AwsKmsHttpProviderOptions = {}) {
     this.env = options.env ?? process.env;
-    this.timeoutMs = parseInt(this.env["AA_AWS_TIMEOUT_MS"] ?? "5000", 10);
+    const parsedTimeoutMs = Number.parseInt(this.env["AA_AWS_TIMEOUT_MS"] ?? "5000", 10);
+    this.timeoutMs = Number.isFinite(parsedTimeoutMs) && parsedTimeoutMs > 0 ? parsedTimeoutMs : 5_000;
     const region = this.env["AA_AWS_REGION"] ?? "us-east-1";
-    this.endpoint = this.env["AA_AWS_KMS_ENDPOINT"] ?? `https://kms.${region}.amazonaws.com`;
+    this.endpoint = parseProviderEndpoint(
+      this.env["AA_AWS_KMS_ENDPOINT"] ?? `https://kms.${region}.amazonaws.com`,
+      "kms.invalid_endpoint",
+    ).toString().replace(/\/$/, "");
   }
 
   public isConfigured(): boolean {
@@ -281,7 +285,7 @@ export class AwsKmsHttpSecretProvider implements ManagedSecretProvider {
     // Build headers
     const headers: Record<string, string> = {
       "Content-Type": "application/x-amz-json-1.0",
-      "X-Amz-Target": `TrentService.${action}`,
+      "X-Amz-Target": `TrentService.${sanitizeAwsKmsAction(action)}`,
       "X-Amz-Date": dateTime,
       Host: host,
     };
@@ -414,4 +418,33 @@ export class AwsKmsHttpSecretProvider implements ManagedSecretProvider {
     // AWS KMS symmetric keys don't have native lease model
     return null;
   }
+}
+
+function sanitizeAwsKmsAction(action: string): string {
+  if (!/^[A-Za-z][A-Za-z0-9]+$/.test(action)) {
+    throw new ValidationError("kms.invalid_action", "kms.invalid_action", {
+      source: "provider",
+      details: { action },
+    });
+  }
+  return action;
+}
+
+function parseProviderEndpoint(endpoint: string, code: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(endpoint);
+  } catch {
+    throw new ValidationError(code, code, {
+      source: "provider",
+      details: { endpoint },
+    });
+  }
+  if ((parsed.protocol !== "https:" && parsed.protocol !== "http:") || parsed.username.length > 0 || parsed.password.length > 0) {
+    throw new ValidationError(code, code, {
+      source: "provider",
+      details: { endpoint },
+    });
+  }
+  return parsed;
 }

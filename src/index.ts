@@ -140,6 +140,13 @@ function parseTaskOutput(outputJson: string | null): unknown {
   if (outputJson == null) {
     return null;
   }
+  if (Buffer.byteLength(outputJson, "utf8") > 256 * 1024) {
+    getLogger().warn("platform_root_demo.output_parse_skipped", {
+      reason: "output_too_large",
+      bytes: Buffer.byteLength(outputJson, "utf8"),
+    });
+    return null;
+  }
   try {
     return JSON.parse(outputJson);
   } catch (error) {
@@ -364,8 +371,7 @@ if (isDirectExecution()) {
     const normalized = error instanceof Error
       ? { name: error.name, message: redactStartupErrorMessage(error.message) }
       : { message: redactStartupErrorMessage(String(error)) };
-    process.stderr.write(`${JSON.stringify({ mode: resolveRootEntryMode(), error: normalized }, null, 2)}\n`, () => {
-      process.exit(1);
-    });
+    process.exitCode = 1;
+    process.stderr.write(`${JSON.stringify({ mode: resolveRootEntryMode(), error: normalized }, null, 2)}\n`);
   });
 }

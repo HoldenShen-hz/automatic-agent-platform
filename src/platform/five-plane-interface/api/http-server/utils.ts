@@ -27,6 +27,7 @@ class ApiError extends AppError {
 }
 
 export const API_INVALID_JSON_ERROR_CODE = "api.invalid_json";
+export const DEFAULT_MAX_JSON_BODY_BYTES = 256 * 1024;
 const INTERNAL_ROUTE_AUDIENCE_ALIASES: Readonly<Record<string, readonly string[]>> = Object.freeze({
   tasks: ["tasks", "task"],
   gateway: ["gateway"],
@@ -104,14 +105,68 @@ export function readQueryParam(
   return value;
 }
 
-export function readJsonBody(body: string | null | undefined): unknown {
+export function readJsonBody(body: string | null | undefined, maxBytes: number = DEFAULT_MAX_JSON_BODY_BYTES): unknown {
   if (body == null || body.length === 0) {
     return {};
+  }
+  if (Buffer.byteLength(body, "utf8") > maxBytes) {
+    throw new ApiError(413, "api.request_body_too_large", `Request body exceeds maximum size of ${maxBytes} bytes.`);
   }
   try {
     return JSON.parse(body) as unknown;
   } catch {
     throw new ApiError(400, API_INVALID_JSON_ERROR_CODE, "Request body must be valid JSON.");
+  }
+}
+
+export function readJsonRecord(
+  body: string | null | undefined,
+  options: { maxBytes?: number; emptyValue?: Record<string, unknown> } = {},
+): Record<string, unknown> {
+  const parsed = readJsonBody(body, options.maxBytes);
+  if (parsed == null) {
+    return options.emptyValue ?? {};
+  }
+  if (typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new ApiError(400, API_INVALID_JSON_ERROR_CODE, "Request body must be a JSON object.");
+  }
+  return parsed as Record<string, unknown>;
+}
+
+export function readStoredJsonRecord(
+  serialized: string,
+  options: { maxBytes: number; fallback?: Record<string, unknown> },
+): Record<string, unknown> {
+  if (Buffer.byteLength(serialized, "utf8") > options.maxBytes) {
+    return options.fallback ?? {};
+  }
+  try {
+    const parsed = JSON.parse(serialized) as unknown;
+    if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return options.fallback ?? {};
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    return options.fallback ?? {};
+  }
+}
+
+export function readStoredJsonValue<T>(
+  serialized: string,
+  options: {
+    maxBytes: number;
+    fallback: T;
+    parse?: (value: unknown) => T;
+  },
+): T {
+  if (Buffer.byteLength(serialized, "utf8") > options.maxBytes) {
+    return options.fallback;
+  }
+  try {
+    const parsed = JSON.parse(serialized) as unknown;
+    return options.parse == null ? parsed as T : options.parse(parsed);
+  } catch {
+    return options.fallback;
   }
 }
 

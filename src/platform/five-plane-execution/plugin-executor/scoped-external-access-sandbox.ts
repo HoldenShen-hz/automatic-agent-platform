@@ -11,6 +11,7 @@
 
 import { URL } from "node:url";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { parseSafeOutboundUrl } from "../../five-plane-control-plane/iam/outbound-url-policy.js";
 
 const logger = new StructuredLogger({ retentionLimit: 1000 });
 
@@ -91,7 +92,13 @@ export class ScopedExternalAccessSandbox {
    */
   public validateOutboundRequest(url: string): boolean {
     try {
-      const targetUrl = new URL(url);
+      const targetUrl = parseSafeOutboundUrl(url, {
+        invalid: "sandbox.invalid_outbound_url",
+        blocked: "sandbox.blocked_outbound_url",
+      });
+      if (targetUrl.protocol !== "https:") {
+        return false;
+      }
       const hostname = targetUrl.hostname.toLowerCase();
       const allowed = this.config.allowedDomains.some((domain) => {
         const allowedDomain = domain.toLowerCase();
@@ -290,6 +297,7 @@ export class ScopedExternalAccessSandbox {
     const options: RequestInit = {
       method: request.method,
       headers,
+      redirect: "error",
       signal: controller.signal,
     };
 

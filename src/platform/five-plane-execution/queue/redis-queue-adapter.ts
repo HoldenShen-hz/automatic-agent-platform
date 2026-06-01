@@ -8,6 +8,7 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 import { LocalTypedEventEmitter } from "../../shared/events/local-typed-event-emitter.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
+const PRIORITY_SCORE_MULTIPLIER = 10_000_000_000_000;
 
 interface RedisLike {
   status: string;
@@ -20,6 +21,7 @@ interface RedisLike {
   del(key: string): Promise<number>;
   expire(key: string, seconds: number): Promise<number>;
   zadd(key: string, score: number, member: string): Promise<number>;
+  zrange(key: string, start: number, stop: number): Promise<string[]>;
   zrangebyscore(key: string, min: number | string, max: number | string, ...args: Array<string | number>): Promise<string[]>;
   zrem(key: string, member: string): Promise<number>;
   zcard(key: string): Promise<number>;
@@ -141,6 +143,14 @@ class InMemoryRedisLike extends LocalTypedEventEmitter<Record<string, unknown>> 
       count = Number(args[limitIndex + 2] ?? rows.length);
     }
     return rows.slice(offset, offset + count).map(([member]) => member);
+  }
+
+  async zrange(key: string, start: number, stop: number): Promise<string[]> {
+    const rows = [...(this.sortedSets.get(key)?.entries() ?? [])]
+      .sort((left, right) => left[1] - right[1] || left[0].localeCompare(right[0]))
+      .map(([member]) => member);
+    const normalizedStop = stop < 0 ? rows.length : stop + 1;
+    return rows.slice(start, normalizedStop);
   }
 
   async zrem(key: string, member: string): Promise<number> {
@@ -541,7 +551,7 @@ class RedisQueueClient {
     const activeKey = String(args[1] ?? "");
     const jobKeyPrefix = String(args[2] ?? "");
     const updatedAt = String(args[3] ?? nowIso());
-    const ids = await this.redis.zrangebyscore(waitingKey, "-inf", "+inf");
+    const ids = await this.redis.zrange(waitingKey, 0, 255);
     for (let index = 0; index < ids.length; index += 1) {
       const jobId = ids[index]!;
       const job = await this.redis.hgetall(`${jobKeyPrefix}${jobId}`);
@@ -678,12 +688,15 @@ return nil
     pipeline.sadd(this.queueSetKey(), input.queueName);
     const waitingScore = isDelayed
       ? new Date(job.delayUntil!).getTime()
-      : job.priority * 1e13 + new Date(job.createdAt).getTime();
+      : job.priority * PRIORITY_SCORE_MULTIPLIER + new Date(job.createdAt).getTime();
     pipeline.zadd(this.waitingKey(input.queueName), waitingScore, job.id);
 
     pipeline.exec()
       .then((results) => {
-        const firstFailure = results.find(([err]) => err != null)?.[0];
+        if (!Array.isArray(results)) {
+          throw new Error("queue.enqueue_pipeline_invalid_result");
+        }
+        const firstFailure = results.find((result) => Array.isArray(result) && result[0] != null)?.[0];
         if (firstFailure == null) {
           return;
         }

@@ -6,6 +6,7 @@ import {
   PlatformApplicationKernel,
   registerPlatformApplicationKernel,
 } from "../../src/platform-application-kernel.js";
+import type { PlatformAppKind, PlatformStartupTargetKind } from "../../src/platform-architecture-types.js";
 import { ServiceRegistry } from "../../src/platform/shared/lifecycle/service-registry.js";
 
 test("platform application kernel builds startup plans for app targets", () => {
@@ -164,8 +165,8 @@ test("PlatformApplicationKernel getApp throws for unknown kind", async () => {
 
   const kernel = new PlatformApplicationKernel();
   assert.throws(
-    () => kernel.getApp("unknown" as any),
-    (err: any) => err.message.includes("Unknown platform app kind"),
+    () => kernel.getApp("unknown" as PlatformAppKind),
+    (err: unknown) => err instanceof Error && err.message.includes("Unknown platform app kind"),
   );
 });
 
@@ -215,8 +216,8 @@ test("PlatformApplicationKernel buildStartupPlan throws for unknown target kind"
 
   const kernel = new PlatformApplicationKernel();
   assert.throws(
-    () => kernel.buildStartupPlan("unknown" as any),
-    (err: any) => err.message.includes("Unknown platform startup target"),
+    () => kernel.buildStartupPlan("unknown" as PlatformStartupTargetKind),
+    (err: unknown) => err instanceof Error && err.message.includes("Unknown platform startup target"),
   );
 });
 

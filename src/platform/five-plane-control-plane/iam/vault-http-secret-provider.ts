@@ -46,6 +46,25 @@ export interface VaultHttpProviderOptions {
   env?: NodeJS.ProcessEnv;
 }
 
+function parseProviderEndpoint(endpoint: string, code: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(endpoint);
+  } catch {
+    throw new ValidationError(code, code, {
+      source: "provider",
+      details: { endpoint },
+    });
+  }
+  if ((parsed.protocol !== "https:" && parsed.protocol !== "http:") || parsed.username.length > 0 || parsed.password.length > 0) {
+    throw new ValidationError(code, code, {
+      source: "provider",
+      details: { endpoint },
+    });
+  }
+  return parsed;
+}
+
 /**
  * Response from Vault login endpoint.
  */
@@ -90,7 +109,8 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
   public constructor(options: VaultHttpProviderOptions = {}) {
     this.env = options.env ?? process.env;
     this.mount = this.env["AA_VAULT_MOUNT"] ?? "secret";
-    this.timeoutMs = parseInt(this.env["AA_VAULT_TIMEOUT_MS"] ?? "5000", 10);
+    const parsedTimeoutMs = Number.parseInt(this.env["AA_VAULT_TIMEOUT_MS"] ?? "5000", 10);
+    this.timeoutMs = Number.isFinite(parsedTimeoutMs) && parsedTimeoutMs > 0 ? parsedTimeoutMs : 5_000;
   }
 
   public isConfigured(): boolean {
@@ -108,7 +128,7 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
         source: "provider",
       });
     }
-    return addr.replace(/\/$/, "");
+    return parseProviderEndpoint(addr, "vault.invalid_addr").toString().replace(/\/$/, "");
   }
 
   /**

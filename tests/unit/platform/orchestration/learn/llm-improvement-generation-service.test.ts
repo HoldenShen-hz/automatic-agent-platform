@@ -139,6 +139,51 @@ test("LLMImprovementGenerationService.generateImprovements parses valid JSON arr
   assert.equal(result[0]!.recommendation, "Take action");
 });
 
+test("LLMImprovementGenerationService.generateImprovements extracts wrapped JSON arrays safely", async () => {
+  const mockProvider = createMockProvider([{
+    content: [
+      "Suggested improvements:",
+      JSON.stringify([
+        {
+          learningType: "failure_pattern",
+          title: "Wrapped array",
+          summary: "Wrapped summary",
+          confidence: 0.7,
+          recommendation: "Wrapped recommendation",
+        },
+      ]),
+      "Done.",
+    ].join("\n"),
+  }]);
+  const service = new LLMImprovementGenerationService({ provider: mockProvider as UnifiedChatProvider });
+
+  const result = await service.generateImprovements([makeSignal()]);
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0]!.title, "Wrapped array");
+});
+
+test("LLMImprovementGenerationService.generateImprovements falls back when JSON array is oversized", async () => {
+  const mockProvider = createMockProvider([{
+    content: JSON.stringify([
+      {
+        learningType: "failure_pattern",
+        title: "too large",
+        summary: "x".repeat(300_000),
+        confidence: 0.7,
+        recommendation: "fallback expected",
+      },
+    ]),
+  }]);
+  const service = new LLMImprovementGenerationService({ provider: mockProvider as UnifiedChatProvider });
+
+  const result = await service.generateImprovements([makeSignal()]);
+
+  assert.equal(result.length, 1);
+  assert.notEqual(result[0]!.title, "too large");
+  assert.equal(result[0]!.learningType, "failure_pattern");
+});
+
 test("LLMImprovementGenerationService.generateImprovements falls back to template when JSON has no array match", async () => {
   const mockProvider = createMockProvider([{ content: "This is not JSON array format" }]);
   const service = new LLMImprovementGenerationService({ provider: mockProvider as UnifiedChatProvider });

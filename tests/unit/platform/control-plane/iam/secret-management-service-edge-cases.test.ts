@@ -143,6 +143,109 @@ test("secret management service throws PolicyDeniedError when resolving revoked 
   }
 });
 
+test("secret management service rejects leases above the platform maximum TTL", async () => {
+  const harness = createHarness("aa-secret-max-ttl-unit-");
+  try {
+    const service = new SecretManagementService(harness.db, harness.store, {
+      providers: {
+        environment: {
+          providerKind: "environment",
+          async describeSecret(secretRef) {
+            return createStubSecretMetadata(secretRef);
+          },
+          async requireSecret(secretRef) {
+            return createStubSecretValue(secretRef);
+          },
+        },
+      },
+    });
+
+    service.registerSecret({
+      secretRef: "secret://system/max-ttl/secret",
+      displayName: "Max TTL Secret",
+      category: "provider_api_key",
+      providerKind: "environment",
+      scopeType: "system",
+      scopeRef: "system.max-ttl",
+      rotationPolicy: { cadenceDays: 30, ttlMinutes: 10, breakGlass: false },
+      status: "active",
+    });
+
+    await assert.rejects(
+      async () =>
+        service.issueSecretLease({
+          secretRef: "secret://system/max-ttl/secret",
+          requestedBy: "test",
+          grantedTo: "test",
+          usagePurpose: "test",
+          ttlMinutes: 60 * 24 * 30,
+        }),
+      (err: any) => err.code?.startsWith("secret.lease_ttl_exceeds_maximum:"),
+    );
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
+test("secret management service recursively sanitizes metadata keys that could pollute prototypes", () => {
+  const harness = createHarness("aa-secret-metadata-sanitize-unit-");
+  try {
+    const service = new SecretManagementService(harness.db, harness.store);
+    service.registerSecret({
+      secretRef: "secret://system/sanitize/secret",
+      displayName: "Sanitized Secret",
+      category: "provider_api_key",
+      providerKind: "environment",
+      scopeType: "system",
+      scopeRef: "system.sanitize",
+      rotationPolicy: { cadenceDays: 30, ttlMinutes: 30, breakGlass: false },
+      metadata: {
+        safe: "ok",
+        nested: {
+          ...JSON.parse('{"__proto__":{"polluted":true}}'),
+          child: {
+            constructor: "blocked",
+            keep: "value",
+          },
+        },
+      } as Record<string, unknown>,
+    });
+
+    const stored = harness.store.getSecretRegistryRecord("secret://system/sanitize/secret");
+    assert.ok(stored);
+    const metadata = JSON.parse(stored.metadataJson ?? "{}") as Record<string, unknown>;
+    assert.equal((metadata.safe as string), "ok");
+    assert.equal("nested" in metadata, true);
+    const nested = metadata["nested"] as Record<string, unknown>;
+    assert.equal(Object.hasOwn(nested, "__proto__"), false);
+    const child = nested["child"] as Record<string, unknown>;
+    assert.equal(Object.hasOwn(child, "constructor"), false);
+    assert.equal(child["keep"], "value");
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
+test("secret management service redacts lease identifiers when leases are missing", () => {
+  const harness = createHarness("aa-secret-lease-redact-unit-");
+  try {
+    const service = new SecretManagementService(harness.db, harness.store);
+    assert.throws(
+      () => service.revokeSecretLease({ leaseId: "secret_lease_sensitive_identifier", revokedBy: "ops" }),
+      (err: any) => {
+        assert.equal(err.code, "secret.lease_not_found:secret_lease_sensitive_identifier");
+        assert.equal(String(err.details?.leaseId ?? ""), "secret_lease<redacted>");
+        return true;
+      },
+    );
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
 test("secret management service throws ProviderError when provider is not registered", async () => {
   const harness = createHarness("aa-secret-no-provider-unit-");
   try {
@@ -187,7 +290,56 @@ test("secret management service throws ProviderError when provider is not regist
           callerScopeType: "system",
           callerScopeRef: "system.unknown-provider",
         }),
-      (err: any) => err.code === "secret.provider_not_registered:kms",
+      (err: any) => {
+        assert.equal(err.code, "secret.provider_not_registered:kms");
+        assert.equal(err.details?.providerKind, undefined);
+        assert.equal(err.details?.providerConfigured, false);
+        assert.equal(err.details?.secretRef, "secret://system/<redacted>");
+        return true;
+      },
+    );
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
+});
+
+test("secret management service minimizes unauthorized scope error details", async () => {
+  const harness = createHarness("aa-secret-authz-redact-unit-");
+  try {
+    const service = new SecretManagementService(harness.db, harness.store);
+    service.registerSecret({
+      secretRef: "secret://tenant/acme/payments/api-key",
+      displayName: "Tenant Secret",
+      category: "provider_api_key",
+      providerKind: "environment",
+      scopeType: "tenant",
+      scopeRef: "tenant.acme",
+      rotationPolicy: { cadenceDays: 30, ttlMinutes: 30, breakGlass: false },
+      status: "active",
+    });
+
+    await assert.rejects(
+      async () =>
+        service.issueSecretLease({
+          secretRef: "secret://tenant/acme/payments/api-key",
+          requestedBy: "test",
+          grantedTo: "worker",
+          usagePurpose: "test",
+          ttlMinutes: 5,
+        }, {
+          callerScopeType: "workspace",
+          callerScopeRef: "workspace.other",
+        }),
+      (err: any) => {
+        assert.equal(err.code, "secret.unauthorized_scope:secret://tenant/acme/payments/api-key");
+        assert.equal(err.details?.secretRef, "secret://tenant/<redacted>");
+        assert.equal(err.details?.callerScopeType, undefined);
+        assert.equal(err.details?.callerScopeRef, undefined);
+        assert.equal(err.details?.secretScopeRef, undefined);
+        assert.equal(err.details?.reason, "scope_mismatch");
+        return true;
+      },
     );
   } finally {
     harness.db.close();

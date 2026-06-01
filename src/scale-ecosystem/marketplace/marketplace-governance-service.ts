@@ -275,6 +275,7 @@ export class MarketplaceGovernanceService {
         details: { packageId: input.packageId },
       });
     }
+    this.assertPackageLifecyclePublishable(packageRecord);
 
     const permissions = parseStoredJson<string[]>(
       packageRecord.permissionsJson,

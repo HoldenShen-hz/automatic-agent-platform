@@ -143,10 +143,8 @@ test("P1→P2: task:status_changed propagates from Interface to ControlPlane", a
     assert.equal(p2Received.length, 1, "P2 ControlPlane should receive the event");
     assert.equal(p1Received[0], "task:status_changed", "P1 received correct event type");
     assert.equal(p2Received[0], "task:status_changed", "P2 received correct event type");
-
-    await cleanupCrossPlaneTestEnvironment(env);
   } finally {
-    // cleanup
+    await cleanupCrossPlaneTestEnvironment(env);
   }
 });
 
@@ -190,10 +188,8 @@ test("P1→P2: decision:requested propagates with approval context from Interfac
     const p2Payload = JSON.parse(event.payloadJson);
     assert.equal(p2Payload.riskLevel, "high", "P2 should see high risk level");
     assert.deepEqual(p2Payload.options, ["approve", "deny", "modify"], "P2 should see approval options");
-
-    await cleanupCrossPlaneTestEnvironment(env);
   } finally {
-    // cleanup
+    await cleanupCrossPlaneTestEnvironment(env);
   }
 });
 
@@ -240,10 +236,8 @@ test("P2→P3: domain:activated propagates from ControlPlane to Orchestration", 
 
     const p3Payload = JSON.parse(event.payloadJson);
     assert.equal(p3Payload.domainId, "domain-finance", "P3 should see domain ID");
-
-    await cleanupCrossPlaneTestEnvironment(env);
   } finally {
-    // cleanup
+    await cleanupCrossPlaneTestEnvironment(env);
   }
 });
 
@@ -282,10 +276,8 @@ test("P2→P3: oapeflir.phase.transition propagates from ControlPlane to Orchest
     const p3Payload = JSON.parse(event.payloadJson);
     assert.equal(p3Payload.fromPhase, "planning", "P3 should see fromPhase");
     assert.equal(p3Payload.toPhase, "execution", "P3 should see toPhase");
-
-    await cleanupCrossPlaneTestEnvironment(env);
   } finally {
-    // cleanup
+    await cleanupCrossPlaneTestEnvironment(env);
   }
 });
 
@@ -334,10 +326,8 @@ test("P3→P4: workflow:step_completed propagates from Orchestration to Executio
     const p4Payload = JSON.parse(event.payloadJson);
     assert.equal(p4Payload.workflowId, "wf-harness-123", "P4 should see workflow ID");
     assert.equal(p4Payload.stepId, "step_planning", "P4 should see step ID");
-
-    await cleanupCrossPlaneTestEnvironment(env);
   } finally {
-    // cleanup
+    await cleanupCrossPlaneTestEnvironment(env);
   }
 });
 
@@ -382,10 +372,8 @@ test("P3→P4: dispatch:ticket_created propagates from Orchestration to Executio
     const p4Payload = JSON.parse(event.payloadJson);
     assert.equal(p4Payload.ticketId, "ticket-dispatch-456", "P4 should see ticket ID");
     assert.equal(p4Payload.priority, "high", "P4 should see priority");
-
-    await cleanupCrossPlaneTestEnvironment(env);
   } finally {
-    // cleanup
+    await cleanupCrossPlaneTestEnvironment(env);
   }
 });
 
@@ -432,10 +420,8 @@ test("P4→P5: task:status_changed propagates from Execution to StateEvidence", 
 
     const p5Payload = JSON.parse(event.payloadJson);
     assert.equal(p5Payload.toStatus, "completed", "P5 should see final status");
-
-    await cleanupCrossPlaneTestEnvironment(env);
   } finally {
-    // cleanup
+    await cleanupCrossPlaneTestEnvironment(env);
   }
 });
 
@@ -474,10 +460,8 @@ test("P4→P5: worker:claim_accepted propagates from Execution to StateEvidence"
 
     const p5Payload = JSON.parse(event.payloadJson);
     assert.equal(p5Payload.workerId, "worker-abc-123", "P5 should see worker ID");
-
-    await cleanupCrossPlaneTestEnvironment(env);
   } finally {
-    // cleanup
+    await cleanupCrossPlaneTestEnvironment(env);
   }
 });
 
@@ -568,10 +552,8 @@ test("P1→P2→P3→P4→P5: Full chain event propagation with runId aggregate 
     assert.equal(p5Events[1], "task:status_changed", "Second event should be in_progress");
     assert.equal(p5Events[2], "workflow:step_completed", "Third event should be step completion");
     assert.equal(p5Events[3], "task:status_changed", "Fourth event should be completed");
-
-    await cleanupCrossPlaneTestEnvironment(env);
   } finally {
-    // cleanup
+    await cleanupCrossPlaneTestEnvironment(env);
   }
 });
 
@@ -614,10 +596,8 @@ test("P1→P2→P3→P4→P5: Events propagate to all planes without loss", asyn
     for (const consumerId of Object.values(PLANE_CONSUMERS)) {
       assert.equal(eventCounts[consumerId], 10, `${consumerId} should receive exactly 10 events`);
     }
-
-    await cleanupCrossPlaneTestEnvironment(env);
   } finally {
-    // cleanup
+    await cleanupCrossPlaneTestEnvironment(env);
   }
 });
 
@@ -664,10 +644,8 @@ test("Events within same runId maintain sequence ordering across planes", async 
     // P5 should receive events in sequence order
     assert.equal(p5Sequences.length, 5, "P5 should receive 5 events");
     assert.deepEqual(p5Sequences, [1, 2, 3, 4, 5], "Events should maintain sequence ordering");
-
-    await cleanupCrossPlaneTestEnvironment(env);
   } finally {
-    // cleanup
+    await cleanupCrossPlaneTestEnvironment(env);
   }
 });
 
@@ -733,10 +711,8 @@ test("Events with different runIds maintain independent ordering per run", async
     // Each run's events should maintain their own ordering
     assert.deepEqual(runARecords, ["run-a-1", "run-a-2"], "Run A should maintain sequence");
     assert.deepEqual(runBRecords, ["run-b-1", "run-b-2"], "Run B should maintain sequence");
-
-    await cleanupCrossPlaneTestEnvironment(env);
   } finally {
-    // cleanup
+    await cleanupCrossPlaneTestEnvironment(env);
   }
 });
 
@@ -793,10 +769,8 @@ test("Tier-1 events (task:status_changed) deliver reliably to all planes", async
     // Now deliver to P5 and verify no events lost
     const p5Delivered = await env.bus.deliverPending(PLANE_CONSUMERS.P5_EVIDENCE);
     assert.equal(p5Delivered, 5, "P5 should receive all 5 tier-1 events");
-
-    await cleanupCrossPlaneTestEnvironment(env);
   } finally {
-    // cleanup
+    await cleanupCrossPlaneTestEnvironment(env);
   }
 });
 
@@ -863,9 +837,7 @@ test("Platform events (harness_run.lifecycle) propagate across planes", async ()
 
     assert.equal(truthProjectionReceived.length, 3, "truth_projector should receive 3 harness events");
     assert.equal(auditProjectionReceived.length, 3, "audit_projection should receive 3 harness events");
-
-    await cleanupCrossPlaneTestEnvironment(env);
   } finally {
-    // cleanup
+    await cleanupCrossPlaneTestEnvironment(env);
   }
 });

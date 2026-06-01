@@ -164,6 +164,47 @@ test("PluginSpiRegistry queues invocations up to maxQueuedInvocations", async ()
   assert.ok(successes.length >= 3);
 });
 
+test("PluginSpiRegistry rejects retriever invocations without an explicit namespace", async () => {
+  const registry = new PluginSpiRegistry();
+  registry.register({
+    pluginId: "plugin.namespace.required",
+    domainId: "coding",
+    spiType: "retriever",
+    async retrieve() {
+      return [];
+    },
+  }, {
+    pluginId: "plugin.namespace.required",
+    name: "namespace-required",
+    version: "1.0.0",
+    owner: "test",
+    domainIds: ["coding"],
+    capabilityIds: [],
+    spiTypes: ["retriever"],
+    extensionKind: "domain_plugin",
+    trustLevel: "trusted",
+    publicSdkSurface: "test",
+    settingsSchema: {},
+    sandbox: makeSandboxPolicy({
+      allowedKnowledgeNamespaces: ["coding.repo"],
+    }),
+  });
+
+  await registry.ensureActive("plugin.namespace.required");
+  await assert.rejects(
+    async () =>
+      registry.invokeRetriever("plugin.namespace.required", {
+        query: {
+          taskId: "task_without_namespace",
+          intent: "test",
+          context: {},
+          tokenBudget: 64,
+        },
+      }),
+    /plugin_spi\.namespace_required/,
+  );
+});
+
 test("PluginSpiRegistry throws when queue overflow exceeds limit", async () => {
   const registry = new PluginSpiRegistry({ maxConsecutiveFailures: 10 });
   const releaseBlockedInvocation = createDeferred<void>();

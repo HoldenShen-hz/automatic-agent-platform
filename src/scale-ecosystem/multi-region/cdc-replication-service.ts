@@ -117,6 +117,8 @@ interface CDCReplicationPersistenceSnapshot {
   readonly latestSourceEventAt: Record<string, string>;
   readonly processedEventCounts: Record<string, number>;
   readonly confirmedBatchIds: Record<string, readonly string[]>;
+  readonly vectorClocks: Record<string, Record<string, number>>;
+  readonly vectorClockTouchedAt: Record<string, number>;
 }
 
 export interface CDCReplicationServiceOptions {
@@ -318,7 +320,8 @@ export class CDCReplicationService {
   }
 
   /**
-   * Prepare a replication batch from source events
+   * Prepare a replication batch from source events.
+   * Returns the existing pending batch when the region pair is already draining one.
    */
   public prepareBatch(
     sourceRegionId: string,
@@ -339,7 +342,19 @@ export class CDCReplicationService {
       throw new CdcQueueBackpressureError(key, queueDepth, maxQueueDepth);
     }
     if (queueDepth > 0) {
-      return null;
+      const pendingBatch = this.replicationQueues.get(key)?.[0] ?? null;
+      if (pendingBatch != null) {
+        cdcLogger.log({
+          level: "info",
+          message: "cdc.prepare_batch_deferred",
+          data: {
+            replicationKey: key,
+            queueDepth,
+            pendingBatchId: pendingBatch.batchId,
+          },
+        });
+      }
+      return pendingBatch;
     }
 
     const batchSize = config?.batchSize ?? 100;
@@ -718,6 +733,7 @@ export class CDCReplicationService {
   public recordConflict(taskId: string, conflict: CDCReplicationConflict): void {
     const history = this.conflictHistory.get(taskId) ?? [];
     history.push(conflict);
+    this.conflictHistory.delete(taskId);
     this.conflictHistory.set(taskId, history.slice(-CDCReplicationService.MAX_CONFLICTS_PER_TASK));
     if (this.conflictHistory.size > CDCReplicationService.MAX_CONFLICT_TASKS) {
       const oldestTaskId = this.conflictHistory.keys().next().value;
@@ -728,7 +744,13 @@ export class CDCReplicationService {
   }
 
   public getConflictHistory(taskId: string): readonly CDCReplicationConflict[] {
-    return this.conflictHistory.get(taskId) ?? [];
+    const history = this.conflictHistory.get(taskId);
+    if (history == null) {
+      return [];
+    }
+    this.conflictHistory.delete(taskId);
+    this.conflictHistory.set(taskId, history);
+    return history;
   }
 
   public mergeEventsWithConflictResolution(
@@ -738,18 +760,26 @@ export class CDCReplicationService {
     strategy: "lww" | "merge" = "lww",
   ): CDCReplicationEvent[] {
     const merged = [...localEvents];
+    const sequenceIndex = new Map<number, number>();
+    for (let index = 0; index < merged.length; index += 1) {
+      const event = merged[index];
+      if (event?.taskId === taskId && typeof event.sequence === "number") {
+        sequenceIndex.set(event.sequence, index);
+      }
+    }
     for (const remoteEvent of remoteEvents) {
-      const localIndex = merged.findIndex((event) =>
-        event.taskId === taskId
-        && event.taskId === remoteEvent.taskId
-        && event.sequence === remoteEvent.sequence);
+      const localIndex = remoteEvent.taskId === taskId
+        ? sequenceIndex.get(remoteEvent.sequence) ?? -1
+        : -1;
       if (localIndex === -1) {
+        sequenceIndex.set(remoteEvent.sequence, merged.length);
         merged.push(remoteEvent);
         continue;
       }
       const resolved = this.resolveConflict(merged[localIndex]!, remoteEvent, strategy);
       const replacement = resolved.resolvedEvent ?? remoteEvent;
       merged.splice(localIndex, 1, replacement);
+      sequenceIndex.set(replacement.sequence, localIndex);
       if (resolved.conflict != null) {
         this.recordConflict(taskId, resolved.conflict);
       }
@@ -877,6 +907,10 @@ export class CDCReplicationService {
       confirmedBatchIds: Object.fromEntries(
         [...this.confirmedBatchIds.entries()].map(([key, batchIds]) => [key, [...batchIds]]),
       ),
+      vectorClocks: Object.fromEntries(
+        [...this.vectorClocks.entries()].map(([entityId, clock]) => [entityId, Object.fromEntries(clock.toMap())]),
+      ),
+      vectorClockTouchedAt: Object.fromEntries(this.vectorClockTouchedAt.entries()),
     };
   }
 
@@ -931,6 +965,22 @@ export class CDCReplicationService {
       }
       this.confirmedBatchIds.set(key, new Set(batchIds));
     }
+    for (const [entityId, value] of Object.entries(snapshot.vectorClocks ?? {})) {
+      if (value == null || typeof value !== "object" || Array.isArray(value)) {
+        continue;
+      }
+      const normalized = Object.fromEntries(
+        Object.entries(value).filter(([, sequence]) => typeof sequence === "number" && Number.isFinite(sequence) && sequence >= 0),
+      );
+      this.vectorClocks.set(entityId, new VectorClock(normalized));
+    }
+    for (const [entityId, value] of Object.entries(snapshot.vectorClockTouchedAt ?? {})) {
+      if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+        continue;
+      }
+      this.vectorClockTouchedAt.set(entityId, value);
+    }
+    this.pruneVectorClocks();
   }
 
   private applyConfirmedBatchState(
@@ -968,6 +1018,7 @@ export class CDCReplicationService {
 
   private touchVectorClock(entityId: string, atMs: number = Date.now()): void {
     if (this.vectorClocks.has(entityId)) {
+      this.vectorClockTouchedAt.delete(entityId);
       this.vectorClockTouchedAt.set(entityId, atMs);
     }
   }
@@ -1042,6 +1093,8 @@ export class CDCReplicationService {
     this.processedEventCounts.clear();
     this.confirmedBatchIds.clear();
     this.pairTouchedAt.clear();
+    this.vectorClocks.clear();
+    this.vectorClockTouchedAt.clear();
   }
 
   private ensureDatabaseSchema(): void {

@@ -180,6 +180,32 @@ networkPathTest("WebSocketBridge handles ping/pong", (t) => {
   });
 });
 
+networkPathTest("WebSocketBridge rejects mismatched browser origin", (t) => {
+  return new Promise((resolve, reject) => {
+    const server = createMockServer();
+    const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
+
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address() as { port: number };
+      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, "test-token", {
+        headers: { origin: "http://evil.example.com" },
+      });
+
+      ws.on("close", (code: number) => {
+        assert.equal(code, 4003);
+        bridge.close().then(() => {
+          server.close();
+          resolve();
+        });
+      });
+
+      ws.on("error", () => {
+        // Expected close due to invalid origin.
+      });
+    });
+  });
+});
+
 networkPathTest("WebSocketBridge handles subscribe/unsubscribe", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();

@@ -8,7 +8,7 @@
  */
 
 import type { RouteDefinition } from "./types.js";
-import { buildJsonResponse, decodeOpaqueCursor, encodeOpaqueCursor, readCursor, readLimit, requirePrincipal, assertGlobalTenantScopeSupported } from "./utils.js";
+import { buildJsonResponse, decodeOpaqueCursor, encodeOpaqueCursor, readCursor, readLimit, readStoredJsonRecord, requirePrincipal, assertGlobalTenantScopeSupported } from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { MissionControlService } from "../mission-control-service.js";
 import { PlatformWorkbenchSnapshotService } from "../../../shared/ux/platform-workbench-snapshot-service.js";
@@ -342,14 +342,10 @@ function toAttentionPriority(
 }
 
 function readApprovalField(requestJson: string, field: string, fallback: string): string {
-  if (Buffer.byteLength(requestJson, "utf8") > MAX_APPROVAL_REQUEST_JSON_BYTES) {
-    return fallback;
-  }
-  try {
-    const parsed = JSON.parse(requestJson) as Record<string, unknown>;
-    const value = parsed[field];
-    return typeof value === "string" && value.trim().length > 0 ? value : fallback;
-  } catch {
-    return fallback;
-  }
+  const parsed = readStoredJsonRecord(requestJson, {
+    maxBytes: MAX_APPROVAL_REQUEST_JSON_BYTES,
+    fallback: {},
+  });
+  const value = parsed[field];
+  return typeof value === "string" && value.trim().length > 0 ? value : fallback;
 }

@@ -49,7 +49,7 @@ export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
       if (!token || typeof token !== "string") {
         throw new Error("asset_production_adapter.missing_credentials");
       }
-      credentialFingerprint = `figma_${createHash("sha256").update(token).digest("hex").slice(0, 12)}`;
+      credentialFingerprint = `figma_${createHash("sha256").update(token).digest("hex").slice(0, 16)}`;
     },
     async execute(action: string, params: Record<string, unknown>) {
       if (credentialFingerprint == null) {

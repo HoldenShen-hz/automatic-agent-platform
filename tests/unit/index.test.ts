@@ -3,6 +3,7 @@ import test from "node:test";
 import { existsSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { PlatformAppKind } from "../../src/platform-architecture-types.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -238,7 +239,7 @@ test("src/index getPlatformApplicationKernel getApp throws for unknown kind", as
 
   const kernel = getPlatformApplicationKernel();
   assert.throws(
-    () => kernel.getApp("unknown" as any),
+    () => kernel.getApp("unknown" as PlatformAppKind),
     /Unknown platform app kind/,
   );
 });

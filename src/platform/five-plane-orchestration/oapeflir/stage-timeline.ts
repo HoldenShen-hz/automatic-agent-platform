@@ -17,9 +17,18 @@ export type OapeflirStage = z.infer<typeof OapeflirStageSchema>;
 export type OapeflirStageStatus = z.infer<typeof OapeflirStageStatusSchema>;
 export type OapeflirStageRecord = z.infer<typeof OapeflirStageRecordSchema>;
 
+function createMonotonicStageTick(startMs = Date.now()): () => number {
+  let lastMs = startMs;
+  return () => {
+    const nextMs = Date.now();
+    lastMs = nextMs > lastMs ? nextMs : lastMs + 1;
+    return lastMs;
+  };
+}
+
 export class OapeflirStageTimelineBuilder {
   private readonly entries: OapeflirStageRecord[] = [];
-  private tick = Date.now();
+  private readonly nextTick = createMonotonicStageTick();
 
   public record(
     stage: OapeflirStage,
@@ -28,10 +37,8 @@ export class OapeflirStageTimelineBuilder {
     reasonCode?: string | null,
     rationale?: string | null,
   ): OapeflirStageRecord {
-    const startedAt = this.tick;
-    this.tick += 1;
-    const completedAt = this.tick;
-    this.tick += 1;
+    const startedAt = this.nextTick();
+    const completedAt = this.nextTick();
     const record = OapeflirStageRecordSchema.parse({
       stage,
       status,

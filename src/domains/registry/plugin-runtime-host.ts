@@ -47,6 +47,7 @@ interface PluginRuntimeHostOptions {
 interface PendingRequest {
   resolve(value: unknown): void;
   reject(error: unknown): void;
+  timeoutHandle: NodeJS.Timeout;
 }
 
 abstract class BasePluginRuntimeHost {
@@ -102,9 +103,22 @@ abstract class BasePluginRuntimeHost {
     }
     return new Promise<T>((resolve, reject) => {
       const requestId = newId("plugin_runtime");
+      const timeoutMs = Math.max(1, this.sandboxPolicy.timeoutMs + 1_000);
+      const timeoutHandle = setTimeout(() => {
+        this.pending.delete(requestId);
+        reject(new ValidationError("plugin_runtime.request_timeout", `Plugin runtime for ${this.pluginId} did not respond within ${timeoutMs}ms.`, {
+          details: {
+            pluginId: this.pluginId,
+            action,
+            timeoutMs,
+          },
+        }));
+      }, timeoutMs);
+      timeoutHandle.unref?.();
       this.pending.set(requestId, {
         resolve: (value) => resolve(value as T),
         reject,
+        timeoutHandle,
       });
       const request: PluginRuntimeRequest = {
         type: "request",
@@ -196,6 +210,7 @@ abstract class BasePluginRuntimeHost {
       return;
     }
     this.pending.delete(parsedMessage.requestId);
+    clearTimeout(pending.timeoutHandle);
     if (parsedMessage.ok) {
       pending.resolve(parsedMessage.result);
       return;
@@ -210,6 +225,7 @@ abstract class BasePluginRuntimeHost {
     this.resolveReady = null;
     this.rejectReady = null;
     for (const pending of this.pending.values()) {
+      clearTimeout(pending.timeoutHandle);
       pending.reject(error);
     }
     this.pending.clear();
@@ -224,6 +240,11 @@ abstract class BasePluginRuntimeHost {
   }
 
   protected rejectPendingRequest(requestId: string): void {
+    const pending = this.pending.get(requestId);
+    if (!pending) {
+      return;
+    }
+    clearTimeout(pending.timeoutHandle);
     this.pending.delete(requestId);
   }
 

@@ -282,6 +282,11 @@ export interface RuntimeRecoveryRecord {
   latestPrecheck: ExecutionPrecheckRecord | null;
 }
 
+export interface RuntimeRecoveryOverviewRecord extends RuntimeRecoveryRecord {
+  isBlockedAwaitingApproval: boolean;
+  isStale: boolean;
+}
+
 /**
  * Record tracking Tier 1 event registry coverage.
  */

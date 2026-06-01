@@ -14,6 +14,7 @@ import type {
   ExecutionResult,
   StepResult,
 } from "./execute-bridge.js";
+import { parseGuardedJson } from "./safe-llm-json.js";
 
 const runtimeExecuteBridgeLogger = new StructuredLogger({ retentionLimit: 100 });
 const DEFAULT_RUNTIME_MODEL_ID = "framework-default";
@@ -44,7 +45,9 @@ function createSimulatedSnapshot(plan: Plan): { snapshot: { executionRecord: { s
 
 function parseJsonWithWarning<T>(raw: string, fallback: T, field: string, stepId: string): T {
   try {
-    return JSON.parse(raw) as T;
+    return parseGuardedJson<T>(raw, {
+      root: field === "artifacts" ? "array" : "object",
+    });
   } catch (error) {
     runtimeExecuteBridgeLogger.warn("runtime_execute_bridge.json_parse_failed", {
       field,

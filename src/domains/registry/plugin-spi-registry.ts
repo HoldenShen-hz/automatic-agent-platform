@@ -725,9 +725,14 @@ export class PluginSpiRegistry {
   }
 
   private assertNamespaceAllowed(policy: PluginSandboxPolicy, namespace: string | null, pluginId: string): void {
-    // `null` means the caller is not asking for any namespaced knowledge access.
-    // The allowlist only constrains explicit namespace reads/writes.
     if (namespace == null) {
+      if (policy.allowedKnowledgeNamespaces.length > 0) {
+        throw new ValidationError("plugin_spi.namespace_required", `plugin_spi.namespace_required: Plugin ${pluginId} retriever invocations must declare a knowledge namespace.`, {
+          category: "validation",
+          source: "internal",
+          details: { pluginId, allowedKnowledgeNamespaces: policy.allowedKnowledgeNamespaces },
+        });
+      }
       return;
     }
     if (policy.allowedKnowledgeNamespaces.length === 0) {

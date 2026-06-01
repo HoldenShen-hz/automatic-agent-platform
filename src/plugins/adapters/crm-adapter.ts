@@ -361,28 +361,14 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
       }
 
       const startTime = Date.now();
-      try {
-        const result = READ_ACTIONS.has(normalizedAction)
-          ? await crmRequest(normalizedAction, "GET", params)
-          : await crmRequest(normalizedAction, "POST", params, params);
-        return {
-          ok: true,
-          data: { action, normalizedAction, params, crmType: runtime.crmType, result },
-          latencyMs: Date.now() - startTime,
-        };
-      } catch (err) {
-        return {
-          ok: false,
-          data: {
-            action,
-            normalizedAction,
-            params,
-            crmType: runtime.crmType,
-            error: err instanceof Error ? err.message : String(err),
-          },
-          latencyMs: Date.now() - startTime,
-        };
-      }
+      const result = READ_ACTIONS.has(normalizedAction)
+        ? await crmRequest(normalizedAction, "GET", params)
+        : await crmRequest(normalizedAction, "POST", params, params);
+      return {
+        ok: true,
+        data: { action, normalizedAction, params, crmType: runtime.crmType, result },
+        latencyMs: Date.now() - startTime,
+      };
     },
   };
 }

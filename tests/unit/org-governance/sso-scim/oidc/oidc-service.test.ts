@@ -30,6 +30,18 @@ test("OidcIdentityService initiates authorization flow", () => {
   assert.ok(codeVerifier);
 });
 
+test("OidcIdentityService rejects redirect origins outside allowlist", () => {
+  const service = new OidcIdentityService({
+    ...createOidcConfig(),
+    allowedRedirectOrigins: ["https://app.example.com"],
+  });
+
+  assert.throws(
+    () => service.initiateFlow("https://evil.example.com/callback"),
+    /oidc\.redirect_origin_not_allowed/,
+  );
+});
+
 test("OidcIdentityService exchanges code for tokens", async () => {
   const service = new OidcIdentityService(createOidcConfig());
   const { state } = service.initiateFlow("https://app.example.com/callback");
@@ -312,6 +324,18 @@ test("InMemoryOidcStateStore deletes state", () => {
   assert.equal(result, null);
 });
 
+test("InMemoryOidcStateStore evicts the oldest expiring state when capacity is exceeded", () => {
+  const store = new InMemoryOidcStateStore(60_000, 2);
+
+  store.saveState("state-1", "nonce-1", "https://one.example.com", "verifier-1");
+  store.saveState("state-2", "nonce-2", "https://two.example.com", "verifier-2");
+  store.saveState("state-3", "nonce-3", "https://three.example.com", "verifier-3");
+
+  assert.equal(store.getState("state-1"), null);
+  assert.ok(store.getState("state-2"));
+  assert.ok(store.getState("state-3"));
+});
+
 // ─── PKCE Tests (RFC 7636) ─────────────────────────────────────────────────────
 
 test("OidcIdentityService initiates flow with PKCE code verifier", () => {
@@ -357,6 +381,26 @@ test("OidcIdentityService exchanges code with PKCE code verifier", async () => {
   assert.ok(tokens!.accessToken, "tokens should have accessToken");
   // Verify codeVerifier was used in exchange (via state store retrieval)
   assert.ok(codeVerifier, "codeVerifier should be returned for verification");
+});
+
+test("OidcIdentityService caps groups returned from userinfo", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({
+    sub: "user-1",
+    groups: Array.from({ length: 200 }, (_, index) => `group-${index}`),
+  }), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  })) as typeof fetch;
+
+  try {
+    const service = new OidcIdentityService(createOidcConfig(), undefined, { maxGroups: 5 });
+    const result = await service.fetchUserInfo("access-token");
+    assert.equal(result?.groups?.length, 5);
+    assert.deepEqual(result?.groups, ["group-0", "group-1", "group-2", "group-3", "group-4"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("InMemoryOidcStateStore saves and retrieves state with codeVerifier", () => {

@@ -180,3 +180,17 @@ test("createWebSearchTool caps execute limit at MAX_LIMIT=30 [web-search]", asyn
   assert.equal(result.results[0]!.title, "Result 1");
   assert.equal(result.results[29]!.title, "Result 30");
 });
+
+test("createWebSearchTool rejects oversized HTML responses [web-search]", async () => {
+  const tool = createWebSearchTool({
+    fetchImpl: async () =>
+      new Response("x".repeat(600_000), {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      }),
+  });
+
+  const result = await tool.execute({ query: "oversized-response" });
+  assert.equal(result.success, false);
+  assert.equal(result.errorCode, "BODY_TOO_LARGE");
+});

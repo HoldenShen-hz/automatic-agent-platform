@@ -30,5 +30,5 @@ export function createZeroableCredentialSecret(secret: string): ZeroableCredenti
 }
 
 export function buildHashedCredentialFingerprint(prefix: string, secret: string, length: number = 24): string {
-  return `${prefix}_${createHash("sha256").update(secret).digest("hex").slice(0, Math.max(4, length))}`;
+  return `${prefix}_${createHash("sha256").update(secret).digest("hex").slice(0, Math.max(12, length))}`;
 }

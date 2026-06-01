@@ -53,11 +53,13 @@ import {
 class SecretResolutionRateLimiter {
   private readonly windowMs: number;
   private readonly maxRequests: number;
+  private readonly maxTrackedCallers: number;
   private readonly requests: Map<string, { timestamps: number[]; lastSeenAt: number }> = new Map();
 
-  constructor(windowMs = 60_000, maxRequests = 100) {
+  constructor(windowMs = 60_000, maxRequests = 100, maxTrackedCallers = 10_000) {
     this.windowMs = windowMs;
     this.maxRequests = maxRequests;
+    this.maxTrackedCallers = Math.max(1, Math.trunc(maxTrackedCallers));
   }
 
   /**
@@ -80,6 +82,7 @@ class SecretResolutionRateLimiter {
     }
 
     validTimestamps.push(now);
+    this.evictIfOverCapacity(callerId);
     this.requests.set(callerId, {
       timestamps: validTimestamps,
       lastSeenAt: now,
@@ -94,22 +97,76 @@ class SecretResolutionRateLimiter {
       }
     }
   }
+
+  private evictIfOverCapacity(preservedCallerId: string): void {
+    if (this.requests.size < this.maxTrackedCallers) {
+      return;
+    }
+    let oldestCallerId: string | null = null;
+    let oldestSeenAt = Number.POSITIVE_INFINITY;
+    for (const [callerId, state] of this.requests.entries()) {
+      if (callerId === preservedCallerId) {
+        continue;
+      }
+      if (state.lastSeenAt < oldestSeenAt) {
+        oldestCallerId = callerId;
+        oldestSeenAt = state.lastSeenAt;
+      }
+    }
+    if (oldestCallerId != null) {
+      this.requests.delete(oldestCallerId);
+    }
+  }
 }
 
 type RotationSchedulerPhase = "initial" | "interval";
+
+const PROHIBITED_METADATA_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+const MAX_SECRET_LEASE_TTL_MINUTES = 7 * 24 * 60;
+
+function sanitizeMetadataValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeMetadataValue(entry));
+  }
+  if (value == null || typeof value !== "object") {
+    return value;
+  }
+  const safe: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (PROHIBITED_METADATA_KEYS.has(key)) {
+      continue;
+    }
+    safe[key] = sanitizeMetadataValue(entry);
+  }
+  return safe;
+}
 
 function sanitizeMetadataRecord(value: unknown): Record<string, unknown> {
   if (value == null || typeof value !== "object" || Array.isArray(value)) {
     return {};
   }
-  const safe: Record<string, unknown> = {};
-  for (const [key, entry] of Object.entries(value)) {
-    if (key === "__proto__" || key === "constructor" || key === "prototype") {
-      continue;
-    }
-    safe[key] = entry;
+  return sanitizeMetadataValue(value) as Record<string, unknown>;
+}
+
+function redactSecretRef(secretRef: string): string {
+  return secretRef.replace(/(?<=secret:\/\/[^/]+\/).+/u, "<redacted>");
+}
+
+function redactLeaseId(leaseId: string): string {
+  if (leaseId.trim().length === 0) {
+    return "lease_<redacted>";
   }
-  return safe;
+  return `${leaseId.slice(0, Math.min(12, leaseId.length))}<redacted>`;
+}
+
+function buildRedactedSecretDetails(
+  secretRef: string,
+  extra: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    secretRef: redactSecretRef(secretRef),
+    ...extra,
+  };
 }
 
 function parseRotationPolicyOrThrow(secretRef: string, raw: string): SecretRotationPolicy {
@@ -118,7 +175,7 @@ function parseRotationPolicyOrThrow(secretRef: string, raw: string): SecretRotat
   } catch {
     throw new ValidationError(`secret.invalid_rotation_policy:${secretRef}`, `secret.invalid_rotation_policy:${secretRef}`, {
       source: "provider",
-      details: { secretRef },
+      details: buildRedactedSecretDetails(secretRef),
     });
   }
 }
@@ -195,7 +252,7 @@ export class SecretManagementService {
         scopeRef: assertNonEmpty(input.scopeRef, "secret.invalid_scope_ref"),
         status,
         rotationPolicyJson: JSON.stringify(rotationPolicy),
-        metadataJson: toJson(input.metadata),
+        metadataJson: toJson(sanitizeMetadataRecord(input.metadata)),
         currentVersion: input.currentVersion?.trim() || null,
         lastRotatedAt,
         nextRotationDueAt,
@@ -238,11 +295,10 @@ export class SecretManagementService {
           `secret.unauthorized_scope:${registry.secretRef}`,
           `secret.unauthorized_scope:${registry.secretRef}`,
           {
-            details: {
-              secretRef: registry.secretRef,
+            details: buildRedactedSecretDetails(registry.secretRef, {
+              reason: "scope_mismatch",
               secretScopeType: registry.scopeType,
-              callerScopeType,
-            },
+            }),
           },
         );
       }
@@ -256,13 +312,10 @@ export class SecretManagementService {
           `secret.unauthorized_scope:${registry.secretRef}`,
           `secret.unauthorized_scope:${registry.secretRef}`,
           {
-            details: {
-              secretRef: registry.secretRef,
+            details: buildRedactedSecretDetails(registry.secretRef, {
+              reason: "scope_mismatch",
               secretScopeType: registry.scopeType,
-              secretScopeRef: registry.scopeRef,
-              callerScopeType,
-              callerScopeRef,
-            },
+            }),
           },
         );
       }
@@ -276,13 +329,10 @@ export class SecretManagementService {
           `secret.unauthorized_scope:${registry.secretRef}`,
           `secret.unauthorized_scope:${registry.secretRef}`,
           {
-            details: {
-              secretRef: registry.secretRef,
+            details: buildRedactedSecretDetails(registry.secretRef, {
+              reason: "scope_mismatch",
               secretScopeType: registry.scopeType,
-              secretScopeRef: registry.scopeRef,
-              callerScopeType,
-              callerScopeRef,
-            },
+            }),
           },
         );
       }
@@ -296,13 +346,10 @@ export class SecretManagementService {
           `secret.unauthorized_scope:${registry.secretRef}`,
           `secret.unauthorized_scope:${registry.secretRef}`,
           {
-            details: {
-              secretRef: registry.secretRef,
+            details: buildRedactedSecretDetails(registry.secretRef, {
+              reason: "scope_mismatch",
               secretScopeType: registry.scopeType,
-              secretScopeRef: registry.scopeRef,
-              callerScopeType,
-              callerScopeRef,
-            },
+            }),
           },
         );
       }
@@ -314,11 +361,10 @@ export class SecretManagementService {
       `secret.unauthorized_scope:${registry.secretRef}`,
       `secret.unauthorized_scope:${registry.secretRef}`,
       {
-        details: {
-          secretRef: registry.secretRef,
+        details: buildRedactedSecretDetails(registry.secretRef, {
           secretScopeType: registry.scopeType,
           reason: "unknown_scope_type",
-        },
+        }),
       },
     );
   }
@@ -352,7 +398,7 @@ export class SecretManagementService {
       const registry = this.requireRegistryRecord(input.secretRef);
       if (registry.status === "disabled" || registry.status === "revoked") {
         throw new PolicyDeniedError(`secret.registry_unavailable:${registry.secretRef}:${registry.status}`, `secret.registry_unavailable:${registry.secretRef}:${registry.status}`, {
-          details: { secretRef: registry.secretRef, status: registry.status },
+          details: buildRedactedSecretDetails(registry.secretRef, { status: registry.status }),
         });
       }
 
@@ -361,7 +407,7 @@ export class SecretManagementService {
           `secret.authorization_required:${registry.secretRef}`,
           `secret.authorization_required:${registry.secretRef}`,
           {
-            details: { secretRef: registry.secretRef },
+            details: buildRedactedSecretDetails(registry.secretRef),
           },
         );
       }
@@ -371,7 +417,7 @@ export class SecretManagementService {
       const versionToResolve = input.version ?? registry.currentVersion;
       if (versionToResolve == null) {
         throw new ProviderError(`secret.no_version:${registry.secretRef}`, `secret.no_version:${registry.secretRef}`, {
-          details: { secretRef: registry.secretRef },
+          details: buildRedactedSecretDetails(registry.secretRef),
           retryable: false,
         });
       }
@@ -380,20 +426,20 @@ export class SecretManagementService {
       const versionRecord = this.store.secret.getSecretVersionRecord(registry.secretRef, versionToResolve);
       if (versionRecord == null) {
         throw new ProviderError(`secret.version_not_found:${registry.secretRef}:${versionToResolve}`, `secret.version_not_found:${registry.secretRef}:${versionToResolve}`, {
-          details: { secretRef: registry.secretRef, version: versionToResolve },
+          details: buildRedactedSecretDetails(registry.secretRef, { version: versionToResolve }),
           retryable: false,
         });
       }
       if (versionRecord.status !== "active") {
         throw new PolicyDeniedError(`secret.version_unavailable:${registry.secretRef}:${versionToResolve}:${versionRecord.status}`, `secret.version_unavailable:${registry.secretRef}:${versionToResolve}:${versionRecord.status}`, {
-          details: { secretRef: registry.secretRef, version: versionToResolve },
+          details: buildRedactedSecretDetails(registry.secretRef, { version: versionToResolve }),
         });
       }
 
       const provider = this.providers[registry.providerKind];
       if (provider == null) {
         throw new ProviderError(`secret.provider_not_registered:${registry.providerKind}`, `secret.provider_not_registered:${registry.providerKind}`, {
-          details: { providerKind: registry.providerKind },
+          details: buildRedactedSecretDetails(registry.secretRef, { providerConfigured: false }),
           retryable: false,
         });
       }
@@ -446,7 +492,7 @@ export class SecretManagementService {
     const registry = this.requireRegistryRecord(secretRef);
     if (registry.status === "disabled" || registry.status === "revoked") {
       throw new PolicyDeniedError(`secret.registry_unavailable:${registry.secretRef}:${registry.status}`, `secret.registry_unavailable:${registry.secretRef}:${registry.status}`, {
-        details: { secretRef: registry.secretRef, status: registry.status },
+        details: buildRedactedSecretDetails(registry.secretRef, { status: registry.status }),
       });
     }
 
@@ -455,7 +501,7 @@ export class SecretManagementService {
         `secret.authorization_required:${registry.secretRef}`,
         `secret.authorization_required:${registry.secretRef}`,
         {
-          details: { secretRef: registry.secretRef },
+          details: buildRedactedSecretDetails(registry.secretRef),
         },
       );
     }
@@ -464,7 +510,7 @@ export class SecretManagementService {
     const provider = this.providers[registry.providerKind];
     if (provider == null) {
       throw new ProviderError(`secret.provider_not_registered:${registry.providerKind}`, `secret.provider_not_registered:${registry.providerKind}`, {
-        details: { providerKind: registry.providerKind },
+        details: buildRedactedSecretDetails(registry.secretRef, { providerConfigured: false }),
         retryable: false,
       });
     }
@@ -491,13 +537,13 @@ export class SecretManagementService {
     const registry = this.requireRegistryRecord(secretRef);
     if (registry.status === "disabled" || registry.status === "revoked") {
       throw new PolicyDeniedError(`secret.registry_unavailable:${registry.secretRef}:${registry.status}`, `secret.registry_unavailable:${registry.secretRef}:${registry.status}`, {
-        details: { secretRef: registry.secretRef, status: registry.status },
+        details: buildRedactedSecretDetails(registry.secretRef, { status: registry.status }),
       });
     }
     const provider = this.providers[registry.providerKind];
     if (provider == null) {
       throw new ProviderError(`secret.provider_not_registered:${registry.providerKind}`, `secret.provider_not_registered:${registry.providerKind}`, {
-        details: { providerKind: registry.providerKind },
+        details: buildRedactedSecretDetails(registry.secretRef, { providerConfigured: false }),
         retryable: false,
       });
     }
@@ -672,13 +718,13 @@ export class SecretManagementService {
     const registry = this.requireRegistryRecord(secretRef);
     if (registry.status === "disabled" || registry.status === "revoked") {
       throw new PolicyDeniedError(`secret.registry_unavailable:${registry.secretRef}:${registry.status}`, `secret.registry_unavailable:${registry.secretRef}:${registry.status}`, {
-        details: { secretRef: registry.secretRef, status: registry.status },
+        details: buildRedactedSecretDetails(registry.secretRef, { status: registry.status }),
       });
     }
     const provider = this.providers[registry.providerKind];
     if (provider == null) {
       throw new ProviderError(`secret.provider_not_registered:${registry.providerKind}`, `secret.provider_not_registered:${registry.providerKind}`, {
-        details: { providerKind: registry.providerKind },
+        details: buildRedactedSecretDetails(registry.secretRef, { providerConfigured: false }),
         retryable: false,
       });
     }
@@ -728,6 +774,12 @@ export class SecretManagementService {
   public startDailyRotationScheduler(intervalMs: number = 24 * 60 * 60 * 1000): NodeJS.Timeout {
     const existingScheduler = this.activeRotationSchedulers.values().next().value;
     if (existingScheduler != null) {
+      if ((existingScheduler as NodeJS.Timeout & { _repeat?: number })._repeat !== intervalMs) {
+        logger.warn("secret:rotation_scheduler_reuse_interval_mismatch", {
+          requestedIntervalMs: intervalMs,
+          existingIntervalMs: (existingScheduler as NodeJS.Timeout & { _repeat?: number })._repeat ?? null,
+        });
+      }
       return existingScheduler;
     }
 
@@ -794,7 +846,7 @@ export class SecretManagementService {
     const registry = this.requireRegistryRecord(input.secretRef);
     if (registry.status === "disabled" || registry.status === "revoked") {
       throw new PolicyDeniedError(`secret.registry_unavailable:${registry.secretRef}:${registry.status}`, `secret.registry_unavailable:${registry.secretRef}:${registry.status}`, {
-        details: { secretRef: registry.secretRef, status: registry.status },
+        details: buildRedactedSecretDetails(registry.secretRef, { status: registry.status }),
       });
     }
 
@@ -805,7 +857,7 @@ export class SecretManagementService {
     const provider = this.providers[registry.providerKind];
     if (provider == null) {
       throw new ProviderError(`secret.provider_not_registered:${registry.providerKind}`, `secret.provider_not_registered:${registry.providerKind}`, {
-        details: { providerKind: registry.providerKind },
+        details: buildRedactedSecretDetails(registry.secretRef, { providerConfigured: false }),
         retryable: false,
       });
     }
@@ -826,23 +878,33 @@ export class SecretManagementService {
         if (ttlMinutes == null) {
           throw new ValidationError(`secret.lease_ttl_required:${registry.secretRef}`, `secret.lease_ttl_required:${registry.secretRef}`, {
             source: "provider",
-            details: { secretRef: registry.secretRef },
+            details: buildRedactedSecretDetails(registry.secretRef),
           });
         }
         const normalizedTtl = Math.max(1, Math.trunc(ttlMinutes));
+        if (normalizedTtl > MAX_SECRET_LEASE_TTL_MINUTES) {
+          throw new ValidationError(`secret.lease_ttl_exceeds_maximum:${registry.secretRef}`, `secret.lease_ttl_exceeds_maximum:${registry.secretRef}`, {
+            source: "provider",
+            details: {
+              secretRef: redactSecretRef(registry.secretRef),
+              ttlMinutes: normalizedTtl,
+              maxTtlMinutes: MAX_SECRET_LEASE_TTL_MINUTES,
+            },
+          });
+        }
         expiresAt = computeLeaseExpiry(issuedAt, normalizedTtl);
       }
 
       if (expiresAt == null) {
         throw new ValidationError(`secret.invalid_lease_expiry:${registry.secretRef}`, `secret.invalid_lease_expiry:${registry.secretRef}`, {
           source: "provider",
-          details: { secretRef: registry.secretRef },
+          details: buildRedactedSecretDetails(registry.secretRef),
         });
       }
       if (Date.parse(expiresAt) <= Date.parse(issuedAt)) {
         throw new ValidationError(`secret.invalid_lease_expiry:${registry.secretRef}`, `secret.invalid_lease_expiry:${registry.secretRef}`, {
           source: "provider",
-          details: { secretRef: registry.secretRef, issuedAt, expiresAt },
+          details: buildRedactedSecretDetails(registry.secretRef, { issuedAt, expiresAt }),
         });
       }
 
@@ -967,9 +1029,8 @@ export class SecretManagementService {
   private requireRegistryRecord(secretRef: string): SecretRegistryRecord {
     const registry = this.store.secret.getSecretRegistryRecord(secretRef);
     if (registry == null) {
-      const redactedSecretRef = secretRef.replace(/(?<=secret:\/\/[^/]+\/).+/u, "<redacted>");
       throw new StorageError("secret.registry_not_found", "secret.registry_not_found", {
-        details: { secretRef: redactedSecretRef },
+        details: { secretRef: redactSecretRef(secretRef) },
       });
     }
     return registry;
@@ -982,7 +1043,7 @@ export class SecretManagementService {
     const lease = this.store.secret.getSecretLeaseRecord(leaseId);
     if (lease == null) {
       throw new StorageError(`secret.lease_not_found:${leaseId}`, `secret.lease_not_found:${leaseId}`, {
-        details: { leaseId },
+        details: { leaseId: redactLeaseId(leaseId) },
       });
     }
     return lease;

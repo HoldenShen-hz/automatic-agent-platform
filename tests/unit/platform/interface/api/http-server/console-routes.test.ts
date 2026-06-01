@@ -210,6 +210,24 @@ test("GET /console/targets returns gateway targets HTML", async () => {
   assert.ok(response.headers["content-type"]?.includes("html"));
 });
 
+test("GET /console/targets escapes backslashes and backticks in target labels", async () => {
+  const deps = {
+    authService: createMockAuthService(),
+    missionControlService: createMockMissionControlService(),
+    gatewayTargetDirectoryService: {
+      listTargets: () => [
+        { targetId: "tgt-\\`1", displayName: "Target \\`One", source: "directory" as const, lastSeenAt: null },
+      ],
+    } as unknown as GatewayTargetDirectoryService,
+  };
+  const routes = createConsoleRoutes(deps);
+  const ctx = createMockContext("/console/targets", ["console", "targets"]);
+  const response = await callRoute(routes, ctx);
+  if (!response) throw new Error("Handler returned null");
+  assert.match(response.body, /&#92;/);
+  assert.match(response.body, /&#96;/);
+});
+
 test("GET /console/targets throws 503 when service unavailable", async () => {
   const deps = {
     authService: createMockAuthService(),

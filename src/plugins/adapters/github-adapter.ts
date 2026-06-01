@@ -105,7 +105,7 @@ function normalizeApiBaseUrl(value: string | undefined): string {
 
 function buildCredentialFingerprint(token: string): string {
   const prefix = token.startsWith("secret://") ? "secret-ref" : "token";
-  return `${prefix}:${createHash("sha256").update(token).digest("hex").slice(0, 12)}`;
+  return `${prefix}:${createHash("sha256").update(token).digest("hex").slice(0, 16)}`;
 }
 
 function requireIssueNumber(value: unknown): string {

@@ -8,7 +8,7 @@
  * - Layer 3: Context-aware authorization
  */
 
-import { createHmac, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import { ValidationError } from "../../contracts/errors.js";
 import { assertInMemoryStoreAllowed } from "./in-memory-store-guard.js";
 
@@ -21,7 +21,15 @@ const REFRESH_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const TOKEN_SIZE = 32;
 const MAX_SESSION_STORE_ENTRIES = 10_000;
 const MAX_TOKEN_INDEX_ENTRIES = 20_000;
-const TOKEN_LOOKUP_HMAC_KEY = randomBytes(32);
+function loadTokenLookupHmacKey(env: NodeJS.ProcessEnv = process.env): Buffer {
+  const configured = env["AA_SESSION_TOKEN_LOOKUP_HMAC_KEY"]?.trim();
+  if (configured) {
+    return createHash("sha256").update(configured, "utf8").digest();
+  }
+  return randomBytes(32);
+}
+
+const TOKEN_LOOKUP_HMAC_KEY = loadTokenLookupHmacKey();
 
 // ============================================================================
 // Session Types

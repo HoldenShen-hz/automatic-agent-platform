@@ -154,9 +154,12 @@ export class TenantPlatformService {
   }
 
   private getPreemptionCandidatesForTenant(tenantId: string): PreemptionCandidate[] {
+    if (this.store.dispatch?.listExecutionsByStatuses == null) {
+      throw new Error("tenant_platform.dispatch_store_required");
+    }
     const candidates: PreemptionCandidate[] = [];
 
-    const activeExecutions = this.store.dispatch?.listExecutionsByStatuses?.(["executing", "blocked"]) ?? [];
+    const activeExecutions = this.store.dispatch.listExecutionsByStatuses(["executing", "blocked"]);
 
     for (const execution of activeExecutions) {
       // Get task to check tenant ownership
@@ -182,9 +185,9 @@ export class TenantPlatformService {
 
       // Calculate progress percentage from workflow step index
       // Estimate 100 steps total for progress calculation if not available
-      const totalSteps = 100;
+      const totalSteps = Math.max(1, (workflow as { totalSteps?: number }).totalSteps ?? workflow.currentStepIndex ?? 1);
       const progressPercent = workflow.currentStepIndex != null
-        ? (workflow.currentStepIndex / totalSteps) * 100
+        ? Math.max(0, Math.min(100, (workflow.currentStepIndex / totalSteps) * 100))
         : 0;
 
       // Get checkpoint timestamp from workflow updatedAt as fallback

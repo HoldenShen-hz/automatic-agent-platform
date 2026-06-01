@@ -14,6 +14,7 @@ import {
   type ContractEnvelopeVerificationResult,
 } from "../../platform/contracts/executable-contracts/index.js";
 import { nowIso, newId } from "../../platform/contracts/types/ids.js";
+import { parseSafeOutboundUrl } from "../../platform/five-plane-control-plane/iam/outbound-url-policy.js";
 import type {
   ApiClientConfig,
   ApiRequestOptions,
@@ -76,7 +77,10 @@ function normalizeApiVersionSegment(apiVersion: string): string {
  * Build a versioned API URL with query parameters and tenant context.
  */
 export function buildApiUrl(config: ApiClientConfig, request: ApiRequestSpec): string {
-  const baseUrl = config.baseUrl.replace(/\/+$/, "");
+  const baseUrl = parseSafeOutboundUrl(config.baseUrl.replace(/\/+$/, ""), {
+    invalid: "client_sdk.invalid_base_url",
+    blocked: "client_sdk.blocked_base_url",
+  }).toString().replace(/\/+$/, "");
   const apiVersion = normalizeApiVersionSegment(config.apiVersion);
   const path = request.path.replace(/^\/+/, "");
   const url = new URL(`${baseUrl}/${apiVersion}/${path}`);
@@ -333,6 +337,7 @@ export class RetryableApiClient {
         const response = await fetch(url, {
           method: "GET",
           headers,
+          redirect: "error",
           signal: abortController.signal,
         });
 
@@ -378,7 +383,7 @@ export class RetryableApiClient {
       } catch (error) {
         if (!closed && !(error instanceof Error && error.name === "AbortError")) {
           reconnectAttempt += 1;
-          const retryAfter = Math.min(1000 * (2 ** Math.min(reconnectAttempt - 1, 4)), 10000);
+          const retryAfter = Math.min(1000 * (2 ** Math.min(reconnectAttempt, 4)), 10000);
           reconnectTimer = setTimeout(() => {
             reconnectTimer = null;
             void connect();
@@ -621,7 +626,7 @@ export class RetryableApiClient {
         fetchOptions.signal = AbortSignal.timeout(this.config.timeoutMs);
       }
 
-      const response = await fetch(url, fetchOptions);
+      const response = await fetch(url, { ...fetchOptions, redirect: "error" });
 
       const retryableStatus = response.status === 429 || response.status >= 500;
       if (!response.ok && retryableStatus && isIdempotent && attempt < this.retryConfig.maxRetries) {
@@ -1018,6 +1023,7 @@ async function fetchVersionInfo(
   const response = await fetch(url, {
     method: "GET",
     headers,
+    redirect: "error",
     signal: AbortSignal.timeout(config.timeoutMs ?? 10000),
   });
   const responseHeaders: Record<string, string> = {};

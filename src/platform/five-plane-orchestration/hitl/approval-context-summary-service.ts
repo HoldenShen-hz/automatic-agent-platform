@@ -14,6 +14,7 @@ import {
 import { AppError } from "../../contracts/errors.js";
 import { newId } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { extractAndParseGuardedJson } from "../oapeflir/safe-llm-json.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
 
@@ -170,12 +171,9 @@ Return a JSON object with summary, keyPoints, riskFactors, recommendedAction, an
 
   private parseSummaryFromResponse(content: string, context: ExecutionContextForSummary): ApprovalContextSummary {
     try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        return this.fallbackTemplateSummary(context);
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+      const parsed = extractAndParseGuardedJson<Record<string, unknown>>(content, {
+        root: "object",
+      });
 
       return {
         summaryId: newId("approval_summary"),

@@ -546,6 +546,7 @@ async function executeReadOnlyCommand(command: string, timeoutMs: number): Promi
       child.kill("SIGKILL");
       reject(new Error("runbook.command_timeout"));
     }, timeoutMs);
+    timeout.unref?.();
 
     child.stdout.on("data", (chunk) => {
       stdout += String(chunk);

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import * as apps from "../../src/apps/index.js";
 import * as domains from "../../src/domains/index.js";
+import type { PlatformAppKind } from "../../src/platform-architecture-types.js";
 
 // ============================================================================
 // Apps barrel exports
@@ -58,7 +59,7 @@ test("apps buildPlatformStartupTargets returns array with summary and demo targe
 
 test("apps getPlatformAppManifestByKind throws for unknown kind", () => {
   assert.throws(
-    () => apps.getPlatformAppManifestByKind("unknown" as any),
+    () => apps.getPlatformAppManifestByKind("unknown" as PlatformAppKind),
     /Unknown platform app kind/,
   );
 });

@@ -82,6 +82,27 @@ test("OapeflirStageTimelineBuilder increments timestamps for each stage", () => 
   assert.ok(r2.completedAt > r1.completedAt);
 });
 
+test("OapeflirStageTimelineBuilder keeps timestamps monotonic when wall clock moves backwards", () => {
+  const originalNow = Date.now;
+  let cursor = 10_000;
+  Date.now = () => {
+    const current = cursor;
+    cursor -= 5;
+    return current;
+  };
+
+  try {
+    const builder = new OapeflirStageTimelineBuilder();
+    const first = builder.record("observe", "completed");
+    const second = builder.record("assess", "completed");
+
+    assert.ok(second.startedAt > first.completedAt);
+    assert.ok(second.completedAt > second.startedAt);
+  } finally {
+    Date.now = originalNow;
+  }
+});
+
 test("OapeflirStageTimelineBuilder returns a copy of entries", () => {
   const builder = new OapeflirStageTimelineBuilder();
   builder.record("observe", "completed");

@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
 
 import { ValidationError } from "../../contracts/errors.js";
 
@@ -79,12 +79,17 @@ function parseEnvelope(ciphertext: string): { salt: Buffer; iv: Buffer; tag: Buf
 
 function deriveEncryptionKey(key: Buffer | string, salt: Buffer): Buffer {
   const normalizedKey = normalizeKeyInput(key);
-  return createHash("sha256")
-    .update("automatic-agent.field-encryption.v2", "utf8")
-    .update(normalizedKey)
-    .update(salt)
-    .digest()
-    .subarray(0, DERIVED_KEY_LENGTH);
+  return scryptSync(
+    normalizedKey,
+    Buffer.concat([Buffer.from("automatic-agent.field-encryption.v2", "utf8"), salt]),
+    DERIVED_KEY_LENGTH,
+    {
+      N: 1 << 15,
+      r: 8,
+      p: 1,
+      maxmem: 64 * 1024 * 1024,
+    },
+  );
 }
 
 export function encryptField(plaintext: string, key: Buffer | string): string {

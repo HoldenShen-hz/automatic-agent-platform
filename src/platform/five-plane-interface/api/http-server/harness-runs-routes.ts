@@ -10,6 +10,7 @@ import {
   encodeOpaqueCursor,
   readLimit,
   readCursor,
+  readJsonRecord,
   requirePrincipal,
 } from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
@@ -270,7 +271,10 @@ function parseJsonBody(body: string | null): Record<string, unknown> {
     return {};
   }
   try {
-    return JSON.parse(body) as Record<string, unknown>;
+    return readJsonRecord(body, {
+      maxBytes: 256 * 1024,
+      emptyValue: {},
+    });
   } catch {
     throw new HarnessRunsApiError(400, "api.invalid_json", "Request body must be valid JSON.");
   }

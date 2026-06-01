@@ -133,6 +133,53 @@ test("marketplace governance service blocks publishing packages with rejected or
   }
 });
 
+test("marketplace governance service refuses review submissions for retired lifecycle states [marketplace-governance-service]", () => {
+  const workspace = createTempWorkspace("aa-marketplace-review-lifecycle-");
+  const dbPath = `${workspace}/marketplace-review-lifecycle.db`;
+
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const service = new MarketplaceGovernanceService(db, store);
+
+    const pkg = service.registerExtensionPackage({
+      extensionId: "plugin.retired-review",
+      packageType: "plugin",
+      displayName: "Retired Review Plugin",
+      version: "1.0.0",
+      owner: "ecosystem.team",
+      trustLevel: "verified",
+      sourceUri: "registry://plugins/retired-review",
+      capabilities: ["audit_export"],
+      permissions: ["read.audit"],
+      compatibility: {
+        apiContract: "^1.0.0",
+        permissionSurface: "^1.0.0",
+        runtimeCapability: "^1.0.0",
+      },
+      signatureVerified: true,
+      sbomVerified: true,
+      sandboxCertVerified: true,
+      egressPolicyCompliant: true,
+      manifestChecksum: "e".repeat(64),
+      lifecycleState: "retired",
+    });
+
+    assert.throws(
+      () => service.submitReview({
+        packageId: pkg.packageId,
+        submitter: "ecosystem.submitter",
+      }),
+      /marketplace\.package_not_publishable_in_current_lifecycle/,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
 test("marketplace governance service fail-closes malformed identifiers and checksums [marketplace-governance-service]", () => {
   const workspace = createTempWorkspace("aa-marketplace-unit-");
   const dbPath = `${workspace}/marketplace.db`;

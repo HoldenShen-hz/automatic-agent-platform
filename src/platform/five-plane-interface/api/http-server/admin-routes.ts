@@ -26,7 +26,15 @@ import { join } from "node:path";
 import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseControlPlaneLoadBalancingSelectionPayload } from "./schemas.js";
-import { buildJsonResponse, requirePrincipal, assertGlobalTenantScopeSupported, resolveTenantScope, validateTaskId, readLimit } from "./utils.js";
+import {
+  buildJsonResponse,
+  requirePrincipal,
+  assertGlobalTenantScopeSupported,
+  resolveTenantScope,
+  validateTaskId,
+  readLimit,
+  readStoredJsonValue,
+} from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { MissionControlService } from "../mission-control-service.js";
 import type { ApiDelegationService } from "../facade-interfaces.js";
@@ -154,6 +162,7 @@ let userPreferenceState: UserPreferenceState = {
   theme: "dark",
   defaultDashboardLayout: ["overview", "tasks", "approvals"],
 };
+const MAX_DIVISION_INVENTORY_SNAPSHOT_BYTES = 1024 * 1024;
 
 function resolvePlatformRoot(): string {
   return process.env.AA_PLATFORM_ROOT ?? process.cwd();
@@ -173,7 +182,19 @@ function readDivisionInventorySnapshot(): unknown {
       },
     };
   }
-  return JSON.parse(readFileSync(snapshotPath, "utf8")) as unknown;
+  return readStoredJsonValue(readFileSync(snapshotPath, "utf8"), {
+    maxBytes: MAX_DIVISION_INVENTORY_SNAPSHOT_BYTES,
+    fallback: {
+      generatedAt: new Date(0).toISOString(),
+      records: [],
+      summary: {
+        totalDivisions: 0,
+        p0Divisions: 0,
+        blockedDivisions: 0,
+        orphanSourceModules: 0,
+      },
+    },
+  });
 }
 
 // ─── Route Deps ─────────────────────────────────────────────────────────────

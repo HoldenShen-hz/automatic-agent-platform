@@ -119,6 +119,8 @@ export interface OidcServiceConfig {
   readonly maxSessionAgeMs: number;
   readonly fetchTimeoutMs: number;
   readonly stateTtlMs: number;
+  readonly stateStoreMaxEntries: number;
+  readonly maxGroups: number;
   /** §48: Disable mock fallback in production */
   readonly allowMockFallback: boolean;
 }
@@ -129,6 +131,8 @@ const DEFAULT_CONFIG: OidcServiceConfig = {
   maxSessionAgeMs: MS_PER_DAY,
   fetchTimeoutMs: 10_000,
   stateTtlMs: 10 * 60 * 1000,
+  stateStoreMaxEntries: 1_024,
+  maxGroups: 128,
   allowMockFallback: false, // §48: Disabled in production
 };
 
@@ -176,19 +180,25 @@ function validateProductionToken(token: string): void {
 export class InMemoryOidcStateStore implements OidcStateStore {
   private readonly store = new Map<string, { nonce: string; redirectUri: string; codeVerifier: string; expiresAt: number }>();
 
-  public constructor(private readonly ttlMs = DEFAULT_CONFIG.stateTtlMs) {
+  public constructor(
+    private readonly ttlMs = DEFAULT_CONFIG.stateTtlMs,
+    private readonly maxEntries = DEFAULT_CONFIG.stateStoreMaxEntries,
+  ) {
   }
 
   public saveState(state: string, nonce: string, redirectUri: string, codeVerifier: string): void {
+    this.pruneExpired();
     this.store.set(state, {
       nonce,
       redirectUri,
       codeVerifier,
       expiresAt: Date.now() + this.ttlMs,
     });
+    this.enforceCapacity();
   }
 
   public getState(state: string): { nonce: string; redirectUri: string; codeVerifier: string } | null {
+    this.pruneExpired();
     const entry = this.store.get(state);
     if (!entry) return null;
     if (Date.now() > entry.expiresAt) {
@@ -200,6 +210,28 @@ export class InMemoryOidcStateStore implements OidcStateStore {
 
   public deleteState(state: string): void {
     this.store.delete(state);
+  }
+
+  private pruneExpired(): void {
+    const now = Date.now();
+    for (const [state, entry] of this.store.entries()) {
+      if (now > entry.expiresAt) {
+        this.store.delete(state);
+      }
+    }
+  }
+
+  private enforceCapacity(): void {
+    if (this.store.size <= this.maxEntries) {
+      return;
+    }
+    const entriesByExpiry = [...this.store.entries()].sort((left, right) => left[1].expiresAt - right[1].expiresAt);
+    for (const [state] of entriesByExpiry) {
+      if (this.store.size <= this.maxEntries) {
+        break;
+      }
+      this.store.delete(state);
+    }
   }
 }
 
@@ -225,6 +257,7 @@ export class OidcIdentityService {
   private readonly config: OidcServiceConfig;
   private readonly sessions = new Map<string, SessionRecord>();
   private readonly userSessions = new Map<string, Set<string>>();
+  private readonly accessTokenIndex = new Map<string, string>();
   private readonly stateStore: OidcStateStore;
   /** §48 Token Rotation: tracks which refresh token families are still valid */
   private readonly refreshTokenFamilies = new Map<string, string>(); // familyId -> currentValidToken
@@ -235,7 +268,7 @@ export class OidcIdentityService {
     config?: Partial<OidcServiceConfig>,
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    this.stateStore = stateStore ?? new InMemoryOidcStateStore(this.config.stateTtlMs);
+    this.stateStore = stateStore ?? new InMemoryOidcStateStore(this.config.stateTtlMs, this.config.stateStoreMaxEntries);
   }
 
   /**
@@ -245,6 +278,7 @@ export class OidcIdentityService {
    * @returns Authorization URL, state, nonce, and code verifier (for verification)
    */
   public initiateFlow(redirectUri: string): { authorizationUrl: string; state: string; nonce: string; codeVerifier: string } {
+    this.assertAllowedRedirectUri(redirectUri);
     const state = newId("oidc_state");
     const nonce = newId("oidc_nonce");
     const codeVerifier = generateCodeVerifier();
@@ -316,7 +350,9 @@ export class OidcIdentityService {
         ...(typeof payload.given_name === "string" ? { givenName: payload.given_name } : {}),
         ...(typeof payload.family_name === "string" ? { familyName: payload.family_name } : {}),
         ...(typeof payload.preferred_username === "string" ? { preferredUsername: payload.preferred_username } : {}),
-        ...(Array.isArray(payload.groups) ? { groups: payload.groups.filter((item): item is string => typeof item === "string") } : {}),
+        ...(Array.isArray(payload.groups)
+          ? { groups: payload.groups.filter((item): item is string => typeof item === "string").slice(0, this.config.maxGroups) }
+          : {}),
         updatedAt: nowIso(),
       };
     } catch (err) {
@@ -345,16 +381,20 @@ export class OidcIdentityService {
       validateProductionToken(accessToken);
     }
 
-    for (const session of this.sessions.values()) {
-      if (session.accessToken === accessToken) {
-        if (Date.now() > readIsoTimeMs(session.expiresAt)) {
-          this.revokeSession(session.sessionId);
-          return null;
-        }
-        return toOidcSession(session);
-      }
+    const sessionId = this.accessTokenIndex.get(accessToken);
+    if (sessionId == null) {
+      return null;
     }
-    return null;
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      this.accessTokenIndex.delete(accessToken);
+      return null;
+    }
+    if (Date.now() > readIsoTimeMs(session.expiresAt)) {
+      this.revokeSession(session.sessionId);
+      return null;
+    }
+    return toOidcSession(session);
   }
 
   /**
@@ -388,6 +428,7 @@ export class OidcIdentityService {
     };
 
     this.sessions.set(sessionId, record);
+    this.accessTokenIndex.set(record.accessToken, record.sessionId);
 
     if (!this.userSessions.has(userInfo.sub)) {
       this.userSessions.set(userInfo.sub, new Set());
@@ -445,6 +486,8 @@ export class OidcIdentityService {
       ...(nextRefreshTokenFamily !== undefined ? { refreshTokenFamily: nextRefreshTokenFamily } : {}),
     };
     this.sessions.set(sessionId, nextSession);
+    this.accessTokenIndex.delete(session.accessToken);
+    this.accessTokenIndex.set(nextSession.accessToken, sessionId);
     if (newTokens.refreshToken) {
       if (previousFamily) {
         this.refreshTokenFamilies.delete(previousFamily);
@@ -465,6 +508,7 @@ export class OidcIdentityService {
     if (!session) return;
 
     this.sessions.delete(sessionId);
+    this.accessTokenIndex.delete(session.accessToken);
 
     const userSessionSet = this.userSessions.get(session.userId);
     if (userSessionSet) {
@@ -487,9 +531,8 @@ export class OidcIdentityService {
 
     const count = sessionIds.size;
     for (const sessionId of sessionIds) {
-      this.sessions.delete(sessionId);
+      this.revokeSession(sessionId);
     }
-    this.userSessions.delete(userId);
 
     return count;
   }
@@ -570,6 +613,22 @@ export class OidcIdentityService {
       `&code_challenge=${encodeURIComponent(codeChallenge)}` +
       `&code_challenge_method=S256`
     );
+  }
+
+  private assertAllowedRedirectUri(redirectUri: string): void {
+    const allowedOrigins = this.providerConfig.allowedRedirectOrigins ?? [];
+    if (allowedOrigins.length === 0) {
+      return;
+    }
+    let origin: string;
+    try {
+      origin = new URL(redirectUri).origin;
+    } catch {
+      throw new Error(`oidc.invalid_redirect_uri:${redirectUri}`);
+    }
+    if (!allowedOrigins.includes(origin)) {
+      throw new Error(`oidc.redirect_origin_not_allowed:${origin}`);
+    }
   }
 
   private async exchangeTokens(input: {

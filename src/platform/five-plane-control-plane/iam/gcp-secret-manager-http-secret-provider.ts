@@ -63,6 +63,28 @@ export interface GcpSecretManagerHttpProviderOptions {
   env?: NodeJS.ProcessEnv;
 }
 
+function parseAllowedTokenFetchUrl(url: string, code: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new ValidationError(code, code, {
+      source: "provider",
+      details: { url },
+    });
+  }
+  const hostname = parsed.hostname.toLowerCase();
+  const allowedMetadataHost = hostname === "metadata.google.internal";
+  const allowedHttpsHost = parsed.protocol === "https:";
+  if ((!allowedMetadataHost && !allowedHttpsHost) || parsed.username.length > 0 || parsed.password.length > 0) {
+    throw new ValidationError(code, code, {
+      source: "provider",
+      details: { url },
+    });
+  }
+  return parsed;
+}
+
 /**
  * Response from GCP OAuth2 token endpoint.
  */
@@ -97,10 +119,13 @@ export class GcpSecretManagerHttpSecretProvider implements ManagedSecretProvider
   public constructor(options: GcpSecretManagerHttpProviderOptions = {}) {
     this.env = options.env ?? process.env;
     this.projectId = this.env["AA_GCP_PROJECT_ID"] ?? null;
-    this.timeoutMs = parseInt(this.env["AA_GCP_TIMEOUT_MS"] ?? "5000", 10);
-    this.tokenFetchUrl =
+    const parsedTimeoutMs = Number.parseInt(this.env["AA_GCP_TIMEOUT_MS"] ?? "5000", 10);
+    this.timeoutMs = Number.isFinite(parsedTimeoutMs) && parsedTimeoutMs > 0 ? parsedTimeoutMs : 5_000;
+    this.tokenFetchUrl = parseAllowedTokenFetchUrl(
       this.env["AA_GCP_TOKEN_FETCH_URL"] ??
-      "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
+        "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
+      "gcp_secret_manager.invalid_token_fetch_url",
+    ).toString();
   }
 
   public isConfigured(): boolean {

@@ -60,7 +60,12 @@ test("plugin runtime child routes console output through structured logger with 
   assert.match(source, /function logProtocolError\(message: string, error: unknown\): void/);
   assert.match(source, /message: `\$\{message\}: \$\{error instanceof Error \? error\.message : String\(error\)\}`/);
   assert.match(source, /const entry = getLogger\(\)\.log\(\{/);
-  assert.match(source, /function installStdioProtocolConsoleRedirection\(\): void \{\s*if \(process\.send\) \{\s*return;\s*\}\s*const directEntry = process\.argv\[1\];/s);
+  assert.doesNotMatch(source, /function installStdioProtocolConsoleRedirection\(\): void/);
+  assert.match(source, /const dgram = require\("node:dgram"\)/);
+  assert.match(source, /const childProcess = require\("node:child_process"\)/);
+  assert.match(source, /const workerThreads = require\("node:worker_threads"\)/);
+  assert.match(source, /process\.stdin\.pause\(\);/);
+  assert.doesNotMatch(source, /setImmediate\(\(\) => \{\s*process\.exit\(1\);/s);
   assert.doesNotMatch(source, /plugin-runtime-child invalid stdio payload: \$\{/);
   assert.doesNotMatch(source, /plugin-runtime-child protocol violation: \$\{/);
 });

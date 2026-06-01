@@ -13,7 +13,7 @@
 import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseApprovalDecisionPayload } from "./schemas.js";
-import { buildJsonResponse, requirePrincipal, readLimit, readStatusFilter } from "./utils.js";
+import { buildJsonResponse, readStoredJsonRecord, requirePrincipal, readLimit, readStatusFilter } from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { ApprovalService } from "../../../five-plane-control-plane/approval-center/approval-service.js";
 import type { InspectService } from "../../../shared/observability/inspect-service.js";
@@ -73,14 +73,15 @@ function parseAllowedActorIds(approvalView: unknown): readonly string[] {
   if (Buffer.byteLength(requestJson, "utf8") > MAX_APPROVAL_REQUEST_JSON_BYTES) {
     return [];
   }
-  try {
-    const parsed = JSON.parse(requestJson) as { context?: { allowedActorIds?: unknown } };
-    return Array.isArray(parsed.context?.allowedActorIds)
-      ? parsed.context.allowedActorIds.filter((value): value is string => typeof value === "string" && value.length > 0)
-      : [];
-  } catch {
+  const parsed = readStoredJsonRecord(requestJson, { maxBytes: MAX_APPROVAL_REQUEST_JSON_BYTES });
+  const context = parsed["context"];
+  if (context == null || typeof context !== "object" || Array.isArray(context)) {
     return [];
   }
+  const allowedActorIds = (context as Record<string, unknown>)["allowedActorIds"];
+  return Array.isArray(allowedActorIds)
+    ? allowedActorIds.filter((value): value is string => typeof value === "string" && value.length > 0)
+    : [];
 }
 
 function assertApprovalAccess(

@@ -124,6 +124,7 @@ export interface WebSocketBridgeOptions {
   maxPendingAcksPerClient?: number;
   closeTimeoutMs?: number;
   taskHistoryRetentionMs?: number;
+  allowedOrigins?: readonly string[];
 }
 
 export interface WebSocketBridgeMetrics {
@@ -152,6 +153,7 @@ export class WebSocketBridge {
   private readonly maxPendingAcksPerClient: number;
   private readonly closeTimeoutMs: number;
   private readonly taskHistoryRetentionMs: number;
+  private readonly allowedOrigins: readonly string[];
   private readonly historyCleanupTimers = new Map<string, NodeJS.Timeout>();
 
   public constructor(
@@ -174,6 +176,7 @@ export class WebSocketBridge {
     );
     this.closeTimeoutMs = options.closeTimeoutMs ?? DEFAULT_CLOSE_TIMEOUT_MS;
     this.taskHistoryRetentionMs = options.taskHistoryRetentionMs ?? DEFAULT_TASK_HISTORY_RETENTION_MS;
+    this.allowedOrigins = options.allowedOrigins ?? [];
     this.wss = new WebSocketServer({
       server,
       path: WS_PATH,
@@ -190,6 +193,15 @@ export class WebSocketBridge {
   }
 
   private handleConnection(ws: WebSocket, req: IncomingMessage): void {
+    if (!this.isOriginAllowed(req)) {
+      this.closeClient(ws, WEBSOCKET_CLOSE_CODE_INVALID_TOKEN, "Origin not allowed");
+      logger.warn("websocket.connection_rejected", {
+        reasonCode: "origin_not_allowed",
+        origin: req.headers.origin ?? null,
+        host: req.headers.host ?? null,
+      });
+      return;
+    }
     if (this.clients.size >= this.maxConnections) {
       this.closeClient(ws, WEBSOCKET_CLOSE_CODE_CONNECTION_LIMIT, "Connection limit exceeded");
       logger.warn("websocket.connection_rejected", {
@@ -273,6 +285,24 @@ export class WebSocketBridge {
         error: error.message,
       });
     });
+  }
+
+  private isOriginAllowed(req: IncomingMessage): boolean {
+    const origin = typeof req.headers.origin === "string" ? req.headers.origin.trim() : "";
+    if (origin.length === 0) {
+      return true;
+    }
+    let parsedOrigin: URL;
+    try {
+      parsedOrigin = new URL(origin);
+    } catch {
+      return false;
+    }
+    if (this.allowedOrigins.includes(parsedOrigin.origin)) {
+      return true;
+    }
+    const host = typeof req.headers.host === "string" ? req.headers.host.trim().toLowerCase() : "";
+    return host.length > 0 && parsedOrigin.host.toLowerCase() === host;
   }
 
   private handleMessage(ws: WebSocket, message: WebSocketMessageType): void {

@@ -43,3 +43,18 @@ test("CrmAdapter.authenticate uses hashed fingerprint instead of leaking token p
   assert.equal(serializedResult.includes(rawToken), false);
   assert.equal(serializedResult.includes(rawToken.slice(0, 8)), false);
 });
+
+test("CrmAdapter.execute surfaces transport failures instead of flattening them into ok=false payloads", async () => {
+  const adapter = createCrmAdapterPlugin({
+    policy: createAllowPolicy(),
+    fetchImplementation: async () => {
+      throw new Error("crm_adapter.transport_failure");
+    },
+  });
+
+  await adapter.authenticate({ token: "verysecret_token_12345" });
+  await assert.rejects(
+    async () => adapter.execute("contacts", { email: "user@example.com" }),
+    /crm_adapter\.transport_failure/,
+  );
+});

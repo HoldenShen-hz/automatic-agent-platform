@@ -90,6 +90,7 @@ export interface ApiAuthServiceOptions {
   isJwtRevoked?: (jwtId: string, claims: Readonly<JwtClaims>) => boolean;
 }
 
+
 interface JwtClaims {
   sub: string;
   roles: ApiRole[];
@@ -102,11 +103,11 @@ interface JwtClaims {
   jti?: string;
 }
 
-const API_ROLE_RANK: Record<ApiRole, number> = {
-  viewer: 0,
-  operator: 1,
-  admin: 2,
-};
+const API_ROLE_IMPLICATIONS: Readonly<Record<ApiRole, readonly ApiRole[]>> = Object.freeze({
+  viewer: ["viewer", "operator", "admin"],
+  operator: ["operator", "admin"],
+  admin: ["admin"],
+});
 
 function base64UrlEncode(value: string): string {
   return Buffer.from(value, "utf8").toString("base64url");
@@ -272,8 +273,8 @@ function verifyJwt(
 }
 
 function principalHasRequiredRole(principalRoles: readonly ApiRole[], requiredRole: ApiRole): boolean {
-  const requiredRank = API_ROLE_RANK[requiredRole];
-  return principalRoles.some((role) => API_ROLE_RANK[role] >= requiredRank);
+  const allowedRoles = API_ROLE_IMPLICATIONS[requiredRole];
+  return principalRoles.some((role) => allowedRoles.includes(role));
 }
 
 function normalizeRoles(roles: readonly ApiRole[]): ApiRole[] {

@@ -470,6 +470,46 @@ export class RuntimeRecoveryService {
     now: string = "9999-12-31T23:59:59.999Z",
     tenantId?: string | null,
   ): DivisionRecoveryOverview[] {
+    const aggregatedRecords = this.store.operations as typeof this.store.operations & Partial<{
+      listRuntimeRecoveryOverviewRecords: (
+        currentNow: string,
+        currentStaleBefore: string,
+        currentTenantId?: string | null,
+      ) => Array<RuntimeRecoveryRecord & { isBlockedAwaitingApproval: boolean; isStale: boolean }>;
+    }>;
+    if (typeof aggregatedRecords.listRuntimeRecoveryOverviewRecords === "function") {
+      const records = aggregatedRecords.listRuntimeRecoveryOverviewRecords(now, staleBefore, tenantId);
+      const divisions = new Map<string, DivisionRecoveryOverview>();
+      for (const record of records) {
+        const candidate = toCandidate(record, "active_execution", this.config, this.options);
+        const divisionId = candidate.divisionId ?? "unassigned";
+        const current = divisions.get(divisionId) ?? {
+          divisionId,
+          taskIds: [],
+          activeCandidateCount: 0,
+          blockedApprovalCount: 0,
+          staleExecutionCount: 0,
+          newestCandidateAt: null,
+        };
+        current.activeCandidateCount += 1;
+        if (!current.taskIds.includes(candidate.taskId)) {
+          current.taskIds.push(candidate.taskId);
+        }
+        if (record.isBlockedAwaitingApproval) {
+          current.blockedApprovalCount += 1;
+        }
+        if (record.isStale) {
+          current.staleExecutionCount += 1;
+        }
+        current.newestCandidateAt =
+          current.newestCandidateAt == null || current.newestCandidateAt < candidate.updatedAt
+            ? candidate.updatedAt
+            : current.newestCandidateAt;
+        divisions.set(divisionId, current);
+      }
+      return [...divisions.values()].sort((left, right) => left.divisionId.localeCompare(right.divisionId));
+    }
+
     const active = this.listRecoverableExecutingRuns(now, tenantId);
     const stale = new Set(this.listStaleRuns(staleBefore, tenantId).map((candidate) => candidate.executionId));
     const blocked = new Set(this.listBlockedRunsAwaitingApproval(tenantId).map((candidate) => candidate.executionId));
@@ -614,7 +654,7 @@ function inferReason(record: RuntimeRecoveryRecord): string {
     return "approval_pending";
   }
   // Check if precheck was denied (budget, timeout, tools, paths issue)
-  if (record.latestPrecheck && !record.latestPrecheck.allowed) {
+  if (record.latestPrecheck && toBooleanPrecheckAllowed(record.latestPrecheck.allowed) === false) {
     return `precheck_denied:${record.latestPrecheck.reasonCode ?? "unknown"}`;
   }
   // Check if blocked without pending approval (inconsistent state)
@@ -627,6 +667,16 @@ function inferReason(record: RuntimeRecoveryRecord): string {
   }
   // Default: execution appears active (might just need monitoring)
   return "active_execution";
+}
+
+function toBooleanPrecheckAllowed(value: unknown): boolean | null {
+  if (value === true || value === 1 || value === "1") {
+    return true;
+  }
+  if (value === false || value === 0 || value === "0") {
+    return false;
+  }
+  return null;
 }
 
 /**

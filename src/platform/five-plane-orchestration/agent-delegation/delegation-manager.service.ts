@@ -277,7 +277,7 @@ export class DelegationManagerService {
     // another concurrent operation could modify the delegation. Passing the initial
     // status ensures CAS check in transitionDelegationStatus() uses this validated value.
     const initialStatus = delegation.status;
-    this.transitionDelegationStatus(delegation, "cancelled", initialStatus);
+    await this.transitionDelegationStatus(delegation, "cancelled", initialStatus);
   }
 
   public cancelDelegation(delegationId: string): Promise<void> {
@@ -297,7 +297,7 @@ export class DelegationManagerService {
     if (!delegation) {
       throw new ValidationError("delegation.not_found", `Delegation ${delegationId} not found`, { details: { delegationId } });
     }
-    this.transitionDelegationStatus(delegation, "completed");
+    await this.transitionDelegationStatus(delegation, "completed");
   }
 
   public completeDelegation(delegationId: string, outputRef?: string): Promise<void> {
@@ -339,7 +339,7 @@ export class DelegationManagerService {
         details: { delegationId, violations: validation.violations },
       });
     }
-    this.complete(delegationId, outputRef);
+    await this.complete(delegationId, outputRef);
   }
 
   /**
@@ -356,7 +356,7 @@ export class DelegationManagerService {
       throw new ValidationError("delegation.not_found", `Delegation ${delegationId} not found`, { details: { delegationId } });
     }
     delegation.error = error;
-    this.transitionDelegationStatus(delegation, "failed");
+    await this.transitionDelegationStatus(delegation, "failed");
     // R31-55 fix: Record failure in audit trail with error reason
     this.auditService.recordDelegationFailed({
       delegationId,
@@ -375,7 +375,7 @@ export class DelegationManagerService {
     if (!delegation) {
       throw new ValidationError("delegation.not_found", `Delegation ${delegationId} not found`, { details: { delegationId } });
     }
-    this.transitionDelegationStatus(delegation, "timed_out");
+    await this.transitionDelegationStatus(delegation, "timed_out");
   }
 
   public createDelegationContext(
@@ -502,6 +502,7 @@ export class DelegationManagerService {
    */
   public async getDelegation(delegationId: string): Promise<DelegationResult | null> {
     await this.awaitHydration();
+    this.evictExpired();
     // First check in-memory store
     const cached = this.delegationStore.get(delegationId);
     if (cached) {
@@ -623,7 +624,7 @@ export class DelegationManagerService {
             const delegation = this.delegationStore.get(record.delegationId);
             if (delegation) {
               try {
-                this.transitionDelegationStatus(delegation, "expired");
+                await this.transitionDelegationStatus(delegation, "expired");
                 expired++;
               } catch (err) {
                 errors.push(`Failed to expire delegation ${delegation.delegationId}: ${err instanceof Error ? err.message : String(err)}`);
@@ -639,7 +640,7 @@ export class DelegationManagerService {
         if (delegation.status === "pending" || delegation.status === "pending_approval" || delegation.status === "active") {
           if (delegation.expiresAt < now) {
             try {
-              this.transitionDelegationStatus(delegation, "expired");
+              await this.transitionDelegationStatus(delegation, "expired");
               expired++;
             } catch (err) {
               errors.push(`Failed to expire delegation ${delegation.delegationId}: ${err instanceof Error ? err.message : String(err)}`);
@@ -876,6 +877,7 @@ export class DelegationManagerService {
   }
 
   private requireDelegation(delegationId: string): DelegationResult {
+    this.evictExpired();
     const delegation = this.delegationStore.get(delegationId);
     if (!delegation) {
       throw new ValidationError(
@@ -887,11 +889,11 @@ export class DelegationManagerService {
     return delegation;
   }
 
-  private transitionDelegationStatus(
+  private async transitionDelegationStatus(
     delegation: DelegationResult,
     nextStatus: DelegationStatus,
     fencingToken?: DelegationStatus,
-  ): void {
+  ): Promise<void> {
     // R17-02: Use CAS (compare-and-swap) to prevent race conditions between
     // concurrent status transitions (e.g., cancel() + complete() racing).
     // Read current status and determine allowed transitions atomically.
@@ -932,8 +934,7 @@ export class DelegationManagerService {
     // R9-06: Update BOTH repository AND in-memory cache to keep them in sync
     // Repository is authoritative for persistence; in-memory cache must reflect current state
     if (this.delegationRepository) {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      this.delegationRepository.updateStatus(delegation.delegationId, nextStatus);
+      await this.delegationRepository.updateStatus(delegation.delegationId, nextStatus);
     }
     // R9-06: For terminal states, remove from in-memory cache to prevent memory leaks.
     // Terminal delegations (completed/failed/cancelled/expired/timed_out) are persisted in repository

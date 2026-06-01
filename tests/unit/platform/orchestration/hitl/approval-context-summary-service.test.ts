@@ -48,6 +48,44 @@ test("ApprovalContextSummaryService generates summary for basic context", async 
   assert.ok(result.keyPoints.length >= 0);
 });
 
+test("ApprovalContextSummaryService extracts wrapped JSON safely", async () => {
+  const mockProvider = createMockProvider({
+    content: [
+      "Here is the approval summary:",
+      JSON.stringify({
+        summary: "Wrapped response parsed safely",
+        keyPoints: ["wrapped-json"],
+        riskFactors: ["medium risk"],
+        recommendedAction: "Approve after review",
+        confidence: 0.75,
+      }),
+      "End of response.",
+    ].join("\n"),
+  });
+  const service = new ApprovalContextSummaryService({ provider: mockProvider as any });
+
+  const result = await service.generateSummary({ taskId: "task_wrapped", riskLevel: "medium" });
+
+  assert.equal(result.summary, "Wrapped response parsed safely");
+  assert.deepEqual(result.keyPoints, ["wrapped-json"]);
+});
+
+test("ApprovalContextSummaryService falls back on oversized JSON fragment", async () => {
+  const hugePayload = JSON.stringify({
+    summary: "x".repeat(300_000),
+    keyPoints: ["too-large"],
+    riskFactors: [],
+    confidence: 0.9,
+  });
+  const mockProvider = createMockProvider({ content: hugePayload });
+  const service = new ApprovalContextSummaryService({ provider: mockProvider as any });
+
+  const result = await service.generateSummary({ taskId: "task_oversized", riskLevel: "high" });
+
+  assert.equal(result.taskId, "task_oversized");
+  assert.equal(result.confidence, 0.4);
+});
+
 test("ApprovalContextSummaryService falls back to template on invalid JSON", async () => {
   const mockProvider = createMockProvider({ content: "This is not valid JSON" });
   const service = new ApprovalContextSummaryService({ provider: mockProvider as any });

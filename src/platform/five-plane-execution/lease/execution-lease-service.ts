@@ -38,7 +38,7 @@ import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/au
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { WorkerRegistryService } from "../worker-pool/worker-registry-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import { StorageError } from "../../contracts/errors.js";
+import { StorageError, ValidationError } from "../../contracts/errors.js";
 import type {
   AcquireExecutionLeaseInput,
   ExecutionLeaseDecision,
@@ -507,6 +507,7 @@ export class ExecutionLeaseService {
       }
 
       const handoverReason = input.reasonCode ?? "lease_handover";
+      assertLeaseTtlWithinBounds(input.ttlMs);
       this.store.worker.closeExecutionLease({
         leaseId: previousLease.id,
         status: "released",
@@ -699,7 +700,7 @@ export class ExecutionLeaseService {
       }
 
       // R9-01 fix: Also reject if lease has expired (TTL check)
-      if (activeLease.expiresAt <= occurredAt) {
+      if (Date.parse(activeLease.expiresAt) <= Date.parse(occurredAt)) {
         this.insertLeaseAudit({
           executionId: activeLease.executionId,
           leaseId: activeLease.id,
@@ -932,5 +933,18 @@ export class ExecutionLeaseService {
       return 0;
     }
     return workerStore.getLatestFencingToken(executionId);
+  }
+}
+
+function assertLeaseTtlWithinBounds(ttlMs: number): void {
+  if (!Number.isFinite(ttlMs) || ttlMs < MIN_LEASE_TTL_MS || ttlMs > MAX_LEASE_TTL_MS) {
+    throw new ValidationError("execution.invalid_lease_ttl", "execution.invalid_lease_ttl", {
+      retryable: false,
+      details: {
+        ttlMs,
+        minTtlMs: MIN_LEASE_TTL_MS,
+        maxTtlMs: MAX_LEASE_TTL_MS,
+      },
+    });
   }
 }

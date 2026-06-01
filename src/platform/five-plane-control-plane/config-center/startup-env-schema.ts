@@ -562,12 +562,5 @@ export function assertValidStartupEnv(env: NodeJS.ProcessEnv = process.env): Sta
 }
 
 export function requireValidStartupEnv(env: NodeJS.ProcessEnv = process.env): void {
-  try {
-    assertValidStartupEnv(env);
-  } catch (error) {
-    if (error instanceof ValidationError) {
-      process.exit(1);
-    }
-    throw error;
-  }
+  assertValidStartupEnv(env);
 }

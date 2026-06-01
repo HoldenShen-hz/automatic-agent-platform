@@ -39,14 +39,16 @@ export type {
 } from "./multi-step-orchestration-types.js";
 
 export async function runMultiStepOrchestration(input: MultiStepToolExecutionInput): Promise<MultiStepOrchestrationResult> {
-  const { resetToolRegistry } = await import("../dispatcher/index.js");
-  resetToolRegistry();
-
-  const { plannedWorkflow, routing } = resolveOrchestrationPlan(input);
-  const runtime = createOrchestrationRuntime(input, plannedWorkflow);
-  const bootstrap = createOrchestrationBootstrapState(input, plannedWorkflow);
+  const runtimeResources: Array<{ close: () => void }> = [];
 
   try {
+    const { resetToolRegistry } = await import("../dispatcher/index.js");
+    resetToolRegistry();
+
+    const { plannedWorkflow, routing } = resolveOrchestrationPlan(input);
+    const runtime = createOrchestrationRuntime(input, plannedWorkflow);
+    runtimeResources.push(runtime.storage);
+    const bootstrap = createOrchestrationBootstrapState(input, plannedWorkflow);
     return await provideContext({
       traceId: bootstrap.traceId,
       spanId: bootstrap.traceContext.spanId,
@@ -197,6 +199,8 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       );
     });
   } finally {
-    runtime.storage.close();
+    for (const resource of runtimeResources) {
+      resource.close();
+    }
   }
 }
