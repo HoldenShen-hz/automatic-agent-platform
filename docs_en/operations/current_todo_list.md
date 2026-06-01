@@ -41,3 +41,25 @@
 - Historical full test failure baseline only serves as reconciliation material, cannot replace current targeted verification evidence.
 - Long-term batch records enter `docs_zh/operations/archive/`; main file remains as short index to avoid re-swelling.
 - Governance documents added after 2026-05-26 (such as `docs_zh/architecture/sync-async-service-pairs.md`) belong to post-archive supplementary assets, uniformly enter current review/architecture index, not backfilled as historical A/B active batches.
+
+## Current Active Todo
+
+### V3.2 Final Release Re-audit Writeback (2026-06-01)
+
+Sources:
+
+- `docs_zh/reference/automatic_agent_platform_v3_2_final_release.md`
+- `docs_en/reference/automatic_agent_platform_v3_2_final_release.md`
+
+Review conclusion:
+
+- The main P0/P1 tasks listed in `§11 v3.2 TodoList` are materially implemented in code and artifacts; no reopened primary implementation gap was found in that section.
+- However, `§14 Appendix A: Landed directories and extension slots` still contains several “document says landed, repository does not actually match” inconsistencies. Those are now tracked as active remediation items.
+
+| Batch | Priority | Status | Task | Evidence / Root Cause | Target Artifact |
+| --- | --- | --- | --- | --- | --- |
+| V32-R1 | P0 | `todo` | Reconcile the v3.2 Appendix A claim directory contract | The appendix lists `config/division-coverage/claims/{engineering,knowledge-research,...}.yaml`, while the repository currently exposes only `config/division-coverage/claims/allowlist.yaml` and `config/division-coverage/claims/records.yaml`. Either land family-scoped claim YAML files or rewrite the zh/en appendix to the current authoritative structure. | `docs_zh/reference/automatic_agent_platform_v3_2_final_release.md`, `docs_en/reference/automatic_agent_platform_v3_2_final_release.md`, and `config/division-coverage/claims/` aligned |
+| V32-R2 | P0 | `todo` | Restore or rewrite the `docs_zh/divisions/family-readiness.md` reference | The Chinese v3.2 appendix claims this file is landed, but the repository does not contain it. | Add `docs_zh/divisions/family-readiness.md`, or remove the incorrect landed claim from the v3.2 doc |
+| V32-R3 | P0 | `todo` | Restore or rewrite the `docs_zh/divisions/leadership-claims.md` reference | The Chinese v3.2 appendix claims this file is landed, but the repository does not contain it. | Add `docs_zh/divisions/leadership-claims.md`, or remove the incorrect landed claim from the v3.2 doc |
+| V32-R4 | P0 | `todo` | Fix the same missing Appendix A references in the English release doc | `docs_en/reference/automatic_agent_platform_v3_2_final_release.md` points to non-existent `docs_en/divisions/family-readiness.md` and `docs_en/divisions/leadership-claims.md`, and its claim directory description also diverges from the repository. | `docs_en/reference/automatic_agent_platform_v3_2_final_release.md` aligned to actual directories, with English files added if kept as required deliverables |
+| V32-R5 | P1 | `todo` | Add explicit re-audit evidence notes to the v3.2 release docs | `§11` currently says `done`, but does not preserve the 2026-06-01 re-audit evidence or residual mismatches, which makes future drift likely. | Implementation re-audit/evidence note appended to the zh/en v3.2 release docs |
