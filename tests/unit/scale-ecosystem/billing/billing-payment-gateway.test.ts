@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 
 import {
   ManualBillingPaymentGateway,
@@ -77,7 +77,7 @@ test("ManualBillingPaymentGateway createCheckoutSession generates correct sessio
   const session = gateway.createCheckoutSession({ invoice, account, createdAt });
 
   assert.equal(session.gatewayKind, "manual");
-  assert.equal(session.gatewaySessionRef, `manual_${invoice.invoiceId}`);
+  assert.match(session.gatewaySessionRef, new RegExp(`^manual_${invoice.invoiceId}_[a-z0-9]+$`, "u"));
   assert.ok(session.checkoutUrl.includes(invoice.invoiceId));
   assert.ok(session.checkoutUrl.includes(account.accountId));
   assert.equal(session.expiresAt, null);
@@ -203,6 +203,41 @@ test("StripeBillingPaymentGateway createCheckoutSession converts USD to cents [b
 
   // Should be rounded to 5056 cents
   assert.ok(capturedBody.includes("line_items%5B0%5D%5Bprice_data%5D%5Bunit_amount%5D=5056"));
+});
+
+test("StripeBillingPaymentGateway createCheckoutSession fails closed on outbound timeout [billing-payment-gateway]", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
+  const mockFetch: typeof fetch = async (_url, options) => await new Promise<Response>((_resolve, reject) => {
+    options?.signal?.addEventListener("abort", () => {
+      reject(new DOMException("The operation was aborted.", "AbortError"));
+    }, { once: true });
+  });
+
+  const gateway = new StripeBillingPaymentGateway({
+    secretKey: "sk_test",
+    successUrl: "https://app.example.com/success",
+    cancelUrl: "https://app.example.com/cancel",
+    fetchFn: mockFetch,
+    requestTimeoutMs: 50,
+  });
+
+  const pending = gateway.createCheckoutSession({
+    invoice: createMockInvoice({ totalUsd: 19.99 }),
+    account: createMockAccount(),
+    createdAt: "2026-04-01T00:00:00.000Z",
+  });
+
+  mock.timers.tick(60);
+  await assert.rejects(
+    pending,
+    (err) => {
+      assert.ok(err instanceof ProviderError);
+      assert.ok(err.message.includes("billing.stripe_checkout_failed"));
+      assert.equal(err.retryable, true);
+      return true;
+    },
+  );
+  mock.timers.reset();
 });
 
 test("StripeBillingPaymentGateway createCheckoutSession handles zero amount [billing-payment-gateway]", async () => {

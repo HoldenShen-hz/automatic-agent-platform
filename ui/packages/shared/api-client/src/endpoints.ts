@@ -32,7 +32,7 @@ import type {
   WorkflowRunStepDTO,
   WorkflowDTO,
 } from "@aa/shared-types";
-import type { RESTClient } from "./rest-client";
+import type { RESTClient, RestRequestOptions } from "./rest-client";
 
 export interface ListQueryParams {
   readonly page?: number;
@@ -384,9 +384,16 @@ export async function fetchWorkflowRunSteps(client: RESTClient, workflowRunId: s
   return client.get<readonly WorkflowRunStepDTO[]>(resolvePath(endpointCatalog.workflowRunSteps.path, { workflowRunId }));
 }
 
-export async function fetchApprovals(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly ApprovalDTO[]> {
+export async function fetchApprovals(
+  client: RESTClient,
+  queryParams?: ListQueryParams,
+  requestOptions?: RestRequestOptions,
+): Promise<readonly ApprovalDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  const response = await client.get<readonly ApprovalDTO[] | { approvals: readonly ApprovalDTO[] }>(`${endpointCatalog.approvals.path}${queryString}`);
+  const response = await client.get<readonly ApprovalDTO[] | { approvals: readonly ApprovalDTO[] }>(
+    `${endpointCatalog.approvals.path}${queryString}`,
+    requestOptions,
+  );
   return unwrapCollectionResponse(response, ["approvals"]);
 }
 

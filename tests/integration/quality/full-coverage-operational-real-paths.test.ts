@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import test from "node:test";
+import test, { mock } from "node:test";
 
 import { ChaosExperimentScheduler } from "../../../src/ops-maturity/chaos/chaos-experiment-scheduler.js";
 import { validateStartupEnv } from "../../../src/platform/five-plane-control-plane/config-center/startup-env-schema.js";
@@ -160,6 +160,7 @@ test("real fixture redactor removes secrets and PII while preserving correlation
 });
 
 test("real chaos scheduler blocks production targets and rolls back violated experiments", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const scheduler = new ChaosExperimentScheduler();
   const blocked = scheduler.scheduleExperiment({
     name: "blocked production target",
@@ -205,10 +206,16 @@ test("real chaos scheduler blocks production targets and rolls back violated exp
   scheduler.recordSteadyStateResult(experiment.experimentId, "success rate", 0.8, false, "SLO violated");
   assert.equal(scheduler.listExperiments().find((item) => item.experimentId === experiment.experimentId)?.status, "rollback");
 
-  await new Promise((resolve) => setTimeout(resolve, 350));
+  for (let index = 0; index < 6; index++) {
+    mock.timers.tick(100);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  }
   const rolledBack = scheduler.listExperiments().find((item) => item.experimentId === experiment.experimentId);
   assert.equal(rolledBack?.status, "rollback");
   assert.ok(rolledBack?.rollbackActions.every((action) => action.status === "completed"));
+  mock.timers.reset();
 });
 
 test("real supply-chain audit script passes against current repository controls", () => {

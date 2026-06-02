@@ -68,8 +68,10 @@ export function useHitlVm(): HitlVm {
 
   useEffect(() => {
     let mounted = true;
-    const reloadApprovals = async () => fetchApprovals(client);
-    void reloadApprovals()
+    let activeFetchController: AbortController | null = new AbortController();
+    const reloadApprovals = async (controller: AbortController) =>
+      fetchApprovals(client, undefined, { signal: controller.signal });
+    void reloadApprovals(activeFetchController)
       .then((items) => {
         if (mounted) {
           setApprovals(items);
@@ -84,16 +86,23 @@ export function useHitlVm(): HitlVm {
       });
 
     const unsubscribe = wsClient.subscribe("approvals", () => {
-      void reloadApprovals()
+      activeFetchController?.abort();
+      activeFetchController = new AbortController();
+      void reloadApprovals(activeFetchController)
         .then((items) => {
           if (mounted) {
             setApprovals(items);
           }
         })
-        .catch(() => undefined);
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return;
+          }
+        });
     });
     return () => {
       mounted = false;
+      activeFetchController?.abort();
       unsubscribe();
     };
   }, [client, wsClient]);

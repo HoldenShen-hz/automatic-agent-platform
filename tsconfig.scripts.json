@@ -1,21 +1,29 @@
 {
-  "extends": "./tsconfig.json",
   "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "strict": true,
     "allowJs": true,
+    "checkJs": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
     "allowImportingTsExtensions": false,
-    "checkJs": false,
     "composite": false,
     "declaration": false,
     "emitDeclarationOnly": false,
     "noEmit": true,
     "incremental": false
   },
-  "include": [
-    "scripts/**/*.mjs",
-    "scripts/**/*.ts",
-    "*.config.js",
-    "*.config.cjs",
-    "*.config.mjs"
-  ],
-  "exclude": []
+  "files": [
+    "eslint.config.js",
+    "stryker.config.mjs",
+    "scripts/lib/test-concurrency.mjs",
+    "scripts/build-if-needed.mjs",
+    "scripts/clean-dist.mjs",
+    "scripts/run-node-tests.mjs"
+  ]
 }

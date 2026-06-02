@@ -9,6 +9,9 @@
  */
 
 import { createHash } from "node:crypto";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import assert from "node:assert";
 
@@ -19,7 +22,9 @@ import {
   validateCheckpointStorage,
   requireValidCheckpointRef,
 } from "../../../../../src/platform/five-plane-state-evidence/checkpoints/checkpoint-ref-validator.js";
+import { createCheckpointEnvelope } from "../../../../../src/platform/five-plane-state-evidence/checkpoints/index.js";
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
+import { createWorkspaceWritePolicy } from "../../../../../src/platform/shared/sandbox-path-policy.js";
 
 describe("CheckpointRefValidator", () => {
   describe("validateCheckpointRef", () => {
@@ -327,6 +332,61 @@ describe("CheckpointRefValidator", () => {
         assert.equal(validationError.code, "checkpoint.ref_invalid");
         assert.ok(validationError.message.includes("Invalid CheckpointRef"));
       }
+    });
+  });
+
+  describe("validateCheckpointStorage", () => {
+    it("should validate checksum against the unpacked checkpoint envelope payload", async () => {
+      const workspace = mkdtempSync(join(tmpdir(), "aa-checkpoint-ref-"));
+      const checkpointPath = join(workspace, "checkpoint.json");
+      const envelope = await createCheckpointEnvelope({ taskId: "task-1", output: { ok: true } }, "workflow_step_checkpoint.v1");
+      writeFileSync(checkpointPath, JSON.stringify(envelope), "utf8");
+
+      const result = validateCheckpointStorage({
+        checkpointId: "checkpoint-1",
+        storageUri: `file://${checkpointPath}`,
+        checksum: envelope.metadata.checksum,
+      });
+
+      assert.equal(result.valid, true);
+      assert.deepEqual(result.errors, []);
+    });
+
+    it("should reject checkpoint files outside the allowed sandbox roots", async () => {
+      const workspace = mkdtempSync(join(tmpdir(), "aa-checkpoint-ref-sandbox-"));
+      const outsidePath = join(tmpdir(), "checkpoint-outside.json");
+      const envelope = await createCheckpointEnvelope({ taskId: "task-2" }, "workflow_step_checkpoint.v1");
+      writeFileSync(outsidePath, JSON.stringify(envelope), "utf8");
+
+      const result = validateCheckpointStorage(
+        {
+          checkpointId: "checkpoint-2",
+          storageUri: `file://${outsidePath}`,
+          checksum: envelope.metadata.checksum,
+        },
+        { sandboxPolicy: createWorkspaceWritePolicy(workspace) },
+      );
+
+      assert.equal(result.valid, false);
+      assert.ok(result.errors.some((error) => error.includes("outside_sandbox")));
+    });
+
+    it("should fail closed on oversized checkpoint files before reading them", () => {
+      const workspace = mkdtempSync(join(tmpdir(), "aa-checkpoint-ref-large-"));
+      const checkpointPath = join(workspace, "checkpoint.json");
+      writeFileSync(checkpointPath, "x".repeat(2048), "utf8");
+
+      const result = validateCheckpointStorage(
+        {
+          checkpointId: "checkpoint-3",
+          storageUri: `file://${checkpointPath}`,
+          checksum: "a".repeat(64),
+        },
+        { maxStorageBytes: 128 },
+      );
+
+      assert.equal(result.valid, false);
+      assert.ok(result.errors.some((error) => error.includes("checkpoint_file_too_large")));
     });
   });
 });

@@ -25,6 +25,11 @@ const SOURCE_FILES = [
   "tsconfig.build.json",
 ];
 
+/**
+ * @param {string} path
+ * @param {string} label
+ * @returns {void}
+ */
 function assertRepoFile(path, label) {
   const normalizedRoot = `${repoRoot}${repoRoot.endsWith("/") ? "" : "/"}`;
   if (path !== repoRoot && !path.startsWith(normalizedRoot)) {
@@ -32,6 +37,10 @@ function assertRepoFile(path, label) {
   }
 }
 
+/**
+ * @param {string} path
+ * @returns {Generator<string, void, undefined>}
+ */
 function* walkFiles(path) {
   if (!existsSync(path)) {
     return;
@@ -49,12 +58,19 @@ function* walkFiles(path) {
   }
 }
 
+/**
+ * @param {string} path
+ * @returns {string}
+ */
 function computeFileHash(path) {
   const hash = createHash("sha256");
   hash.update(readFileSync(path));
   return hash.digest("hex");
 }
 
+/**
+ * @returns {string}
+ */
 function computeBuildFingerprint() {
   assertRepoFile(typeScriptCompilerPath, "TypeScript compiler path");
   if (!existsSync(typeScriptCompilerPath)) {
@@ -81,6 +97,9 @@ function computeBuildFingerprint() {
   return hash.digest("hex");
 }
 
+/**
+ * @returns {string | null}
+ */
 function readPreviousBuildFingerprint() {
   if (!existsSync(buildStatePath)) {
     return null;
@@ -93,6 +112,10 @@ function readPreviousBuildFingerprint() {
   }
 }
 
+/**
+ * @param {string} buildFingerprint
+ * @returns {void}
+ */
 function writeBuildState(buildFingerprint) {
   mkdirSync(resolve(repoRoot, ".cache"), { recursive: true });
   writeFileSync(
@@ -108,6 +131,9 @@ function writeBuildState(buildFingerprint) {
   );
 }
 
+/**
+ * @returns {{ rebuild: boolean; buildFingerprint: string | null }}
+ */
 function shouldRebuild() {
   if (forceRebuild || !existsSync(buildSentinel)) {
     return { rebuild: true, buildFingerprint: null };
@@ -119,6 +145,11 @@ function shouldRebuild() {
   };
 }
 
+/**
+ * @param {string} command
+ * @param {readonly string[]} args
+ * @returns {void}
+ */
 function run(command, args) {
   const result = spawnSync(command, args, {
     cwd: repoRoot,

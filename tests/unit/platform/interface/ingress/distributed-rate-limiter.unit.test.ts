@@ -290,6 +290,7 @@ test("DistributedRateLimiter - maxCalls defaults to 100 when not specified", asy
 });
 
 test("DistributedRateLimiter - windowMs defaults to 1000 when not specified", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const limiter = new DistributedRateLimiter({
     maxCalls: 5,
   });
@@ -304,7 +305,7 @@ test("DistributedRateLimiter - windowMs defaults to 1000 when not specified", as
   assert.equal(blocked.allowed, false);
 
   // After 1000ms, window should reset
-  await new Promise((resolve) => setTimeout(resolve, 1050));
+  mock.timers.tick(1050);
 
   const allowed = await limiter.checkAndConsume("default-window-test");
   assert.equal(allowed.allowed, true);

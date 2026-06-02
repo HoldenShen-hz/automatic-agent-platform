@@ -5,10 +5,45 @@
 > **继承基线**: v3.1 Division Execution, Evidence & Operating Model Baseline  
 > **文件名说明**: 文件路径保留 `final_release` 历史命名；当前正文状态与文件名一致，表示治理基线已发布。  
 > **本版目标**: 在 v3.1 的 SOT、Lifecycle、RACI、CoverageCard、ScenarioCard、EvalDatasetCard、RedTeam、ROI、ToolRisk、Budget、Admin Console、Regression Protection 基础上，进一步回答一个核心问题：**每个 Family 是否可以做到行业领先，以及什么条件下才允许声明行业领先**。本版补齐 Release Scope、行业依据附录、Claim 自我约束、版本变更摘要、Claim Scanner allowlist、No-go exception 严格化、Admin Console DoD 与 Release Owner，并给出后续演进清单。  
-> **当前仓库实现状态**: machine-readable Family Readiness / Benchmark / Minimum Evidence / Claim schema / allowlist / records / No-go Policy 配置、CI Claim Scanner、治理数据、Admin API / OpenAPI、Release Console Leadership Claims 子页与 review request 提交流程已在仓库中落地。  
+> **当前仓库实现状态**: machine-readable Family Readiness / Benchmark / Minimum Evidence / Claim schema / allowlist / records / No-go Policy 配置、CI Claim Scanner、Admin API / OpenAPI、Release Console Leadership Claims 子页与最小 review request 工作流已在仓库中落地；更细粒度的 report catalog、full-family no-go matrix、claim-hit traceability、runtime overlay 工件提交策略仍需按本文后续说明区分“当前基线”与“目标合同”。  
 > **核心结论**: 每个 Family 都可以走向行业领先，但不能用同一种“领先”定义。Engineering 和 Knowledge / Research 应优先冲刺能力与证据领先；Enterprise Ops 先在 customer-service/support 局部领先；GTM / Content 与 Creative / Production 先做治理和证据领先；Regulated Family 必须定义为安全治理领先，而不是自治执行领先。任何 Family 或 Division 不得在 README、UI、销售材料、release note 中声明“行业领先”，除非 Evidence Package 通过 Leadership Claim Gate。**本文件发布的是治理基线与 Claim Gate，不认证当前任何 Family 或 Division 已经行业领先。**
 
 ---
+
+## Review Patch 读取规则
+
+2026-06-02 复核补充：本文必须按三层口径阅读，避免把治理基线、目标报告目录和未来 runtime enforcement 混读成同一个完成态。
+
+| 层级 | 含义 | 允许表述 |
+|---|---|---|
+| `repo baseline` | 当前仓库已经存在的配置、脚本、API、UI、最小治理工作流 | `已落地`、`已接线`、`最小基线` |
+| `target contract` | 本文定义的完整 family evidence / benchmark / no-go / claim governance 理想合同 | `目标态`、`治理目标`、`建议目录` |
+| `release posture` | 本版对外发布时允许作出的治理承诺边界 | `已发布治理基线`、`不等于已认证领先` |
+
+默认规则：
+
+1. Family benchmark、minimum evidence、named reports、OTel span taxonomy、No-go 全量目录、Family Leadership Score 权重，除非显式写明“当前仓库基线”，否则按 `target contract` 阅读。
+2. `data/governance/` 下的 overlay / scan report 属运行时生成工件；它们可能由脚本或 admin workflow 写入，并不要求全部以静态文件形式长期提交在仓库里。
+3. `RiskClass R3/R4/R5`、`FamilyPolicy`、`Family Leadership Score` 当前主要是治理文档概念，不等于已经成为共享 runtime enum、schema 必填字段或自动计算器。
+4. Claim scanner、No-go policy、Release Console 当前已经有最小闭环，但命中精度、family 复用深度、expiry/replacement 自动化与 evidence 对账仍有后续演进空间。
+
+### 当前仓库基线与目标合同边界
+
+当前仓库已经承认的 v3.2 基线：
+
+- `config/division-coverage/{family-readiness,benchmark-map,minimum-leading-evidence}.yaml`
+- `config/division-coverage/claims/{records,allowlist}.yaml`
+- `config/policy/no-go-actions.yaml`
+- `scripts/ci/audit-leadership-claims.mjs`
+- Leadership Claims admin API / OpenAPI / Release Console 最小工作流
+
+当前仓库尚未承认的“已全部完成”表述：
+
+- 所有 Family 的 full no-go catalog 与 family-specific enforcement matrix 都已配置
+- named benchmark report / ROI report / visual report / audit report 都已生成并 machine-checkable
+- scanner 已具备 claimId 级别 traceability、自动替换建议和全 surface roots 参数化
+- `R0-R5` 已成为统一 runtime risk enum，或 Family Leadership Score 已有自动计算器
+- `data/governance/` 目录下所有 overlay/report 都必须作为静态工件提交到 git
 
 ## Release Scope / 发布范围
 
@@ -192,6 +227,9 @@ v3.2 在 v3.1 基础上新增 6 个关键模块：
 
 ## 1. 行业领先的统一定义
 
+> 审阅修订说明（2026-06-02）  
+> 本章中的 `Family Leadership Score`、默认权重和 readiness 升级条件是治理判断框架，不代表当前仓库已经提供自动计算器、family weight config 或统一 runtime type。
+
 v3.2 不再把“行业领先”理解为单一能力分数，而拆成五类领先。
 
 | 领先类型 | 定义 | 典型 Family |
@@ -227,6 +265,9 @@ Family Leadership Score =
 ---
 
 ## 2. Family-level Leadership Readiness Table
+
+> 审阅修订说明（2026-06-02）  
+> 本章的 readiness 状态、评级依据和 gate 条件首先是治理评估框架。当前仓库尚未把这 5 档状态机提升为独立 schema/service，也没有自动推导 family readiness 或 division→family 升级流转。
 
 ### 2.1 Readiness 状态
 
@@ -279,6 +320,9 @@ industry_leadership_ready requires:
 ---
 
 ## 3. Family-specific External Benchmark Map
+
+> 审阅修订说明（2026-06-02）  
+> 本章中的 benchmark 对齐关系与命名报告是 `target contract`。当前仓库确已提交 benchmark map 配置，但并不等于每个 Family 的 heldout、red-team、ROI、source-reliability、visual 或 compliance report 都已生成。
 
 ### 3.1 Benchmark Map 总表
 
@@ -337,6 +381,9 @@ Required spans:
 ---
 
 ## 4. Family-specific Minimum Viable Leading Evidence
+
+> 审阅修订说明（2026-06-02）  
+> 本章列出的 evidence checklist 与阈值是治理门槛定义，不是对当前仓库“已存在对应 named report / dataset / dashboard”的事实认证。
 
 ### 4.1 Engineering Family
 
@@ -501,6 +548,9 @@ Required spans:
 
 ## 5. Pilot-to-Family Expansion Path
 
+> 审阅修订说明（2026-06-02）  
+> 本章是 pilot 扩展路线图，不应解读为当前仓库已经存在 `pilot manifest`、phase 编码、expansion gate runner 或自动扩展状态机。
+
 ### 5.1 P0 Pilot Scope
 
 v3.2 继续收敛到 3 条主线：
@@ -550,6 +600,9 @@ Phase P2:
 ---
 
 ## 6. No-go List：当前禁止自动化的动作
+
+> 审阅修订说明（2026-06-02）  
+> 本章描述 v3.2 的目标 no-go catalog。当前仓库的 machine-readable config 已落地最小 bootstrap 子集，并优先覆盖全局三项与 `regulated` / `gtm-content` 两个 family；其余 family-specific 目录、全量 global catalog、`R3/R4/R5` 风险层级和更细粒度 source/sink 绑定仍属于后续扩展合同。
 
 v3.2 必须明确边界：系统不是所有业务都可以自动执行。
 
@@ -622,6 +675,9 @@ No-go exception 不能用于：
 
 ## 7. Leadership Claim Gate
 
+> 审阅修订说明（2026-06-02）  
+> 本章的 claim gate 方向已接线到 scanner、records/allowlist、admin workflow 与 console，但更强的 claimId 级 hit traceability、自动 replacement/revocation 编排、全 surface roots 参数化与 scanner-evidence freshness 对账仍是后续收口项。
+
 ### 7.1 为什么需要 Claim Gate
 
 如果没有 Claim Gate，README、UI、销售材料、文档可能过早声称：
@@ -645,6 +701,9 @@ regulated-ready legal agent
 | `industry_leading` | “行业领先” | 通过 Leadership Claim Gate |
 
 ### 7.3 Claim Gate 条件
+
+> 审阅修订说明（2026-06-02）  
+> 下列 10 条是 `industry_leading` 的目标治理门槛。当前 scanner / governance service 已能表达 claim level、expiry、revoke 和最小 surface gating，但尚未把全部 10 条以前置 machine check 方式逐项强制落库。
 
 ```text
 industry_leading claim requires:
@@ -769,6 +828,9 @@ export interface LeadershipClaimAllowlistEntry {
 }
 ```
 
+> 审阅修订说明（2026-06-02）  
+> `replacementSuggestion` 当前仍是治理提示字段，不应表述为“现已在所有 allowlist/expiry 流程中强制提供并自动消费”。
+
 允许 allowlist 的情况：
 
 ```text
@@ -789,6 +851,9 @@ export interface LeadershipClaimAllowlistEntry {
 ### 7.7 Claim Scanner 失败处理
 
 落地时必须把 `Fail / Warn / Expired allowlist` 语义接入现有 CI gate；在此之前，本节只是治理要求，不是当前系统行为。
+
+> 审阅修订说明（2026-06-02）  
+> 当前主基线已对 `expired allowlist` 采取保守阻断，并在 governance snapshot 中派生 expired/revoked 状态；但 `Approved claim expired → 自动撤销并要求替换文案` 仍应按后续 operator workflow 理解，而不是已经存在完整自动通知/替换编排。
 
 ```text
 Fail → 阻断 release。
@@ -1025,7 +1090,7 @@ v3.2 作为强制治理基线，最低需要满足：
 
 ### 10.2 Admin Console DoD
 
-当前仓库已提供 Release Console `leadership-claims` 子页，以及对应的 governance snapshot / review request / approve / reject / revoke API。下列条目已作为本版实现边界落地：
+当前仓库已提供 Release Console `leadership-claims` 子页，以及对应的 governance snapshot / review request / approve / reject / revoke API。当前主基线已经落地的是“最小治理页 + 最小 workflow”；下列条目中，只有第 1、4 的最小路径可按现状引用，其余 2、3、5、6 应按目标 DoD 理解，不得误表述为全部已完成。
 
 ```text
 1. 展示每个 Family 的 readiness status、claim level、expiry、owner。
@@ -1163,7 +1228,7 @@ Regulated：只做安全治理、审计、HITL 领先，不做高自治领先。
 
 ## 14. 附录 A：已落地目录与后续扩展位
 
-> 下列目录中的治理工件均已落地，包含 family expansion reports、runtime governance overlays 与 scanner 输出。
+> 下列目录中，`config/` 与 `scripts/` 下的治理工件已作为仓库基线提交；`data/governance/` 下的 runtime overlays / scan report 属运行时生成目录，可由脚本或 admin workflow 写入，不要求默认随 git 一起提交。
 
 ```text
 config/division-coverage/
@@ -1201,6 +1266,9 @@ docs_zh/divisions/
 ## 15. 附录 B：Leadership Claim Gate 示例
 
 > 下列 YAML 用于说明当前 schema 目标结构；仓库中的实际记录可见 `config/division-coverage/claims/records.yaml`。
+>
+> 审阅修订说明（2026-06-02）  
+> 该示例用于说明目标记录形态，不承诺示例中的 `claimId`、`eval://` / `redteam://` / `dashboard://` URI scheme 已在当前 records 或解析器中逐项落地。
 
 ```yaml
 claimId: engineering-coding-local-leader-v3-2
@@ -1231,6 +1299,9 @@ status: approved
 ---
 
 ## 16. 附录 C：No-go Policy 示例
+
+> 审阅修订说明（2026-06-02）  
+> 下列 YAML 是目标策略示例，不等于当前 `config/policy/no-go-actions.yaml` 的逐字段镜像；当前仓库以该配置文件本身为准。
 
 ```yaml
 noGoActions:

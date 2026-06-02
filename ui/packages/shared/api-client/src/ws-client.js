@@ -21,6 +21,12 @@ function resolveTrustedReplayEventId(event) {
     }
     return null;
 }
+function createWorkerCapability() {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID();
+    }
+    return `cap_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
+}
 export class InMemoryWSClient {
     handlers = new Map();
     statusHandlers = new Set();
@@ -188,7 +194,25 @@ export class BrowserWSClient {
                 if (!this.isActiveSocket(socket, socketNonce)) {
                     return;
                 }
-                const data = JSON.parse(String(event.data));
+                let data;
+                try {
+                    data = JSON.parse(String(event.data));
+                }
+                catch {
+                    this.clearReconnectTimer();
+                    this.stopHeartbeat();
+                    this.socket = null;
+                    this.currentUrl = null;
+                    this.currentToken = null;
+                    this.fallbackClient?.disconnect();
+                    this.setStatus("disconnected");
+                    try {
+                        socket.close();
+                    }
+                    catch {
+                    }
+                    return;
+                }
                 if (data.action === "pong" || data.type === "pong") {
                     this.clearHeartbeatDeadline();
                     return;
@@ -338,6 +362,7 @@ export class SharedWorkerWSClient {
     statusHandlers = new Set();
     port;
     replayBufferByChannel = new Map();
+    capability = createWorkerCapability();
     disconnected = false;
     disconnectTimer = null;
     constructor(worker) {
@@ -351,11 +376,11 @@ export class SharedWorkerWSClient {
             clearTimeout(this.disconnectTimer);
             this.disconnectTimer = null;
         }
-        this.port.postMessage({ action: "connect", url, token });
+        this.port.postMessage({ action: "connect", capability: this.capability, url, token });
     }
     disconnect() {
         this.disconnected = true;
-        this.port.postMessage({ action: "disconnect" });
+        this.port.postMessage({ action: "disconnect", capability: this.capability });
         if (this.disconnectTimer != null) {
             clearTimeout(this.disconnectTimer);
         }
@@ -376,7 +401,7 @@ export class SharedWorkerWSClient {
         channelHandlers.add(handler);
         this.handlers.set(channel, channelHandlers);
         if (wasEmpty) {
-            this.port.postMessage({ action: "subscribe", channel });
+            this.port.postMessage({ action: "subscribe", capability: this.capability, channel });
         }
         for (const event of this.replayBufferByChannel.get(channel) ?? []) {
             queueMicrotask(() => {
@@ -395,16 +420,19 @@ export class SharedWorkerWSClient {
         return () => this.statusHandlers.delete(handler);
     }
     publish(event) {
-        this.port.postMessage({ action: "publish", event });
+        this.port.postMessage({ action: "publish", capability: this.capability, event });
     }
     useSseFallback() {
-        this.port.postMessage({ action: "useSseFallback" });
+        this.port.postMessage({ action: "useSseFallback", capability: this.capability });
     }
     handleMessage = (event) => {
-        if (this.disconnected) {
+        if (this.disconnected || event.currentTarget !== this.port) {
             return;
         }
         const message = event.data;
+        if (message == null || message.capability !== this.capability) {
+            return;
+        }
         if (message.type === "status") {
             for (const handler of this.statusHandlers) {
                 handler(message.status);

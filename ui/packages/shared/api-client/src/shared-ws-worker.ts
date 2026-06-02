@@ -8,15 +8,15 @@ interface WorkerSocketEvent {
 }
 
 type WorkerCommand =
-  | { readonly action: "connect"; readonly url: string; readonly token: string }
-  | { readonly action: "disconnect" }
-  | { readonly action: "subscribe"; readonly channel: string }
-  | { readonly action: "publish"; readonly event: WorkerSocketEvent }
-  | { readonly action: "useSseFallback" };
+  | { readonly action: "connect"; readonly capability: string; readonly url: string; readonly token: string }
+  | { readonly action: "disconnect"; readonly capability: string }
+  | { readonly action: "subscribe"; readonly capability: string; readonly channel: string }
+  | { readonly action: "publish"; readonly capability: string; readonly event: WorkerSocketEvent }
+  | { readonly action: "useSseFallback"; readonly capability: string };
 
 type WorkerOutboundMessage =
-  | { readonly type: "status"; readonly status: WSStatus }
-  | { readonly type: "event"; readonly event: WorkerSocketEvent };
+  | { readonly capability: string; readonly type: "status"; readonly status: WSStatus }
+  | { readonly capability: string; readonly type: "event"; readonly event: WorkerSocketEvent };
 
 type SharedWorkerConnectEvent = MessageEvent & { readonly ports: readonly MessagePort[] };
 
@@ -24,11 +24,18 @@ declare const self: typeof globalThis & {
   onconnect: ((event: SharedWorkerConnectEvent) => void) | null;
 };
 
-const ports = new Set<MessagePort>();
+interface WorkerPortState {
+  readonly port: MessagePort;
+  capability: string | null;
+  desiredUrl: string | null;
+  desiredToken: string | null;
+  subscribedChannels: Set<string>;
+}
+
+const portStates = new Map<MessagePort, WorkerPortState>();
 const subscribedChannels = new Set<string>();
 let socket: WebSocket | null = null;
-let currentUrl: string | null = null;
-let currentToken: string | null = null;
+let activeSocketConfig: { url: string; token: string } | null = null;
 let reconnectAttempt = 0;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
@@ -40,6 +47,7 @@ const heartbeatTimeoutMs = 5000;
 const replayBufferByChannel = new Map<string, WorkerSocketEvent[]>();
 const lastEventIdByChannel = new Map<string, string>();
 let lastEventId: string | null = null;
+const WORKER_CAPABILITY_PATTERN = /^[A-Za-z0-9:_-]{8,128}$/u;
 
 function isTrustedReplayEventId(value: unknown): value is string {
   return typeof value === "string" && /^evt[-_][A-Za-z0-9:-]{3,}$/.test(value);
@@ -61,9 +69,43 @@ function resolveTrustedReplayEventId(event: WorkerSocketEvent): string | null {
   return null;
 }
 
-function broadcast(message: WorkerOutboundMessage): void {
-  for (const port of ports) {
-    port.postMessage(message);
+function isValidCapability(value: unknown): value is string {
+  return typeof value === "string" && WORKER_CAPABILITY_PATTERN.test(value);
+}
+
+function getPortState(port: MessagePort): WorkerPortState {
+  const existing = portStates.get(port);
+  if (existing != null) {
+    return existing;
+  }
+  const created: WorkerPortState = {
+    port,
+    capability: null,
+    desiredUrl: null,
+    desiredToken: null,
+    subscribedChannels: new Set<string>(),
+  };
+  portStates.set(port, created);
+  return created;
+}
+
+function withCapability(
+  port: MessagePort,
+  message: Omit<WorkerOutboundMessage, "capability">,
+): WorkerOutboundMessage | null {
+  const capability = portStates.get(port)?.capability;
+  if (capability == null) {
+    return null;
+  }
+  return { capability, ...message };
+}
+
+function broadcast(message: Omit<WorkerOutboundMessage, "capability">): void {
+  for (const port of portStates.keys()) {
+    const scoped = withCapability(port, message);
+    if (scoped != null) {
+      port.postMessage(scoped);
+    }
   }
 }
 
@@ -110,8 +152,7 @@ function calculateBackoffDelay(): number {
 }
 
 function connectSocket(url: string, token: string): void {
-  currentUrl = url;
-  currentToken = token;
+  activeSocketConfig = { url, token };
   setStatus("connecting");
   stopHeartbeat();
 
@@ -137,12 +178,24 @@ function connectSocket(url: string, token: string): void {
       startHeartbeat();
     };
     socket.onmessage = (event) => {
-      const data = JSON.parse(String(event.data)) as WorkerSocketEvent & { action?: string };
+      let data: WorkerSocketEvent & { action?: string };
+      try {
+        data = JSON.parse(String(event.data)) as WorkerSocketEvent & { action?: string };
+      } catch {
+        disconnectSocket();
+        return;
+      }
       if (data.action === "pong" || data.type === "pong") {
         clearHeartbeatDeadline();
         return;
       }
-      if (resolveTrustedReplayEventId(data) == null && (data.eventId != null || (typeof data.payload === "object" && data.payload !== null && ("eventId" in data.payload || "id" in data.payload)))) {
+      if (
+        resolveTrustedReplayEventId(data) == null
+        && (
+          data.eventId != null
+          || (typeof data.payload === "object" && data.payload !== null && ("eventId" in data.payload || "id" in data.payload))
+        )
+      ) {
         return;
       }
       rememberEvent(data);
@@ -165,7 +218,7 @@ function connectSocket(url: string, token: string): void {
 }
 
 function scheduleReconnect(): void {
-  if (currentUrl == null || currentToken == null || ports.size === 0) {
+  if (activeSocketConfig == null || portStates.size === 0) {
     return;
   }
   if (reconnectTimer != null) {
@@ -175,8 +228,8 @@ function scheduleReconnect(): void {
   reconnectAttempt += 1;
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
-    if (currentUrl != null && currentToken != null && ports.size > 0) {
-      connectSocket(currentUrl, currentToken);
+    if (activeSocketConfig != null && portStates.size > 0) {
+      connectSocket(activeSocketConfig.url, activeSocketConfig.token);
     }
   }, delay);
 }
@@ -188,8 +241,7 @@ function disconnectSocket(): void {
   }
   stopHeartbeat();
   reconnectAttempt = 0;
-  currentUrl = null;
-  currentToken = null;
+  activeSocketConfig = null;
   socket?.close();
   socket = null;
   setStatus("disconnected");
@@ -205,6 +257,15 @@ function rememberEvent(event: WorkerSocketEvent): void {
   replayBufferByChannel.set(event.channel, nextBuffer);
 }
 
+function recomputeSubscribedChannels(): void {
+  subscribedChannels.clear();
+  for (const state of portStates.values()) {
+    for (const channel of state.subscribedChannels) {
+      subscribedChannels.add(channel);
+    }
+  }
+}
+
 export function installSharedWorkerSocketRuntime(
   sharedWorkerGlobal: typeof self = self,
 ): void {
@@ -213,28 +274,49 @@ export function installSharedWorkerSocketRuntime(
     if (port == null) {
       return;
     }
-    ports.add(port);
+    getPortState(port);
     port.start();
-    port.postMessage({ type: "status", status: socket?.readyState === WebSocket.OPEN ? "connected" : "disconnected" } satisfies WorkerOutboundMessage);
 
     port.onmessage = (event: MessageEvent<WorkerCommand>) => {
       const message = event.data;
+      if (!isValidCapability(message.capability)) {
+        return;
+      }
+      const state = getPortState(port);
+      if (state.capability != null && state.capability !== message.capability) {
+        return;
+      }
+      state.capability = message.capability;
+
       if (message.action === "connect") {
-        if (socket == null || currentUrl !== message.url || currentToken !== message.token) {
+        state.desiredUrl = message.url;
+        state.desiredToken = message.token;
+        if (activeSocketConfig == null) {
           connectSocket(message.url, message.token);
+          return;
+        }
+        if (activeSocketConfig.url === message.url && activeSocketConfig.token === message.token) {
+          if (socket == null || socket.readyState !== WebSocket.OPEN) {
+            connectSocket(message.url, message.token);
+          }
         }
         return;
       }
+
       if (message.action === "disconnect") {
-        ports.delete(port);
-        if (ports.size === 0) {
+        portStates.delete(port);
+        recomputeSubscribedChannels();
+        if (portStates.size === 0) {
           disconnectSocket();
         }
         return;
       }
+
       if (message.action === "subscribe") {
-        subscribedChannels.add(message.channel);
-        if (socket != null && socket.readyState === WebSocket.OPEN) {
+        const hadChannel = subscribedChannels.has(message.channel);
+        state.subscribedChannels.add(message.channel);
+        recomputeSubscribedChannels();
+        if (socket != null && socket.readyState === WebSocket.OPEN && !hadChannel) {
           socket.send(JSON.stringify({
             action: "subscribe",
             channel: message.channel,
@@ -244,24 +326,35 @@ export function installSharedWorkerSocketRuntime(
           }));
         }
         for (const replayEvent of replayBufferByChannel.get(message.channel) ?? []) {
-          port.postMessage({ type: "event", event: replayEvent } satisfies WorkerOutboundMessage);
+          const outbound = withCapability(port, { type: "event", event: replayEvent });
+          if (outbound != null) {
+            port.postMessage(outbound);
+          }
         }
         return;
       }
+
       if (message.action === "publish") {
         rememberEvent(message.event);
         broadcast({ type: "event", event: message.event });
         return;
       }
+
       if (message.action === "useSseFallback") {
         setStatus("sse-fallback");
       }
     };
+
+    const initialStatus = withCapability(port, {
+      type: "status",
+      status: socket?.readyState === WebSocket.OPEN ? "connected" : "disconnected",
+    });
+    if (initialStatus != null) {
+      port.postMessage(initialStatus);
+    }
   };
 }
 
-if ("onconnect" in self) {
+if (typeof self !== "undefined") {
   installSharedWorkerSocketRuntime();
 }
-
-export {};

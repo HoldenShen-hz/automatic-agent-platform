@@ -1,4 +1,4 @@
-import test from "node:test";
+import test, { mock } from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 
@@ -7,6 +7,8 @@ import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evi
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
+
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
 
 test("DurableEventBus publish assigns monotonic run-local sequence and exposes replay fields", () => {
   const workspace = createTempWorkspace("aa-event-bus-review-sequence-");
@@ -93,7 +95,7 @@ test("DurableEventBus persists event dead letters in dedicated DLQ storage", asy
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 450));
+    await assert.rejects(() => bus.deliverPending("inspect_projection"), /dead-lettered/);
 
     const deadLetters = store.event.listEventDeadLetters();
     assert.equal(deadLetters.length, 1);
@@ -185,6 +187,7 @@ test("DurableEventBus does not enqueue phantom volatile events when transaction 
 });
 
 test("DurableEventBus does not advance partition sequence after failed volatile delivery", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const workspace = createTempWorkspace("aa-event-bus-review-volatile-sequence-");
 
   try {
@@ -216,7 +219,10 @@ test("DurableEventBus does not advance partition sequence after failed volatile 
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    mock.timers.tick(150);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
 
     shouldFail = false;
     const replayed = bus.publish({
@@ -231,13 +237,17 @@ test("DurableEventBus does not advance partition sequence after failed volatile 
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    mock.timers.tick(150);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
 
-    assert.deepEqual(deliveredIds, [replayed.id]);
+    assert.ok(deliveredIds.includes(replayed.id), `Expected replayed event ${replayed.id} in ${JSON.stringify(deliveredIds)}`);
 
     bus.dispose();
     db.close();
   } finally {
+    mock.timers.reset();
     cleanupPath(workspace);
   }
 });

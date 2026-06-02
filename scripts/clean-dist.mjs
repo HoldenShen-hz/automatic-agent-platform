@@ -13,7 +13,12 @@ const shouldPruneStaleDistTests =
   preserveDist
   && process.env.AA_PRUNE_DIST_TESTS === "1";
 
+/**
+ * @param {string} rootPath
+ * @returns {string[]}
+ */
 function listFilesRecursively(rootPath) {
+  /** @type {string[]} */
   const results = [];
   for (const entry of readdirSync(rootPath, { withFileTypes: true })) {
     const fullPath = join(rootPath, entry.name);
@@ -44,7 +49,9 @@ function pruneStaleDistTests() {
       continue;
     }
 
-    const sources = Array.isArray(sourceMap.sources) ? sourceMap.sources : [];
+    const rawSources = Array.isArray(sourceMap.sources) ? /** @type {unknown[]} */ (sourceMap.sources) : [];
+    /** @type {string[]} */
+    const sources = rawSources.map((sourcePath) => String(sourcePath));
     const sourcePaths = sources.map((sourcePath) => resolve(dirname(filePath), sourcePath));
     const hasExistingSource = sourcePaths.some((sourcePath) => existsSync(sourcePath));
     if (hasExistingSource) {
@@ -68,7 +75,7 @@ if (!preserveDist && existsSync(distPath)) {
   try {
     rmSync(distPath, { recursive: true, force: true });
   } catch (err) {
-    if (err.code !== "ENOENT") {
+    if (!(err instanceof Error) || !("code" in err) || err.code !== "ENOENT") {
       throw err;
     }
   }

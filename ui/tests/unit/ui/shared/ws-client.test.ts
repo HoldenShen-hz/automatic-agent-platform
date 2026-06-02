@@ -483,17 +483,17 @@ describe("createRuntimeWSClient", () => {
   it("uses SharedWorker-based multiplexing when the browser exposes SharedWorker", () => {
     class FakePort {
       public readonly sent: unknown[] = [];
-      private readonly listeners = new Set<(event: { data: unknown }) => void>();
+      private readonly listeners = new Set<(event: { data: unknown; currentTarget: FakePort }) => void>();
 
       public postMessage(message: unknown): void {
         this.sent.push(message);
       }
 
-      public addEventListener(_type: string, listener: (event: { data: unknown }) => void): void {
+      public addEventListener(_type: string, listener: (event: { data: unknown; currentTarget: FakePort }) => void): void {
         this.listeners.add(listener);
       }
 
-      public removeEventListener(_type: string, listener: (event: { data: unknown }) => void): void {
+      public removeEventListener(_type: string, listener: (event: { data: unknown; currentTarget: FakePort }) => void): void {
         this.listeners.delete(listener);
       }
 
@@ -507,7 +507,7 @@ describe("createRuntimeWSClient", () => {
 
       public emit(data: unknown): void {
         for (const listener of this.listeners) {
-          listener({ data });
+          listener({ data, currentTarget: this });
         }
       }
     }
@@ -524,11 +524,24 @@ describe("createRuntimeWSClient", () => {
     client.subscribe("dashboard", (event) => events.push(event));
     client.connect("wss://example.test/realtime", "shared-worker-token");
 
-    expect(port.sent).toContainEqual({ action: "connect", url: "wss://example.test/realtime", token: "shared-worker-token" });
-    expect(port.sent).toContainEqual({ action: "subscribe", channel: "dashboard" });
+    expect(port.sent).toContainEqual(expect.objectContaining({
+      action: "connect",
+      capability: expect.any(String),
+      url: "wss://example.test/realtime",
+      token: "shared-worker-token",
+    }));
+    expect(port.sent).toContainEqual(expect.objectContaining({
+      action: "subscribe",
+      capability: expect.any(String),
+      channel: "dashboard",
+    }));
 
-    port.emit({ type: "status", status: "connected" });
-    port.emit({ type: "event", event: { channel: "dashboard", type: "dashboard.metric_updated", payload: { value: 1 } } });
+    const capability = (port.sent.find((message) =>
+      typeof message === "object" && message != null && (message as { action?: string }).action === "connect"
+    ) as { capability: string }).capability;
+
+    port.emit({ capability, type: "status", status: "connected" });
+    port.emit({ capability, type: "event", event: { channel: "dashboard", type: "dashboard.metric_updated", payload: { value: 1 } } });
 
     expect(statuses).toContain("connected");
     expect(events).toEqual([{ channel: "dashboard", type: "dashboard.metric_updated", payload: { value: 1 } }]);

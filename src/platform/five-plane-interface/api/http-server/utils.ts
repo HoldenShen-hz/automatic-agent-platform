@@ -183,7 +183,7 @@ export function requirePrincipal(
     if (authService == null) {
       throw new ApiError(401, "api.auth_not_configured", "This endpoint requires authentication to be configured.");
     }
-    return authService.requireRole(request.headers, requiredRole);
+    return authService.requireRole(request.headers, requiredRole, { allowApiKey: false });
   } catch (error) {
     if (error instanceof ApiAuthError) {
       throw new ApiError(error.statusCode, error.code, error.message);

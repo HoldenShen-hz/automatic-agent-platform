@@ -14,6 +14,8 @@
  */
 
 import { createHash } from "node:crypto";
+import { appendFileSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import { gzip, gunzip } from "node:zlib";
 import { promisify } from "node:util";
 
@@ -123,6 +125,19 @@ export interface UnpackedCheckpointEnvelope<T = unknown> {
   metadata: CheckpointEnvelopeMetadata;
   /** Whether the data was compressed */
   wasCompressed: boolean;
+}
+
+export interface CheckpointIntegrityFailureEvidence {
+  readonly occurredAt: string;
+  readonly reasonCode: "checkpoint.checksum_mismatch";
+  readonly expectedChecksum: string;
+  readonly actualChecksum: string;
+  readonly originalSizeBytes: number;
+  readonly compressedSizeBytes: number;
+  readonly envelopeSchemaVersion: string;
+  readonly payloadSchemaVersion: string;
+  readonly domainId: string | null;
+  readonly namespaceId: string | null;
 }
 
 /**
@@ -271,7 +286,7 @@ function normalizeCreatedAt(value: string | undefined): string {
  */
 export async function unpackCheckpointEnvelope<T = unknown>(
   envelope: CheckpointEnvelope,
-  options: { maxSizeBytes?: number } = {},
+  options: { maxSizeBytes?: number; integrityFailureLogPath?: string } = {},
 ): Promise<UnpackedCheckpointEnvelope<T>> {
   const maxSizeBytes = options.maxSizeBytes ?? resolveCheckpointMaxSizeBytes(envelope?.metadata?.domainId);
 
@@ -313,16 +328,17 @@ export async function unpackCheckpointEnvelope<T = unknown>(
   // Verify checksum
   const actualChecksum = createChecksum(decompressedBuffer);
   if (actualChecksum !== envelope.metadata.checksum) {
+    const integrityFailure = buildCheckpointIntegrityFailureEvidence(envelope, actualChecksum);
     logger.log({
       level: "warn",
       message: "Checkpoint envelope checksum mismatch",
-      data: {
-        expected: envelope.metadata.checksum,
-        actual: actualChecksum,
-        originalSize: envelope.metadata.originalSizeBytes,
-      },
+      data: integrityFailure,
     });
-    throw new CheckpointEnvelopeInvalidError("Checksum verification failed - data may be corrupted");
+    persistCheckpointIntegrityFailure(options.integrityFailureLogPath, integrityFailure);
+    throw new CheckpointEnvelopeInvalidError(
+      "Checksum verification failed - data may be corrupted",
+      { integrityFailure },
+    );
   }
 
   // Parse JSON payload
@@ -442,7 +458,7 @@ export class CheckpointSizeExceededError extends AppError {
  * Error thrown when a checkpoint envelope is invalid or corrupted.
  */
 export class CheckpointEnvelopeInvalidError extends AppError {
-  public constructor(message: string) {
+  public constructor(message: string, details?: Record<string, unknown>) {
     super(
       "checkpoint.envelope_invalid",
       message,
@@ -451,10 +467,40 @@ export class CheckpointEnvelopeInvalidError extends AppError {
         category: "storage",
         source: "runtime",
         retryable: false,
+        ...(details == null ? {} : { details }),
       },
     );
     this.name = "CheckpointEnvelopeInvalidError";
   }
+}
+
+function buildCheckpointIntegrityFailureEvidence(
+  envelope: CheckpointEnvelope,
+  actualChecksum: string,
+): CheckpointIntegrityFailureEvidence {
+  return {
+    occurredAt: new Date().toISOString(),
+    reasonCode: "checkpoint.checksum_mismatch",
+    expectedChecksum: envelope.metadata.checksum,
+    actualChecksum,
+    originalSizeBytes: envelope.metadata.originalSizeBytes,
+    compressedSizeBytes: envelope.metadata.compressedSizeBytes,
+    envelopeSchemaVersion: envelope.version,
+    payloadSchemaVersion: envelope.metadata.payloadSchemaVersion,
+    domainId: envelope.metadata.domainId ?? null,
+    namespaceId: envelope.metadata.namespaceId ?? null,
+  };
+}
+
+function persistCheckpointIntegrityFailure(
+  logPath: string | undefined,
+  evidence: CheckpointIntegrityFailureEvidence,
+): void {
+  if (logPath == null || logPath.trim().length === 0) {
+    return;
+  }
+  mkdirSync(dirname(logPath), { recursive: true });
+  appendFileSync(logPath, `${JSON.stringify(evidence)}\n`, "utf8");
 }
 
 /**

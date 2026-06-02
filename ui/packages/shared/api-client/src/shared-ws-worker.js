@@ -1,8 +1,8 @@
-const ports = new Set();
+const WORKER_CAPABILITY_PATTERN = /^[A-Za-z0-9:_-]{8,128}$/u;
+const portStates = new Map();
 const subscribedChannels = new Set();
 let socket = null;
-let currentUrl = null;
-let currentToken = null;
+let activeSocketConfig = null;
 let reconnectAttempt = 0;
 let reconnectTimer = null;
 let heartbeatTimer = null;
@@ -14,6 +14,31 @@ const heartbeatTimeoutMs = 5000;
 const replayBufferByChannel = new Map();
 const lastEventIdByChannel = new Map();
 let lastEventId = null;
+function isValidCapability(value) {
+    return typeof value === "string" && WORKER_CAPABILITY_PATTERN.test(value);
+}
+function getPortState(port) {
+    const existing = portStates.get(port);
+    if (existing != null) {
+        return existing;
+    }
+    const created = {
+        port,
+        capability: null,
+        desiredUrl: null,
+        desiredToken: null,
+        subscribedChannels: new Set(),
+    };
+    portStates.set(port, created);
+    return created;
+}
+function withCapability(port, message) {
+    const capability = portStates.get(port)?.capability;
+    if (capability == null) {
+        return null;
+    }
+    return { capability, ...message };
+}
 function isTrustedReplayEventId(value) {
     return typeof value === "string" && /^evt[-_][A-Za-z0-9:-]{3,}$/.test(value);
 }
@@ -33,8 +58,11 @@ function resolveTrustedReplayEventId(event) {
     return null;
 }
 function broadcast(message) {
-    for (const port of ports) {
-        port.postMessage(message);
+    for (const port of portStates.keys()) {
+        const scoped = withCapability(port, message);
+        if (scoped != null) {
+            port.postMessage(scoped);
+        }
     }
 }
 function setStatus(status) {
@@ -72,8 +100,7 @@ function calculateBackoffDelay() {
     return Math.floor(exponentialDelay + jitter);
 }
 function connectSocket(url, token) {
-    currentUrl = url;
-    currentToken = token;
+    activeSocketConfig = { url, token };
     setStatus("connecting");
     stopHeartbeat();
     try {
@@ -98,7 +125,14 @@ function connectSocket(url, token) {
             startHeartbeat();
         };
         socket.onmessage = (event) => {
-            const data = JSON.parse(String(event.data));
+            let data;
+            try {
+                data = JSON.parse(String(event.data));
+            }
+            catch {
+                disconnectSocket();
+                return;
+            }
             if (data.action === "pong" || data.type === "pong") {
                 clearHeartbeatDeadline();
                 return;
@@ -126,7 +160,7 @@ function connectSocket(url, token) {
     }
 }
 function scheduleReconnect() {
-    if (currentUrl == null || currentToken == null || ports.size === 0) {
+    if (activeSocketConfig == null || portStates.size === 0) {
         return;
     }
     if (reconnectTimer != null) {
@@ -136,8 +170,8 @@ function scheduleReconnect() {
     reconnectAttempt += 1;
     reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
-        if (currentUrl != null && currentToken != null && ports.size > 0) {
-            connectSocket(currentUrl, currentToken);
+        if (activeSocketConfig != null && portStates.size > 0) {
+            connectSocket(activeSocketConfig.url, activeSocketConfig.token);
         }
     }, delay);
 }
@@ -148,8 +182,7 @@ function disconnectSocket() {
     }
     stopHeartbeat();
     reconnectAttempt = 0;
-    currentUrl = null;
-    currentToken = null;
+    activeSocketConfig = null;
     socket?.close();
     socket = null;
     setStatus("disconnected");
@@ -169,25 +202,37 @@ export function installSharedWorkerSocketRuntime(sharedWorkerGlobal = self) {
         if (port == null) {
             return;
         }
-        ports.add(port);
+        const portState = getPortState(port);
         port.start();
-        port.postMessage({ type: "status", status: socket?.readyState === WebSocket.OPEN ? "connected" : "disconnected" });
+        port.postMessage(withCapability(port, { type: "status", status: socket?.readyState === WebSocket.OPEN ? "connected" : "disconnected" }) ?? { type: "status", status: socket?.readyState === WebSocket.OPEN ? "connected" : "disconnected" });
         port.onmessage = (event) => {
             const message = event.data;
+            if (typeof message !== "object" || message == null || !("action" in message) || !isValidCapability(message.capability)) {
+                return;
+            }
+            if (portState.capability == null) {
+                portState.capability = message.capability;
+            }
+            if (message.capability !== portState.capability) {
+                return;
+            }
             if (message.action === "connect") {
-                if (socket == null || currentUrl !== message.url || currentToken !== message.token) {
+                portState.desiredUrl = message.url;
+                portState.desiredToken = message.token;
+                if (socket == null || activeSocketConfig?.url !== message.url || activeSocketConfig?.token !== message.token) {
                     connectSocket(message.url, message.token);
                 }
                 return;
             }
             if (message.action === "disconnect") {
-                ports.delete(port);
-                if (ports.size === 0) {
+                portStates.delete(port);
+                if (portStates.size === 0) {
                     disconnectSocket();
                 }
                 return;
             }
             if (message.action === "subscribe") {
+                portState.subscribedChannels.add(message.channel);
                 subscribedChannels.add(message.channel);
                 if (socket != null && socket.readyState === WebSocket.OPEN) {
                     socket.send(JSON.stringify({
@@ -199,7 +244,10 @@ export function installSharedWorkerSocketRuntime(sharedWorkerGlobal = self) {
                     }));
                 }
                 for (const replayEvent of replayBufferByChannel.get(message.channel) ?? []) {
-                    port.postMessage({ type: "event", event: replayEvent });
+                    const replayMessage = withCapability(port, { type: "event", event: replayEvent });
+                    if (replayMessage != null) {
+                        port.postMessage(replayMessage);
+                    }
                 }
                 return;
             }

@@ -10,7 +10,7 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 
 import { PluginExecutorService, type ExecutionContext } from "../../../../../src/platform/five-plane-execution/plugin-executor/index.js";
 import type { PluginManifest, PluginLifecycleHooks } from "../../../../../src/domains/registry/plugin-spi.js";
@@ -252,6 +252,7 @@ test("PluginExecutorService.execute() rejects action not in manifest spiTypes [p
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("PluginExecutorService.execute() handles timeout and returns error status [plugin-executor.service]", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({
@@ -283,11 +284,14 @@ test("PluginExecutorService.execute() handles timeout and returns error status [
   await service.activate("test-plugin");
 
   const context = createTestContext({ sandboxTier: "process" });
-  const result = await service.execute("test-plugin", "retriever", context, {});
+  const pending = service.execute("test-plugin", "retriever", context, {});
+  mock.timers.tick(250);
+  const result = await pending;
 
   assert.equal(result.status, "timeout");
   assert.ok(result.error?.includes("timed out"));
   assert.equal(result.pluginId, "test-plugin");
+  mock.timers.reset();
 });
 
 test("PluginExecutorService.healthCheck() returns plugin health status [plugin-executor.service]", async () => {
@@ -311,7 +315,7 @@ test("PluginExecutorService.healthCheck() falls back to error count threshold [p
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
-  const hooks = createTestHooks({} as any);
+  const hooks = createTestHooks();
 
   service.register(manifest, hooks);
 

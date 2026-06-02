@@ -22,7 +22,7 @@ export function buildCspHeader(env) {
     return [
         "default-src 'self'",
         "script-src 'self'",
-        "style-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data:",
         "worker-src 'self' blob:",
@@ -37,7 +37,7 @@ export function buildCspHeader(env) {
     ].join("; ");
 }
 function resolveBundleAssetPath(value) {
-    return value.replace(/^\.?\//, "");
+    return value.replace(/^\.?\//, "").replace(/[?#].*$/u, "");
 }
 function resolveIntegrity(source) {
     return `sha384-${createHash("sha384").update(source).digest("base64")}`;
@@ -61,6 +61,12 @@ export function applySubresourceIntegrity(bundle) {
         if (/\bintegrity=/.test(before) || /\bintegrity=/.test(after)) {
             return full;
         }
+        const rel = full.match(/\brel="([^"]+)"/i)?.[1]?.toLowerCase() ?? "";
+        if (tagName === "link" && (rel === "modulepreload" || rel === "preload")) {
+            return /\bcrossorigin=/.test(before) || /\bcrossorigin=/.test(after)
+                ? full
+                : `<${tagName}${before} ${attributeName}="${assetPath}" crossorigin="anonymous"${after}>`;
+        }
         const resolvedAssetPath = resolveBundleAssetPath(assetPath);
         const integrity = integrityLookup.get(resolvedAssetPath);
         if (integrity == null) {
@@ -73,6 +79,10 @@ export function applySubresourceIntegrity(bundle) {
 }
 function attachCspHeader(response, cspHeader) {
     response.setHeader("Content-Security-Policy", cspHeader);
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    response.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
 }
 function createCspHeadersPlugin(cspHeader) {
     return {
@@ -112,7 +122,7 @@ export default defineConfig(({ mode }) => {
     return {
         plugins: [react(), tsconfigPaths(), createCspHeadersPlugin(cspHeader)],
         define: {
-            "process.env": "{}",
+            "process.env.NODE_ENV": JSON.stringify(mode),
         },
         resolve: {
             alias: {

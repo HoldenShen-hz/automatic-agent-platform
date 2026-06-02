@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 /**
  * Tests for typed-event-bus.ts
  *
@@ -21,10 +23,14 @@ async function createTempDbPath(): Promise<string> {
   return join(tmp, `test-${randomUUID()}.db`);
 }
 
+type OpenStorageContext = Awaited<ReturnType<typeof openStorage>>;
+const activeStorages = new Map<string, OpenStorageContext>();
+
 async function openStorage(dbPath: string) {
   const storageFactory = await import("../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js");
   const storage = storageFactory.openAuthoritativeStorageContext({ dbPath });
   storage.migrate();
+  activeStorages.set(dbPath, storage);
   return storage;
 }
 
@@ -34,7 +40,14 @@ async function closeStorage(storage: ReturnType<typeof import("../../../../../sr
   } catch {
     // ignore cleanup errors
   }
+  activeStorages.delete(dbPath);
 }
+
+test.afterEach(async () => {
+  for (const [dbPath, storage] of [...activeStorages.entries()]) {
+    await closeStorage(storage, dbPath);
+  }
+});
 
 // ============================================================================
 // TypedEventPayloadMap type registration tests (Requirement 1)

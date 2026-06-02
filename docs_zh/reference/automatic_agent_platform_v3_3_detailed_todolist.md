@@ -7,7 +7,7 @@
 > **目标**: 把 v3.2 的治理与评估基线落到仓库、配置、CI、Dashboard 和 3 条 P0 Pilot，形成可扫描、可评测、可红队、可证明 ROI 的工程闭环。  
 > **范围边界**: 本 TodoList 不要求所有 Family 立刻行业领先；v3.3 的目标是让行业领先治理系统真实运行，并完成 Engineering / Knowledge / Customer Service 三条 P0 Pilot 的最小闭环。
 
-> **实现状态（2026-06-01）**: WS0–WS16 已在仓库中落地；本 TodoList 中所有明确定义的 P0 / P1 可执行项已完成。本文未单独定义新的 P2 交付项，P2 在本版本中仍表示“后续增强”分类，不构成额外交付清单。v3.3 当前状态为 `implementation baseline + P0 pilot launch ready`，不是全量 `industry-leading` 声明版本。
+> **实现状态（2026-06-02 review patch）**: 此前版本把大量治理配置、占位文档、局部脚本入口误写成了“P0 / P1 已全部完成”。现统一回收到真实口径：WS0–WS16 中只有少数基线工件可视为 `done`，多数条目应标记为 `partial` 或 `todo`。v3.3 当前状态是 `governance baseline in progress`，不是 `implementation baseline + P0 pilot launch ready`，更不是全量 `industry-leading` 声明版本。
 
 ---
 
@@ -102,47 +102,47 @@ legal / healthcare / finance / HR 的自动高影响动作
 | TODO-0001 | P0 | done | 唯一 v3.2 release 文档与 docs index / root guide 索引已收口 |
 | TODO-0002 | P0 | done | v3.2 baseline verification 已落仓 |
 | TODO-0101 | P0 | done | inventory scanner / generated report / diff 已可运行 |
-| TODO-0102 | P0 | done | division inventory schema 已落仓并用于校验 |
-| TODO-0103 | P0 | done | alias map 已落仓并纳入 scanner |
+| TODO-0102 | P0 | partial | schema 文件已存在，但字段覆盖与 blockers enum 约束仍不完整 |
+| TODO-0103 | P0 | partial | alias map 已存在，但 deprecated alias 阻断与 research 冲突仍未闭环 |
 | TODO-0201 | P0 | done | division coverage SOT 已落仓 |
-| TODO-0202 | P0 | done | 6 个 FamilyPolicy 已落仓 |
+| TODO-0202 | P0 | partial | family yaml 已存在，但字段面与 regulated 默认策略仍未完全对齐 |
 | TODO-0203 | P0 | done | 核心 schema 已落仓 |
-| TODO-0301 | P0 | done | CoverageCard generator 已支持 write/check |
-| TODO-0302 | P0 | done | EvidenceScore / EvidenceRefs / lastUpdatedAt 已落仓 |
-| TODO-0401 | P0 | done | 6 个 P0 ScenarioCard 已落仓 |
-| TODO-0501 | P0 | done | ToolAction risk taxonomy 已落仓 |
-| TODO-0502 | P0 | done | P0 tool action descriptors 已全覆盖 |
-| TODO-0503 | P0 | done | ToolGateway runtime enforcement + tests 已接入 |
-| TODO-0601 | P0 | done | EvalDatasetCard schema 已落仓 |
-| TODO-0602 | P0 | done | SWE-style eval baseline 已落仓 |
-| TODO-0603 | P0 | done | Knowledge citation/source eval baseline 已落仓 |
-| TODO-0604 | P0 | done | Customer Service τ-style eval baseline 已落仓 |
-| TODO-0701 | P0 | done | RedTeam severity schema 已落仓 |
-| TODO-0702 | P0 | done | Engineering AWI red-team suite 已落仓 |
-| TODO-0703 | P0 | done | Knowledge red-team suite 已落仓 |
-| TODO-0704 | P0 | done | Customer Service red-team suite 已落仓 |
-| TODO-0801 | P0 | done | P0 TrainingDataPolicy 已覆盖 |
+| TODO-0301 | P0 | partial | generator 已存在，但 manual-maintained 保护与确定性模式仍未闭环 |
+| TODO-0302 | P0 | partial | evidence 字段已存在，但 ref 存在性/置信度门槛/CI fail-closed 仍未闭环 |
+| TODO-0401 | P0 | partial | scenario 卡已存在，但 outputAction/toolAction 绑定与高风险约束仍未闭环 |
+| TODO-0501 | P0 | partial | taxonomy 已存在，但 definitionRef/mitigations/R4 落地仍缺失 |
+| TODO-0502 | P0 | partial | descriptor 基线已存在，但 descriptor 覆盖与 rollbackPolicyRef 仍漂移 |
+| TODO-0503 | P0 | partial | runtime enforcement 基线存在，但 deny receipt/audit event 仍未完整闭环 |
+| TODO-0601 | P0 | partial | EvalDatasetCard schema 已存在，但 CI 一致性校验仍缺失 |
+| TODO-0602 | P0 | partial | SWE-style dataset card 已存在，但 heldout cases 与 runner 仍未落仓 |
+| TODO-0603 | P0 | partial | citation/source dataset card 已存在，但 case 数据与 stale 报告仍未落仓 |
+| TODO-0604 | P0 | partial | tau-style dataset card 已存在，但 cases 与 fail-closed 验证仍未落仓 |
+| TODO-0701 | P0 | partial | severity schema 已存在，但未接入 RC gate 与结果阻断 |
+| TODO-0702 | P0 | partial | engineering suite 已存在，但 evidenceRefs 与结果闭环仍缺失 |
+| TODO-0703 | P0 | partial | knowledge suite 已存在，但独立 report 仍未形成 |
+| TODO-0704 | P0 | partial | customer-service/support suite 已存在，但独立 report 仍未形成 |
+| TODO-0801 | P0 | partial | 训练策略基线已存在，但 research/regulated/DataBatchCard 约束仍未闭环 |
 | TODO-0802 | P0 | done | Data Revocation Policy 已落仓 |
-| TODO-0901 | P0 | done | warning-only governance audit 可本地复现 |
-| TODO-0902 | P0 | done | P0 blocking gate 已落仓并有测试覆盖 |
-| TODO-0903 | P1 | done | production-ready gate 已实现，仍保持非 RC 阻断定位 |
-| TODO-1001 | P0 | done | Engineering pilot workflow / scenario / docs 已落仓 |
-| TODO-1002 | P0 | done | PatchGate 初版已实现并导出 structured report |
-| TODO-1003 | P0 | done | Engineering pilot 指标报告已落仓 |
-| TODO-1101 | P0 | done | Knowledge pilot workflow / scenario / docs 已落仓 |
-| TODO-1102 | P0 | done | CitationVerifier 初版已实现 |
-| TODO-1103 | P0 | done | Knowledge pilot 指标报告已落仓 |
-| TODO-1201 | P0 | done | Customer Service pilot workflow / scenario / docs 已落仓 |
-| TODO-1202 | P0 | done | Policy adherence evaluator 初版已实现 |
-| TODO-1203 | P0 | done | Customer Service pilot 指标报告已落仓 |
-| TODO-1301 | P0 | done | ROI measurement protocol 已落仓 |
-| TODO-1302 | P0 | done | P0 ROI config 已落仓 |
-| TODO-1303 | P0 | done | 3 个 leadership evidence package 已落仓 |
-| TODO-1401 | P1 | done | Admin Console read-only spec 已落仓 |
-| TODO-1402 | P1 | done | Division Inventory read-only 页面已接入 |
-| TODO-1501 | P1 | done | claim scanner + allowlist / false-positive 治理已接入 |
-| TODO-1601 | P0 | done | v3.3 release-readiness report 已落仓 |
-| TODO-1602 | P0 | done | RC gate 条件已由资产与治理脚本覆盖 |
+| TODO-0901 | P0 | partial | warning-only audit 可本地运行，但未完整接入 baseline/CI artifact |
+| TODO-0902 | P0 | todo | P0 blocking gate 仍未稳定挂入 CI 主路径 |
+| TODO-0903 | P1 | todo | production-ready gate 有入口但未形成实际 CI 阻断 |
+| TODO-1001 | P0 | partial | workflow/scenario/doc 基线存在，但 canonical steps 与 taxonomy 仍不完整 |
+| TODO-1002 | P0 | todo | PatchGate 仍是布尔判定基线，未形成完整执行与证据闭环 |
+| TODO-1003 | P0 | todo | engineering pilot 报告仍以占位文本为主，缺真实指标 |
+| TODO-1101 | P0 | partial | knowledge workflow/scenario/doc 基线存在，但 experiment/decision steps 仍缺失 |
+| TODO-1102 | P0 | todo | CitationVerifier 仍缺 source reliability / existence check 真正实现 |
+| TODO-1103 | P0 | todo | knowledge pilot 报告仍为 stub |
+| TODO-1201 | P0 | partial | customer-service workflow/scenario/doc 基线存在，但 handoff/SLA/ROI steps 仍缺失 |
+| TODO-1202 | P0 | todo | evaluator 仍缺 policy lookup / legality check 真实现 |
+| TODO-1203 | P0 | todo | customer-service pilot 报告仍缺 SLA/HITL 量化结果 |
+| TODO-1301 | P0 | partial | ROI protocol 已存在，但 costDelta/qualityDelta/riskDelta 未全面落地 |
+| TODO-1302 | P0 | todo | ROI confidence 仍是静态标签，缺计算脚本 |
+| TODO-1303 | P0 | todo | leadership evidence package 多为占位内容，缺真实 EvidenceRefs 与风险清单 |
+| TODO-1401 | P1 | todo | Admin Console 目标页面矩阵尚未落地 |
+| TODO-1402 | P1 | todo | division inventory 仅有局部页面/挂载，过滤与治理视图仍未完成 |
+| TODO-1501 | P1 | partial | claim scanner 已存在，但关键词覆盖与 record/schema 闭环仍不足 |
+| TODO-1601 | P0 | todo | release-readiness 文档存在，但未与真实 RC blocker 自动聚合 |
+| TODO-1602 | P0 | todo | RC gate 条件尚无统一自动化校验脚本 |
 
 ---
 
@@ -153,22 +153,22 @@ legal / healthcare / finance / HR 的自动高影响动作
 | Workstream | 状态 | 关键产物 |
 |---|---|---|
 | WS0 | done | `docs_zh/reviews/v3_2_release_baseline_verification.md` |
-| WS1 | done | `scripts/ci/audit-division-inventory.mjs` |
-| WS2 | done | `docs_zh/governance/division-coverage-sot.md` |
-| WS3 | done | `scripts/generate-division-coverage-cards.mjs` |
-| WS4 | done | `config/division-coverage/scenarios/*.yaml` |
-| WS5 | done | `config/tool-risk/*` + runtime enforcement |
-| WS6 | done | `eval/schemas` + `eval/divisions/*` |
-| WS7 | done | `redteam/severity.schema.json` + `redteam/divisions/*` |
-| WS8 | done | `training-data-policy/*` |
-| WS9 | done | `scripts/ci/audit-domain-coverage.mjs` + CI workflow |
-| WS10 | done | `docs_zh/pilots/engineering-pilot.md` + `patch-gate.ts` |
-| WS11 | done | `docs_zh/pilots/knowledge-pilot.md` + `citation-verifier.ts` |
-| WS12 | done | `docs_zh/pilots/customer-service-pilot.md` + `policy-adherence-evaluator.ts` |
-| WS13 | done | `roi/*` + leadership evidence packages |
-| WS14 | done | `ui/packages/features/division-inventory/` |
-| WS15 | done | `audit-leadership-claims.mjs` warning scanner |
-| WS16 | done | `docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md` |
+| WS1 | partial | `scripts/ci/audit-division-inventory.mjs` 存在，但 deterministic/check/CI 仍未闭环 |
+| WS2 | partial | `docs_zh/governance/division-coverage-sot.md` 与 family/schema 仍有漂移 |
+| WS3 | partial | `scripts/generate-division-coverage-cards.mjs` 存在，但保护与确定性不足 |
+| WS4 | partial | `config/division-coverage/scenarios/*.yaml` 存在，但结构/绑定/约束仍不足 |
+| WS5 | partial | `config/tool-risk/*` + runtime enforcement 存在，但 descriptor/taxonomy 仍未补齐 |
+| WS6 | partial | `eval/schemas` + `eval/divisions/*` 存在，但 datasets/runner/report 仍未闭环 |
+| WS7 | partial | `redteam/severity.schema.json` + `redteam/divisions/*` 存在，但结果/报告/证据仍不足 |
+| WS8 | partial | `training-data-policy/*` 存在，但 research/regulated/DataBatchCard 仍未闭环 |
+| WS9 | partial | `scripts/ci/audit-domain-coverage.mjs` 存在，但 CI 聚合与 artifact 仍未闭环 |
+| WS10 | partial | `docs_zh/pilots/engineering-pilot.md` + `patch-gate.ts` 仅提供基线 |
+| WS11 | partial | `docs_zh/pilots/knowledge-pilot.md` + `citation-verifier.ts` 仅提供基线 |
+| WS12 | partial | `docs_zh/pilots/customer-service-pilot.md` + `policy-adherence-evaluator.ts` 仅提供基线 |
+| WS13 | partial | `roi/*` + leadership evidence packages 多为占位或静态内容 |
+| WS14 | todo | `ui/packages/features/division-inventory/` 仅覆盖局部页面 |
+| WS15 | partial | `audit-leadership-claims.mjs` 已存在，但 claim records/false-positive schema 未闭环 |
+| WS16 | todo | `docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md` 已存在，但 RC gate 尚未自动化聚合 |
 
 ## TODO-0001：确认唯一 release 文档存在
 
@@ -1134,7 +1134,7 @@ v3.3 成功不是“每个 family 已经行业领先”，而是：
 
 # 23. 最终建议
 
-当前仓库已完成 v3.3 所需的治理落地，下一步不是继续补基础资产，而是：
+当前仓库尚未完成 v3.3 所需的治理落地，下一步仍需要先补齐基础资产与自动化闭环，再谈 pilot launch 与 RC：
 
 ```text
 1. 维持 inventory / coverage / domain coverage CI 门禁

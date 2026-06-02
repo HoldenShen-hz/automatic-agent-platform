@@ -92,7 +92,7 @@ export function authenticateOptionalPrincipal(
     return null;
   }
   try {
-    return authService.authenticate(request.headers);
+    return authService.authenticate(request.headers, { allowApiKey: false });
   } catch (error) {
     if (error instanceof ApiAuthError) {
       return null;

@@ -2,8 +2,26 @@
 
 > **文档版本**：v1.4  
 > **基线文档**：`mission_architecture_design_review_v1_3.md`  
-> **审查目标**：在 v1.3 架构实现契约版基础上，合并 Step 降级规则，补齐 Mission 与 Graph/Node-centric runtime 的命名边界、接口约束、测试治理与迁移要求，形成可直接进入实现阶段的完整合并版。  
+> **审查目标**：在 v1.3 架构实现契约版基础上，合并 Step 降级规则，补齐 Mission 与 Graph/Node-centric runtime 的命名边界、接口约束、测试治理与迁移要求，形成长期可执行的目标契约版。  
 > **最终结论**：Mission 应加入系统，但必须作为 **长期目标与治理上下文根对象**，不能成为新的执行对象、不能替代 PlanGraph、不能复活 legacy WorkflowState，也不能生成第四套 RequestEnvelope / ExecutionPlan / StateCommand；同时必须弱化 Step 概念，系统 canonical runtime 统一采用 `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt`。
+
+## Review Patch
+
+2026-06-02 复核结论：本文是 **Mission 目标契约与设计冻结草案**，不是当前仓库的“全文实现证明”。文中第 5、23-34 章给出的枚举、schema、状态机、事件、API、存储与 UI 约束，应视为 `target contract`；只有被当前仓库代码、脚本与测试显式覆盖的子集，才能称为 `repo baseline`。
+
+为避免把目标设计误读为“当前实现已经完整匹配”，本文统一采用以下口径：
+
+| 层级 | 含义 | 允许表述 |
+|---|---|---|
+| `repo baseline` | 仓库内已有 Mission 基础实现或兼容性接缝 | `已存在基线`、`部分落地` |
+| `target contract` | 本文定义的完整目标字段 / 事件 / API / 状态机 | `目标态`、`待收敛` |
+| `external integration` | 依赖真实环境、真实部署、真实跨组织接线 | `环境接线`、`外部演进` |
+
+本轮修订特别澄清：
+
+1. `MissionKind`、`MissionSuccessCriterion`、`RuntimeConstraintSet`、`MissionBudgetEnvelope`、`MissionEventEnvelope`、Mission API 端点矩阵、事件全集与 SQL 表定义，默认按 `target contract` 解读，不表示当前仓库已逐字段满足。
+2. `MissionResolver`、`MissionLifecycleService`、`MissionLiveGuard`、Mission API、Mission Console 与 handoff/home-region 等只可表述为 **已有仓内基线**，不等同于本文列出的完整字段面、状态流和多区域/跨组织目标能力。
+3. 本文中的实现任务表保留为路线图与证据索引，不再把“存在同名模块”表述成“已完成全文契约闭环”。
 
 ---
 
@@ -1288,31 +1306,31 @@ Mission 应作为 Automatic Agent Platform 的核心治理对象加入。加入�
 
 ---
 
-## 40. 实现状态与证据追加记录
+## 40. 仓内基线与目标态偏差记录
 
-> 更新时间：2026-05-21。以下状态只追加实现证据，不删除本文原始契约。Mission 仍保持“长期目标与治理上下文根对象”的定位；执行面继续以 `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt` 为 canonical runtime。
+> 更新时间：2026-06-02。以下状态只说明仓库中 **存在 Mission 相关实现基线或兼容接缝**，不表示已经覆盖本文原始契约中的全部字段、事件、状态、副作用与 API 目标。Mission 仍保持“长期目标与治理上下文根对象”的定位；执行面继续以 `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt` 为 canonical runtime。
 
 | 任务 | 状态 | 实现证据 | 测试证据 |
 |---|---|---|---|
-| T-MIS-001 Mission schemas/types | ✅ 已实现 | `src/platform/contracts/mission/index.ts`；`src/platform/contracts/index.ts` 导出 | `tests/unit/platform/contracts/mission-contracts.test.ts` |
-| T-MIS-002 Mission truth tables/repository | ✅ 已实现 | `src/platform/five-plane-state-evidence/truth/runtime-physical-schema.ts`；`src/platform/five-plane-state-evidence/truth/mission-repository.ts` | `tests/unit/platform/control-plane/mission-services.test.ts` |
-| T-MIS-003 `platform.mission.*` event schemas | ✅ 已实现 | `MissionEventTypeSchema`、`MissionEventEnvelopeSchema`、repository sequence allocator | `mission-contracts.test.ts`、`mission-services.test.ts` |
-| T-MIS-004 MissionLifecycleService + CAS | ✅ 已实现 | `src/platform/five-plane-control-plane/mission/index.ts` | `mission-services.test.ts` |
-| T-MIS-005 MissionResolver + Governance | ✅ 已实现 | `MissionResolver`、`MissionGovernanceService` | `mission-services.test.ts` |
-| T-MIS-006 Mission API + ErrorEnvelope | ✅ 已实现 | `src/platform/five-plane-interface/api/http-server/mission-routes.ts`；OpenAPI route list；覆盖 create/list/read/patch、状态转换、members、tasks/runs/evidence/budget、dry-run resolution | `tests/integration/platform/interface/api/mission-routes.test.ts`、`tests/integration/platform/contracts/api-openapi-contract.test.ts` |
-| T-MIS-007 PlanGraphBundle missionSnapshotRef | ✅ 已实现 | `PlanGraphBundle` contract/schema/factory extension；`MissionRuntimeBindingService`；`POST /v1/tasks` 接入 Mission resolution/snapshot binding | `mission-services.test.ts`、`mission-task-binding.test.ts` |
-| T-MIS-008 HarnessRun missionBinding | ✅ 已实现 | `HarnessRun` contract/schema/factory extension；single-binding guard | `mission-services.test.ts` |
-| T-MIS-009 NodeRun MissionLiveGuard | ✅ 已实现 | `MissionLiveGuard` and `NodeRun.missionSnapshotRef` | `mission-services.test.ts` |
-| T-MIS-010 canonical Mission E2E baseline | ✅ 已实现 | API create/activate + task create mission binding + Mission snapshot + freeze live guard + high-risk missionless reject | `tests/e2e/mission-canonical-flow.test.ts`、`mission-routes.test.ts`、`mission-task-binding.test.ts` |
-| T-MIS-011 Mission Console data baseline | ✅ 已实现 | Mission API exposes Overview / Members / Tasks / Runs / Budget / Evidence；UI 新增 Mission Console feature、Mission DTO→VM→View wiring 与 web/mobile seam | `mission-routes.test.ts`；`npm run typecheck` 覆盖 `ui/packages/features/mission-console/` |
-| T-MIS-012 Trace/log correlation + metrics cardinality guard | ✅ 已实现 | `MissionObservabilityPolicy` allows trace attributes and strips Mission IDs from metric labels | `mission-services.test.ts` |
-| T-MIS-013 Mission scoped LearningObject promotion gate | ✅ 已实现 | `MissionLearningPromotionGate` keeps default learning local and requires approval/evidence for promotion | `mission-services.test.ts` |
-| T-MIS-014 legacy Task/Session missionRef backfill | ✅ 已实现 | `LegacyMissionBackfillService.backfillTask/backfillSession/backfillBatch`，含 unresolved report | `mission-services.test.ts` |
-| T-MIS-015 ADR/superseded marker | ✅ 已回写本文状态 | 本节作为 v1.4 实现证据索引 | 文档一致性由本轮定向测试与 build 验证 |
-| T-MIS-016 Mission handoff | ✅ 已实现 | `MissionHandoffService.requestFederated()` 提供跨租户 trust-pair guard、approval/audit handoff request | `mission-services.test.ts` |
-| T-MIS-017 home region/fencing | ✅ 已实现 | `MissionHomeRegionService` epoch guard、read replica registration 与 strong/eventual read routing | `mission-services.test.ts` |
-| T-MIS-018 outcome analytics | ✅ 已实现为仓内基线 | `MissionOutcomeAnalyticsService` | `mission-services.test.ts` |
-| T-MIS-019 template/package integration | ✅ 已实现为仓内基线 | `MissionTemplateIntegrationService` | `mission-services.test.ts` |
+| T-MIS-001 Mission schemas/types | 部分落地 | `src/platform/contracts/mission/index.ts`；存在 Mission schema/type baseline，但未覆盖本文全部 target 字段、regex 与枚举 | `tests/unit/platform/contracts/mission-contracts.test.ts` |
+| T-MIS-002 Mission truth tables/repository | 部分落地 | `src/platform/five-plane-state-evidence/truth/runtime-physical-schema.ts`；存在 Mission repository baseline，但不是本文完整 SQL/sequence contract 的逐项证明 | `tests/unit/platform/control-plane/mission-services.test.ts` |
+| T-MIS-003 `platform.mission.*` event schemas | 部分落地 | 存在 Mission event baseline；不等同于本文完整事件全集、envelope 字段和 startup checker 全量落地 | `mission-contracts.test.ts`、`mission-services.test.ts` |
+| T-MIS-004 MissionLifecycleService + CAS | 部分落地 | `src/platform/five-plane-control-plane/mission/index.ts` 提供生命周期基线；不表示已具备本文列出的全部状态副作用 | `mission-services.test.ts` |
+| T-MIS-005 MissionResolver + Governance | 部分落地 | `MissionResolver`、`MissionGovernanceService` 已存在；仍未覆盖本文三阶段解析、知识边界等目标能力 | `mission-services.test.ts` |
+| T-MIS-006 Mission API + ErrorEnvelope | 部分落地 | 存在 Mission API baseline；不表示已完整匹配本文逐端点、header、错误码与独立路由矩阵 | `tests/integration/platform/interface/api/mission-routes.test.ts`、`tests/integration/platform/contracts/api-openapi-contract.test.ts` |
+| T-MIS-007 PlanGraphBundle missionSnapshotRef | 部分落地 | 存在 Mission snapshot binding 基线；并非本文完整 bindingReason/bindingMode contract 闭环 | `mission-services.test.ts`、`mission-task-binding.test.ts` |
+| T-MIS-008 HarnessRun missionBinding | 部分落地 | 存在 single-binding guard；并非本文完整 HarnessRunMissionBinding target schema | `mission-services.test.ts` |
+| T-MIS-009 NodeRun MissionLiveGuard | 部分落地 | 存在 live guard baseline；并非本文九步 budget/policy/risk/action chain 的完整证明 | `mission-services.test.ts` |
+| T-MIS-010 canonical Mission E2E baseline | 部分落地 | 存在 Mission E2E 基线；覆盖范围小于本文列出的 snapshot reproducibility / cross-mission handoff / live revocation 等目标矩阵 | `tests/e2e/mission-canonical-flow.test.ts`、`mission-routes.test.ts`、`mission-task-binding.test.ts` |
+| T-MIS-011 Mission Console data baseline | 部分落地 | 存在 Mission Console data/UI seam；并非本文 9 区域可操作 console 的完整实现 | `mission-routes.test.ts`；`npm run typecheck` 覆盖 `ui/packages/features/mission-console/` |
+| T-MIS-012 Trace/log correlation + metrics cardinality guard | 部分落地 | 存在 observability policy baseline；并不证明全文 observability target 全面闭环 | `mission-services.test.ts` |
+| T-MIS-013 Mission scoped LearningObject promotion gate | 部分落地 | 存在单层 promotion gate baseline；未覆盖本文三级 promotion 与 regression eval 目标 | `mission-services.test.ts` |
+| T-MIS-014 legacy Task/Session missionRef backfill | 部分落地 | 存在 backfill baseline；并不等同于完整 migration/freeze 目标完成 | `mission-services.test.ts` |
+| T-MIS-015 ADR/superseded marker | 已回写本文状态 | 本节作为 v1.4 口径修订与证据索引 | 文档一致性由本轮 review patch 守护 |
+| T-MIS-016 Mission handoff | 部分落地 | 存在 federated handoff request baseline；未覆盖本文完整状态流、expiresAt、budget transfer 与跨组织 trust provisioning | `mission-services.test.ts` |
+| T-MIS-017 home region/fencing | 部分落地 | 存在 home-region/read-routing baseline；真实多区域复制与 failover 仍属外部演进 | `mission-services.test.ts` |
+| T-MIS-018 outcome analytics | 部分落地 | 存在 outcome analytics service baseline；非全文 outcome governance 闭环证明 | `mission-services.test.ts` |
+| T-MIS-019 template/package integration | 部分落地 | 存在 template/package integration baseline；非本文 marketplace / package 全量目标完成 | `mission-services.test.ts` |
 
 ### 40.1 Residual Risk
 
@@ -2572,35 +2590,35 @@ assert.ok(x === true || x === false)
 
 | Task | Owner 模块 | 说明 | 当前结论 |
 |---|---|---|---|
-| T-MIS-001 | contracts | 添加 Mission Zod schemas 与 type exports | ✅ 已实现 |
-| T-MIS-002 | state-evidence | mission_records/memberships/snapshots/event_sequences migration | ✅ 已实现 |
-| T-MIS-003 | events | 注册 platform.mission.* event schemas | ✅ 已实现 |
-| T-MIS-004 | control-plane | MissionLifecycleService + CAS transition | ✅ 已实现 |
-| T-MIS-005 | control-plane | MissionResolver + MissionGovernanceService | ✅ 已实现 |
-| T-MIS-006 | interface | /api/v1/missions API + ErrorEnvelope | ✅ 已实现，含 Mission Console 后端子资源 API |
-| T-MIS-007 | orchestration | PlanGraphBundle missionSnapshotRef required | ✅ 已实现为兼容契约扩展、binding guard 与 Task create Mission snapshot binding |
-| T-MIS-008 | execution | HarnessRun missionBinding required | ✅ 已实现为兼容契约扩展与 single-binding guard |
-| T-MIS-009 | execution | NodeRun MissionLiveGuard | ✅ 已实现为可测试 guard service |
-| T-MIS-010 | tests | canonical Mission E2E 覆盖 | ✅ 已实现，含 API/task binding/live guard freeze/high-risk reject E2E |
+| T-MIS-001 | contracts | 添加 Mission Zod schemas 与 type exports | 部分落地；存在 Mission schema baseline，但未覆盖本文全部 target 字段与 regex |
+| T-MIS-002 | state-evidence | mission_records/memberships/snapshots/event_sequences migration | 部分落地；存在 Mission repository baseline，但不是完整 target SQL contract 证明 |
+| T-MIS-003 | events | 注册 platform.mission.* event schemas | 部分落地；存在事件基线，不等同于本文完整事件全集 |
+| T-MIS-004 | control-plane | MissionLifecycleService + CAS transition | 部分落地；生命周期服务存在，但副作用矩阵未完整实现 |
+| T-MIS-005 | control-plane | MissionResolver + MissionGovernanceService | 部分落地；三阶段路由与知识边界仍属目标态 |
+| T-MIS-006 | interface | /api/v1/missions API + ErrorEnvelope | 部分落地；存在 API baseline，不等于逐端点 contract 全匹配 |
+| T-MIS-007 | orchestration | PlanGraphBundle missionSnapshotRef required | 部分落地；存在 binding 基线，不等于完整 target binding schema |
+| T-MIS-008 | execution | HarnessRun missionBinding required | 部分落地；存在 single-binding guard，不等于完整 target binding contract |
+| T-MIS-009 | execution | NodeRun MissionLiveGuard | 部分落地；存在 live guard baseline，不等于完整 pre-execution governance chain |
+| T-MIS-010 | tests | canonical Mission E2E 覆盖 | 部分落地；现有 E2E 只覆盖核心基线 |
 
 ### 34.2 P1 实现任务
 
 | Task | Owner 模块 | 说明 | 当前结论 |
 |---|---|---|---|
-| T-MIS-011 | ui | Mission Console Overview/Tasks/Runs/Budget/Evidence | ✅ 已实现 Mission Console UI feature 与后端数据面；真实独立前端发布属于外部集成演进 |
-| T-MIS-012 | observability | Mission trace/log correlation + metrics cardinality guard | ✅ 已实现为 policy/service baseline |
-| T-MIS-013 | learning | Mission scoped LearningObject promotion gate | ✅ 已实现为 promotion gate baseline |
-| T-MIS-014 | migration | legacy Task/Session missionRef backfill | ✅ 已实现 batch backfill 与 unresolved report |
-| T-MIS-015 | docs | ADR 更新与 superseded 标记 | ✅ 已回写本文状态与证据 |
+| T-MIS-011 | ui | Mission Console Overview/Tasks/Runs/Budget/Evidence | 部分落地；存在 UI/data seam，不等于完整 9 区域 console |
+| T-MIS-012 | observability | Mission trace/log correlation + metrics cardinality guard | 部分落地；存在 policy/service baseline |
+| T-MIS-013 | learning | Mission scoped LearningObject promotion gate | 部分落地；存在单层 promotion gate baseline |
+| T-MIS-014 | migration | legacy Task/Session missionRef backfill | 部分落地；存在 backfill baseline |
+| T-MIS-015 | docs | ADR 更新与 superseded 标记 | 已回写本文状态与证据 |
 
 ### 34.3 P2 实现任务
 
 | Task | Owner 模块 | 说明 | 当前结论 |
 |---|---|---|---|
-| T-MIS-016 | federation | Mission handoff across org/tenant | ✅ 已实现 federated handoff trust-pair guard、approval/audit request；真实外部 trust provisioning 为外部演进 |
-| T-MIS-017 | multi-region | Mission home region + read replica routing | ✅ 已实现 home-region/fencing/read-routing 决策；真实多区域复制为部署演进 |
-| T-MIS-018 | analytics | Mission outcome analytics | ✅ 仓内 outcome analytics service baseline 已实现 |
-| T-MIS-019 | marketplace | Mission template/package integration | ✅ 仓内 template/package integration baseline 已实现 |
+| T-MIS-016 | federation | Mission handoff across org/tenant | 部分落地；存在 federated handoff request baseline，真实 trust provisioning 仍属外部演进 |
+| T-MIS-017 | multi-region | Mission home region + read replica routing | 部分落地；存在 home-region/read-routing baseline，真实复制/failover 仍属部署演进 |
+| T-MIS-018 | analytics | Mission outcome analytics | 部分落地；存在 outcome analytics baseline |
+| T-MIS-019 | marketplace | Mission template/package integration | 部分落地；存在 integration baseline |
 
 ---
 

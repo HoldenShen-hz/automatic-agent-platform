@@ -6,6 +6,8 @@ export interface RestClientRequest {
   readonly method: string;
   readonly headers: Headers;
   readonly body?: unknown;
+  readonly timeoutMs?: number;
+  readonly signal?: AbortSignal;
 }
 
 export interface RestClientResponse<T> {

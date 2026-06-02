@@ -66,13 +66,13 @@ interface IntentSignal {
  * Multiple signals can match; the highest-confidence result is used.
  */
 const INTENT_SIGNALS: readonly IntentSignal[] = [
-  { pattern: /(?:\bapprove(?:d)?\b|审批(?:通过)?|批准|同意|通过(?!证|规则|率))/iu, intent: "approval_action", confidence: 0.92, reasoning: "Approval keyword detected" },
+  { pattern: /(?:审批(?:通过)?|批准|同意|通过(?!证|规则|率)|(?:(?:^|[^A-Za-z])approve(?:d)?(?:$|[^A-Za-z])))/iu, intent: "approval_action", confidence: 0.92, reasoning: "Approval keyword detected" },
   { pattern: /(?:reject|驳回|否决)/i, intent: "approval_action", confidence: 0.90, reasoning: "Rejection keyword detected" },
   { pattern: /(?:status|状态|进度|情况|情况如何)/i, intent: "status_inquiry", confidence: 0.84, reasoning: "Status inquiry keyword detected" },
   { pattern: /(?:summary|摘要|概览|同步)/i, intent: "status_inquiry", confidence: 0.83, reasoning: "Summary request keyword detected" },
-  { pattern: /(?:\b(?:delete|remove|drop)\b|删除|清空)/iu, intent: "task_modify", confidence: 0.80, reasoning: "Deletion keyword detected" },
+  { pattern: /(?:删除|清空|(?:(?:^|[^A-Za-z])(?:delete|remove|drop)(?:$|[^A-Za-z])))/iu, intent: "task_modify", confidence: 0.80, reasoning: "Deletion keyword detected" },
   { pattern: /(?:update|modify|change|修改|更新|调整)/i, intent: "task_modify", confidence: 0.80, reasoning: "Modification keyword detected" },
-  { pattern: /(?:\b(?:create|make|generate)\b|新建|创建|生成|做一个|做个)/iu, intent: "task_create", confidence: 0.88, reasoning: "Creation keyword detected" },
+  { pattern: /(?:新建|创建|生成|做一个|做个|(?:(?:^|[^A-Za-z])(?:create|make|generate)(?:$|[^A-Za-z])))/iu, intent: "task_create", confidence: 0.88, reasoning: "Creation keyword detected" },
   { pattern: /(?:why|为什么|原因|为何)/i, intent: "why", confidence: 0.75, reasoning: "Why question detected" },
 ];
 
@@ -149,7 +149,7 @@ export function detectInputLanguage(message: string): string {
   if (/[äöü]/iu.test(message) && /\b(?:bitte|danke|und|oder|nicht|warum|genehmigen)\b/iu.test(message)) {
     return "de-DE";
   }
-  return "zh-CN";
+  return "en-US";
 }
 
 export function parseIntentTokens(message: string): ParsedIntentToken[] {
@@ -162,7 +162,7 @@ export function parseIntentTokens(message: string): ParsedIntentToken[] {
 
   // Check structured signals
   const matchedSignal = matchIntentSignal(normalized);
-  const entityCount = (message.match(/\b[\w一-龥]{2,}\b/g) ?? []).length;
+  const entityCount = (message.match(/(?:[A-Za-z0-9_]{2,}|[\u4e00-\u9fff]{2,})/gu) ?? []).length;
 
   if (matchedSignal !== null) {
     return [{
@@ -171,12 +171,12 @@ export function parseIntentTokens(message: string): ParsedIntentToken[] {
     }];
   }
 
-  const questionPatterns = /[?？]|^(?:what|why|how|when|where|who|which|is|are|can|could|would|should)\b|(?:是否|有没有|怎么|怎样|什么|为何|为啥|多少|哪个|哪一个)/i;
+  const questionPatterns = /[?？]|^(?:what|why|how|when|where|who|which|is|are|can|could|would|should)(?:$|[^A-Za-z])|(?:是否|有没有|怎么|怎样|什么|为何|为啥|多少|哪个|哪一个)/iu;
   if (questionPatterns.test(message)) {
     return [{ intentType: "task_query", confidence: 0.64 }];
   }
 
-  const requestPatterns = /(?:请|请你|帮我|麻烦|需要|想要|安排|执行|修复|排查|处理|\b(?:run|fix|investigate|deploy|restart|rollback)\b)/iu;
+  const requestPatterns = /(?:请|请你|帮我|麻烦|需要|想要|安排|执行|修复|排查|处理|(?:(?:^|[^A-Za-z])(?:run|fix|investigate|deploy|restart|rollback)(?:$|[^A-Za-z])))/iu;
   if (requestPatterns.test(message) || (normalized.length > 20 && entityCount >= 4)) {
     return [{ intentType: "task_create", confidence: normalized.length > 20 ? 0.68 : 0.65 }];
   }

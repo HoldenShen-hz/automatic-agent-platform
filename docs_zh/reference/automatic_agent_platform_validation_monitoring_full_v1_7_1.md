@@ -1,7 +1,7 @@
 # Automatic Agent Platform — 验证与实时监控完整方案
 
-> **版本**：v1.7.5 — Product Validation Closure / v2.0 Baseline Candidate
-> **状态**：`repo_validation_tasks_implemented`
+> **版本**：v1.7.5 — Validation Target Contract / Repo Baseline Review Patch
+> **状态**：`mixed_repo_baseline_and_target_contract`
 > **适用系统**：Automatic Agent Platform  
 > **首个验证业务**：LLM Research Intelligence Mission  
 > **核心目标**：证明平台在 Research Intelligence 场景下具备可执行、可观测、可审计、可回放、可阻断、可签字、可复盘的准生产能力。  
@@ -30,11 +30,14 @@
 
 ## Review Patch 结论
 
-本次复核结论：本文档适合作为 **Validation / Monitoring 目标方案**，但在 v1.7.1 中把若干“冻结前应具备”的设计项写成了“仓库已经具备”的验收事实。为避免测试、发布和运维执行时按不存在的命令或工件推进，本文统一采用三层口径：
+本次复核结论：本文档适合作为 **Validation / Monitoring 目标方案**，但不应再被阅读成“当前仓库已经完成全文 freeze/sign-off 闭环”。v1.7.1-v1.7.5 中相当一部分章节把 validation registry、附录清单、目标指标和环境验收写成了仓内既成事实；本轮统一回收为 `repo baseline / partial / target contract / external validation` 四层口径。
+
+为避免测试、发布和运维执行时按不存在的命令、指标、事件、dashboard、runbook 或环境工件推进，本文统一采用四层口径：
 
 | 层级         | 含义                                            | 允许的表述                                     |
 | ------------ | ----------------------------------------------- | ---------------------------------------------- |
 | 当前仓内基线 | 仓库中已有代码、脚本、配置或测试可直接定位      | `已存在`、`可执行`、`仓内基线`                 |
+| 部分落地     | 存在同名基线、registry scaffold 或测试入口      | `部分落地`、`未覆盖全文 contract`              |
 | 冻结前目标   | 进入 freeze/sign-off 前必须补齐或导出的机器契约 | `必须补齐`、`目标态`、`freeze 前`              |
 | 外部验收     | 依赖真实环境、真实凭据、真实值班或外部系统      | `环境验收`、`外部接线`、`不可由本文档单独证明` |
 
@@ -42,18 +45,18 @@
 
 | 问题                                                         | 根因                                                                                          | 修订结论                                                                                                                                                                       | 仓内依据                                                                                                                        |
 | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| 文档顶部直接标记 `freeze_ready_candidate`                    | 目标 Gate/Registry 表格完整，但机器 registry 工件和一批 CI job 命令尚未在仓内形成一一对应实现 | 仓内任务已落地，状态改为 `repo_validation_tasks_implemented`；真实 freeze 仍只在第 51 章环境条件满足后成立                                                                     | `package.json`、`config/validation/platform-validation-registry.json`、`scripts/validation/platform-validation-closure.mjs`     |
+| 文档顶部直接标记 `freeze_ready_candidate`                    | 目标 Gate/Registry 表格完整，但机器 registry 工件和一批 CI job 命令尚未在仓内形成一一对应实现 | 本轮将顶层状态收口为 `mixed_repo_baseline_and_target_contract`；真实 freeze 仍只在第 51 章环境条件满足后成立                                                                   | `package.json`、`config/validation/platform-validation-registry.json`、`scripts/validation/platform-validation-closure.mjs`     |
 | CI Job Registry 写入大量当前不存在的 `npm run ...` 命令      | 把期望的 job 名直接写成了现有脚本                                                             | 第 33 章已补真实 package scripts 和 machine registry；`tests/unit/scripts/platform-validation-closure.test.ts` 会阻止 job/script mapping 再次失配                              | `package.json`、`config/validation/platform-validation-registry.json`                                                           |
 | 无归属 Task 自动落 `default_system_mission`                  | 口径落后于 MissionResolver 当前实现                                                           | 低/中风险无 Mission 可创建 ad hoc Mission；高风险和副作用任务无 Mission 必须 fail-closed                                                                                       | `src/platform/five-plane-interface/api/http-server/task-routes.ts`、Mission E2E                                                 |
 | `aa.*` Metric Registry 被写成当前 exporter 唯一指标真相      | 目标观测语义与 Prometheus exporter / alert rules 当前暴露名混写                               | 第 48 章声明 `aa.*` 是目标 validation registry；当前运行时监控基线以 exporter、Prometheus rules、Grafana dashboard 为准                                                        | `src/platform/shared/observability/prometheus-metrics-exporter.ts`、`deploy/prometheus/rules/automatic-agent.yml`               |
 | Prometheus 名称和单位映射未成为显式 freeze 条件              | exporter、dashboard、alert rules 各自演进，文档只登记目标指标                                 | 已新增 metric map 和 closure test；HTTP latency、queue、worker、DLQ、outbox、OAPEFLIR latency 告警均绑定当前 exporter 暴露名，不再引用陈旧指标                                 | `config/validation/platform-monitoring-metric-map.json`、`automatic-agent.yml`、`prometheus-alerts.test.ts`                     |
 | 机器 Event/Gate/Metric/Runbook Registry 工件被写成已存在前提 | 设计表和附录先于机器工件落地                                                                  | 已新增 machine registry、closure 和 artifact exporter；TypeScript event registry 仍是事件事实源，导出快照、schemas、generated registry types 与 closure reports 均由导出链生成 | `src/platform/five-plane-state-evidence/events/event-registry.ts`、`scripts/validation/export-platform-validation-artifacts.ts` |
 
-> 本文仍保留完整目标设计；review patch 的目的不是删掉目标，而是防止“文档闭环”被误读为“代码、CI、环境和签字均已闭环”。
+> 本文仍保留完整目标设计；review patch 的目的不是删掉目标，而是防止“文档闭环”被误读为“代码、CI、指标、dashboard、runbook、环境和签字均已闭环”。
 
 ## 章节逐项实现确认
 
-标记规则：只有能定位到仓内代码、配置、脚本或测试证据的章节，标题后才追加 `done`。边界说明、示意图、RACI、样例、freeze/sign-off 与依赖真实环境的验收章节不把“文档已写”误标成实现完成。
+标记规则：只有能定位到仓内代码、配置、脚本或测试证据，且 **能够覆盖该章节的核心验收面**，标题后才追加 `done`。如果仅存在 registry scaffold、部分脚本、占位报告、说明性 UI 或目标指标，则统一标记为 `partial`。边界说明、示意图、RACI、样例、freeze/sign-off 与依赖真实环境的验收章节不把“文档已写”误标成实现完成。
 
 | 章节                                                               | 结论       | 核对依据                                                                                                             |
 | ------------------------------------------------------------------ | ---------- | -------------------------------------------------------------------------------------------------------------------- |
@@ -65,18 +68,18 @@
 | 6 Roadmap Stage 与 Validation Phase                                | 说明性章节 | 阶段定义进入后续 gate/registry，不单独实现                                                                           |
 | 7 系统总体架构图                                                   | 说明性章节 | 架构示意图，不单独实现                                                                                               |
 | 8 实时监控体系                                                     | done       | Prometheus exporter、Grafana dashboard、validation metric map                                                        |
-| 9 Dashboard 设计                                                   | done       | Dashboard VM/Web 展示 validation drilldown trail 与 operator workflow checks；product validation 导出 UI report      |
+| 9 Dashboard 设计                                                   | partial    | 存在 dashboard/exporter/UI baseline，但附录字段、面板与 drilldown 仍未按本文逐项闭环                                  |
 | 10 Alert 体系                                                      | done       | `deploy/prometheus/rules/automatic-agent.yml`、Alertmanager、golden tests                                            |
 | 11 全覆盖验证方法                                                  | done       | layered tests、coverage manual、registry gates、validation jobs                                                      |
 | 12 测试体系                                                        | done       | `package.json` validation scripts、unit/integration/e2e/invariant/perf/golden suites                                 |
-| 13 质量 Scorecard                                                  | done       | `platform-validation-readiness.ts` 提供权重、硬门禁和 scorecard decision，`validation:product` 导出 scorecard report |
-| 14 Release / Graduation Gate                                       | done       | release/freeze 条件由 scorecard/freeze readiness service 与 registry/evidence reports 统一评估                       |
+| 13 质量 Scorecard                                                  | partial    | 存在 readiness/scorecard baseline，但仍未形成本文完整八维评分、阈值与真实采集闭环                                      |
+| 14 Release / Graduation Gate                                       | partial    | 存在 gate/readiness baseline，但 freeze/RC/sign-off 仍未达到本文全文自动化程度                                        |
 | 15 阻断策略                                                        | done       | Gate Registry、Mission live guard、budget/sideeffect/security/runtime guard tests                                    |
 | 16 Evidence Bundle                                                 | done       | stable evidence bundle、validation artifact exporter、bundle closure tests                                           |
 | 17 OAPEFLIR Stage-level Validation                                 | done       | OAPEFLIR stage emitter/FSM、research E2E、event registry                                                             |
-| 18 Skills / Plugins / Tool Registry / Connector Runtime Validation | done       | plugin SPI/executor、tool registry、connector framework、sandbox/egress tests                                        |
+| 18 Skills / Plugins / Tool Registry / Connector Runtime Validation | partial    | 存在相关基线，但 ToolDefinition / Connector governance / direct invocation / rollback 等仍未按本文完整闭环            |
 | 19 Security / Tenant / IAM Validation                              | done       | IAM、egress、tenant isolation、crypto/security validation tests                                                      |
-| 20 Operator Cockpit / UI Validation                                | done       | Dashboard/Task/Workflow/HITL/Incident surfaces 与 workflow matrix 由 UI report 和 feature tests 守护                 |
+| 20 Operator Cockpit / UI Validation                                | partial    | 存在部分 UI/report baseline；Operator Cockpit、Dashboard、Readonly console 与附录测试矩阵仍未全文落地                  |
 | 21 Runtime State / CAS / Lease / Fencing Validation                | done       | runtime state machine、CAS/fencing/lease services and tests                                                          |
 | 22 SideEffect / Reconciliation Validation                          | done       | SideEffect lifecycle/reconciliation invariants and E2E                                                               |
 | 23 Config Center / Drift / Rollout Validation                      | done       | config center、drift、impact、hot reload、rollout tests                                                              |
@@ -91,29 +94,29 @@
 | 32 Metric Summary                                                  | done       | Metric Registry and runtime monitoring metric map                                                                    |
 | 33 CI/CD Validation Pipeline                                       | done       | machine CI registry plus package scripts                                                                             |
 | 34 Observability Semantic Convention                               | done       | validation semantic conventions 固化 span names、required attributes 与高基数 label guard                            |
-| 35 Research Data Governance                                        | done       | ResearchSourceGovernance strict schema、gate decision、schema artifact 与 data governance tests                      |
+| 35 Research Data Governance                                        | partial    | 存在 research governance baseline；但 tenant-scoped access、PII/retention/contamination/event 闭环仍属目标态          |
 | 36 Research Output Quality Rubric and Feedback Loop                | done       | rubric scorer、golden set、reviewer agreement/drift reports 与 product validation evidence                           |
 | 37 Load / Stress / Capacity Validation                             | done       | capacity validation report 固化 smoke/pilot/stress/soak/spike/backpressure profiles 并绑定 `soak:stable`             |
 | 38 Lifecycle Transition Matrix                                     | done       | Mission/NodeRun/Plugin/Artifact lifecycle services and exported lifecycle matrix                                     |
-| 39 Backup / Restore / DR Validation                                | done       | stable restore/replay/backup rehearsal paths and DR validation jobs                                                  |
-| 40 Incident Lifecycle / Postmortem                                 | done       | incident-control services、incident E2E、postmortem artifact/template coverage                                       |
-| 41 SLO / Error Budget / Burn-rate Validation                       | done       | SLO alerting/tracking and burn-rate tests                                                                            |
+| 39 Backup / Restore / DR Validation                                | partial    | 存在 restore/replay baseline；RPO/RTO 测量、cross-region failover 及演练证据仍未按本文完整落仓                         |
+| 40 Incident Lifecycle / Postmortem                                 | partial    | 存在 incident baseline；P0 alert/runbook/sign-off 仍未满足本文所有 fail-closed 目标                                   |
+| 41 SLO / Error Budget / Burn-rate Validation                       | partial    | 存在 SLO baseline；per-mission burn-rate/error-budget/report fields 仍未全文闭环                                      |
 | 42 Tenant Quota / Fair Scheduling Validation                       | done       | fair scheduling、tenant isolation/quota/noisy-neighbor services/tests                                                |
-| 43 Local Model / L40S GPU Capacity Validation                      | done       | local GPU capacity validator 覆盖 L40S admission、watermark、queue isolation、OOM/unload/fallback report             |
+| 43 Local Model / L40S GPU Capacity Validation                      | partial    | 存在 GPU validation baseline；watermark/OOM exporter、附录测试与证据字段仍未按本文完整闭环                             |
 | 44 Example Validation Run                                          | 示例章节   | 示例事件序列，不单独代表验证 run 已签字                                                                              |
 | 45 RACI / Sign-off Matrix                                          | 说明性章节 | 角色与签字矩阵，不是代码实现                                                                                         |
-| 46 Event Naming / Event Schema Registry                            | done       | event registry、payload validators、artifact exporter                                                                |
-| 47 Gate Registry                                                   | done       | machine gate registry and closure                                                                                    |
-| 48 Metric Registry                                                 | done       | target metric registry export and runtime metric map closure                                                         |
-| 49 Runbook Registry                                                | done       | machine runbook registry and appendix/runbook closure                                                                |
+| 46 Event Naming / Event Schema Registry                            | partial    | 存在 event registry/export baseline；附录事件全集与 payload/schema/事件消费面仍有漂移                                 |
+| 47 Gate Registry                                                   | partial    | 存在 gate registry baseline；owner/escalation/defaultSeverity/blocking 等仍非全文强约束                               |
+| 48 Metric Registry                                                 | partial    | `aa.*` 为 validation 语义 registry，不等同当前 exporter/dashboard/panel 全量实现                                     |
+| 49 Runbook Registry                                                | partial    | 存在 machine registry；并不表示 `deploy/runbooks/` 已逐项拆分出附录全部 runbook                                      |
 | 50 Artifact Lifecycle / Integrity Validation                       | done       | artifact repository/governance/integrity tests                                                                       |
-| 51 Freeze Checklist                                                | done       | freeze readiness report 检查 registry、evidence、projection、SLO、external signoff refs                              |
-| 52 最终验收标准                                                    | done       | scorecard/freeze evaluator 将最终验收条件收成机器 decision；真实环境结果通过 report refs 输入                        |
+| 51 Freeze Checklist                                                | partial    | 存在 freeze readiness baseline；不表示本文全部 freeze 条件已自动化满足                                                |
+| 52 最终验收标准                                                    | partial    | 存在 evaluator/report baseline；最终环境验收、签字和真实指标仍需外部证据                                              |
 | 53 附录 A：Canonical Event 清单                                    | 阅读附录   | machine registry 事实源已实现，附录清单本身不单独标实现完成                                                          |
-| 54 附录 B：测试清单                                                | done       | UI/product/research/capacity/GPU validation tests 与脚本补齐本附录残留项                                             |
-| 55 附录 C：Dashboard 字段清单                                      | done       | Dashboard product report、UI drilldown trail 与 runtime dashboard baseline 共同守护字段面                            |
-| 56 附录 D：Runbook Registry                                        | done       | runbook registry closure validates every `D.*` mapping                                                               |
-| 57 附录 E：机器可执行工件清单                                      | done       | artifact exporter emits contracts/schemas/generated/reports                                                          |
+| 54 附录 B：测试清单                                                | partial    | 附录测试矩阵仍含未在仓内一一落成的 UI/GPU/product/capacity 项                                                         |
+| 55 附录 C：Dashboard 字段清单                                      | partial    | 字段清单保留为目标面；并不表示 Grafana dashboard 已逐 panel 覆盖                                                      |
+| 56 附录 D：Runbook Registry                                        | partial    | machine registry 与附录映射存在；并不表示 deploy 目录已有逐项 runbook 文件                                            |
+| 57 附录 E：机器可执行工件清单                                      | partial    | 存在 artifact exporter；但部分报告仍为说明性或占位结构，不能视为全部真实采集产物                                      |
 
 ---
 

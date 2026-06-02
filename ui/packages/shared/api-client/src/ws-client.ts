@@ -36,8 +36,15 @@ export interface BrowserWSClientOptions {
 }
 
 type WorkerMessage =
-  | { readonly type: "status"; readonly status: WSStatus }
-  | { readonly type: "event"; readonly event: WSEventEnvelope };
+  | { readonly capability: string; readonly type: "status"; readonly status: WSStatus }
+  | { readonly capability: string; readonly type: "event"; readonly event: WSEventEnvelope };
+
+function createWorkerCapability(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `cap_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
+}
 
 function detachTimer(timer: ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>): void {
   if (typeof timer === "object" && timer !== null && "unref" in timer && typeof timer.unref === "function") {
@@ -245,7 +252,24 @@ export class BrowserWSClient implements WSClient {
         if (!this.isActiveSocket(socket, socketNonce)) {
           return;
         }
-        const data = JSON.parse(String(event.data)) as WSEventEnvelope & { action?: string };
+        let data: WSEventEnvelope & { action?: string };
+        try {
+          data = JSON.parse(String(event.data)) as WSEventEnvelope & { action?: string };
+        } catch {
+          this.clearReconnectTimer();
+          this.stopHeartbeat();
+          this.socket = null;
+          this.currentUrl = null;
+          this.currentToken = null;
+          this.fallbackClient?.disconnect();
+          this.setStatus("disconnected");
+          try {
+            socket.close();
+          } catch {
+            // ignore malformed-frame close failures
+          }
+          return;
+        }
         if (data.action === "pong" || data.type === "pong") {
           this.clearHeartbeatDeadline();
           return;
@@ -412,6 +436,7 @@ export class SharedWorkerWSClient implements WSClient {
   private readonly statusHandlers = new Set<(status: WSStatus) => void>();
   private readonly port: MessagePort;
   private readonly replayBufferByChannel = new Map<string, WSEventEnvelope[]>();
+  private readonly capability = createWorkerCapability();
   private disconnected = false;
   private disconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -427,12 +452,12 @@ export class SharedWorkerWSClient implements WSClient {
       clearTimeout(this.disconnectTimer);
       this.disconnectTimer = null;
     }
-    this.port.postMessage({ action: "connect", url, token });
+    this.port.postMessage({ action: "connect", capability: this.capability, url, token });
   }
 
   public disconnect(): void {
     this.disconnected = true;
-    this.port.postMessage({ action: "disconnect" });
+    this.port.postMessage({ action: "disconnect", capability: this.capability });
     if (this.disconnectTimer != null) {
       clearTimeout(this.disconnectTimer);
     }
@@ -454,7 +479,7 @@ export class SharedWorkerWSClient implements WSClient {
     channelHandlers.add(handler);
     this.handlers.set(channel, channelHandlers);
     if (wasEmpty) {
-      this.port.postMessage({ action: "subscribe", channel });
+      this.port.postMessage({ action: "subscribe", capability: this.capability, channel });
     }
     for (const event of this.replayBufferByChannel.get(channel) ?? []) {
       queueMicrotask(() => {
@@ -475,18 +500,21 @@ export class SharedWorkerWSClient implements WSClient {
   }
 
   public publish(event: WSEventEnvelope): void {
-    this.port.postMessage({ action: "publish", event });
+    this.port.postMessage({ action: "publish", capability: this.capability, event });
   }
 
   public useSseFallback(): void {
-    this.port.postMessage({ action: "useSseFallback" });
+    this.port.postMessage({ action: "useSseFallback", capability: this.capability });
   }
 
   private readonly handleMessage = (event: MessageEvent<WorkerMessage>): void => {
-    if (this.disconnected) {
+    if (this.disconnected || event.currentTarget !== this.port) {
       return;
     }
     const message = event.data;
+    if (message == null || message.capability !== this.capability) {
+      return;
+    }
     if (message.type === "status") {
       for (const handler of this.statusHandlers) {
         handler(message.status);
@@ -512,4 +540,15 @@ export function createRuntimeWSClient(
     return new BrowserWSClient(socketFactory ?? WebSocket, new InMemoryWSClient());
   }
   return new InMemoryWSClient();
+}
+
+export function createDefaultSharedWorkerFactory(): SharedWorkerFactory | undefined {
+  if (typeof SharedWorker === "undefined") {
+    return undefined;
+  }
+  return () =>
+    new SharedWorker(new URL("./shared-ws-worker.js", import.meta.url), {
+      type: "module",
+      name: "aa-shared-ws",
+    });
 }

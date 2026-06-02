@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import test from "node:test";
+import test, { mock } from "node:test";
 
 import { StructuredLogger } from "../../../src/platform/shared/observability/structured-logger.js";
 import { GracefulShutdown } from "../../../src/platform/five-plane-execution/startup/graceful-shutdown.js";
@@ -69,6 +69,7 @@ test("graceful shutdown signal handling reuses the same shutdown result and sets
 });
 
 test("graceful shutdown times out slow handlers [graceful-shutdown]", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const shutdown = new GracefulShutdown({
     logger: new StructuredLogger({ retentionLimit: 10 }),
     timeoutMs: 50, // Very short default timeout
@@ -83,12 +84,15 @@ test("graceful shutdown times out slow handlers [graceful-shutdown]", async () =
     },
   });
 
-  const result = await shutdown.shutdown();
+  const pending = shutdown.shutdown();
+  mock.timers.tick(250);
+  const result = await pending;
 
   // Handler should fail due to timeout
   assert.equal(result.success, false);
   assert.ok(result.errors.length > 0);
   assert.ok(result.errors.some((e) => e.includes("slow") && e.includes("timed out")));
+  mock.timers.reset();
 });
 
 test("graceful shutdown catches handler throwing an error [graceful-shutdown]", async () => {
@@ -114,6 +118,7 @@ test("graceful shutdown catches handler throwing an error [graceful-shutdown]", 
 });
 
 test("graceful shutdown Promise.race handler resolves before timeout [graceful-shutdown]", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   // Tests that when handler completes before timeout, the result reflects success
   // The clearTimeout is called after Promise.race resolves
   const shutdown = new GracefulShutdown({
@@ -128,21 +133,29 @@ test("graceful shutdown Promise.race handler resolves before timeout [graceful-s
     },
   });
 
-  const result = await shutdown.shutdown();
+  const pending = shutdown.shutdown();
+  mock.timers.tick(10);
+  const result = await pending;
 
   assert.equal(result.success, true);
   assert.equal(result.handlersFailed, 0);
   assert.equal(result.handlersRun, 1);
   assert.equal(result.errors.length, 0);
+  mock.timers.reset();
 });
 
 test("graceful shutdown multiple handlers run even if first times out [graceful-shutdown]", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   // Verifies that when first handler times out (Promise.race rejects with timeout),
   // subsequent handlers still execute. This tests the loop continuation after catch.
   // Note: slow's async work continues after its timeout fires; the setTimeout
   // callback may fire after shutdown completes, so we only assert on the calls
   // that are guaranteed to happen before shutdown returns.
   const calls: string[] = [];
+  let resolveSlowFinished: (() => void) | null = null;
+  const slowFinished = new Promise<void>((resolve) => {
+    resolveSlowFinished = resolve;
+  });
   const shutdown = new GracefulShutdown({
     logger: new StructuredLogger({ retentionLimit: 10 }),
     timeoutMs: 10,
@@ -150,9 +163,14 @@ test("graceful shutdown multiple handlers run even if first times out [graceful-
 
   shutdown.addHandler({
     name: "slow",
-    handler: async () => {
+    handler: async (signal) => {
       calls.push("slow_start");
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise<void>((resolve) => {
+        signal?.addEventListener("abort", () => {
+          resolve();
+          resolveSlowFinished?.();
+        }, { once: true });
+      });
       calls.push("slow_end");
     },
   });
@@ -163,7 +181,14 @@ test("graceful shutdown multiple handlers run even if first times out [graceful-
     },
   });
 
-  const result = await shutdown.shutdown();
+  const pending = shutdown.shutdown();
+  await Promise.resolve();
+  await Promise.resolve();
+  mock.timers.tick(20);
+  await Promise.resolve();
+  await Promise.resolve();
+  const result = await pending;
+  await slowFinished;
 
   // First handler times out, second still runs
   assert.equal(result.handlersFailed, 1);
@@ -171,4 +196,5 @@ test("graceful shutdown multiple handlers run even if first times out [graceful-
   assert.ok(result.errors.some((e) => e.includes("slow") && e.includes("timed out")));
   // fast always runs (it completes before slow times out)
   assert.ok(calls.includes("fast"), `Expected fast in calls, got: ${JSON.stringify(calls)}`);
+  mock.timers.reset();
 });

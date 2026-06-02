@@ -1,6 +1,9 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   createCheckpointEnvelope,
   unpackCheckpointEnvelope,
@@ -183,10 +186,22 @@ describe("CheckpointEnvelope", () => {
       // Corrupt the checksum in the envelope
       envelope.metadata.checksum = "a".repeat(64);
 
+      const workspace = mkdtempSync(join(tmpdir(), "aa-checkpoint-integrity-"));
+      const logPath = join(workspace, "integrity-failures.jsonl");
+
       await assert.rejects(
-        async () => unpackCheckpointEnvelope(envelope),
-        CheckpointEnvelopeInvalidError,
+        async () => unpackCheckpointEnvelope(envelope, { integrityFailureLogPath: logPath }),
+        (error) => {
+          assert.ok(error instanceof CheckpointEnvelopeInvalidError);
+          const integrityFailure = (error.details as { integrityFailure?: { reasonCode?: string; domainId?: string | null; namespaceId?: string | null } }).integrityFailure;
+          assert.equal(integrityFailure?.reasonCode, "checkpoint.checksum_mismatch");
+          return true;
+        },
       );
+
+      const persisted = readFileSync(logPath, "utf8").trim().split("\n").map((line) => JSON.parse(line));
+      assert.equal(persisted.length, 1);
+      assert.equal(persisted[0]?.reasonCode, "checkpoint.checksum_mismatch");
     });
 
     it("should throw CheckpointEnvelopeInvalidError for corrupted payload", async () => {

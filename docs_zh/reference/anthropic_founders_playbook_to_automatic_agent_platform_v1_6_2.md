@@ -25,6 +25,22 @@
 
 本次审阅不否定本文的主设计方向。保留的核心建议是：把 Playbook 的阶段、退出标准、失败模式与 outcome measurement 转译成 Mission 治理能力；删掉或收紧的是“已接受、已执行、已阻断”的过强表述。
 
+### Review Patch 读取规则
+
+2026-06-02 复核补充：本文必须按三层口径阅读，避免把候选 schema / pseudo code / registry patch 误读成当前仓库已经逐字段实现的运行时事实。
+
+| 层级 | 含义 | 允许表述 |
+|---|---|---|
+| `repo baseline` | 当前仓库里已经存在并有测试覆盖的最小实现 | `已存在基线`、`部分落仓` |
+| `target contract` | 本文给出的完整候选类型、字段、事件、runbook、CI 与 patch plan | `目标态`、`候选契约` |
+| `main-baseline acceptance` | 只有主 Validation Baseline 接收后才生效的 blocking 语义 | `accepted 后生效`、`主基线签收后` |
+
+默认规则：
+
+1. 第 3-14 节中的 TypeScript / YAML / 表格，除非显式写明“当前仓库基线”，否则按 `target contract` 解读。
+2. 当前仓库若只存在合并版服务、最小 Zod schema、closure 入口或定向测试，不得反推为本文完整字段面、完整事件流、完整 metric emitter、完整 runbook/CI 阻断都已实现。
+3. `registryStatus` 当前仍保持参考稿 / patch candidate 口径；正文出现 `accepted` 仅表示目标状态，不表示本文已经升格为主基线。
+
 ---
 
 ## 版本变更记录
@@ -213,11 +229,11 @@ releaseBlocking: true_for_declared_blocking_gates
 
 | 对象 | 当前判断 |
 |---|---|
-| `MissionPlaybookRegistry`、`StageExitGateService` | 已落仓内基线：Mission Playbook schema、阶段实例 schema、安全 Exit Criterion DSL、Playbook 引用校验、基于 snapshot 的 StageExit 决策和 `platform.mission.stage_exit_evaluated` 审计事件；仍未成为主 Validation Baseline release blocker |
-| `MissionFailureModeRegistry`、`MissionOutcomeMeasurementService` | Track B 已落仓内基线：失败模式注册、P0 路由要求、去重/抑制审批、Mission outcome 分层分数与 outcome event 审计均有可引用服务和定向测试 |
-| `WorkflowRecordingService`、`SkillCandidatePipeline` | Track C 已落仓内基线：录制 policy、restricted consent/redaction fail-closed、retention deletion proof、Trace→Candidate→SkillPack approval/eval/policy/signature/canary/rollback gate 已有可测试服务 |
-| Research / Code / Ops Playbook | Track D 已落仓内基线：三类 active builtin playbook 含 stage evidence、default skill、HITL edge 与 gate refs；仍不把 Mission Stage 误写成执行 truth |
-| `playbook:validate`、`test:e2e:stage-exit`、`mission-outcome:validate`、`skill-candidate:validate`、`skillpack:validate`、`workflow-recording:*` | 已成为仓内脚本入口，并由 `config/validation/mission-operating-model-registry.json` 与 closure report 形成 registry patch 证据 |
+| `MissionPlaybookRegistry`、`MissionPlaybookResolver`、`MissionPlaybookMigrationService`、`StageExitGateService` | 已落仓 `repo baseline`：注册/状态迁移、显式/tenant/canary/fallback 解析、migration plan 基线、snapshot-based StageExit 决策与 `platform.mission.stage_exit_evaluated` 审计事件均已存在；但 cycle guard、edge risk/data/evidence guard、rollback decision、同事务推进与完整 transition event 仍属 `target contract` |
+| `MissionFailureModeRegistry`、`MissionOutcomeMeasurementService` | 已落仓 `repo baseline`：失败模式注册/检测/抑制审批、Outcome report 与 `platform.mission.outcome_measured` 审计事件均已存在；但 detection policy 深水位字段、7d/30d delayed measurement、rubric/baseline linkage 仍属 `target contract` |
+| `WorkflowRecordingService`、`SkillCandidatePipeline` | 已落仓 `repo baseline`：policy、restricted consent/redaction fail-closed、retention deletion proof、Trace→Candidate→SkillPack HITL gated conversion 已存在；但它们当前是合并版服务，不等于本文拆分后的 normalizer/generator/eval/promotion/rollout 全部独立落地 |
+| Research / Code / Ops / Benchmark Monitoring Playbook | 已落仓 `repo baseline`：四类 active builtin playbook 均有 stage evidence、default skill、HITL edge 与 gate refs；仍不把 Mission Stage 误写成执行 truth，也不表示全文 failure mode / metric / event / CI / runbook 面已经全部收口 |
+| `playbook:validate`、`test:e2e:stage-exit`、`mission-outcome:validate`、`skill-candidate:validate`、`skillpack:validate`、`workflow-recording:*` | 已成为仓内脚本入口，并由 `config/validation/mission-operating-model-registry.json` 与 closure report 形成 registry patch 证据；但当前多数 mode 仍以 closure/baseline check 为主，不能直接等同于本文完整 gate-level runtime/e2e validation |
 | Mission / Task / Session 边界、PlanGraph DAG、Evidence / Policy / Budget / HITL 约束 | 应继续复用当前平台已有 canonical 设计，不在本文另起一套事实模型 |
 
 第一批实现证据：
@@ -372,6 +388,8 @@ Stage 是业务生命周期状态；NodeRun 才是执行时节点；Task 是 Mis
 ---
 
 ### 3.2 MissionStageGraph 可以受控循环，但 PlanGraphBundle 必须是 DAG
+
+> 本节中的 `MissionStageCycleGuard`、`MissionStageEdgeGuard` 和 canonical enum 绑定是 `target contract`。当前仓库仅实现了 stage schema、edge baseline、exit DSL validator 与 snapshot-based StageExit gate；并未逐字段落完本节所有 guard 维度。
 
 必须明确两个“图”的语义不同：
 
@@ -862,6 +880,8 @@ SkillPromotionService
 SkillRolloutService
 ```
 
+> 上述组件名描述的是 `target contract` 的理想拆分。当前仓库采用 `WorkflowRecordingService + SkillCandidatePipeline` 的合并版 `repo baseline`，先保证 policy、retention、approval 和 conversion guard 可测试，再保留后续拆分空间。
+
 关键约束：
 
 ```text
@@ -915,6 +935,9 @@ type SkillCandidate = {
 ```
 
 #### 3.7.2 SkillPack Lifecycle
+
+> 审阅修订说明（2026-06-02）  
+> 本节的状态枚举与事件链表示目标 SkillPack contract。当前仓库主基线只实现了 `SkillCandidatePipeline` 的最小闭环：`draft -> under_review -> approved -> converted_to_skillpack`，并在转换后直接生成 `status: "active"` 的 `MissionSkillPack` 记录；`manifest_validated / policy_validated / sbom_scanned / eval_passed / signed / canary` 等逐步事件尚未作为运行时持久化事件序列落地。
 
 ```text
 draft
@@ -1363,6 +1386,9 @@ type MissionPlaybookMigrationPlan = {
 
 ### 5.2 StageExitGateService
 
+> 审阅修订说明（2026-06-02）  
+> 本节是目标态 service contract，不应被读取为“当前仓库已经完整实现的运行时 schema 与事务模型”。当前主基线已提供 `StageExitDecision` / exit criteria / stage gate baseline，但 `StageExitGateInput` 中的 `metricSnapshotRef / riskStateRef / budgetStateRef / remediationRef` 等字段、以及文中完整的同事务推进模型，仍属于后续集成 contract。
+
 职责：
 
 ```text
@@ -1753,6 +1779,9 @@ MissionOutcome 必须区分执行质量、内容质量、证据质量、采用�
 
 `MissionOutcomeScores` 是标准化结果；`MissionOutcomeReport.quality`、`MissionOutcomeReport.evidence`、`MissionOutcomeReport.cost` 等字段是原始明细；Metric Registry 只采集标准化字段，所有分数来源必须通过 `scoresGeneratedFromRefs` 回溯。
 
+> 审阅修订说明（2026-06-02）  
+> `scoresGeneratedFromRefs` 是目标闭环要求；当前仓库的 closure 校验脚本尚未逐项验证这条 lineage 约束，不能把本文表述当成已由脚本强制执行的现状。
+
 分层解释：
 
 | 层级 | 含义 | 是否立即可得 |
@@ -2054,6 +2083,9 @@ AI-Native Mission Operating Model Validation
 ### 9.1 新增 Gate Registry 条目
 
 > 以下 Gate 是待评审的 v2.0 Gate Registry patch。若暂未并入主文档，应标记为 `proposed_for_v2_0`，不得在正文中当作已冻结 Gate 使用。
+>
+> 审阅修订说明（2026-06-02）  
+> 本节 gate / severity / escalation 仍是 `target contract` patch，不等于当前 retention sweeper、workflow recording runtime 已经按文中所有升级规则执行。尤其是基于 `restricted/secret/credential/regulated_pii` 的细粒度 severity 升级，当前主基线仍以最小策略为主。
 
 | Gate ID | defaultSeverity | escalationRules | Blocking Condition | CI Job | Runbook |
 |---|---|---|---|---|---|
@@ -2262,6 +2294,8 @@ criterionResults 必须包含 actualValue / expectedValue / expressionHash / sna
 
 ### 9.4 新增 Runbook Registry 条目
 
+> 本表是 `target contract` 的 Runbook Registry patch。当前仓库已有 machine-readable registry patch 与附录映射，但并不表示 `docs_zh/operations/runbooks/` 已经逐项落地到 D.35-D.40 独立运行手册或自动化脚本。
+
 | Runbook ID | Title | linkedGates | linkedMetrics | Owner | defaultSeverity | escalationRules | ackSla | resolveSla | automationAllowed | requiresHumanApproval | rollbackSupported | lastReviewedAt |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | D.35 | Mission Playbook Missing / Invalid | GATE-MISSION-PLAYBOOK-001, GATE-MISSION-PLAYBOOK-002, GATE-MISSION-PLAYBOOK-005, GATE-MISSION-PLAYBOOK-006, GATE-MISSION-PLAYBOOK-007, GATE-MISSION-PLAYBOOK-008 | aa.mission.playbook.missing.count, aa.mission.stage.exit_criteria_missing.count, aa.mission.playbook.signature_missing.count, aa.mission.playbook.rollback_missing.count, aa.mission.playbook.revoked_used_for_new_mission.count, aa.mission.playbook.auto_drift.count, aa.mission.playbook.migration_without_approval.count, aa.mission.playbook.migration_without_compatibility_report.count | Orchestration Owner | P0 | P0 always for missing/unsafe active playbook; P1 for non-production migration drift | 15m | 4h | partial | true | true | 2026-05-20 |
@@ -2275,6 +2309,8 @@ criterionResults 必须包含 actualValue / expectedValue / expressionHash / sna
 ---
 
 ### 9.5 新增 CI Job Registry 条目
+
+> 本表是 `target contract` 的 gate-level CI Registry。当前仓库确实已经提供同名 `package.json` 入口与 closure 报告模式，但它们目前主要证明“入口存在、基础 registry 可闭合”，不应被表述成“每个 job 都已经具备本文完整的实例校验与 e2e 阻断”。
 
 | CI Job | Command | Artifact | Required On | Blocks | Track A Mode | Track B Mode | Track C Mode | Track D Mode |
 |---|---|---|---|---|---|---|---|---|
@@ -2303,11 +2339,15 @@ gatingModeByTrack:
     GATE-WORKFLOW-RECORDING-003: enforcing
 ```
 
+当前仓库尚未把上述 `gatingModeByTrack` 结构化矩阵提升为独立 machine-readable config；此处仍是接受前的目标表达。
+
 同一个 physical CI job 可以覆盖多个 gate，但进入主 CI Job Registry 时必须展开为 gate-level mode，禁止使用“observe_only for X; enforcing for Y”这类不可机器解析的混合文本。
 
 ---
 
 ## 10. v2.0 Baseline Integration Patch Plan
+
+> 本节明确是 `main-baseline acceptance` 之前的 patch plan。表中的 Evidence Bundle 字段扩展、registryStatus 升级、markdown-render closure 和 accepted gating 语义，只有主基线真正吸收这些 patch 时才应视为当前事实。
 
 本节定义本文在评审通过后如何并入主 `v2.0 Validation Baseline`。并入前，本文所有 registry entries 均保持 `proposed_for_v2_0`；当前仓库不应仅因为本节存在就提前宣告这些 registry entries 已 accepted。
 
@@ -2512,6 +2552,9 @@ rollback plan
 
 ### 12.4 不要让 MissionPlaybook 变成静态文档
 
+> 审阅修订说明（2026-06-02）  
+> 这里描述的是目标治理要求，而不是当前仓库内建 playbook 的存储格式承诺。当前主基线的 builtin playbook 仍以 TS 构造为主，用于验证 mission baseline；YAML/JSON schema、签名、rollout/rollback registry 化是目标收口方向。
+
 MissionPlaybook 必须是机器可读、可验证、可版本化对象：
 
 ```text
@@ -2631,6 +2674,9 @@ SkillCandidate approved 不能直接 active，必须进入 SkillPack 生命周�
 ---
 
 ### Implementation Track D：扩展到 Code Agent / Ops Mission
+
+> 审阅修订说明（2026-06-02）  
+> Track D 中提到的 Code Agent / Ops Mission 独立 playbook、failure mode pack 与 SLO profile 是分轨落地目标；当前主基线只提供 `program` / `incident` builtin playbook 与最小 failure-mode / workflow-recording contract，不应读取为这些 domain pack 已全部落库。
 
 交付：
 

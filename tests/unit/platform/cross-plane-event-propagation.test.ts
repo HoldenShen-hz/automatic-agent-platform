@@ -24,6 +24,8 @@ import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-e
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../helpers/seed.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 /**
  * Plane identifiers for cross-plane event propagation tests.
  * These represent the logical consumers in each plane.
@@ -42,6 +44,15 @@ type PlaneConsumer =
   | "truth_projector"
   | "audit_projection";
 
+type CrossPlaneEnv = {
+  workspace: string;
+  db: SqliteDatabase;
+  store: AuthoritativeTaskStore;
+  bus: DurableEventBus;
+};
+
+const activeCrossPlaneEnvironments = new Set<CrossPlaneEnv>();
+
 async function flushBusFanOut(): Promise<void> {
   for (let iteration = 0; iteration < 8; iteration++) {
     mock.timers.tick(1);
@@ -58,11 +69,14 @@ async function deliverAcrossPlanes(env: { bus: DurableEventBus }, consumers: rea
   }
 }
 
-test.afterEach(() => {
+test.afterEach(async () => {
   try {
     mock.timers.reset();
   } catch {
     // Individual tests opt into timer mocking only when needed.
+  }
+  for (const env of [...activeCrossPlaneEnvironments]) {
+    await cleanupCrossPlaneTestEnvironment(env);
   }
 });
 
@@ -83,7 +97,9 @@ async function createCrossPlaneTestEnvironment() {
     traceId: "trace-cross-plane",
   });
 
-  return { workspace, db, store, bus };
+  const env = { workspace, db, store, bus };
+  activeCrossPlaneEnvironments.add(env);
+  return env;
 }
 
 /**
@@ -94,6 +110,7 @@ async function cleanupCrossPlaneTestEnvironment(env: {
   db: SqliteDatabase;
   bus: DurableEventBus;
 }) {
+  activeCrossPlaneEnvironments.delete(env as CrossPlaneEnv);
   env.bus.dispose();
   env.db.close();
   cleanupPath(env.workspace);

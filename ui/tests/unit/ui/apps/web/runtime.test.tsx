@@ -15,6 +15,7 @@ import {
   checkWebContractVersion,
   createWebRuntimeConfig,
   createWebRuntimeClients,
+  readBootstrapAuthToken,
   registerWebServiceWorker,
 } from "../../../../../apps/web/src/runtime";
 import { featureRegistry } from "../../../../../apps/web/src/feature-registry";
@@ -139,7 +140,8 @@ vi.mock("@aa/shared-api-client", () => ({
   DefaultRESTClient: vi.fn(() => ({ kind: "rest-client" })),
   HttpTransport: vi.fn(() => ({ send: vi.fn() })),
   InMemoryWSClient: vi.fn(() => ({ kind: "memory-ws" })),
-  createRuntimeWSClient: vi.fn(() => ({ connect: vi.fn(), disconnect: vi.fn(), subscribe: vi.fn(), onStatusChange: vi.fn(), publish: vi.fn(), useSseFallback: vi.fn() })),
+  createDefaultSharedWorkerFactory: vi.fn(() => undefined),
+  createRuntimeWSClient: vi.fn(() => ({ kind: "runtime-ws", connect: vi.fn(), disconnect: vi.fn(), subscribe: vi.fn(), onStatusChange: vi.fn(), publish: vi.fn(), useSseFallback: vi.fn() })),
   fetchContractVersion: vi.fn(),
   createAuthInterceptor: vi.fn(() => (request: unknown) => request),
   createContractVersionInterceptor: vi.fn(() => (request: unknown) => request),
@@ -218,7 +220,7 @@ describe("web runtime clients creation", () => {
       VITE_WS_URL: "wss://custom-ws.example.com",
     });
     const result = createWebRuntimeClients(config);
-    expect(result.wsClient).toEqual({ kind: "browser-ws" });
+    expect(result.wsClient).toMatchObject({ kind: "runtime-ws" });
   });
 
   it("uses TokenManager when provided in config", () => {
@@ -248,17 +250,26 @@ describe("web runtime clients creation", () => {
     expect(mockedCreateTenantInterceptor).toHaveBeenCalledWith("tenant-123");
   });
 
-  it("seeds static auth tokens as non-expiring bootstrap sessions", () => {
+  it("does not seed opaque bootstrap tokens without a JWT expiry claim", () => {
     const result = createWebRuntimeClients({
       authToken: "bootstrap-token",
     });
-    const session = result.tokenManager.getSession();
+    expect(result.tokenManager.getSession()).toBeNull();
+  });
 
-    expect(session).toMatchObject({
-      accessToken: "bootstrap-token",
-      refreshToken: "bootstrap-session",
-      expiresAt: Number.MAX_SAFE_INTEGER,
-    });
+  it("consumes bootstrap auth token meta tags and removes them from the DOM", () => {
+    const doc = document.implementation.createHTMLDocument("bootstrap");
+    const tokenMeta = doc.createElement("meta");
+    tokenMeta.setAttribute("name", "aa-auth-token");
+    tokenMeta.setAttribute("content", "bootstrap-jwt");
+    const expiryMeta = doc.createElement("meta");
+    expiryMeta.setAttribute("name", "aa-auth-token-exp");
+    expiryMeta.setAttribute("content", new Date(Date.now() + 60_000).toISOString());
+    doc.head.append(tokenMeta, expiryMeta);
+
+    expect(readBootstrapAuthToken(doc)).toBe("bootstrap-jwt");
+    expect(doc.querySelector('meta[name="aa-auth-token"]')).toBeNull();
+    expect(doc.querySelector('meta[name="aa-auth-token-exp"]')).toBeNull();
   });
 });
 

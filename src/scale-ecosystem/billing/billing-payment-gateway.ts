@@ -195,7 +195,7 @@ export class ManualBillingPaymentGateway implements BillingPaymentGateway {
    * @returns Checkout session with a manual payment URL
    */
   public createCheckoutSession(input: CreateBillingCheckoutSessionInput): BillingCheckoutSessionDefinition {
-    const gatewaySessionRef = `manual_${input.invoice.invoiceId}`;
+    const gatewaySessionRef = `manual_${input.invoice.invoiceId}_${Date.now().toString(36)}`;
     return {
       gatewayKind: this.kind,
       gatewaySessionRef,
@@ -301,6 +301,8 @@ export interface StripeBillingPaymentGatewayOptions {
   apiBaseUrl?: string;
   /** Fetch function to use for HTTP requests. Defaults to global fetch. */
   fetchFn?: typeof fetch;
+  /** Request timeout for outbound gateway calls. */
+  requestTimeoutMs?: number;
 }
 
 export interface PaddleBillingPaymentGatewayOptions {
@@ -314,6 +316,8 @@ export interface PaddleBillingPaymentGatewayOptions {
   apiBaseUrl?: string;
   /** Fetch function to use for HTTP requests. Defaults to global fetch. */
   fetchFn?: typeof fetch;
+  /** Request timeout for outbound gateway calls. */
+  requestTimeoutMs?: number;
 }
 
 /** Response shape from Stripe's checkout session API */
@@ -339,6 +343,84 @@ class StripeSecretRedactor {
   }
 }
 
+const BILLING_GATEWAY_TIMEOUT_MS = 10_000;
+
+function expandDecimalString(value: number): string {
+  const normalized = Math.abs(value).toString();
+  if (!/[eE]/.test(normalized)) {
+    return normalized;
+  }
+
+  const [mantissa, exponentText] = normalized.split(/[eE]/u);
+  const exponent = Number.parseInt(exponentText ?? "0", 10);
+  const unsignedMantissa = mantissa ?? "0";
+  const decimalIndex = unsignedMantissa.indexOf(".");
+  const digits = unsignedMantissa.replace(".", "");
+  const integerDigits = decimalIndex === -1 ? digits.length : decimalIndex;
+  const shiftedIndex = integerDigits + exponent;
+
+  if (shiftedIndex <= 0) {
+    return `0.${"0".repeat(Math.abs(shiftedIndex))}${digits}`;
+  }
+  if (shiftedIndex >= digits.length) {
+    return `${digits}${"0".repeat(shiftedIndex - digits.length)}`;
+  }
+  return `${digits.slice(0, shiftedIndex)}.${digits.slice(shiftedIndex)}`;
+}
+
+function toMinorCurrencyUnits(value: number, decimals: number = 2): number {
+  if (!Number.isFinite(value) || value <= 0) {
+    return 0;
+  }
+
+  const normalized = expandDecimalString(value);
+  const [wholePart = "0", fractionalPart = ""] = normalized.split(".");
+  const paddedFraction = fractionalPart.padEnd(decimals + 1, "0");
+  let minorUnits = Number.parseInt(`${wholePart}${paddedFraction.slice(0, decimals)}`, 10);
+
+  if (!Number.isFinite(minorUnits)) {
+    return 0;
+  }
+  if ((paddedFraction.charCodeAt(decimals) || 48) >= 53) {
+    minorUnits += 1;
+  }
+  return minorUnits;
+}
+
+async function fetchWithTimeout(
+  fetchFn: typeof fetch,
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetchFn(url, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutHandle);
+  }
+}
+
+function createGatewayTransportError(
+  code: string,
+  error: unknown,
+  details: Record<string, unknown> = {},
+): ProviderError {
+  const reason = error instanceof Error ? error.message : String(error);
+  return new ProviderError(
+    `${code}:${reason}`,
+    `${code}:${reason}`,
+    {
+      details,
+      retryable: true,
+    },
+  );
+}
+
 /**
  * Stripe payment gateway implementation.
  *
@@ -352,11 +434,13 @@ export class StripeBillingPaymentGateway implements BillingPaymentGateway {
   private readonly apiBaseUrl: string;
   private readonly fetchFn: typeof fetch;
   private readonly secretRedactor: StripeSecretRedactor;
+  private readonly requestTimeoutMs: number;
 
   public constructor(private readonly options: StripeBillingPaymentGatewayOptions) {
     this.apiBaseUrl = options.apiBaseUrl?.trim() || STRIPE_API_URL;
     this.fetchFn = options.fetchFn ?? fetch;
     this.secretRedactor = new StripeSecretRedactor(options.secretKey);
+    this.requestTimeoutMs = options.requestTimeoutMs ?? BILLING_GATEWAY_TIMEOUT_MS;
   }
 
   /**
@@ -375,7 +459,7 @@ export class StripeBillingPaymentGateway implements BillingPaymentGateway {
     input: CreateBillingCheckoutSessionInput,
   ): Promise<BillingCheckoutSessionDefinition> {
     // Convert USD amount to cents (Stripe's currency unit)
-    const unitAmountCents = Math.max(0, Math.round(input.invoice.totalUsd * 100));
+    const unitAmountCents = toMinorCurrencyUnits(input.invoice.totalUsd);
 
     // Build the Stripe checkout session form data
     const form = new URLSearchParams({
@@ -394,14 +478,22 @@ export class StripeBillingPaymentGateway implements BillingPaymentGateway {
     });
 
     // Create the Stripe checkout session
-    const response = await this.fetchFn(`${this.apiBaseUrl.replace(/\/+$/, "")}/checkout/sessions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.options.secretKey}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: form.toString(),
-    });
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(this.fetchFn, `${this.apiBaseUrl.replace(/\/+$/, "")}/checkout/sessions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.options.secretKey}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: form.toString(),
+      }, this.requestTimeoutMs);
+    } catch (error) {
+      throw createGatewayTransportError("billing.stripe_checkout_failed", error, {
+        invoiceId: input.invoice.invoiceId,
+        accountId: input.account.accountId,
+      });
+    }
 
     const payload = await response.json() as StripeCheckoutSessionResponse;
 
@@ -452,15 +544,26 @@ export class StripeBillingPaymentGateway implements BillingPaymentGateway {
       account: BillingAccountRecord;
     },
   ): Promise<BillingPaymentSessionStatusSnapshot | null> {
-    const response = await this.fetchFn(
-      `${this.apiBaseUrl.replace(/\/+$/, "")}/checkout/sessions/${encodeURIComponent(input.session.gatewaySessionRef)}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${this.options.secretKey}`,
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(
+        this.fetchFn,
+        `${this.apiBaseUrl.replace(/\/+$/, "")}/checkout/sessions/${encodeURIComponent(input.session.gatewaySessionRef)}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${this.options.secretKey}`,
+          },
         },
-      },
-    );
+        this.requestTimeoutMs,
+      );
+    } catch (error) {
+      throw createGatewayTransportError("billing.stripe_reconcile_failed", error, {
+        invoiceId: input.invoice.invoiceId,
+        accountId: input.account.accountId,
+        sessionId: input.session.sessionId,
+      });
+    }
 
     const payload = await response.json() as StripeCheckoutSessionResponse;
 
@@ -540,47 +643,57 @@ export class PaddleBillingPaymentGateway implements BillingPaymentGateway {
 
   private readonly apiBaseUrl: string;
   private readonly fetchFn: typeof fetch;
+  private readonly requestTimeoutMs: number;
 
   public constructor(private readonly options: PaddleBillingPaymentGatewayOptions) {
     this.apiBaseUrl = options.apiBaseUrl?.trim() || PADDLE_API_URL;
     this.fetchFn = options.fetchFn ?? fetch;
+    this.requestTimeoutMs = options.requestTimeoutMs ?? BILLING_GATEWAY_TIMEOUT_MS;
   }
 
   public async createCheckoutSession(
     input: CreateBillingCheckoutSessionInput,
   ): Promise<BillingCheckoutSessionDefinition> {
-    const response = await this.fetchFn(`${this.apiBaseUrl.replace(/\/+$/, "")}/transactions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.options.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        items: [
-          {
-            quantity: 1,
-            price: {
-              name: `Automatic Agent Invoice ${input.invoice.invoiceId}`,
-              description: `Invoice ${input.invoice.invoiceId}`,
-              unit_price: {
-                amount: String(Math.max(0, Math.round(input.invoice.totalUsd * 100))),
-                currency_code: input.invoice.currency,
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(this.fetchFn, `${this.apiBaseUrl.replace(/\/+$/, "")}/transactions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.options.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          items: [
+            {
+              quantity: 1,
+              price: {
+                name: `Automatic Agent Invoice ${input.invoice.invoiceId}`,
+                description: `Invoice ${input.invoice.invoiceId}`,
+                unit_price: {
+                  amount: String(toMinorCurrencyUnits(input.invoice.totalUsd)),
+                  currency_code: input.invoice.currency,
+                },
               },
             },
+          ],
+          custom_data: {
+            invoice_id: input.invoice.invoiceId,
+            account_id: input.account.accountId,
+            tenant_id: input.invoice.tenantId ?? "",
+            created_at: input.createdAt,
           },
-        ],
-        custom_data: {
-          invoice_id: input.invoice.invoiceId,
-          account_id: input.account.accountId,
-          tenant_id: input.invoice.tenantId ?? "",
-          created_at: input.createdAt,
-        },
-        checkout: {
-          success_url: this.options.successUrl,
-          cancel_url: this.options.cancelUrl,
-        },
-      }),
-    });
+          checkout: {
+            success_url: this.options.successUrl,
+            cancel_url: this.options.cancelUrl,
+          },
+        }),
+      }, this.requestTimeoutMs);
+    } catch (error) {
+      throw createGatewayTransportError("billing.paddle_checkout_failed", error, {
+        invoiceId: input.invoice.invoiceId,
+        accountId: input.account.accountId,
+      });
+    }
 
     const payload = await response.json() as PaddleTransactionResponse;
     if (!response.ok) {
@@ -615,15 +728,26 @@ export class PaddleBillingPaymentGateway implements BillingPaymentGateway {
       account: BillingAccountRecord;
     },
   ): Promise<BillingPaymentSessionStatusSnapshot | null> {
-    const response = await this.fetchFn(
-      `${this.apiBaseUrl.replace(/\/+$/, "")}/transactions/${encodeURIComponent(input.session.gatewaySessionRef)}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${this.options.apiKey}`,
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(
+        this.fetchFn,
+        `${this.apiBaseUrl.replace(/\/+$/, "")}/transactions/${encodeURIComponent(input.session.gatewaySessionRef)}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${this.options.apiKey}`,
+          },
         },
-      },
-    );
+        this.requestTimeoutMs,
+      );
+    } catch (error) {
+      throw createGatewayTransportError("billing.paddle_reconcile_failed", error, {
+        invoiceId: input.invoice.invoiceId,
+        accountId: input.account.accountId,
+        sessionId: input.session.sessionId,
+      });
+    }
 
     const payload = await response.json() as PaddleTransactionResponse;
     if (!response.ok) {

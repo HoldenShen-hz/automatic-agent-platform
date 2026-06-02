@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { EvidenceService, type EvidenceCategory, type EvidenceMetadata } from "../../../../../src/platform/five-plane-state-evidence/memory/evidence-service.js";
 
@@ -568,4 +571,34 @@ test("integrateWithLearning() handles records without learning signals", () => {
 
   // Should still succeed but may have no signals
   assert.equal(result.integrated, true);
+});
+
+test("EvidenceService persists records and restores the integrity hash chain when configured", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-evidence-service-"));
+  const persistencePath = join(workspace, "evidence-records.json");
+  const service = new EvidenceService({
+    integrationEnabled: false,
+    persistencePath,
+    signingSecret: "evidence-secret",
+  });
+
+  const first = service.record("quality", "memory:first", { score: 0.9 }, makeMetadata());
+  const second = service.record("feedback", "memory:second", { sentiment: "positive" }, makeMetadata());
+
+  const persisted = JSON.parse(readFileSync(persistencePath, "utf8")) as {
+    records: Array<{ id: string; previousHash: string | null; integrityHash: string }>;
+  };
+  assert.equal(persisted.records.length, 2);
+  assert.equal(persisted.records[0]?.id, first.id);
+  assert.equal(persisted.records[1]?.id, second.id);
+  assert.equal(persisted.records[1]?.previousHash, persisted.records[0]?.integrityHash ?? null);
+
+  const reloaded = new EvidenceService({
+    integrationEnabled: false,
+    persistencePath,
+    signingSecret: "evidence-secret",
+  });
+  assert.equal(reloaded.getStats().total, 2);
+  assert.ok(reloaded.get(first.id) != null);
+  assert.ok(reloaded.get(second.id) != null);
 });

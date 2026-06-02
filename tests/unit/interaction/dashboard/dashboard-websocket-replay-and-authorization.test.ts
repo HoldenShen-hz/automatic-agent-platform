@@ -181,7 +181,7 @@ test("DashboardWebSocketServer routes deltas to metric subscribers without requi
     "tenant-1",
     null,
     "1.0",
-    { allowedChannels: ["approvals"], allowedTenantIds: ["tenant-1"] },
+    { allowedChannels: ["approvals"], allowedTenantIds: ["tenant-1"], allowedMetrics: ["totalTasks"] },
     ["totalTasks"],
   );
 
@@ -205,7 +205,7 @@ test("DashboardWebSocketServer updateMetricSubscriptions removes old metric rout
     "tenant-1",
     null,
     "1.0",
-    { allowedChannels: ["approvals"], allowedTenantIds: ["tenant-1"] },
+    { allowedChannels: ["approvals"], allowedTenantIds: ["tenant-1"], allowedMetrics: ["totalTasks", "incidentCount"] },
     ["totalTasks"],
   );
 
@@ -230,4 +230,66 @@ test("DashboardWebSocketServer updateMetricSubscriptions removes old metric rout
 
   assert.equal(oldMetricCount, 0);
   assert.equal(newMetricCount, 1);
+});
+
+test("DashboardWebSocketServer rejects mixed legacy and channel subscription arrays", () => {
+  const server = new DashboardWebSocketServer();
+
+  assert.throws(
+    () => server.registerClient(
+      ["dashboard:operator", { channel: "task", filterId: "task-1" }] as unknown as readonly string[],
+      "principal-1",
+      "tenant-1",
+    ),
+    /Mixed subscription formats/,
+  );
+});
+
+test("DashboardWebSocketServer does not leak cross-tenant replay oracle details", () => {
+  const server = new DashboardWebSocketServer();
+  const authorization = {
+    allowedChannels: ["task"] as const,
+    allowedTenantIds: ["tenant-1"],
+    allowedTaskIds: ["task-1"],
+  };
+
+  server.registerClient(
+    [{ channel: "task", filterId: "task-1" }],
+    "principal-1",
+    "tenant-2",
+    null,
+    "1.0",
+    { allowedChannels: ["task"], allowedTenantIds: ["tenant-2"], allowedTaskIds: ["task-1"] },
+  );
+  server.pushDelta(createDashboardDelta({ deltaId: "delta-secret", tenantId: "tenant-2" }));
+
+  const reconnect = server.registerClient(
+    [{ channel: "task", filterId: "task-1" }],
+    "principal-1",
+    "tenant-1",
+    "delta-secret",
+    "1.0",
+    authorization,
+  );
+
+  assert.equal(reconnect.gapMessage?.type, "stream_gap");
+  assert.equal((reconnect.gapMessage?.payload as { reasonCode?: string } | undefined)?.reasonCode, "stream.last_event_id_not_replayable");
+});
+
+test("DashboardWebSocketServer rejects unauthorized metric subscriptions on update", () => {
+  const server = new DashboardWebSocketServer();
+  const { clientId } = server.registerClient(
+    [{ channel: "approvals" }],
+    "principal-1",
+    "tenant-1",
+    null,
+    "1.0",
+    { allowedChannels: ["approvals"], allowedTenantIds: ["tenant-1"], allowedMetrics: ["incidentCount"] },
+    ["incidentCount"],
+  );
+
+  assert.throws(
+    () => server.updateMetricSubscriptions(clientId, ["totalTasks"]),
+    /not authorized/,
+  );
 });

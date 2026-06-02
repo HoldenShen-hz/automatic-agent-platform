@@ -172,25 +172,25 @@ describe("ApiAuthService", () => {
       );
     });
 
-    it("should fallback to API key when no Bearer token", () => {
+    it("should reject API key auth by default on non-exchange endpoints", () => {
       const apiKeys: ApiKeyRecord[] = [
         { apiKey: "fallback-key", actorId: "fallback-user", roles: ["operator"] },
       ];
       const svc = createService(apiKeys);
 
-      const principal = svc.authenticate({ "x-api-key": "fallback-key" });
-
-      assert.strictEqual(principal.actorId, "fallback-user");
-      assert.strictEqual(principal.authMethod, "api_key");
+      assert.throws(
+        () => svc.authenticate({ "x-api-key": "fallback-key" }),
+        (err: unknown) => err instanceof ApiAuthError && err.code === "api.auth_required",
+      );
     });
 
-    it("should trim whitespace from API key", () => {
+    it("should allow API key auth only when explicitly enabled", () => {
       const apiKeys: ApiKeyRecord[] = [
         { apiKey: "trim-key", actorId: "trim-user", roles: ["viewer"] },
       ];
       const svc = createService(apiKeys);
 
-      const principal = svc.authenticate({ "x-api-key": "  trim-key  " });
+      const principal = svc.authenticate({ "x-api-key": "  trim-key  " }, { allowApiKey: true });
 
       assert.strictEqual(principal.actorId, "trim-user");
     });

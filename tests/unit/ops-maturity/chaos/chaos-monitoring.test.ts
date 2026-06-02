@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 import { resolveRepoPath } from "../../../helpers/repo-root.js";
 
 import {
@@ -8,6 +8,15 @@ import {
   BoundaryControl,
   InMemoryChaosExperimentSchedulerRepository,
 } from "../../../../src/ops-maturity/chaos/chaos-experiment-scheduler.js";
+
+async function flushMonitoringTicks(iterations: number, tickMs: number): Promise<void> {
+  for (let index = 0; index < iterations; index++) {
+    mock.timers.tick(tickMs);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  }
+}
 
 /**
  * R17-62: Chaos experiment state is purely in-memory and lost on restart
@@ -21,81 +30,76 @@ import {
  * R17-72: Tests for continuous monitoring loop
  */
 test("ChaosExperimentScheduler: startContinuousMonitoring evaluates hypotheses on interval", async () => {
-  const scheduler = new ChaosExperimentScheduler();
-  const hypotheses: SteadyStateHypothesis[] = [
-    { name: "latency_hypothesis", metricName: "latency", tolerance: 100, operator: "lt" },
-  ];
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
+  try {
+    const scheduler = new ChaosExperimentScheduler();
+    const hypotheses: SteadyStateHypothesis[] = [
+      { name: "latency_hypothesis", metricName: "latency", tolerance: 100, operator: "lt" },
+    ];
 
-  const experiment = scheduler.scheduleExperiment({
-    name: "Continuous Monitoring Test",
-    description: "Testing continuous monitoring",
-    target: { targetKind: "service", targetId: "svc-1", labels: {} },
-    fault: { faultType: "latency", intensity: 50, durationMs: 10000, parameters: {} },
-    steadyStateHypotheses: hypotheses,
-    scheduledAt: "2026-04-20T00:00:00.000Z",
-    maxDurationMs: 30000,
-  });
+    const experiment = scheduler.scheduleExperiment({
+      name: "Continuous Monitoring Test",
+      description: "Testing continuous monitoring",
+      target: { targetKind: "service", targetId: "svc-1", labels: {} },
+      fault: { faultType: "latency", intensity: 50, durationMs: 10000, parameters: {} },
+      steadyStateHypotheses: hypotheses,
+      scheduledAt: "2026-04-20T00:00:00.000Z",
+      maxDurationMs: 30000,
+    });
 
-  scheduler.startExperiment(experiment.experimentId);
+    scheduler.startExperiment(experiment.experimentId);
 
-  let evalCount = 0;
-  const evaluationResults: Array<{ passed: boolean; measuredValue: number | null; message: string }> = [];
+    let evalCount = 0;
 
-  // Start continuous monitoring with fast interval for testing
-  scheduler.startContinuousMonitoring(
-    experiment.experimentId,
-    100, // 100ms interval for fast test
-    async () => {
-      evalCount++;
-      const result = { passed: true, measuredValue: 50, message: "OK" };
-      evaluationResults.push(result);
-      return result;
-    },
-  );
+    scheduler.startContinuousMonitoring(
+      experiment.experimentId,
+      100,
+      async () => {
+        evalCount++;
+        return { passed: true, measuredValue: 50, message: "OK" };
+      },
+    );
 
-  // Wait for multiple evaluation cycles
-  await new Promise((resolve) => setTimeout(resolve, 350));
-
-  // Stop monitoring
-  scheduler.stopContinuousMonitoring(experiment.experimentId);
-
-  // Should have evaluated multiple times (at least 3 cycles in 350ms with 100ms interval)
-  assert.ok(evalCount >= 3, `Expected at least 3 evaluations, got ${evalCount}`);
+    await flushMonitoringTicks(4, 100);
+    scheduler.stopContinuousMonitoring(experiment.experimentId);
+    assert.ok(evalCount >= 3, `Expected at least 3 evaluations, got ${evalCount}`);
+  } finally {
+    mock.timers.reset();
+  }
 });
 
 test("ChaosExperimentScheduler: continuous monitoring stops when experiment ends", async () => {
-  const scheduler = new ChaosExperimentScheduler();
-  const experiment = scheduler.scheduleExperiment({
-    name: "Stop Monitoring Test",
-    description: "Testing stop on experiment end",
-    target: { targetKind: "service", targetId: "svc-1", labels: {} },
-    fault: { faultType: "latency", intensity: 50, durationMs: 10000, parameters: {} },
-    steadyStateHypotheses: [{ name: "h1", metricName: "m", tolerance: 1, operator: "lt" }],
-    scheduledAt: "2026-04-20T00:00:00.000Z",
-    maxDurationMs: 30000,
-  });
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
+  try {
+    const scheduler = new ChaosExperimentScheduler();
+    const experiment = scheduler.scheduleExperiment({
+      name: "Stop Monitoring Test",
+      description: "Testing stop on experiment end",
+      target: { targetKind: "service", targetId: "svc-1", labels: {} },
+      fault: { faultType: "latency", intensity: 50, durationMs: 10000, parameters: {} },
+      steadyStateHypotheses: [{ name: "h1", metricName: "m", tolerance: 1, operator: "lt" }],
+      scheduledAt: "2026-04-20T00:00:00.000Z",
+      maxDurationMs: 30000,
+    });
 
-  scheduler.startExperiment(experiment.experimentId);
+    scheduler.startExperiment(experiment.experimentId);
 
-  let evalCount = 0;
+    scheduler.startContinuousMonitoring(
+      experiment.experimentId,
+      50,
+      async () => {
+        scheduler.recordSteadyStateResult(experiment.experimentId, "h1", 0.5, true, "OK");
+        return { passed: true, measuredValue: 0.5, message: "OK" };
+      },
+    );
 
-  scheduler.startContinuousMonitoring(
-    experiment.experimentId,
-    50,
-    async () => {
-      evalCount++;
-      // Complete the experiment immediately
-      scheduler.recordSteadyStateResult(experiment.experimentId, "h1", 0.5, true, "OK");
-      return { passed: true, measuredValue: 0.5, message: "OK" };
-    },
-  );
-
-  // Wait for at least one evaluation cycle
-  await new Promise((resolve) => setTimeout(resolve, 150));
-
-  // Monitoring should have stopped automatically because experiment completed
-  const retrieved = scheduler.getExperiment(experiment.experimentId);
-  assert.ok(retrieved!.status === "completed" || retrieved!.status === "violated");
+    await flushMonitoringTicks(3, 50);
+    const retrieved = scheduler.getExperiment(experiment.experimentId);
+    assert.ok(retrieved != null);
+    assert.ok(retrieved.status === "completed" || retrieved.status === "violated");
+  } finally {
+    mock.timers.reset();
+  }
 });
 
 test("ChaosExperimentScheduler: stopContinuousMonitoring clears interval", () => {

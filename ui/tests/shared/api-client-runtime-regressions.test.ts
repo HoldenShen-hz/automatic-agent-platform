@@ -375,6 +375,55 @@ describe("shared api-client runtime regressions", () => {
     expect(writeAttempts).toBe(1);
   });
 
+  it("honors per-request timeout overrides on long-running calls", async () => {
+    vi.useFakeTimers();
+    let attempts = 0;
+    const transport = new HttpTransport({
+      baseUrl: "https://example.test",
+      timeoutMs: 50,
+      fetchImplementation: async (_input, init) => {
+        attempts += 1;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        if (init?.signal?.aborted === true) {
+          throw new DOMException("Aborted", "AbortError");
+        }
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    });
+
+    const request = createRequest("/api/v1/slow");
+    request.timeoutMs = 5;
+    const result = transport.send(request).then(
+      () => ({ ok: true as const }),
+      (error) => ({ ok: false as const, error }),
+    );
+
+    await vi.runAllTimersAsync();
+    const settled = await result;
+    expect(settled.ok).toBe(false);
+    expect(attempts).toBe(1);
+  });
+
+  it("fails closed on oversized JSON responses before callers parse them", async () => {
+    const hugeBody = JSON.stringify({
+      data: {
+        payload: "x".repeat(1_200_000),
+      },
+    });
+    const transport = new HttpTransport({
+      baseUrl: "https://example.test",
+      fetchImplementation: async () => new Response(hugeBody, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    });
+
+    await expect(transport.send(createRequest("/api/v1/huge"))).rejects.toThrow("rest.response_too_large:1048576");
+  });
+
   it("exposes credentials and mode for cross-origin API requests and tolerates uppercase absolute URLs", async () => {
     let capturedMode = "";
     let capturedCredentials = "";

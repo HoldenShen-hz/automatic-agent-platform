@@ -11,6 +11,7 @@
 - 方案取舍问题以 `adr/` 为准。
 - 新平台设计与迁移边界以本项目 `docs_zh/architecture/` 下的平台架构文档为准。
 - 当前推进动作以 `operations/` 为准。
+- division / family 的 canonical 归属以 `config/quality/division-catalog.json` 与 `docs_zh/reference/division-catalog.md` 为准；`config/division-coverage/` 下的 family readiness / benchmark / minimum evidence / claims 配置属于治理补充层，若与 canonical family 归属冲突，以 catalog 为准并在同次变更中修正文档或治理配置。
 - 根级 `CHANGELOG.md` 只记录发布与变更事实，不重新定义 contract、ADR 或架构边界；若条目与治理链冲突，以治理链为准并在同次变更中回写。
 
 补充：

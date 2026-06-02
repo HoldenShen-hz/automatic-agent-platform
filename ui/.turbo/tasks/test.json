@@ -3,9 +3,11 @@
   "command": [
     "vitest",
     "run",
-    "tests/unit/ui/packages/features/division-inventory/web.test.tsx",
-    "tests/features/division-inventory.test.tsx"
+    "tests/unit/ui/shared/ws-client.test.ts",
+    "tests/shared/shared-worker-ws-regression.test.ts",
+    "tests/unit/ui/apps/web/runtime.test.tsx",
+    "tests/shared/api-client-runtime-regressions.test.ts"
   ],
-  "startedAt": "2026-06-01T00:59:10.400Z",
-  "completedAt": "2026-06-01T00:59:11.094Z"
+  "startedAt": "2026-06-02T06:51:19.860Z",
+  "completedAt": "2026-06-02T06:51:22.083Z"
 }

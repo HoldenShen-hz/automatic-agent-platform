@@ -4,8 +4,39 @@
 > **适用范围**：YONO Web3 社交预测市场业务设计、产品设计、模型设计、系统架构设计、运营治理设计  
 > **定位**：面向 Web3、AI、科技、宏观与事件型市场的社交预测与概率共识平台  
 > **核心原则**：预测可量化、证据可追溯、评论可建模、市场可交易、风险可治理、结果可复盘  
+> **审阅修订**：2026-06-02，按仓库现状收紧为“当前最小基线 + 目标合同/路线图”双轨文档
 
 ---
+
+# 0.0 审阅修订读取规则
+
+1. 本文同时包含当前仓库最小可运行基线与 YONO 目标架构；若未显式标注“当前主基线”，默认按目标合同阅读，不得当作“仓库已经完整实现”的事实陈述。
+2. 当前主基线以 `src/domains/yono/index.ts`、`src/domains/yono/yono-model.ts`、`src/platform/five-plane-interface/api/http-server/yono-routes.ts` 为准。
+3. `推荐目录`、`Agent 清单`、`数据库表`、`商业模式`、`合规策略`、`指标体系` 默认是设计目标或路线图，不代表仓库已经具备对应服务、持久化、报表或治理闭环。
+4. 若当前实现与目标合同存在差距，应优先修正文档口径，不把目标态伪装成现状；仅当仓库确有最小实现时，才在“当前主基线”中列明。
+
+## 0.0.1 当前主基线
+
+当前仓库已经具备的 YONO 最小基线如下：
+
+| 能力 | 当前主基线 |
+|---|---|
+| 数据存储 | `YonoRepository` 基于 in-memory `Map` 保存 market/comment/signal/forecast/order/trade/position/dispute/event |
+| 市场 | 支持 create/list/get、`review/open/pause/close/resolve` 最小生命周期 |
+| 评论 | 支持创建评论、自动抽取最小 comment signal、列出评论 |
+| 预测 | 支持显式概率预测 `explicit_probability` |
+| 共识概率 | 支持基于 market/comment/forecast 的启发式融合 |
+| Review / Resolution | 支持最小 `MarketReviewAgent` 与 `ResolutionAssistAgent` |
+| 交易 | 支持最小订单创建/取消；未实现真实撮合、仓位维护与结算账本 |
+| 争议 | 支持 dispute submit / list / decide 的最小基线 |
+| API | 已暴露最小 REST 路由集，但不是本文后续章节列出的完整产品 API 面 |
+| 平台集成 | 已注册 domain definition、workflow、tool bundle 与最小 plugin binding；尚未形成完整 mission/task seed、admin console、指标/报表闭环 |
+
+## 0.0.2 目标合同边界
+
+- 第 3-11 节中的对象字段、公式、模型与治理条目，按目标合同描述；当前主基线通常只实现其中的最小子集。
+- 第 12-16 节中的系统目录、事件包络、API 面、数据库表是推荐架构，而不是仓库现状清单。
+- 第 17-25 节默认是路线图、运营设计、商业化与合规建议，不应读取为“已经落地并在 runtime 生效”。
 
 # 0. 一句话定义
 
@@ -129,6 +160,9 @@ YONO 的长期愿景是成为：
 ---
 
 # 3. 核心业务对象
+
+> 审阅修订说明（2026-06-02）  
+> 本章展示的是对象目标合同 superset。当前主基线只实现了最小 schema 与最小填充逻辑：部分可选字段保留在 schema 中，但创建/更新路径未必写入；高级对象如 `YonoUserReputation`、forecast settlement、结构化 comment signal 扩展字段仍属目标设计。
 
 ## 3.1 Market
 
@@ -1347,6 +1381,9 @@ YONO Product Domain
 
 ## 12.3 推荐目录
 
+> 审阅修订说明（2026-06-02）  
+> 这是目标拆分目录，不是当前仓库目录事实。当前仓库的 YONO 实现仍集中在 `src/domains/yono/index.ts` 与 `src/domains/yono/yono-model.ts`，以最小可运行基线为主。
+
 ```text
 src/domains/yono/
   market/
@@ -1410,6 +1447,9 @@ src/domains/yono/
 # 13. Agent 设计
 
 ## 13.1 YONO 应该有哪些 Agent
+
+> 审阅修订说明（2026-06-02）  
+> 本表是目标 agent family 清单。当前主基线只实现了 `Market Review Agent`、`Social Forecast Agent`、`Resolution Assist Agent` 三类最小能力；其余 agent 仍是后续扩展项。
 
 | Agent | 职责 |
 |---|---|
@@ -1516,6 +1556,9 @@ type ResolutionDraft = {
 
 # 14. 事件体系
 
+> 审阅修订说明（2026-06-02）  
+> 本章描述目标事件驱动 contract。当前主基线的 `YonoEventEnvelope` 仅包含 `eventId / eventType / aggregateId / occurredAt / payload` 五个字段，尚未扩展到本章后续列出的完整 envelope 元数据。
+
 YONO 应是事件驱动系统。
 
 ## 14.1 核心事件
@@ -1570,6 +1613,9 @@ type YonoEventEnvelope<T> = {
 ---
 
 # 15. API 设计
+
+> 审阅修订说明（2026-06-02）  
+> 本章列的是目标产品 API 面。当前主基线只暴露最小市场、评论、预测、共识、订单、争议、resolution-draft 等接口，尚未覆盖 comment reaction/report、forecast record、dispute decision 外部路由、完整 trading admin 与 moderation API。
 
 ## 15.1 Market API
 
@@ -1633,6 +1679,9 @@ POST /api/v1/yono/disputes/:disputeId/decision
 ---
 
 # 16. 数据库表设计
+
+> 审阅修订说明（2026-06-02）  
+> 本章是推荐持久化模型。当前主基线仍使用 in-memory repository，不应把这些 PostgreSQL 表定义理解为仓库已经提交的 migration 或 SQL schema。
 
 ## 16.1 markets
 
@@ -1783,6 +1832,9 @@ CREATE TABLE yono_user_reputation (
 
 # 17. 运营设计
 
+> 审阅修订说明（2026-06-02）  
+> 本章默认是运营路线图与增长设计；leaderboard、badge、reward、shareable card、KOL page 等能力当前主基线尚未实现。
+
 ## 17.1 冷启动策略
 
 YONO 冷启动最大的难点是：
@@ -1866,6 +1918,9 @@ YONO 冷启动最大的难点是：
 
 # 18. 商业模式
 
+> 审阅修订说明（2026-06-02）  
+> 本章属于商业化规划，不代表当前仓库已经存在交易费、分析订阅、API 计费或赞助市场实现。
+
 ## 18.1 收入来源
 
 | 收入 | 说明 |
@@ -1904,6 +1959,9 @@ YONO 冷启动最大的难点是：
 
 # 19. 合规风险
 
+> 审阅修订说明（2026-06-02）  
+> 本章是合规设计建议。当前主基线仅通过 `points_only` 交易模式和最小 review/risk 字段表达保守方向，地域限制、真钱/提现开关、KYC 分层与政策执行尚未形成 runtime enforcement。
+
 YONO 最大风险之一是合规。
 
 ## 19.1 必须关注的问题
@@ -1936,6 +1994,9 @@ YONO 最大风险之一是合规。
 ---
 
 # 20. MVP 范围
+
+> 审阅修订说明（2026-06-02）  
+> 本章是目标 MVP 路线图，而不是“现已全部具备”的功能清单。当前主基线只覆盖其中的最小可运行子集，且管理后台、指标采集、自动降权/告警、完整 reputation/settlement/update 管线仍未闭环。
 
 ## 20.1 MVP 必须有
 
@@ -2012,6 +2073,9 @@ YONO 最大风险之一是合规。
 
 # 21. 关键指标
 
+> 审阅修订说明（2026-06-02）  
+> 本章是建议指标体系。当前主基线尚未内建 DAU/WAU、Brier/LogLoss/ECE、Spread/Resolution Delay 等产品与质量指标采集报表。
+
 ## 21.1 产品指标
 
 | 指标 | 说明 |
@@ -2057,6 +2121,9 @@ YONO 最大风险之一是合规。
 ---
 
 # 22. 风险清单
+
+> 审阅修订说明（2026-06-02）  
+> 本章是风险台账与建议缓解，不代表限仓、法律审查、争议窗口、操纵标签、冷静期等策略已在 runtime 完成 enforcement。
 
 | 风险 | 严重度 | 说明 | 缓解 |
 |---|---|---|---|
@@ -2108,6 +2175,9 @@ YONO 最大风险之一是合规。
 ---
 
 # 24. 与 Mission 架构的关系
+
+> 审阅修订说明（2026-06-02）  
+> 当前主基线已经把 YONO 注册为 domain definition，并提供 workflow/tool bundle/plugin binding；但本文的 mission 示例、domain seed、长期指标目标仍是概念映射，尚未在 mission 编排侧形成专门的 YONO blueprint 或 seed 配置。
 
 如果 YONO 接入 Automatic Agent Platform，建议：
 
@@ -2187,4 +2257,3 @@ YONO v1.0 建议按以下原则冻结：
 最终产品形态：
 
 > **YONO = Prediction Market + Social Forecasting Engine + Reputation Network + AI Evidence Layer + Governance/Resolution System**
-

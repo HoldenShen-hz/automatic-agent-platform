@@ -20,6 +20,7 @@ export interface DashboardAuthorizationScope {
   readonly allowedChannels?: readonly string[];
   readonly allowedTenantIds?: readonly string[];
   readonly allowedTaskIds?: readonly string[];
+  readonly allowedMetrics?: readonly string[];
 }
 
 export interface WebSocketClient {
@@ -92,7 +93,13 @@ const REJECTED_CLIENT_ID_MAX_CLIENTS = "rejected:max_clients";
 function isChannelSubscriptionArray(
   value: readonly string[] | readonly DashboardChannelSubscription[],
 ): value is readonly DashboardChannelSubscription[] {
-  return value.length > 0 && typeof value[0] === "object";
+  return value.length > 0 && value.every((item) => typeof item === "object" && item != null);
+}
+
+function isLegacySubscriptionArray(
+  value: readonly string[] | readonly DashboardChannelSubscription[],
+): value is readonly string[] {
+  return value.length === 0 || value.every((item) => typeof item === "string");
 }
 
 function isTaskDelta(delta: DashboardDelta): boolean {
@@ -181,6 +188,7 @@ export class DashboardWebSocketServer {
     // Normalize and authorize subscriptions before creating connection state
     const normalized = this.normalizeSubscriptions(subscriptions, metricSubscriptions);
     this.assertAuthorized(tenantId!, normalized.channels, authorization);
+    this.assertAuthorizedMetrics(normalized.metrics, authorization);
 
     const connection: ConnectionState = {
       clientId,
@@ -245,6 +253,7 @@ export class DashboardWebSocketServer {
 
     const normalized = this.normalizeSubscriptions(subscriptions, [...connection.subscribedMetrics]);
     this.assertAuthorized(connection.tenantId, normalized.channels, connection.authorization);
+    this.assertAuthorizedMetrics(normalized.metrics, connection.authorization);
     connection.legacyDashboards = new Set(normalized.legacyDashboards);
     connection.subscribedChannels = [...normalized.channels];
     connection.subscribedMetrics = new Set(normalized.metrics);
@@ -257,6 +266,7 @@ export class DashboardWebSocketServer {
     if (connection == null) {
       return false;
     }
+    this.assertAuthorizedMetrics(metricSubscriptions, connection.authorization);
     connection.subscribedMetrics = new Set(metricSubscriptions);
     connection.lastActivityAt = nowIso();
     return true;
@@ -283,7 +293,7 @@ export class DashboardWebSocketServer {
   public broadcast(message: DashboardPushMessage): number {
     let sentCount = 0;
     for (const connection of this.connections.values()) {
-      if (connection.isConnected) {
+      if (connection.isConnected && this.connectionMatchesBroadcast(connection, message)) {
         sentCount += 1;
         this.deliverMessage(connection.clientId, message);
       }
@@ -362,11 +372,11 @@ export class DashboardWebSocketServer {
   public stopProjectionIntegration(): void {
     if (this.projectionPollingTimer !== null) {
       clearTimeout(this.projectionPollingTimer);
-    this.projectionPollingTimer = null;
-  }
-  this.projectionPollingInFlight = false;
-  this.projectionPollingSource = null;
-  this.projectionPollingFailureCount = 0;
+      this.projectionPollingTimer = null;
+    }
+    this.projectionPollingInFlight = false;
+    this.projectionPollingSource = null;
+    this.projectionPollingFailureCount = 0;
   }
 
   private assertRequiredIdentity(principal?: string, tenantId?: string): void {
@@ -382,7 +392,11 @@ export class DashboardWebSocketServer {
     subscriptions: readonly string[] | readonly DashboardChannelSubscription[],
     metricSubscriptions: readonly string[],
   ): NormalizedSubscriptions {
-    if (!isChannelSubscriptionArray(subscriptions)) {
+    if (!isLegacySubscriptionArray(subscriptions) && !isChannelSubscriptionArray(subscriptions)) {
+      throw new Error("Mixed subscription formats are not supported");
+    }
+
+    if (isLegacySubscriptionArray(subscriptions)) {
       const legacyDashboards = [...subscriptions];
       const metrics = new Set(metricSubscriptions);
       for (const item of subscriptions) {
@@ -435,6 +449,22 @@ export class DashboardWebSocketServer {
     }
   }
 
+  private assertAuthorizedMetrics(
+    metrics: readonly string[],
+    authorization?: DashboardAuthorizationScope | null,
+  ): void {
+    if (authorization == null || metrics.length === 0) {
+      return;
+    }
+
+    const allowedMetrics = new Set(authorization.allowedMetrics ?? []);
+    for (const metric of metrics) {
+      if (!(metric === "*" && allowedMetrics.has("*")) && !allowedMetrics.has(metric)) {
+        throw new Error(`Metric ${metric} is not authorized`);
+      }
+    }
+  }
+
   private replayFrom(
     lastEventId: string | null,
     connection: ConnectionState,
@@ -445,19 +475,30 @@ export class DashboardWebSocketServer {
 
     const visible = this.replayBuffer.filter((delta) => this.connectionMatchesDelta(connection, delta));
     if (visible.length === 0) {
-      return { missedEvents: [], gapMessage: null };
+      const reasonCode = !REPLAY_EVENT_ID_PATTERN.test(lastEventId)
+        ? "stream.invalid_last_event_id"
+        : "stream.last_event_id_not_replayable";
+      return {
+        missedEvents: [],
+        gapMessage: this.createMessage("stream_gap", connection.clientId, {
+          lastEventId,
+          expectedOldestEventId: null,
+          latestEventId: null,
+          reasonCode,
+          recoveryAction: reasonCode === "stream.invalid_last_event_id"
+            ? "retry_with_valid_event_id"
+            : "resync_from_snapshot",
+        }),
+      };
     }
 
     const matchedIndex = visible.findIndex((delta) => delta.deltaId === lastEventId);
     if (matchedIndex === -1) {
       const oldestVisible = visible[0];
       const newestVisible = visible.at(-1);
-      const existsOutsideScope = this.replayBuffer.some((delta) => delta.deltaId === lastEventId);
       const reasonCode = !REPLAY_EVENT_ID_PATTERN.test(lastEventId)
         ? "stream.invalid_last_event_id"
-        : existsOutsideScope
-          ? "stream.last_event_id_outside_scope"
-          : "stream.last_event_id_not_replayable";
+        : "stream.last_event_id_not_replayable";
       return {
         missedEvents: [],
         gapMessage: this.createMessage("stream_gap", connection.clientId, {
@@ -503,6 +544,47 @@ export class DashboardWebSocketServer {
     }
 
     return connection.subscribedChannels.some((subscription) => this.subscriptionMatchesDelta(subscription, connection, delta));
+  }
+
+  private connectionMatchesBroadcast(connection: ConnectionState, message: DashboardPushMessage): boolean {
+    const payload = message.payload;
+    if (payload != null && typeof payload === "object" && "affectedMetrics" in payload) {
+      return this.connectionMatchesDelta(connection, payload as DashboardDelta);
+    }
+    if (payload == null || typeof payload !== "object" || !("scope" in payload)) {
+      return false;
+    }
+
+    const scope = (payload as {
+      scope?: {
+        tenantId?: string;
+        visibilityScope?: "global" | "tenant";
+        metrics?: readonly string[];
+        channels?: readonly string[];
+        taskIds?: readonly string[];
+      };
+    }).scope;
+    if (scope == null) {
+      return false;
+    }
+
+    if (scope.visibilityScope === "tenant" && scope.tenantId != null && scope.tenantId !== connection.tenantId) {
+      return false;
+    }
+
+    if (scope.metrics?.some((metric) => connection.subscribedMetrics.has(metric) || metric === "*")) {
+      return true;
+    }
+
+    if (scope.channels?.some((channel) => connection.subscribedChannels.some((subscription) => subscription.channel === channel || subscription.channel === "*"))) {
+      return true;
+    }
+
+    if (scope.taskIds?.some((taskId) => connection.subscribedChannels.some((subscription) => subscription.channel === "task" && subscription.filterId === taskId))) {
+      return true;
+    }
+
+    return false;
   }
 
   private subscriptionMatchesDelta(

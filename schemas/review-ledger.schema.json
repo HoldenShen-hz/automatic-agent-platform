@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/review-ledger.schema.json",
+  "title": "Review Ledger Record",
+  "type": "object",
+  "required": [
+    "reviewSourceId",
+    "sourceFile",
+    "rowId",
+    "title",
+    "status",
+    "category",
+    "sourceKind",
+    "sourceRefs"
+  ],
+  "properties": {
+    "reviewSourceId": {
+      "type": "string",
+      "pattern": "^AAS-REVIEW-SRC-"
+    },
+    "sourceFile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rowId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "canonicalIssueId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "todo",
+        "fixed",
+        "done",
+        "partial",
+        "accepted_risk",
+        "stale",
+        "needs_revalidation"
+      ]
+    },
+    "severity": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "P0",
+        "P1",
+        "P2",
+        "P3",
+        null
+      ]
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceKind": {
+      "type": "string",
+      "enum": [
+        "review_table",
+        "manual_sample",
+        "baseline_verification",
+        "cleanup_review",
+        "issue_summary",
+        "release_review"
+      ]
+    },
+    "sourceRefs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "testRefs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "docRefs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "latestStatus": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "latestReviewDate": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "latestClosureNote": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "freshness": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "fresh",
+        "stale",
+        "revalidated",
+        "superseded",
+        "needs_revalidation",
+        null
+      ]
+    }
+  },
+  "additionalProperties": false
+}

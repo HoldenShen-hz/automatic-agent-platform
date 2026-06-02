@@ -90,6 +90,10 @@ export interface ApiAuthServiceOptions {
   isJwtRevoked?: (jwtId: string, claims: Readonly<JwtClaims>) => boolean;
 }
 
+export interface ApiAuthenticateOptions {
+  allowApiKey?: boolean;
+}
+
 
 interface JwtClaims {
   sub: string;
@@ -374,7 +378,7 @@ export class ApiAuthService {
    * @returns The authenticated principal
    * @throws ApiAuthError if authentication fails
    */
-  public authenticate(headers: Record<string, string | undefined>): ApiPrincipal {
+  public authenticate(headers: Record<string, string | undefined>, options: ApiAuthenticateOptions = {}): ApiPrincipal {
     const authorization = headers.authorization;
     if (authorization?.startsWith("Bearer ")) {
       const verifyOptions = {
@@ -399,11 +403,11 @@ export class ApiAuthService {
     }
 
     const apiKey = headers["x-api-key"];
-    if (typeof apiKey === "string" && apiKey.trim().length > 0) {
+    if (options.allowApiKey === true && typeof apiKey === "string" && apiKey.trim().length > 0) {
       return this.exchangeApiKey(apiKey.trim()).principal;
     }
 
-    throw new ApiAuthError(401, "api.auth_required", "This endpoint requires a Bearer token or x-api-key.");
+    throw new ApiAuthError(401, "api.auth_required", "This endpoint requires a Bearer token.");
   }
 
   /**
@@ -414,8 +418,12 @@ export class ApiAuthService {
    * @returns The authenticated principal if authorization passes
    * @throws ApiAuthError if authentication fails or principal lacks required role
    */
-  public requireRole(headers: Record<string, string | undefined>, requiredRole: ApiRole): ApiPrincipal {
-    const principal = this.authenticate(headers);
+  public requireRole(
+    headers: Record<string, string | undefined>,
+    requiredRole: ApiRole,
+    options: ApiAuthenticateOptions = {},
+  ): ApiPrincipal {
+    const principal = this.authenticate(headers, options);
     if (!principalHasRequiredRole(principal.roles, requiredRole)) {
       throw new ApiAuthError(403, "api.forbidden", "Authenticated principal lacks the required role.");
     }

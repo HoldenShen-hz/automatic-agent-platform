@@ -9,6 +9,10 @@ import type {
   MultiStepToolExecutionInput,
   StepFailurePlan,
 } from "../../../../src/core/runtime/orchestrator/types.js";
+import type { TaskSnapshot } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-types.js";
+import type { IntakeRouteDecision } from "../../../../src/platform/five-plane-orchestration/routing/intake-router-model.js";
+import type { PlannedWorkflow } from "../../../../src/platform/five-plane-orchestration/routing/workflow-planner.js";
+import type { AdmissionBackpressureSnapshot } from "../../../../src/platform/five-plane-execution/dispatcher/admission-controller.js";
 
 import {
   runMultiStepOrchestration,
@@ -16,13 +20,70 @@ import {
   resetMultiStepToolRegistryForTests,
 } from "../../../../src/core/runtime/orchestrator/index.js";
 
+function createMockSnapshot(): TaskSnapshot {
+  return {
+    task: { taskId: "task_123" } as TaskSnapshot["task"],
+    workflow: null,
+    execution: null,
+    session: null,
+    stepOutputs: [],
+    artifacts: [],
+    events: [],
+    consistency: "authoritative",
+    observedAt: "2026-06-02T00:00:00.000Z",
+  };
+}
+
+function createMockRouting(): IntakeRouteDecision {
+  return {
+    workflowId: "wf_123",
+    divisionId: "div_123",
+    routeReason: "test",
+    routeTrace: [],
+    requiresOrchestration: true,
+    classification: {
+      intent: "create",
+      confidence: 1,
+      continuation: "new_task",
+      matchedRules: [],
+    },
+  } as IntakeRouteDecision;
+}
+
+function createMockPlannedWorkflow(): PlannedWorkflow {
+  return {
+    workflow: { workflowId: "wf_123" } as PlannedWorkflow["workflow"],
+    executionSteps: [],
+    planReason: "test",
+    dependencyEdges: [],
+  };
+}
+
+function createMockBackpressureSnapshot(): AdmissionBackpressureSnapshot {
+  return {
+    status: "ok",
+    degradationMode: "none",
+    queueGovernance: {
+      delayedCount: 0,
+      rateLimitedCount: 0,
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: 0,
+      nonPriorityBacklogSize: 0,
+      priorityBacklogSize: 0,
+    },
+    findings: [],
+  };
+}
+
 test("orchestrator re-exports MultiStepOrchestrationResult type", () => {
   // Verify the type is properly exported through the re-export chain
   const resultType: MultiStepOrchestrationResult = {
-    snapshot: {} as any,
+    snapshot: createMockSnapshot(),
     streamFrames: [],
-    routing: {} as any,
-    plannedWorkflow: {} as any,
+    routing: createMockRouting(),
+    plannedWorkflow: createMockPlannedWorkflow(),
     compaction: null,
   };
   assert.ok(resultType, "MultiStepOrchestrationResult should be a valid type");
@@ -75,37 +136,10 @@ test("MultiStepToolExecutionInput has required fields", () => {
 
 test("MultiStepOrchestrationResult has expected structure", () => {
   const result: MultiStepOrchestrationResult = {
-    snapshot: {
-      task: {} as any,
-      workflow: null,
-      execution: null,
-      session: null,
-      stepOutputs: [],
-      artifacts: [],
-      events: [],
-      consistency: "authoritative",
-      observedAt: new Date().toISOString(),
-    },
+    snapshot: createMockSnapshot(),
     streamFrames: [],
-    routing: {
-      workflowId: "wf_123",
-      divisionId: "div_123",
-      routeReason: "test",
-      routeTrace: [],
-      requiresOrchestration: true,
-      classification: {
-        intent: "create",
-        confidence: 1.0,
-        continuation: "new_task",
-        matchedRules: [],
-      },
-    },
-    plannedWorkflow: {
-      workflow: {} as any,
-      executionSteps: [],
-      planReason: "test",
-      dependencyEdges: [],
-    },
+    routing: createMockRouting(),
+    plannedWorkflow: createMockPlannedWorkflow(),
     compaction: null,
   };
 
@@ -140,10 +174,10 @@ test("orchestrator types are exported and usable", () => {
   // Type-only exports can't be checked with 'in' operator at runtime
   // Instead verify the types are valid TypeScript types by using them
   const resultType: MultiStepOrchestrationResult = {
-    snapshot: {} as any,
+    snapshot: createMockSnapshot(),
     streamFrames: [],
-    routing: {} as any,
-    plannedWorkflow: {} as any,
+    routing: createMockRouting(),
+    plannedWorkflow: createMockPlannedWorkflow(),
     compaction: null,
   };
 
@@ -176,12 +210,7 @@ test("MultiStepToolExecutionInput optional fields", () => {
       maxTier1AckBacklog: 50,
       urgentQueueHeadroom: 5,
     },
-    admissionBackpressureSnapshot: () => ({
-      status: "ok" as const,
-      degradationMode: "none" as const,
-      queueGovernance: { delayedCount: 0, rateLimitedCount: 0, backlogSize: 0, dispatchableBacklogSize: 0, claimedBacklogSize: 0, oldestWaitSeconds: 0, nonPriorityBacklogSize: 0, priorityBacklogSize: 0 } as any,
-      findings: [],
-    }),
+    admissionBackpressureSnapshot: () => createMockBackpressureSnapshot(),
   };
 
   assert.ok(input.admissionPolicy, "admissionPolicy should be accepted");
@@ -190,10 +219,10 @@ test("MultiStepToolExecutionInput optional fields", () => {
 
 test("MultiStepOrchestrationResult compaction can be object", () => {
   const result: MultiStepOrchestrationResult = {
-    snapshot: {} as any,
+    snapshot: createMockSnapshot(),
     streamFrames: [],
-    routing: {} as any,
-    plannedWorkflow: {} as any,
+    routing: createMockRouting(),
+    plannedWorkflow: createMockPlannedWorkflow(),
     compaction: {
       usageBeforeTokens: 1000,
       usageAfterStage1Tokens: 700,

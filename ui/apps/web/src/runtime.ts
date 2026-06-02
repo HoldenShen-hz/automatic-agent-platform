@@ -1,6 +1,6 @@
 import {
-  BrowserWSClient,
   createDedupeInterceptor,
+  createDefaultSharedWorkerFactory,
   DefaultRESTClient,
   DEFAULT_ACCEPT_VERSIONS,
   HttpTransport,
@@ -11,6 +11,7 @@ import {
   createIdempotencyKeyInterceptor,
   createOfflineQueueInterceptor,
   createRetryInterceptor,
+  createRuntimeWSClient,
   createTenantInterceptor,
   createTraceInterceptor,
   DEFAULT_RUNTIME_API_BASE_URL,
@@ -68,10 +69,14 @@ export function createWebRuntimeConfig(env: Record<string, string | boolean | un
 }
 
 export function readBootstrapAuthToken(doc: Document = document): string | undefined {
-  const metaToken = doc.querySelector('meta[name="aa-auth-token"]')?.getAttribute("content");
-  const metaExpiry = doc.querySelector('meta[name="aa-auth-token-exp"]')?.getAttribute("content");
+  const tokenMeta = doc.querySelector<HTMLMetaElement>('meta[name="aa-auth-token"]');
+  const expiryMeta = doc.querySelector<HTMLMetaElement>('meta[name="aa-auth-token-exp"]');
+  const metaToken = tokenMeta?.getAttribute("content");
+  const metaExpiry = expiryMeta?.getAttribute("content");
   const token = normalizeOptionalEnv(metaToken);
   const expiresAt = metaExpiry == null ? Number.NaN : Date.parse(metaExpiry);
+  tokenMeta?.remove();
+  expiryMeta?.remove();
   if (token == null || !Number.isFinite(expiresAt)) {
     return undefined;
   }
@@ -204,9 +209,9 @@ export function createWebRuntimeClients(
     ],
   );
 
-  const wsClient = config.wsUrl == null || typeof WebSocket === "undefined"
+  const wsClient = config.wsUrl == null
     ? constructOrCall(InMemoryWSClient)
-    : constructOrCall(BrowserWSClient, WebSocket, constructOrCall(InMemoryWSClient));
+    : createRuntimeWSClient(WebSocket, createDefaultSharedWorkerFactory());
 
   return { client, wsClient, offlineQueue, tokenManager };
 }

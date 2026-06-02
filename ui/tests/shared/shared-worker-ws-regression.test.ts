@@ -3,11 +3,11 @@ import { SharedWorkerWSClient, type WSEventEnvelope, type WSStatus } from "@aa/s
 
 class FakeMessagePort {
   public readonly postedMessages: unknown[] = [];
-  private readonly listeners = new Set<(event: MessageEvent<{ type: "status"; status: WSStatus } | { type: "event"; event: WSEventEnvelope }>) => void>();
+  private readonly listeners = new Set<(event: MessageEvent<{ capability: string; type: "status"; status: WSStatus } | { capability: string; type: "event"; event: WSEventEnvelope }>) => void>();
 
   public addEventListener(
     type: string,
-    listener: (event: MessageEvent<{ type: "status"; status: WSStatus } | { type: "event"; event: WSEventEnvelope }>) => void,
+    listener: (event: MessageEvent<{ capability: string; type: "status"; status: WSStatus } | { capability: string; type: "event"; event: WSEventEnvelope }>) => void,
   ): void {
     if (type === "message") {
       this.listeners.add(listener);
@@ -20,8 +20,8 @@ class FakeMessagePort {
 
   public start(): void {}
 
-  public dispatch(message: { type: "status"; status: WSStatus } | { type: "event"; event: WSEventEnvelope }): void {
-    const event = { data: message } as MessageEvent<typeof message>;
+  public dispatch(message: { capability: string; type: "status"; status: WSStatus } | { capability: string; type: "event"; event: WSEventEnvelope }): void {
+    const event = { data: message, currentTarget: this } as MessageEvent<typeof message>;
     for (const listener of this.listeners) {
       listener(event);
     }
@@ -37,9 +37,15 @@ class FakeSharedWorkerHub {
     return { port: port as unknown as MessagePort };
   }
 
-  public broadcast(message: { type: "status"; status: WSStatus } | { type: "event"; event: WSEventEnvelope }): void {
+  public broadcast(builder: (capability: string) => { capability: string; type: "status"; status: WSStatus } | { capability: string; type: "event"; event: WSEventEnvelope }): void {
     for (const port of this.ports) {
-      port.dispatch(message);
+      const connectMessage = port.postedMessages.find((message) =>
+        typeof message === "object" && message != null && (message as { action?: string }).action === "connect"
+      ) as { capability: string } | undefined;
+      if (connectMessage == null) {
+        continue;
+      }
+      port.dispatch(builder(connectMessage.capability));
     }
   }
 }
@@ -60,21 +66,23 @@ describe("shared worker websocket fanout", () => {
     tabOne.connect("wss://platform.example.test/realtime", "token-a");
     tabTwo.connect("wss://platform.example.test/realtime", "token-a");
 
-    hub.broadcast({ type: "status", status: "connected" });
-    hub.broadcast({
+    hub.broadcast((capability) => ({ capability, type: "status", status: "connected" }));
+    hub.broadcast((capability) => ({
+      capability,
       type: "event",
       event: { channel: "tasks", type: "task.updated", payload: "task-1" },
-    });
+    }));
 
     expect(statuses).toContain("connected");
     expect(tabOneEvents).toEqual(["task-1"]);
     expect(tabTwoEvents).toEqual(["task-1"]);
 
     unsubscribeTabTwo();
-    hub.broadcast({
+    hub.broadcast((capability) => ({
+      capability,
       type: "event",
       event: { channel: "tasks", type: "task.updated", payload: "task-2" },
-    });
+    }));
 
     expect(tabOneEvents).toEqual(["task-1", "task-2"]);
     expect(tabTwoEvents).toEqual(["task-1"]);

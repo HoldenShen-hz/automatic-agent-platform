@@ -150,19 +150,26 @@ test("DashboardWebSocketServer pushSnapshotToClient returns false for disconnect
 test("DashboardWebSocketServer broadcast reaches all connected clients", () => {
   const server = new DashboardWebSocketServer();
 
-  registerClient(server, ["dashboard:operator"]);
-  registerClient(server, ["dashboard:fleet"]);
+  registerClient(server, ["totalTasks"]);
+  registerClient(server, ["incidentCount"]);
 
   const message = {
     type: "dashboard_snapshot" as const,
     clientId: "",
     timestamp: new Date().toISOString(),
-    payload: { data: "test" },
+    payload: {
+      data: "test",
+      scope: {
+        visibilityScope: "tenant" as const,
+        tenantId: "tenant-test",
+        metrics: ["totalTasks"],
+      },
+    },
   };
 
   const sentCount = server.broadcast(message);
 
-  assert.equal(sentCount, 2);
+  assert.equal(sentCount, 1);
 });
 
 test("DashboardWebSocketServer getConnectedClients returns correct list", () => {

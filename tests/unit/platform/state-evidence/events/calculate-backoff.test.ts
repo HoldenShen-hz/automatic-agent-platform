@@ -6,110 +6,51 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
-import { join } from "node:path";
+import test, { mock } from "node:test";
 
-// We need to test the backoff calculation indirectly through the retry mechanism
-// since calculateBackoff is a private function in durable-event-bus.ts
-
-import { DurableEventBus } from "../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
 import { DlqService } from "../../../../../src/platform/five-plane-state-evidence/events/dlq-service.js";
-import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
-import { seedTaskAndExecution } from "../../../../helpers/seed.js";
+import { DEFAULT_DLQ_RETRY_BACKOFF_MS } from "../../../../../src/platform/five-plane-state-evidence/dlq/dlq-policy.js";
 
-test("calculateBackoff: exponential increase with cap", async () => {
-  const workspace = createTempWorkspace("aa-backoff-test-");
-  let db: SqliteDatabase | undefined;
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
 
-  try {
-    db = new SqliteDatabase(join(workspace, "backoff-test.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new DurableEventBus(db, store);
+test("calculateBackoff: exponential increase with cap", () => {
+  const dlqService = new DlqService();
+  const record = dlqService.enqueue({
+    sourceEventId: "evt_backoff_growth",
+    consumerId: "test-consumer",
+    errorCode: "test.error",
+    payloadJson: "{}",
+  });
 
-    seedTaskAndExecution(db, store, { taskId: "task-backoff", executionId: "exec-backoff" });
+  const retry1 = Date.parse(dlqService.scheduleRetry(record.deadLetterId).nextRetryAt!);
+  const retry2 = Date.parse(dlqService.scheduleRetry(record.deadLetterId).nextRetryAt!);
+  const retry3 = Date.parse(dlqService.scheduleRetry(record.deadLetterId).nextRetryAt!);
+  const retry4 = Date.parse(dlqService.scheduleRetry(record.deadLetterId).nextRetryAt!);
 
-    const deliveryTimes: number[] = [];
-
-    bus.subscribe("backoff_test_consumer", async (event) => {
-      if (event.payloadJson.includes('"measureBackoff":true')) {
-        deliveryTimes.push(Date.now());
-      }
-      // Fail the first time
-      if (deliveryTimes.length === 0) {
-        throw new Error("Temporary failure");
-      }
-    });
-
-    const startTime = Date.now();
-    bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-backoff",
-      executionId: "exec-backoff",
-      payload: { measureBackoff: true, fromStatus: "queued", toStatus: "in_progress" },
-    });
-
-    // Wait for delivery with retries
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-
-    // Backoff should be applied between retries
-    // Initial delay is 100ms, then exponential with cap at 5000ms
-    // With jitter at 10%, we check that retries happened with increasing delays
-    await bus.disposeAsync();
-    db.close();
-    db = undefined;
-  } finally {
-    db?.close();
-    cleanupPath(workspace);
-  }
+  assert.ok(retry2 > retry1, "second retry should be scheduled after the first");
+  assert.ok(retry3 > retry2, "third retry should be scheduled after the second");
+  assert.ok(retry4 > retry3, "fourth retry should be scheduled after the third");
 });
 
-test("calculateBackoff: first retry delay is INITIAL_BACKOFF_MS", async () => {
-  // Test that first retry uses 100ms base delay (INITIAL_BACKOFF_MS)
-  const workspace = createTempWorkspace("aa-first-retry-");
-  let db: SqliteDatabase | undefined;
-
+test("calculateBackoff: first retry delay uses the configured base backoff", () => {
+  mock.timers.enable({ apis: ["Date"] });
   try {
-    db = new SqliteDatabase(join(workspace, "first-retry.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new DurableEventBus(db, store);
-
-    seedTaskAndExecution(db, store, { taskId: "task-first-retry", executionId: "exec-first-retry" });
-
-    let deliveryCount = 0;
-    const deliveryTimestamps: number[] = [];
-
-    bus.subscribe("inspect_projection", async (event) => {
-      deliveryTimestamps.push(Date.now());
-      deliveryCount++;
-      if (deliveryCount === 1) {
-        throw new Error("Fail once");
-      }
+    const startedAt = Date.now();
+    const dlqService = new DlqService();
+    const record = dlqService.enqueue({
+      sourceEventId: "evt_first_retry",
+      consumerId: "test-consumer",
+      errorCode: "test.error",
+      payloadJson: "{}",
     });
 
-    bus.publish({
-      eventType: "task:status_changed",
-      taskId: "task-first-retry",
-      executionId: "exec-first-retry",
-      payload: { fromStatus: "queued", toStatus: "in_progress" },
-    });
+    const updated = dlqService.scheduleRetry(record.deadLetterId);
+    const firstRetryAt = Date.parse(updated.nextRetryAt!);
+    const delayMs = firstRetryAt - startedAt;
 
-    // Wait for up to 2 seconds for delivery
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // If first retry was immediate instead of using backoff, we'd see different timing
-    // The first retry should happen after INITIAL_BACKOFF_MS (100ms) + jitter
-    assert.ok(deliveryTimestamps.length >= 1, "Should have at least one delivery attempt");
-
-    await bus.disposeAsync();
-    db.close();
-    db = undefined;
+    assert.equal(delayMs, DEFAULT_DLQ_RETRY_BACKOFF_MS);
   } finally {
-    db?.close();
-    cleanupPath(workspace);
+    mock.timers.reset();
   }
 });
 

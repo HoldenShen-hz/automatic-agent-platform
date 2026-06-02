@@ -20,6 +20,10 @@
  * - promotion: Knowledge promotion events
  */
 
+import { createHash, createHmac } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 /**
@@ -51,6 +55,8 @@ export interface EvidenceRecord {
   processedAt: string | null;
   integratedAt: string | null;
   metadata: EvidenceMetadata;
+  previousHash: string | null;
+  integrityHash: string;
 }
 
 /**
@@ -118,6 +124,8 @@ export interface EvidenceServiceConfig {
   maxRecords?: number;
   retentionDays?: number;
   integrationEnabled?: boolean;
+  persistencePath?: string;
+  signingSecret?: string;
 }
 
 /**
@@ -135,11 +143,15 @@ export class EvidenceService {
   private readonly maxRecords: number;
   private readonly retentionDays: number;
   private readonly integrationEnabled: boolean;
+  private readonly persistencePath: string | null;
+  private readonly signingSecret: string | null;
 
   public constructor(config: EvidenceServiceConfig = {}) {
     this.maxRecords = config.maxRecords ?? 10000;
     this.retentionDays = config.retentionDays ?? 90;
     this.integrationEnabled = config.integrationEnabled ?? true;
+    this.persistencePath = config.persistencePath?.trim() || null;
+    this.signingSecret = config.signingSecret?.trim() || null;
 
     // Initialize category index
     for (const category of ["validation", "feedback", "performance", "quality", "promotion", "learning_signal"] as EvidenceCategory[]) {
@@ -148,6 +160,8 @@ export class EvidenceService {
     for (const status of ["recorded", "processed", "integrated", "archived"] as EvidenceStatus[]) {
       this.STATUS_INDEX.set(status, new Set());
     }
+
+    this.hydrate();
   }
 
   /**
@@ -166,6 +180,7 @@ export class EvidenceService {
     metadata: EvidenceMetadata = {},
   ): EvidenceRecord {
     const now = nowIso();
+    const previousHash = this.getLatestRecord()?.integrityHash ?? null;
 
     const record: EvidenceRecord = {
       id: newId("ev"),
@@ -177,7 +192,10 @@ export class EvidenceService {
       processedAt: null,
       integratedAt: null,
       metadata,
+      previousHash,
+      integrityHash: "",
     };
+    record.integrityHash = this.computeIntegrityHash(record);
 
     // Store record
     this.records.set(record.id, record);
@@ -205,6 +223,8 @@ export class EvidenceService {
     if (this.integrationEnabled && record.status === "recorded") {
       this.processRecord(record.id);
     }
+
+    this.persist();
 
     return record;
   }
@@ -314,12 +334,15 @@ export class EvidenceService {
         const previousStatus = record.status;
         record.status = "integrated";
         record.integratedAt = nowIso();
+        record.integrityHash = this.computeIntegrityHash(record);
         this.requireIndex(this.STATUS_INDEX, previousStatus).delete(id);
         this.requireIndex(this.STATUS_INDEX, "integrated").add(id);
       } catch (err) {
         errors.push(`Failed to integrate ${id}: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
+
+    this.persist();
 
     return {
       integrated: errors.length === 0,
@@ -359,10 +382,12 @@ export class EvidenceService {
     if (status === "processed" && !record.processedAt) {
       record.processedAt = nowIso();
     }
+    record.integrityHash = this.computeIntegrityHash(record);
 
     // Update status index
     this.STATUS_INDEX.get(oldStatus)?.delete(id);
     this.STATUS_INDEX.get(status)?.add(id);
+    this.persist();
 
     return true;
   }
@@ -376,6 +401,7 @@ export class EvidenceService {
 
     record.status = "processed";
     record.processedAt = nowIso();
+    record.integrityHash = this.computeIntegrityHash(record);
 
     this.requireIndex(this.STATUS_INDEX, "recorded").delete(id);
     this.requireIndex(this.STATUS_INDEX, "processed").add(id);
@@ -515,6 +541,7 @@ export class EvidenceService {
         this.records.delete(id);
       }
     }
+    this.persist();
   }
 
   /**
@@ -574,4 +601,94 @@ export class EvidenceService {
       byStatus,
     };
   }
+
+  private hydrate(): void {
+    if (this.persistencePath == null || !existsSync(this.persistencePath)) {
+      return;
+    }
+    try {
+      const payload = JSON.parse(readFileSync(this.persistencePath, "utf8")) as { records?: EvidenceRecord[] };
+      for (const record of payload.records ?? []) {
+        if (!this.verifyIntegrityHash(record)) {
+          continue;
+        }
+        this.records.set(record.id, record);
+        this.requireIndex(this.CATEGORY_INDEX, record.category).add(record.id);
+        this.requireIndex(this.STATUS_INDEX, record.status).add(record.id);
+        if (record.sourceRef) {
+          const sourceSet = this.SOURCE_REF_INDEX.get(record.sourceRef) ?? new Set<string>();
+          sourceSet.add(record.id);
+          this.SOURCE_REF_INDEX.set(record.sourceRef, sourceSet);
+        }
+        if (record.metadata.tenantId) {
+          const tenantSet = this.TENANT_INDEX.get(record.metadata.tenantId) ?? new Set<string>();
+          tenantSet.add(record.id);
+          this.TENANT_INDEX.set(record.metadata.tenantId, tenantSet);
+        }
+      }
+    } catch {
+      this.records.clear();
+      for (const bucket of this.CATEGORY_INDEX.values()) bucket.clear();
+      for (const bucket of this.SOURCE_REF_INDEX.values()) bucket.clear();
+      for (const bucket of this.TENANT_INDEX.values()) bucket.clear();
+      for (const bucket of this.STATUS_INDEX.values()) bucket.clear();
+    }
+  }
+
+  private persist(): void {
+    if (this.persistencePath == null) {
+      return;
+    }
+    mkdirSync(dirname(this.persistencePath), { recursive: true });
+    writeFileSync(
+      this.persistencePath,
+      JSON.stringify({ records: [...this.records.values()] }, null, 2),
+      "utf8",
+    );
+  }
+
+  private computeIntegrityHash(record: Omit<EvidenceRecord, "integrityHash"> | EvidenceRecord): string {
+    const basis = stableSerialize({
+      id: record.id,
+      category: record.category,
+      sourceRef: record.sourceRef,
+      content: record.content,
+      status: record.status,
+      recordedAt: record.recordedAt,
+      processedAt: record.processedAt,
+      integratedAt: record.integratedAt,
+      metadata: record.metadata,
+      previousHash: record.previousHash,
+    });
+    return this.signingSecret == null
+      ? createHash("sha256").update(basis).digest("hex")
+      : createHmac("sha256", this.signingSecret).update(basis).digest("hex");
+  }
+
+  private verifyIntegrityHash(record: EvidenceRecord): boolean {
+    return record.integrityHash === this.computeIntegrityHash(record);
+  }
+
+  private getLatestRecord(): EvidenceRecord | null {
+    let latest: EvidenceRecord | null = null;
+    for (const record of this.records.values()) {
+      if (latest == null || record.recordedAt > latest.recordedAt) {
+        latest = record;
+      }
+    }
+    return latest;
+  }
+}
+
+function stableSerialize(value: unknown): string {
+  if (value == null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableSerialize(item)).join(",")}]`;
+  }
+  const entries = Object.entries(value as Record<string, unknown>)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, item]) => `${JSON.stringify(key)}:${stableSerialize(item)}`);
+  return `{${entries.join(",")}}`;
 }

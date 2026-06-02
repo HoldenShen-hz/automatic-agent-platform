@@ -7,6 +7,10 @@ const scriptPath = fileURLToPath(import.meta.url);
 
 export const DEFAULT_NODE_TEST_CONCURRENCY = resolveDefaultTestConcurrency();
 
+/**
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {number}
+ */
 export function readNodeTestConcurrency(env = process.env) {
   const raw = env.AA_NODE_TEST_CONCURRENCY;
   if (raw == null || raw.trim().length === 0) {
@@ -20,6 +24,11 @@ export function readNodeTestConcurrency(env = process.env) {
   return parsed;
 }
 
+/**
+ * @param {readonly string[]} testPaths
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {string[]}
+ */
 export function buildNodeTestArgs(testPaths, env = process.env) {
   const concurrency = readNodeTestConcurrency(env);
   return [

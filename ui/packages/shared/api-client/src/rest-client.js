@@ -1,6 +1,8 @@
 import { defaultMockApiShape } from "./mock-data.js";
 import { generateStableId } from "./runtime-support.js";
 export const DEFAULT_ACCEPT_VERSION_HEADER = "2026-04-01,2026-01-01";
+const DEFAULT_MAX_JSON_RESPONSE_BYTES = 1_048_576;
+const DEFAULT_MAX_JSON_ERROR_BYTES = 262_144;
 export class RestHttpError extends Error {
     status;
     uiAction;
@@ -186,12 +188,19 @@ export class HttpTransport {
         }
         return this.circuitBreaker.state === "half-open";
     }
+    async readJsonBody(response, maxBytes) {
+        const body = await response.text();
+        if (Buffer.byteLength(body, "utf8") > maxBytes) {
+            throw new Error(`rest.response_too_large:${maxBytes}`);
+        }
+        return JSON.parse(body);
+    }
     async parseResponse(response) {
         const contentType = response.headers.get("content-type") ?? "";
         if (!contentType.includes("application/json")) {
             return undefined;
         }
-        const parsed = await response.json();
+        const parsed = await this.readJsonBody(response, DEFAULT_MAX_JSON_RESPONSE_BYTES);
         if (parsed != null && typeof parsed === "object" && "data" in parsed) {
             return parsed.data;
         }
@@ -233,8 +242,10 @@ export class HttpTransport {
             }
             try {
                 const abortController = new AbortController();
-                const timeoutMs = this.options.timeoutMs ?? 10_000;
+                const timeoutMs = request.timeoutMs ?? this.options.timeoutMs ?? 10_000;
                 const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
+                const onAbort = () => abortController.abort();
+                request.signal?.addEventListener("abort", onAbort, { once: true });
                 let response;
                 try {
                     response = await this.fetchImplementation(url, {
@@ -248,6 +259,7 @@ export class HttpTransport {
                 }
                 finally {
                     clearTimeout(timeoutHandle);
+                    request.signal?.removeEventListener("abort", onAbort);
                 }
                 if (!response.ok) {
                     const retryAfterHeader = response.headers.get("retry-after");
@@ -282,7 +294,7 @@ export class HttpTransport {
             return {};
         }
         try {
-            const parsed = await response.clone().json();
+            const parsed = await this.readJsonBody(response.clone(), DEFAULT_MAX_JSON_ERROR_BYTES);
             if (parsed == null || typeof parsed !== "object") {
                 return {};
             }

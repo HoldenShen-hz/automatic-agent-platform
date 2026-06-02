@@ -10,10 +10,15 @@
  */
 
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { gunzipSync } from "node:zlib";
 
 import { ValidationError } from "../../contracts/errors.js";
-import type { CheckpointEnvelope } from "../checkpoints/checkpoint-envelope.js";
+import { checkSandboxPath, type SandboxPolicy } from "../../shared/sandbox-path-policy.js";
+import { type CheckpointEnvelope } from "../checkpoints/checkpoint-envelope.js";
+
+const DEFAULT_MAX_CHECKPOINT_PROBE_BYTES = 4 * 1024 * 1024;
 
 /**
  * Validation result for checkpoint reference validation.
@@ -55,6 +60,8 @@ export function validateCheckpointRef(
     requireChecksum?: boolean;
     requireStorageUri?: boolean;
     validateStorageAccess?: boolean;
+    maxStorageBytes?: number;
+    sandboxPolicy?: SandboxPolicy;
   } = {},
 ): CheckpointRefValidationResult {
   const errors: string[] = [];
@@ -119,9 +126,17 @@ export function validateCheckpointRef(
   if (options.validateStorageAccess && candidate.storageUri) {
     const uri = candidate.storageUri as string;
     if (uri.startsWith("file://")) {
-      const filePath = uri.slice("file://".length);
+      const filePath = toFileSystemPath(uri);
+      if (options.sandboxPolicy != null) {
+        const pathCheck = checkSandboxPath(options.sandboxPolicy, filePath);
+        if (!pathCheck.allowed) {
+          errors.push(`storage_uri_outside_sandbox: ${pathCheck.reasonCode ?? "sandbox.path_denied"}`);
+        }
+      }
       if (!existsSync(filePath)) {
         warnings.push(`storage_not_accessible: Checkpoint file does not exist: ${filePath}`);
+      } else if (isFileTooLarge(filePath, options.maxStorageBytes ?? DEFAULT_MAX_CHECKPOINT_PROBE_BYTES)) {
+        errors.push(`storage_probe_too_large: Checkpoint file exceeds allowed validation size: ${filePath}`);
       }
     }
   }
@@ -138,6 +153,10 @@ export function validateCheckpointRef(
  */
 export function validateCheckpointStorage(
   checkpointRef: CheckpointRef,
+  options: {
+    maxStorageBytes?: number;
+    sandboxPolicy?: SandboxPolicy;
+  } = {},
 ): CheckpointRefValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -147,15 +166,29 @@ export function validateCheckpointStorage(
   }
 
   if (checkpointRef.storageUri.startsWith("file://")) {
-    const filePath = checkpointRef.storageUri.slice("file://".length);
+    const filePath = toFileSystemPath(checkpointRef.storageUri);
+    if (options.sandboxPolicy != null) {
+      const pathCheck = checkSandboxPath(options.sandboxPolicy, filePath);
+      if (!pathCheck.allowed) {
+        errors.push(`checkpoint_file_outside_sandbox: ${pathCheck.reasonCode ?? "sandbox.path_denied"}`);
+        return { valid: false, errors, warnings };
+      }
+    }
     if (!existsSync(filePath)) {
       errors.push(`checkpoint_file_missing: Checkpoint file does not exist: ${filePath}`);
     } else if (checkpointRef.checksum) {
-      // Verify checksum
+      const maxBytes = options.maxStorageBytes ?? DEFAULT_MAX_CHECKPOINT_PROBE_BYTES;
+      if (isFileTooLarge(filePath, maxBytes)) {
+        errors.push(`checkpoint_file_too_large: Checkpoint file exceeds allowed validation size: ${filePath}`);
+        return { valid: false, errors, warnings };
+      }
       try {
         const content = readFileSync(filePath, "utf8");
-        const actualChecksum = createHash("sha256").update(content).digest("hex");
-        if (actualChecksum.toLowerCase() !== checkpointRef.checksum.toLowerCase()) {
+        const parsed = JSON.parse(content) as CheckpointEnvelope;
+        const unpacked = unpackCheckpointEnvelopeSync(parsed, maxBytes);
+        if (unpacked == null) {
+          errors.push("checkpoint_envelope_invalid: Failed to unpack checkpoint envelope");
+        } else if (unpacked.metadata.checksum.toLowerCase() !== checkpointRef.checksum.toLowerCase()) {
           errors.push("checksum_mismatch: Checkpoint content does not match stored checksum");
         }
       } catch (err) {
@@ -190,6 +223,44 @@ function isValidStorageUri(uri: string): boolean {
   } catch {
     return false;
   }
+}
+
+function toFileSystemPath(uri: string): string {
+  return fileURLToPath(uri);
+}
+
+function isFileTooLarge(filePath: string, maxBytes: number): boolean {
+  return statSync(filePath).size > maxBytes;
+}
+
+function unpackCheckpointEnvelopeSync(
+  envelope: CheckpointEnvelope,
+  maxSizeBytes: number,
+): { metadata: CheckpointEnvelope["metadata"] } | null {
+  if (
+    envelope == null
+    || envelope.version == null
+    || typeof envelope.payload !== "string"
+    || envelope.metadata == null
+    || typeof envelope.metadata !== "object"
+    || typeof envelope.metadata.checksum !== "string"
+  ) {
+    return null;
+  }
+  try {
+    const compressed = Buffer.from(envelope.payload, "base64");
+    if (compressed.length > maxSizeBytes) {
+      return null;
+    }
+    const decompressed = gunzipSync(compressed);
+    const actualChecksum = createHash("sha256").update(decompressed).digest("hex");
+    if (actualChecksum.toLowerCase() !== envelope.metadata.checksum.toLowerCase()) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+  return { metadata: envelope.metadata };
 }
 
 /**

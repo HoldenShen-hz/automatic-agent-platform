@@ -82,11 +82,6 @@ export class ApprovalRoutingService {
     this.amountThresholdRules = options.amountThresholdRules ?? [];
     this.routeSnapshotTtlMs = options.routeSnapshotTtlMs ?? 24 * 60 * 60 * 1000;
     this.fxRatesToCny = options.fxRatesToCny ?? {
-      USD: {
-        rate: 7.2,
-        asOf: "1970-01-01T00:00:00.000Z",
-        source: "approval-routing.default-usd-cny",
-      },
       CNY: {
         rate: 1,
         asOf: "1970-01-01T00:00:00.000Z",
@@ -276,10 +271,19 @@ export class ApprovalRoutingService {
   }
 
   private buildAmountSnapshot(request: ApprovalRouteRequestInput): ApprovalRouteDecision["routeSnapshot"]["amount"] {
-    const originalCurrency = request.amount?.currency?.toUpperCase() ?? "USD";
+    const originalCurrency = request.amount?.currency?.toUpperCase() ?? (request.amountUsd == null ? "CNY" : "USD");
     const originalValue = request.amount?.value ?? request.amountUsd ?? 0;
     const normalizedCurrency = originalCurrency.trim().toUpperCase();
-    const fxEntry = this.fxRatesToCny[normalizedCurrency];
+    const fxEntry = request.amount?.fxRateSnapshot?.baseCurrency?.toUpperCase() === normalizedCurrency
+      && request.amount.fxRateSnapshot.quoteCurrency.toUpperCase() === "CNY"
+      && Number.isFinite(request.amount.fxRateSnapshot.rate)
+      && request.amount.fxRateSnapshot.rate > 0
+      ? {
+          rate: request.amount.fxRateSnapshot.rate,
+          asOf: request.amount.fxRateSnapshot.capturedAt,
+          source: request.amount.fxRateSnapshot.source,
+        }
+      : this.fxRatesToCny[normalizedCurrency];
     if (fxEntry == null || !Number.isFinite(fxEntry.rate) || fxEntry.rate <= 0) {
       throw new Error(`approval_route.fx_rate_missing:${normalizedCurrency}`);
     }

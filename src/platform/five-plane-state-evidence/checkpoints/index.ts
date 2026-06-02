@@ -12,6 +12,7 @@ export {
   type CompressionAlgorithm,
   type CheckpointEnvelopeMetadata,
   type CheckpointEnvelope,
+  type CheckpointIntegrityFailureEvidence,
   type CreateCheckpointEnvelopeOptions,
   type UnpackedCheckpointEnvelope,
   // Envelope operations

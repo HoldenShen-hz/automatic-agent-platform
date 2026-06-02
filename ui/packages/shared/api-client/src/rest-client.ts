@@ -35,6 +35,8 @@ export interface TransportResponse<T> {
 
 export interface RestRequestOptions {
   readonly headers?: Headers;
+  readonly timeoutMs?: number;
+  readonly signal?: AbortSignal;
 }
 
 export type RestTransport = <T>(request: RestClientRequest) => Promise<TransportResponse<T>>;
@@ -295,6 +297,8 @@ const DEFAULT_CIRCUIT_BREAKER_CONFIG = {
   failureThreshold: 5,
   resetTimeoutMs: 30000,
 };
+const DEFAULT_MAX_JSON_RESPONSE_BYTES = 1_048_576;
+const DEFAULT_MAX_JSON_ERROR_BYTES = 262_144;
 
 export class HttpTransport {
   private readonly fetchImplementation: typeof fetch;
@@ -359,12 +363,23 @@ export class HttpTransport {
     return this.circuitBreaker.state === "half-open";
   }
 
+  private async readJsonBody<T>(
+    response: Response,
+    maxBytes: number,
+  ): Promise<T | PlatformEnvelope<T> | ContractEnvelope<T>> {
+    const body = await response.text();
+    if (Buffer.byteLength(body, "utf8") > maxBytes) {
+      throw new Error(`rest.response_too_large:${maxBytes}`);
+    }
+    return JSON.parse(body) as T | PlatformEnvelope<T> | ContractEnvelope<T>;
+  }
+
   private async parseResponse<T>(response: Response): Promise<T> {
     const contentType = response.headers.get("content-type") ?? "";
     if (!contentType.includes("application/json")) {
       return undefined as T;
     }
-    const parsed = await response.json() as T | PlatformEnvelope<T> | ContractEnvelope<T>;
+    const parsed = await this.readJsonBody<T>(response, DEFAULT_MAX_JSON_RESPONSE_BYTES);
     if (parsed != null && typeof parsed === "object" && "data" in parsed) {
       return (parsed as PlatformEnvelope<T>).data;
     }
@@ -411,8 +426,10 @@ export class HttpTransport {
 
       try {
         const abortController = new AbortController();
-        const timeoutMs = this.options.timeoutMs ?? 10_000;
+        const timeoutMs = request.timeoutMs ?? this.options.timeoutMs ?? 10_000;
         const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
+        const onAbort = () => abortController.abort();
+        request.signal?.addEventListener("abort", onAbort, { once: true });
         let response: Response;
         try {
           response = await this.fetchImplementation(url, {
@@ -425,6 +442,7 @@ export class HttpTransport {
           });
         } finally {
           clearTimeout(timeoutHandle);
+          request.signal?.removeEventListener("abort", onAbort);
         }
 
         if (!response.ok) {
@@ -466,7 +484,7 @@ export class HttpTransport {
       return {};
     }
     try {
-      const parsed = await response.clone().json() as unknown;
+      const parsed = await this.readJsonBody<unknown>(response.clone(), DEFAULT_MAX_JSON_ERROR_BYTES) as unknown;
       if (parsed == null || typeof parsed !== "object") {
         return {};
       }
@@ -528,23 +546,56 @@ export class DefaultRESTClient implements RESTClient {
   ) {}
 
   public get<T>(path: string, options?: RestRequestOptions): Promise<T> {
-    return this.request<T>({ path, method: "GET", headers: options?.headers ?? new Headers() });
+    return this.request<T>({
+      path,
+      method: "GET",
+      headers: options?.headers ?? new Headers(),
+      timeoutMs: options?.timeoutMs,
+      signal: options?.signal,
+    });
   }
 
   public post<T>(path: string, body: unknown, options?: RestRequestOptions): Promise<T> {
-    return this.request<T>({ path, method: "POST", headers: options?.headers ?? new Headers(), body });
+    return this.request<T>({
+      path,
+      method: "POST",
+      headers: options?.headers ?? new Headers(),
+      body,
+      timeoutMs: options?.timeoutMs,
+      signal: options?.signal,
+    });
   }
 
   public put<T>(path: string, body: unknown, options?: RestRequestOptions): Promise<T> {
-    return this.request<T>({ path, method: "PUT", headers: options?.headers ?? new Headers(), body });
+    return this.request<T>({
+      path,
+      method: "PUT",
+      headers: options?.headers ?? new Headers(),
+      body,
+      timeoutMs: options?.timeoutMs,
+      signal: options?.signal,
+    });
   }
 
   public patch<T>(path: string, body: unknown, options?: RestRequestOptions): Promise<T> {
-    return this.request<T>({ path, method: "PATCH", headers: options?.headers ?? new Headers(), body });
+    return this.request<T>({
+      path,
+      method: "PATCH",
+      headers: options?.headers ?? new Headers(),
+      body,
+      timeoutMs: options?.timeoutMs,
+      signal: options?.signal,
+    });
   }
 
   public delete<T>(path: string, options?: RestRequestOptions): Promise<T> {
-    return this.request<T>({ path, method: "DELETE", headers: options?.headers ?? new Headers() });
+    return this.request<T>({
+      path,
+      method: "DELETE",
+      headers: options?.headers ?? new Headers(),
+      timeoutMs: options?.timeoutMs,
+      signal: options?.signal,
+    });
   }
 
   private async request<T>(initialRequest: RestClientRequest): Promise<T> {

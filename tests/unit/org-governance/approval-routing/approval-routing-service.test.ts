@@ -11,6 +11,7 @@ import { ApprovalRoutingService } from "../../../../src/org-governance/approval-
 import type { OrgNode } from "../../../../src/org-governance/org-model/org-node/index.js";
 import type { ApprovalDelegation } from "../../../../src/org-governance/approval-routing/delegation/index.js";
 import type { ApprovalEscalationRule } from "../../../../src/org-governance/approval-routing/escalation/index.js";
+import type { ApprovalRoutingServiceOptions } from "../../../../src/org-governance/approval-routing/approval-routing-service.js";
 
 type ApprovalRouteInput = Parameters<ApprovalRoutingService["route"]>[0];
 
@@ -60,39 +61,57 @@ function createEscalationRule(overrides: Partial<ApprovalEscalationRule> = {}): 
   };
 }
 
+function createRoutingService(options: ApprovalRoutingServiceOptions): ApprovalRoutingService {
+  return new ApprovalRoutingService({
+    ...options,
+    fxRatesToCny: options.fxRatesToCny ?? {
+      USD: {
+        rate: 7.2,
+        asOf: "2026-04-20T00:00:00.000Z",
+        source: "test.fx.usd_cny",
+      },
+      CNY: {
+        rate: 1,
+        asOf: "2026-04-20T00:00:00.000Z",
+        source: "test.fx.identity",
+      },
+    },
+  });
+}
+
 test("ApprovalRoutingService creates service with required orgNodes", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1" })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   assert.ok(service);
 });
 
 test("ApprovalRoutingService creates service with empty delegations array", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1" })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, delegations: [] });
+  const service = createRoutingService({ orgNodes: nodes, delegations: [] });
   assert.ok(service);
 });
 
 test("ApprovalRoutingService creates service with empty escalation rules array", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1" })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, escalationRules: [] });
+  const service = createRoutingService({ orgNodes: nodes, escalationRules: [] });
   assert.ok(service);
 });
 
 test("ApprovalRoutingService uses default empty arrays when delegations not provided", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1" })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   assert.ok(service);
 });
 
 test("ApprovalRoutingService uses default empty arrays when escalationRules not provided", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1" })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   assert.ok(service);
 });
 
 test("ApprovalRoutingService routes to org node owners", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -105,7 +124,7 @@ test("ApprovalRoutingService routes to org node owners", () => {
 
 test("ApprovalRoutingService routes to platform_admin when org node has no owners", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: [] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -117,7 +136,7 @@ test("ApprovalRoutingService routes to platform_admin when org node has no owner
 
 test("ApprovalRoutingService includes audit record with correct structure", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -135,7 +154,7 @@ test("ApprovalRoutingService throws when request orgNodeId not found", () => {
     createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] }),
     createOrgNode({ orgNodeId: "dept-2", ownerUserIds: ["vp"] }),
   ];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   assert.throws(() => service.route(
     { requesterId: "user-1", orgNodeId: "nonexistent", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -155,7 +174,7 @@ test("ApprovalRoutingService applies delegation when approver is delegated", () 
       active: true,
     }),
   ];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, delegations });
+  const service = createRoutingService({ orgNodes: nodes, delegations });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -169,7 +188,7 @@ test("ApprovalRoutingService applies delegation when approver is delegated", () 
 test("ApprovalRoutingService does not apply delegation when delegation is inactive", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const delegations = [createDelegation({ approverId: "director", delegateApproverId: "backup-director", active: false })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, delegations });
+  const service = createRoutingService({ orgNodes: nodes, delegations });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -189,7 +208,7 @@ test("ApprovalRoutingService does not apply delegation when current time is befo
       expiresAt: "2026-12-31T23:59:59.999Z",
     }),
   ];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, delegations });
+  const service = createRoutingService({ orgNodes: nodes, delegations });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -209,7 +228,7 @@ test("ApprovalRoutingService does not apply delegation when current time is afte
       expiresAt: "2026-04-15T00:00:00.000Z",
     }),
   ];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, delegations });
+  const service = createRoutingService({ orgNodes: nodes, delegations });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -222,7 +241,7 @@ test("ApprovalRoutingService does not apply delegation when current time is afte
 test("ApprovalRoutingService applies delegation when scopeNodeIds is empty (global delegation)", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const delegations = [createDelegation({ approverId: "director", delegateApproverId: "backup-director", scopeNodeIds: [] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, delegations });
+  const service = createRoutingService({ orgNodes: nodes, delegations });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -240,7 +259,7 @@ test("ApprovalRoutingService does not apply delegation when orgNodeId not in sco
   const delegations = [
     createDelegation({ approverId: "director", delegateApproverId: "backup-director", scopeNodeIds: ["dept-2"] }),
   ];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, delegations });
+  const service = createRoutingService({ orgNodes: nodes, delegations });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -260,7 +279,7 @@ test("ApprovalRoutingService escalates when time threshold exceeded for high ris
       appliesToRiskLevels: ["high", "critical"],
     }),
   ];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, escalationRules });
+  const service = createRoutingService({ orgNodes: nodes, escalationRules });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "high", amountUsd: 1000 },
     "2026-04-20T00:00:00.000Z",
@@ -273,7 +292,7 @@ test("ApprovalRoutingService escalates when time threshold exceeded for high ris
 
 test("ApprovalRoutingService rejects conditional approvers outside the matched org scope", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
 
   assert.throws(
     () => service.planChain(
@@ -286,7 +305,7 @@ test("ApprovalRoutingService rejects conditional approvers outside the matched o
   );
 });
 
-test("ApprovalRoutingService picks the most specific eligible escalation rule", () => {
+test("ApprovalRoutingService picks the earliest eligible escalation rule", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const escalationRules = [
     createEscalationRule({
@@ -302,20 +321,20 @@ test("ApprovalRoutingService picks the most specific eligible escalation rule", 
       appliesToRiskLevels: ["high", "critical"],
     }),
   ];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, escalationRules });
+  const service = createRoutingService({ orgNodes: nodes, escalationRules });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "high", amountUsd: 1000 },
     "2026-04-20T00:00:00.000Z",
     "2026-04-20T01:15:00.000Z",
   );
 
-  assert.equal(result.escalatedTo, "cto");
+  assert.equal(result.escalatedTo, "vp-ops");
 });
 
 test("ApprovalRoutingService does not escalate when time threshold not exceeded", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const escalationRules = [createEscalationRule({ triggerAfterMinutes: 30, escalateToApproverId: "vp-ops", appliesToRiskLevels: ["high", "critical"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, escalationRules });
+  const service = createRoutingService({ orgNodes: nodes, escalationRules });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "high", amountUsd: 1000 },
     "2026-04-20T00:00:00.000Z",
@@ -328,7 +347,7 @@ test("ApprovalRoutingService does not escalate when time threshold not exceeded"
 test("ApprovalRoutingService does not escalate when risk level not in appliesToRiskLevels", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const escalationRules = [createEscalationRule({ triggerAfterMinutes: 30, escalateToApproverId: "vp-ops", appliesToRiskLevels: ["high", "critical"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, escalationRules });
+  const service = createRoutingService({ orgNodes: nodes, escalationRules });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -341,7 +360,7 @@ test("ApprovalRoutingService does not escalate when risk level not in appliesToR
 test("ApprovalRoutingService does not duplicate escalated approver if already in chain", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["vp-ops"] })];
   const escalationRules = [createEscalationRule({ triggerAfterMinutes: 30, escalateToApproverId: "vp-ops", appliesToRiskLevels: ["high", "critical"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, escalationRules });
+  const service = createRoutingService({ orgNodes: nodes, escalationRules });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "high", amountUsd: 1000 },
     "2026-04-20T00:00:00.000Z",
@@ -353,7 +372,7 @@ test("ApprovalRoutingService does not duplicate escalated approver if already in
 test("ApprovalRoutingService escalates for critical risk when rule applies", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const escalationRules = [createEscalationRule({ triggerAfterMinutes: 30, escalateToApproverId: "cto", appliesToRiskLevels: ["critical"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, escalationRules });
+  const service = createRoutingService({ orgNodes: nodes, escalationRules });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "critical", amountUsd: 10000 },
     "2026-04-20T00:00:00.000Z",
@@ -366,7 +385,7 @@ test("ApprovalRoutingService applies both delegation and escalation", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const delegations = [createDelegation({ approverId: "director", delegateApproverId: "backup-director" })];
   const escalationRules = [createEscalationRule({ triggerAfterMinutes: 30, escalateToApproverId: "vp-ops", appliesToRiskLevels: ["high", "critical"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, delegations, escalationRules });
+  const service = createRoutingService({ orgNodes: nodes, delegations, escalationRules });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "high", amountUsd: 1000 },
     "2026-04-20T00:00:00.000Z",
@@ -381,7 +400,7 @@ test("ApprovalRoutingService handles delegation chain then escalation", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const delegations = [createDelegation({ approverId: "director", delegateApproverId: "interim-director" })];
   const escalationRules = [createEscalationRule({ triggerAfterMinutes: 60, escalateToApproverId: "vp-ops", appliesToRiskLevels: ["medium", "high", "critical"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, delegations, escalationRules });
+  const service = createRoutingService({ orgNodes: nodes, delegations, escalationRules });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "medium", amountUsd: 500 },
     "2026-04-20T00:00:00.000Z",
@@ -394,7 +413,7 @@ test("ApprovalRoutingService handles delegation chain then escalation", () => {
 test("ApprovalRoutingService includes delegated reason code when delegated", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const delegations = [createDelegation({ approverId: "director", delegateApproverId: "backup-director" })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, delegations });
+  const service = createRoutingService({ orgNodes: nodes, delegations });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -406,7 +425,7 @@ test("ApprovalRoutingService includes delegated reason code when delegated", () 
 
 test("ApprovalRoutingService includes direct_route reason code when not delegated", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -418,7 +437,7 @@ test("ApprovalRoutingService includes direct_route reason code when not delegate
 test("ApprovalRoutingService includes escalated reason code when escalated", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const escalationRules = [createEscalationRule({ triggerAfterMinutes: 30, escalateToApproverId: "vp-ops", appliesToRiskLevels: ["high"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, escalationRules });
+  const service = createRoutingService({ orgNodes: nodes, escalationRules });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "high", amountUsd: 1000 },
     "2026-04-20T00:00:00.000Z",
@@ -429,7 +448,7 @@ test("ApprovalRoutingService includes escalated reason code when escalated", () 
 
 test("ApprovalRoutingService allows when approver chain is not empty", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -440,7 +459,7 @@ test("ApprovalRoutingService allows when approver chain is not empty", () => {
 
 test("ApprovalRoutingService handles multiple owners", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director", "co-director"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -451,7 +470,7 @@ test("ApprovalRoutingService handles multiple owners", () => {
 
 test("ApprovalRoutingService routes with all risk levels", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   const riskLevels: Array<"low" | "medium" | "high" | "critical"> = ["low", "medium", "high", "critical"];
   for (const riskLevel of riskLevels) {
     const result = service.route(
@@ -465,7 +484,7 @@ test("ApprovalRoutingService routes with all risk levels", () => {
 
 test("ApprovalRoutingService handles zero amountUsd", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 0 },
     "2026-04-20T00:00:00.000Z",
@@ -476,7 +495,7 @@ test("ApprovalRoutingService handles zero amountUsd", () => {
 
 test("ApprovalRoutingService handles large amountUsd", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   const result = service.route(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "critical", amountUsd: 999999999 },
     "2026-04-20T00:00:00.000Z",
@@ -493,7 +512,7 @@ test("ApprovalRoutingService finds owner at department level in hierarchy", () =
     createOrgNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "dept", ownerUserIds: ["manager"] }),
     createOrgNode({ orgNodeId: "member", nodeType: "seat", parentOrgNodeId: "team", ownerUserIds: ["employee"] }),
   ];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   const result = service.route(
     { requesterId: "employee", orgNodeId: "dept", riskLevel: "low", amountUsd: 100 },
     "2026-04-20T00:00:00.000Z",
@@ -506,7 +525,7 @@ test("ApprovalRoutingService finds owner at department level in hierarchy", () =
 test("ApprovalRoutingService exposes amount threshold matrix and sequential chain plan", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director", "vp"] })];
   const thresholdRules = [{ maxAmountUsd: 5_000, targetNodeTypes: ["department"] as const }];
-  const service = new ApprovalRoutingService({ orgNodes: nodes, amountThresholdRules: thresholdRules });
+  const service = createRoutingService({ orgNodes: nodes, amountThresholdRules: thresholdRules });
 
   const matrix = service.getAmountThresholdMatrix();
   const plan = service.planChain(
@@ -525,7 +544,7 @@ test("ApprovalRoutingService exposes amount threshold matrix and sequential chai
 
 test("ApprovalRoutingService builds parallel and conditional chain plans", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director", "vp"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
 
   const parallelPlan = service.planChain(
     { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "high", amountUsd: 600 },
@@ -548,7 +567,7 @@ test("ApprovalRoutingService builds parallel and conditional chain plans", () =>
 
 test("ApprovalRoutingService generates unique audit recordIds for same requester+node", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   const request: ApprovalRouteInput = { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 };
 
   const result1 = service.route(request, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
@@ -561,25 +580,22 @@ test("ApprovalRoutingService generates unique audit recordIds for same requester
   assert.notStrictEqual(result1.auditRecord.recordId, result3.auditRecord.recordId);
 });
 
-test("ApprovalRoutingService audit recordId contains timestamp component", () => {
+test("ApprovalRoutingService audit recordId encodes a stable digest prefix", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   const request: ApprovalRouteInput = { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 };
 
   const routeTime = "2026-04-20T00:00:00.000Z";
   const result = service.route(request, routeTime, routeTime);
 
-  // recordId should contain a timestamp-like numeric segment
   const recordId = result.auditRecord.recordId;
-  const idParts = recordId.split("_");
-  // Format: approval_route_audit_{requesterId}_{orgNodeId}_{timestamp}_{uuid}
-  const timestampPart = parseInt(idParts[5] ?? "", 10);
-  assert.equal(timestampPart, Date.parse(routeTime));
+  const digestMatch = /^approval_route_audit_([a-f0-9]{24})_route_/u.exec(recordId);
+  assert.ok(digestMatch != null, `Expected digest-bearing route audit id, got ${recordId}`);
 });
 
 test("ApprovalRoutingService audit recordId contains random component for entropy", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
-  const service = new ApprovalRoutingService({ orgNodes: nodes });
+  const service = createRoutingService({ orgNodes: nodes });
   const request: ApprovalRouteInput = { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "low", amountUsd: 100 };
 
   const result1 = service.route(request, "2026-04-20T00:00:00.000Z", "2026-04-20T00:00:00.000Z");
