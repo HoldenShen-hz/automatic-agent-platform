@@ -250,8 +250,10 @@ test("embedCanaryToken generates unique tokens", () => {
   const result3 = embedCanaryToken("Hello world", "scope2");
 
   assert.ok(result1.token.startsWith("canary_"));
-  assert.equal(result1.token, result2.token);
+  assert.notEqual(result1.token, result2.token);
   assert.notEqual(result1.token, result3.token);
+  assert.ok(result1.prompt.includes(result1.token));
+  assert.ok(result2.prompt.includes(result2.token));
 });
 
 test("embedCanaryToken generates different tokens for different prompts", () => {

@@ -1,0 +1,21 @@
+$schema: roi/schemas/division-roi.schema.json
+divisionId: research
+protocolRef: roi/measurement-protocol.md
+method: assisted_vs_manual
+sampleWindow: 14d
+minimumSampleSize: 80
+metrics:
+  - experiment_turnaround_delta
+  - evidence_traceability_delta
+  - stale_source_escape_delta
+costDeltaMetrics:
+  - analyst_minutes_saved
+  - experiment_setup_cost_delta
+qualityDeltaMetrics:
+  - evidence_traceability_delta
+  - experiment_relevance_delta
+riskDeltaMetrics:
+  - stale_source_escape_delta
+  - unsupported_conclusion_delta
+confidence: medium
+confidenceCalculation: compare assisted vs manual cohorts over 14d with minimum 80 samples and weekly variance review.

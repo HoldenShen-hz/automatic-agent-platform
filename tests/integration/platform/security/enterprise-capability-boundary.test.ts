@@ -6,6 +6,7 @@ import test from "node:test";
 
 import { createEnterpriseCapabilityMatrixService } from "../../../../src/scale-ecosystem/marketplace/enterprise-capability-matrix-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
+import { buildTestPostgresDsn } from "../../../helpers/network-test-constants.js";
 
 function runCli(env: NodeJS.ProcessEnv): string {
   return execFileSync(
@@ -83,7 +84,7 @@ test("enterprise capability service factory routes postgres dual-run sync access
 
   try {
     process.env.AA_STORAGE_DRIVER = "postgres";
-    process.env.AA_STORAGE_POSTGRES_DSN = "postgresql://agent:secret@postgres.internal/agent_company_os?sslmode=require";
+    process.env.AA_STORAGE_POSTGRES_DSN = `${buildTestPostgresDsn({ database: "agent_company_os", host: "postgres.internal", user: "agent", password: "test-password-placeholder" })}?sslmode=require`;
     process.env.AA_STORAGE_POSTGRES_DUAL_RUN = "true";
     process.env.AA_STORAGE_POSTGRES_SHADOW_SQLITE_PATH = shadowPath;
 

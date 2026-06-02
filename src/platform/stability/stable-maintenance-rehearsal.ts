@@ -139,7 +139,7 @@ function seedTaskAndExecution(
       id: input.taskId,
       parentId: null,
       rootId: input.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: input.title,
       status: "in_progress",
       source: "system",

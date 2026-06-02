@@ -38,7 +38,7 @@ test("golden: diagnostics bundle has expected structure", () => {
     db.transaction(() => {
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -130,7 +130,7 @@ test("golden: diagnostics bundle collects system info", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "System diagnostics test",
         status: "in_progress",
         source: "user",

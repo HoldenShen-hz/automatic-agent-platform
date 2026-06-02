@@ -19,6 +19,7 @@ import { stableStringify } from "../../shared/cache/utils/stable-stringify.js";
 
 const DEFAULT_PLAN_STEP_TIMEOUT_MS = 60_000;
 const DEFAULT_PLAN_RETRY_BACKOFF_BASE_MS = 250;
+const ADD_NODE_ACTION_PATTERN = /^[a-z][a-z0-9_.-]*$/i;
 
 export interface PlanBuilderInput {
   observation: TaskSituation;
@@ -191,16 +192,26 @@ export class PlanBuilder {
       .map((n) => n.nodeId);
 
     // Compute graph hash
+    const strategy = (input.version ?? 1) > 1 ? "replanned" : this.strategySelector.select(input);
     const graphHash = createHash("sha256")
-      .update(stableStringify({ harnessRunId: input.harnessRunId ?? null, nodes, edges }))
+      .update(stableStringify({
+        harnessRunId: input.harnessRunId ?? null,
+        version: input.version ?? 1,
+        parentVersion: input.parentVersion ?? null,
+        strategy,
+        riskProfile: input.riskProfile ?? null,
+        assessmentRisk: input.assessment.risk,
+        nodes,
+        edges,
+      }))
       .digest("hex");
 
     const harnessRunId = input.harnessRunId ?? newId("hr");
-    const planGraphBundleId = newId("pgb");
+    const planGraphBundleId = createDeterministicId("pgb", `${harnessRunId}:${graphHash}:bundle`);
 
     // Create graph object directly (PlanGraph is an interface)
     const graph: PlanGraph = {
-      graphId: newId("pg"),
+      graphId: createDeterministicId("pg", `${harnessRunId}:${graphHash}:graph`),
       nodes,
       edges,
       entryNodeIds,
@@ -249,7 +260,7 @@ export class PlanBuilder {
       taskId: input.observation.taskId,
       version: input.version ?? 1,
       assessmentRef: createAssessmentRef(input.assessment),
-      strategy: (input.version ?? 1) > 1 ? "replanned" : this.strategySelector.select(input),
+      strategy,
       steps: normalizedSteps,
       createdAt: Date.parse(bundle.createdAt),
       ...(input.parentVersion != null ? { parentVersion: input.parentVersion } : {}),
@@ -277,28 +288,28 @@ export class PlanBuilder {
    * This integrates the patch operations (add/remove/modify nodes) into the plan.
    */
   private applyGraphPatch(steps: PlanStep[], graphPatch: import("../../contracts/executable-contracts/index.js").GraphPatch): PlanStep[] {
-    // R5-12: Create a map of step IDs to steps for efficient lookup
-    const stepMap = new Map(steps.map((s) => [s.stepId, s]));
-
-    // R5-12: Apply each operation in the patch
-    const patchedSteps = [...steps];
+    const patchedSteps = steps.map((step) => ({
+      ...step,
+      inputs: { ...(step.inputs as Record<string, unknown>) },
+      outputs: [...(step.outputs ?? [])],
+      dependencies: [...step.dependencies],
+      retryPolicy: { ...step.retryPolicy },
+    }));
     for (const op of graphPatch.operations) {
       switch (op.operationType) {
         case "add_node": {
-          // R5-12: Add a new node from the patch payload
-          const payload = op.payload as Record<string, unknown>;
+          const payload = validateAddNodePayload(op.payload);
           const newStep: PlanStep = {
-            stepId: payload.stepId as string,
-            action: payload.action as string,
-            title: (payload.title as string) ?? `Step ${payload.stepId}`,
-            inputs: (payload.inputs as Record<string, unknown>) ?? {},
-            outputs: (payload.outputs as string[]) ?? [],
-            dependencies: (payload.dependencies as string[]) ?? [],
+            stepId: payload.stepId,
+            action: payload.action,
+            title: payload.title ?? `Step ${payload.stepId}`,
+            inputs: payload.inputs ?? {},
+            outputs: payload.outputs ?? [],
+            dependencies: payload.dependencies ?? [],
             status: "pending",
-            timeout: (payload.timeout as number) ?? DEFAULT_PLAN_STEP_TIMEOUT_MS,
+            timeout: payload.timeout ?? DEFAULT_PLAN_STEP_TIMEOUT_MS,
             retryPolicy: { maxRetries: 0, backoffMs: DEFAULT_PLAN_RETRY_BACKOFF_BASE_MS },
           };
-          // R5-12: Insert after the target ref or at the end
           const targetIdx = patchedSteps.findIndex((s) => s.stepId === op.targetRef);
           if (targetIdx >= 0) {
             patchedSteps.splice(targetIdx + 1, 0, newStep);
@@ -308,16 +319,13 @@ export class PlanBuilder {
           break;
         }
         case "add_edge": {
-          // R5-12: Add an edge between existing nodes
           const payload = op.payload as Record<string, unknown>;
           const fromNode = payload.fromNodeId as string;
           const toNode = payload.toNodeId as string;
-          // R5-12: Update dependencies of target node to include the new predecessor
           const targetStep = patchedSteps.find((s) => s.stepId === op.targetRef);
           if (targetStep && !targetStep.dependencies.includes(fromNode)) {
             targetStep.dependencies = [...targetStep.dependencies, fromNode];
           }
-          // R5-12: Also add the new step as a dependency for the toNode if it exists
           const toStep = patchedSteps.find((s) => s.stepId === toNode);
           if (toStep && !toStep.dependencies.includes(fromNode)) {
             toStep.dependencies = [...toStep.dependencies, fromNode];
@@ -325,15 +333,19 @@ export class PlanBuilder {
           break;
         }
         case "append_subgraph": {
-          // R5-12: Append a subgraph of steps from the patch payload
           const payload = op.payload as { steps?: PlanStep[] };
           if (Array.isArray(payload.steps)) {
-            patchedSteps.push(...payload.steps);
+            patchedSteps.push(...payload.steps.map((step) => ({
+              ...step,
+              inputs: { ...(step.inputs as Record<string, unknown>) },
+              outputs: [...(step.outputs ?? [])],
+              dependencies: [...step.dependencies],
+              retryPolicy: { ...step.retryPolicy },
+            })));
           }
           break;
         }
         case "mark_skipped": {
-          // R5-12: Mark a step as skipped
           const skippedStep = patchedSteps.find((s) => s.stepId === op.targetRef);
           if (skippedStep) {
             (skippedStep as Record<string, unknown>).status = "skipped";
@@ -341,11 +353,8 @@ export class PlanBuilder {
           break;
         }
         case "disable_edge": {
-          // R5-12: Remove an edge between nodes
           const payload = op.payload as Record<string, unknown>;
           const fromNode = payload.fromNodeId as string;
-          const toNode = payload.toNodeId as string;
-          // R5-12: Remove the dependency from the target node
           const targetStep = patchedSteps.find((s) => s.stepId === op.targetRef);
           if (targetStep) {
             targetStep.dependencies = targetStep.dependencies.filter((d) => d !== fromNode);
@@ -356,6 +365,10 @@ export class PlanBuilder {
           // R5-12: Unknown operation types are ignored (prevents compilation errors for unused cases)
           break;
       }
+    }
+    const validation = this.dagValidator.validate(patchedSteps);
+    if (!validation.valid) {
+      throw new InvalidDagError(validation.issues);
     }
     return patchedSteps;
   }
@@ -384,4 +397,44 @@ export class PlanBuilder {
     }
     return "tool";
   }
+}
+
+function createDeterministicId(prefix: string, seed: string): string {
+  const digest = createHash("sha256").update(seed, "utf8").digest("hex").slice(0, 16);
+  return `${prefix}:${digest}`;
+}
+
+function validateAddNodePayload(payload: unknown): {
+  stepId: string;
+  action: string;
+  title?: string;
+  inputs?: Record<string, unknown>;
+  outputs?: string[];
+  dependencies?: string[];
+  timeout?: number;
+} {
+  if (payload == null || typeof payload !== "object") {
+    throw new InvalidDagError(["graphPatch.add_node.invalid_payload"]);
+  }
+  const record = payload as Record<string, unknown>;
+  if (typeof record.stepId !== "string" || record.stepId.trim().length === 0) {
+    throw new InvalidDagError(["graphPatch.add_node.invalid_step_id"]);
+  }
+  if (typeof record.action !== "string" || !ADD_NODE_ACTION_PATTERN.test(record.action)) {
+    throw new InvalidDagError(["graphPatch.add_node.invalid_action"]);
+  }
+  if (record.timeout != null && (!Number.isFinite(record.timeout) || Number(record.timeout) <= 0)) {
+    throw new InvalidDagError(["graphPatch.add_node.invalid_timeout"]);
+  }
+  const outputs = Array.isArray(record.outputs) ? record.outputs.filter((value): value is string => typeof value === "string") : undefined;
+  const dependencies = Array.isArray(record.dependencies) ? record.dependencies.filter((value): value is string => typeof value === "string") : undefined;
+  return {
+    stepId: record.stepId,
+    action: record.action,
+    ...(typeof record.title === "string" ? { title: record.title } : {}),
+    ...(record.inputs != null && typeof record.inputs === "object" ? { inputs: record.inputs as Record<string, unknown> } : {}),
+    ...(outputs != null ? { outputs } : {}),
+    ...(dependencies != null ? { dependencies } : {}),
+    ...(typeof record.timeout === "number" ? { timeout: record.timeout } : {}),
+  };
 }

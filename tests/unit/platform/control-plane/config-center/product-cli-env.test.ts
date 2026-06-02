@@ -71,7 +71,7 @@ test("product CLI env loaders parse evolution policies and CSV query tools", () 
   const config = loadEvolutionCliEnv({
     AA_EVOLUTION_ACTION: "propose_experience",
     AA_SCOPE_TYPE: "division",
-    AA_SCOPE_REF: "general_ops",
+    AA_SCOPE_REF: "general-ops",
     AA_QUERY_TOOLS: "web_search, todo_write ,question",
     AA_MIN_QUALITY_SCORE: "0.9",
     AA_BASE_POLICY_MAX_TASK_COST_USD: "8.5",
@@ -79,7 +79,7 @@ test("product CLI env loaders parse evolution policies and CSV query tools", () 
 
   assert.equal(config.action, "propose_experience");
   assert.equal(config.scopeType, "division");
-  assert.equal(config.scopeRef, "general_ops");
+  assert.equal(config.scopeRef, "general-ops");
   assert.deepEqual(config.queryTools, ["web_search", "todo_write", "question"]);
   assert.equal(config.minQualityScore, 0.9);
   assert.equal(config.basePolicy.maxTaskCostUsd, 8.5);

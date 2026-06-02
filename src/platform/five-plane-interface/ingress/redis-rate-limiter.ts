@@ -58,7 +58,7 @@ export class RedisRateLimiter {
     limit: number,
     windowMs: number,
   ): Promise<RateLimitResult> {
-    const fullKey = `${this.keyPrefix}${key}`;
+    const fullKey = key;
     const now = Date.now();
     const windowStart = now - windowMs;
 
@@ -79,6 +79,14 @@ export class RedisRateLimiter {
     pipeline.pexpire(fullKey, windowMs);
 
     const results = await pipeline.exec();
+    if (results == null) {
+      throw new Error("redis_rate_limiter.pipeline_failed");
+    }
+    for (const [error] of results) {
+      if (error != null) {
+        throw error;
+      }
+    }
     const count = results?.[2]?.[1] as number ?? 0;
 
     if (count > limit) {
@@ -108,7 +116,7 @@ export class RedisRateLimiter {
    * Gets the current usage count for a key without consuming a token.
    */
   async getUsage(key: string, windowMs: number): Promise<number> {
-    const fullKey = `${this.keyPrefix}${key}`;
+    const fullKey = key;
     const now = Date.now();
     const windowStart = now - windowMs;
 
@@ -120,7 +128,7 @@ export class RedisRateLimiter {
    * Resets the rate limit for a key.
    */
   async reset(key: string): Promise<void> {
-    const fullKey = `${this.keyPrefix}${key}`;
+    const fullKey = key;
     await this.redis.del(fullKey);
   }
 

@@ -2,52 +2,52 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Mapping
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage loop:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: signal collection and aggregation
+- **Assess**: pre-execution evaluation and risk judgement
+- **Plan**: task decomposition and DAG construction
+- **Execute**: step execution and fault tolerance
+- **Feedback**: signal collection and preprocessing
+- **Learn**: pattern detection and knowledge extraction
+- **Improve**: improvement candidate evaluation and rollout
+- **Release**: controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines Bridge / Worker 远程协调场景下的文件一致性、远程执lines观测和异地容灾边界。
+This contract defines file consistency, remote execution observability, and cross-region disaster recovery boundaries in Bridge / Worker remote coordination scenarios.
 
-相关文档：
+Related documents:
 
 - `execution_plane_contract.md`
 - `ha_coordinator_and_leader_election_contract.md`
 - `tenant_isolation_and_shared_worker_safety_contract.md`
 - `production_storage_and_queue_contract.md`
 
-## 2. 目标
+## 2. Goals
 
-- 让远程 worker 不只is“能连上”，而is具备一致性和可恢复性。
-- 让跨区域协调、worker 失联和synchronous断裂有正式恢复路径。
-- 为未来 coordinator 集群和区域级故障切换建立事实源。
+- Make remote workers not just "able to connect", but possess consistency and recoverability.
+- Provide formal recovery paths for cross-region coordination, worker loss of contact, and synchronization breakage.
+- Establish a source of truth for future coordinator clusters and region-level failover.
 
-## 3. 远程文件一致性
+## 3. Remote File Consistency
 
-至少defines：
+At least define:
 
-- conflicts检测
-- 增量校验
-- hash 对账
-- 会话断线后的synchronous恢复
-- 大文件synchronous限速
-- synchronousfailed后的阻断执lines规则
+- Conflict detection
+- Incremental verification
+- Hash reconciliation
+- Synchronization recovery after session disconnect
+- Rate limiting for large file synchronization
+- Execution blocking rules after synchronization failure
 
-## 4. 远程执lines观测
+## 4. Remote Execution Observability
 
-每个远程 worker 至少上报：
+Each remote worker must at least report:
 
 - saturation
 - active lease count
@@ -55,14 +55,14 @@
 - sandbox success rate
 - repo cache hit rate
 
-还应至少supported：
+Should also at least support:
 
-- bridge credential refresh success率
-- stream resume success率
+- bridge credential refresh success rate
+- stream resume success rate
 - last acknowledged stream offset
-- reconnect 后 session consistency check 结果
+- session consistency check result after reconnect
 
-远程会话Status至少区分：
+Remote session status should at least distinguish:
 
 - `connecting`
 - `connected`
@@ -71,27 +71,27 @@
 - `failed`
 - `viewer_only`
 
-## 5. 容灾能力
+## 5. Disaster Recovery Capabilities
 
-成熟工业平台应逐步supported：
+A mature industrial platform should progressively support:
 
-- 区域级故障切换
-- worker 跨区域重分配
-- metadata store 主从切换
-- queue / lease repair
+- Region-level failover
+- Worker cross-region reallocation
+- Metadata store primary-standby switchover
+- Queue / lease repair
 
-## 6. 关键不variable
+## 6. Key Invariants
 
-- 远程 worker 失联后，旧租约不得继续写回 authoritative state。
-- 文件synchronousStatus必须可验证，不得onlyrelies on“上iterations看起来success”。
-- 区域级切换后，control plane 必须能判断哪些 execution 需要重建、哪些只需重连。
-- synchronous hash inconsistent、repo version inconsistent或 lease 归属inconsistent时，defaults to不得继续执lines。
-- bridge 凭证刷新后，新的 epoch / session generation 必须覆盖旧 transport 的写permission。
-- 远程流恢复应从已确认 offset 继续，而不isdefaults tofull重放。
-- `viewer_only` 会话可以消费日志和Status，但不得发送中断、批准、派发或写回 authoritative state。
-- transient reconnect vs permanent disconnect 必须在事件和 UI 层显式区分，避免把短时抖动误判为最终failed。
+- After a remote worker loses contact, the old lease must not continue to write back to authoritative state.
+- File synchronization state must be verifiable, and must not only rely on "it looked successful last time".
+- After a region-level switchover, the control plane must be able to determine which executions need to be rebuilt and which only need reconnection.
+- When synchronization hash is inconsistent, repo version is inconsistent, or lease ownership is inconsistent, it must default to not continuing execution.
+- After bridge credentials are refreshed, the new epoch / session generation must override the write permission of the old transport.
+- Remote stream recovery should resume from the acknowledged offset, rather than defaulting to a full replay.
+- A `viewer_only` session may consume logs and state, but must not send interruption, approval, dispatch, or write back to authoritative state.
+- Transient reconnect and permanent disconnect must be explicitly distinguished at the event and UI layer, to avoid misjudging short jitter as final failure.
 
-## 7. 拓扑示意
+## 7. Topology Sketch
 
 ```mermaid
 flowchart LR
@@ -101,16 +101,16 @@ flowchart LR
     C --> D
 ```
 
-## 8. 收口Conclusion
+## 8. Closure Conclusion
 
-远程协调进入工业级后，重点不再is“能不能派发”，而is：
+Once remote coordination reaches industrial grade, the focus is no longer "can we dispatch", but:
 
-- 文件和Statusisno一致
-- worker 失联后isno可security回收
-- 区域故障后isno可控切换
-- inconsistent时isno能及时阻断、重建并给出明确恢复路径
+- Are files and state consistent
+- After a worker loses contact, can it be safely reclaimed
+- After a regional failure, can it be controlled and switched
+- When inconsistent, can it be blocked in time, rebuilt, and given a clear recovery path
 
-补充Description：
+Additional notes:
 
-- 当前只借鉴远程桥接中的 token refresh、401 恢复、offset 续流等通用模式。
-- 不把外部系统的专有 session / bridge 协议directly写成本系统事实源。
+- Currently only general patterns such as token refresh, 401 recovery, and offset resumption from remote bridging are referenced.
+- Proprietary session / bridge protocols from external systems are not written directly into the source of truth for this system.

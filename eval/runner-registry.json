@@ -1,0 +1,20 @@
+{
+  "$schema": "eval/schemas/eval-runner-registry.schema.json",
+  "runners": [
+    {
+      "runnerId": "patch-gate",
+      "runnerVersion": "1.0.0",
+      "implementationRef": "src/platform/shared/stability/patch-gate.ts"
+    },
+    {
+      "runnerId": "citation-verifier",
+      "runnerVersion": "1.0.0",
+      "implementationRef": "src/domains/knowledge-base/citation-verifier.ts"
+    },
+    {
+      "runnerId": "policy-adherence-evaluator",
+      "runnerVersion": "1.0.0",
+      "implementationRef": "src/domains/customer-service/policy-adherence-evaluator.ts"
+    }
+  ]
+}

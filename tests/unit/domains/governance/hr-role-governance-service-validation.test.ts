@@ -10,9 +10,11 @@ import test from "node:test";
 
 import {
   HrRoleGovernanceService,
+  type HrProposalApprovalStatus,
   type HrRoleProposal,
 } from "../../../../src/domains/governance/hr-role-governance-service.js";
 import type { DivisionRegistry } from "../../../../src/domains/governance/division-loader.js";
+import type { ApprovalRequest, ApprovalService } from "../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 
 function makeMockDivision(
   roles: Array<{ id: string; name: string; tools: string[]; promptText?: string }>,
@@ -285,9 +287,9 @@ test("HrRoleGovernanceService submitProposal returns null approvalRequest when v
     { id: "existing_role", name: "Existing Role", tools: ["read"] },
   ]);
   const mockApprovalService = {
-    createRequest: () => ({ id: "approval_1" } as any),
+    createRequest: () => ({ id: "approval_1" } as unknown as ApprovalRequest),
   };
-  const service = new HrRoleGovernanceService(registry, mockApprovalService as any);
+  const service = new HrRoleGovernanceService(registry, mockApprovalService as Pick<ApprovalService, "createRequest">);
 
   const result = service.submitProposal({
     gapAnalysisRequest: {
@@ -342,7 +344,7 @@ test("HrRoleGovernanceService registerApprovedRole throws when not approved", ()
     () =>
       service.registerApprovedRole({
         proposal: makeMinimalProposal(),
-        approvalStatus: "rejected" as any,
+        approvalStatus: "rejected" as unknown as HrProposalApprovalStatus,
       }),
     /role_registration_requires_approval/,
   );

@@ -28,5 +28,29 @@ test("createSandboxLayer propagates sandbox requirements to each tool binding", 
   assert.equal(layer.bindings[0]?.layer, "network_isolated");
   assert.equal(layer.bindings[0]?.timeoutMs, 45_000);
   assert.deepEqual(layer.bindings[0]?.allowedHosts, allowedHosts);
-  assert.match(layer.bindings[0]?.isolationId ?? "", /^sandbox_search_/);
+  assert.match(layer.bindings[0]?.isolationId ?? "", /^sandbox_search_isolation_/);
+});
+
+test("createSandboxLayer rejects sandboxMode none", () => {
+  assert.throws(
+    () =>
+      createSandboxLayer(["search"], {
+        sandboxRequirement: {
+          sandboxMode: "none",
+          timeoutMs: 30_000,
+        },
+      }),
+    (error: unknown) =>
+      typeof error === "object"
+      && error !== null
+      && "code" in error
+      && error.code === "harness.sandbox.none_not_allowed",
+  );
+});
+
+test("createSandboxLayer generates collision-safe isolation ids for same tool", () => {
+  const layer = createSandboxLayer(["search", "search"], {});
+  const isolationIds = layer.bindings.map((binding) => binding.isolationId);
+
+  assert.equal(new Set(isolationIds).size, isolationIds.length);
 });

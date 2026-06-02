@@ -258,7 +258,11 @@ test("GithubAdapter authenticate stores credential fingerprint", async () => {
     labels: [],
   });
 
-  assert.equal(result.endpoint, "https://api.github.com/repos/test/repo/issues");
+  assert.deepEqual(result.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/issues",
+    payloadKeys: ["body", "labels", "title"],
+  });
   assert.equal(result.status, 200);
 });
 
@@ -280,8 +284,11 @@ test("GithubAdapter execute builds correct endpoint for create_issue", async () 
     labels: ["bug"],
   });
 
-  assert.ok(result.endpoint.includes("/repos/owner/repo/issues"));
-  assert.equal(result.payload.title, "Test Issue");
+  assert.deepEqual(result.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/issues",
+    payloadKeys: ["body", "labels", "title"],
+  });
 });
 
 test("GithubAdapter execute builds correct endpoint for get_file", async () => {
@@ -301,8 +308,11 @@ test("GithubAdapter execute builds correct endpoint for get_file", async () => {
     ref: "main",
   });
 
-  assert.ok(result.endpoint.includes("/repos/owner/repo/contents/"));
-  assert.ok(result.endpoint.includes("ref=main"));
+  assert.deepEqual(result.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/contents/{path}",
+    payloadKeys: [],
+  });
 });
 
 test("GithubAdapter execute throws without authentication", async () => {
@@ -325,7 +335,14 @@ test("GithubAdapter requires repository parameter", async () => {
 });
 
 test("CrmAdapter authenticate handles token and managedSecretRef", async () => {
-  const adapter = createCrmAdapterPlugin();
+  const adapter = createCrmAdapterPlugin({
+    fetchImplementation: async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      text: async () => JSON.stringify({ results: [], crmType: "hubspot" }),
+    }) as Response,
+  });
 
   await adapter.authenticate({ token: "hubspot_token_123" });
   const result = await adapter.execute("contacts", { query: "test" });

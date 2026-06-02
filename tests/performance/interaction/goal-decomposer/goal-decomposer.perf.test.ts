@@ -52,7 +52,7 @@ class FastMockLlmPlanGenerator implements LlmPlanGenerator {
     const tasks = [
       {
         taskId: `${goal.goalId}:llm:1`,
-        domainId: "general_ops",
+        domainId: "general-ops",
         description: "Analyze goal requirements",
         inputs: {
           goalDescription: goal.description,
@@ -80,7 +80,7 @@ class FastMockLlmPlanGenerator implements LlmPlanGenerator {
       },
       {
         taskId: `${goal.goalId}:llm:2`,
-        domainId: "general_ops",
+        domainId: "general-ops",
         description: "Execute main task",
         inputs: {
           goalDescription: goal.description,
@@ -136,7 +136,7 @@ class LatencyInjectingGenerator implements LlmPlanGenerator {
       tasks: [
         {
           taskId: `${goal.goalId}:latency:1`,
-          domainId: "general_ops",
+          domainId: "general-ops",
           description: "Task with latency",
           inputs: {},
           expectedOutputs: ["result"],

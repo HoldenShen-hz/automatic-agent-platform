@@ -77,6 +77,8 @@ export interface GoldenTaskCase {
     sessionStatus: "completed";
     eventTypes: readonly string[];
     stepOutputs: number;
+    taskOutputResult?: string;
+    allowAdditionalEvents?: boolean;
   };
 }
 
@@ -96,6 +98,7 @@ export interface GoldenTaskRunResult {
     sessionStatus: string | null;
     eventTypes: string[];
     stepOutputs: number;
+    taskOutputResult: string | null;
   };
 }
 
@@ -120,14 +123,57 @@ export interface GoldenTaskInventoryBaseline {
   cases: GoldenTaskInventoryCaseSummary[];
 }
 
-/** Default expected outcome shared by all single-task golden tasks */
-const DEFAULT_EXPECTED_OUTCOME = {
+function buildExpectedOutcome(overrides: Partial<GoldenTaskCase["expected"]> = {}): GoldenTaskCase["expected"] {
+  return {
+    taskStatus: "done",
+    workflowStatus: "completed",
+    executionStatus: "succeeded",
+    sessionStatus: "completed",
+    eventTypes: [
+      "platform.workflow.step_completed",
+      "task:status_changed",
+      "execution:status_changed",
+      "execution:status_changed",
+      "workflow:step_completed",
+      "task:status_changed",
+    ],
+    stepOutputs: 1,
+    ...overrides,
+  };
+}
+
+function createDeterministicIdFactory(caseId: string): (prefix: string) => string {
+  const normalizedCaseId = caseId.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "").toLowerCase() || "golden";
+  let counter = 0;
+  return (prefix: string) => {
+    counter += 1;
+    return `${prefix}_${normalizedCaseId}_${String(counter).padStart(4, "0")}`;
+  };
+}
+
+function createDeterministicClock(caseId: string): () => string {
+  const base = Date.parse("2026-01-01T00:00:00.000Z");
+  const offset = Array.from(caseId).reduce((sum, char, index) => sum + char.charCodeAt(0) * (index + 1), 0);
+  let tick = 0;
+  return () => {
+    const timestamp = new Date(base + offset + tick);
+    tick += 1;
+    return timestamp.toISOString();
+  };
+}
+
+function createDeterministicStepOutput(testCase: GoldenTaskCase): Record<string, unknown> {
+  return {
+    summary: `Golden baseline completed for ${testCase.metadata.expectedClass}`,
+    result: `golden:${testCase.id}`,
+  };
+}
+
+const DEFAULT_CASE_EXPECTED = {
   taskStatus: "done",
   workflowStatus: "completed",
   executionStatus: "succeeded",
   sessionStatus: "completed",
-  eventTypes: ["task:status_changed", "workflow:step_completed", "task:status_changed"],
-  stepOutputs: 1,
 } as const;
 
 /**
@@ -153,7 +199,10 @@ export const SINGLE_TASK_GOLDEN_TASKS: readonly GoldenTaskCase[] = [
       approvalExpectation: "not_expected",
       recoveryExpectation: "not_required",
     },
-    expected: DEFAULT_EXPECTED_OUTCOME,
+    expected: buildExpectedOutcome({
+      ...DEFAULT_CASE_EXPECTED,
+      taskOutputResult: "golden:coding_minimal_baseline",
+    }),
   },
   {
     id: "research_summary_minimal",
@@ -170,7 +219,10 @@ export const SINGLE_TASK_GOLDEN_TASKS: readonly GoldenTaskCase[] = [
       approvalExpectation: "not_expected",
       recoveryExpectation: "not_required",
     },
-    expected: DEFAULT_EXPECTED_OUTCOME,
+    expected: buildExpectedOutcome({
+      ...DEFAULT_CASE_EXPECTED,
+      taskOutputResult: "golden:research_summary_minimal",
+    }),
   },
   {
     id: "content_brief_minimal",
@@ -187,7 +239,10 @@ export const SINGLE_TASK_GOLDEN_TASKS: readonly GoldenTaskCase[] = [
       approvalExpectation: "not_expected",
       recoveryExpectation: "not_required",
     },
-    expected: DEFAULT_EXPECTED_OUTCOME,
+    expected: buildExpectedOutcome({
+      ...DEFAULT_CASE_EXPECTED,
+      taskOutputResult: "golden:content_brief_minimal",
+    }),
   },
   {
     id: "data_extract_minimal",
@@ -204,7 +259,10 @@ export const SINGLE_TASK_GOLDEN_TASKS: readonly GoldenTaskCase[] = [
       approvalExpectation: "not_expected",
       recoveryExpectation: "not_required",
     },
-    expected: DEFAULT_EXPECTED_OUTCOME,
+    expected: buildExpectedOutcome({
+      ...DEFAULT_CASE_EXPECTED,
+      taskOutputResult: "golden:data_extract_minimal",
+    }),
   },
   {
     id: "cross_division_handoff_minimal",
@@ -221,7 +279,10 @@ export const SINGLE_TASK_GOLDEN_TASKS: readonly GoldenTaskCase[] = [
       approvalExpectation: "not_expected",
       recoveryExpectation: "manual_takeover_supported",
     },
-    expected: DEFAULT_EXPECTED_OUTCOME,
+    expected: buildExpectedOutcome({
+      ...DEFAULT_CASE_EXPECTED,
+      taskOutputResult: "golden:cross_division_handoff_minimal",
+    }),
   },
   {
     id: "high_risk_approval_minimal",
@@ -238,7 +299,10 @@ export const SINGLE_TASK_GOLDEN_TASKS: readonly GoldenTaskCase[] = [
       approvalExpectation: "supervised_review_expected",
       recoveryExpectation: "manual_takeover_supported",
     },
-    expected: DEFAULT_EXPECTED_OUTCOME,
+    expected: buildExpectedOutcome({
+      ...DEFAULT_CASE_EXPECTED,
+      taskOutputResult: "golden:high_risk_approval_minimal",
+    }),
   },
   {
     id: "crash_recovery_minimal",
@@ -255,7 +319,10 @@ export const SINGLE_TASK_GOLDEN_TASKS: readonly GoldenTaskCase[] = [
       approvalExpectation: "not_expected",
       recoveryExpectation: "requeue_supported",
     },
-    expected: DEFAULT_EXPECTED_OUTCOME,
+    expected: buildExpectedOutcome({
+      ...DEFAULT_CASE_EXPECTED,
+      taskOutputResult: "golden:crash_recovery_minimal",
+    }),
   },
 ];
 
@@ -327,10 +394,15 @@ export function writeGoldenTaskInventoryBaseline(
  */
 export async function runGoldenTaskCase(baseDir: string, testCase: GoldenTaskCase): Promise<GoldenTaskRunResult> {
   const dbPath = join(baseDir, `${testCase.id}.db`);
+  const idFactory = createDeterministicIdFactory(testCase.id);
+  const now = createDeterministicClock(testCase.id);
   const snapshot = await runSingleTaskExecution({
     dbPath,
     title: testCase.title,
     request: testCase.request,
+    idFactory,
+    now,
+    stepOutputOverride: createDeterministicStepOutput(testCase),
   });
 
   // Extract actual observed values
@@ -341,6 +413,7 @@ export async function runGoldenTaskCase(baseDir: string, testCase: GoldenTaskCas
     sessionStatus: snapshot.session?.status ?? null,
     eventTypes: snapshot.events.map((event) => event.eventType),
     stepOutputs: snapshot.stepOutputs.length,
+    taskOutputResult: readTaskOutputResult(snapshot.task.outputJson),
   };
 
   // Compare actual to expected
@@ -350,7 +423,8 @@ export async function runGoldenTaskCase(baseDir: string, testCase: GoldenTaskCas
     actual.executionStatus === testCase.expected.executionStatus &&
     actual.sessionStatus === testCase.expected.sessionStatus &&
     actual.stepOutputs === testCase.expected.stepOutputs &&
-    expectedEventsAppearInOrder(actual.eventTypes, testCase.expected.eventTypes);
+    (testCase.expected.taskOutputResult == null || actual.taskOutputResult === testCase.expected.taskOutputResult) &&
+    expectedEventsMatch(actual.eventTypes, testCase.expected.eventTypes, testCase.expected.allowAdditionalEvents === true);
 
   return {
     caseId: testCase.id,
@@ -360,15 +434,34 @@ export async function runGoldenTaskCase(baseDir: string, testCase: GoldenTaskCas
   };
 }
 
-function expectedEventsAppearInOrder(actual: readonly string[], expected: readonly string[]): boolean {
+function expectedEventsMatch(
+  actual: readonly string[],
+  expected: readonly string[],
+  allowAdditionalEvents: boolean,
+): boolean {
+  if (!allowAdditionalEvents) {
+    if (actual.length !== expected.length) {
+      return false;
+    }
+    return actual.every((eventType, index) => eventType === expected[index]);
+  }
   let cursor = 0;
   for (const eventType of actual) {
     if (eventType === expected[cursor]) {
       cursor += 1;
     }
-    if (cursor === expected.length) {
-      return true;
-    }
   }
-  return expected.length === 0;
+  return cursor === expected.length;
+}
+
+function readTaskOutputResult(outputJson: string | null): string | null {
+  if (outputJson == null || outputJson.length === 0) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(outputJson) as { readonly result?: unknown };
+    return typeof parsed.result === "string" ? parsed.result : null;
+  } catch {
+    return null;
+  }
 }

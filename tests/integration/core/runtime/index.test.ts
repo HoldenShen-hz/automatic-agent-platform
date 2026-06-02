@@ -66,10 +66,7 @@ test("core/runtime index excludes state-transition components", () => {
   assert.equal("StateTransitionMachine" in runtimeIndex, false);
 });
 
-test("core/runtime index re-exports workflow-step-checkpoint runtime helpers", () => {
-  const keys = Object.keys(runtimeIndex);
-  assert.ok(keys.includes("createWorkflowStepCheckpoint") || "createWorkflowStepCheckpoint" in runtimeIndex,
-    "Should re-export createWorkflowStepCheckpoint");
-  assert.ok(keys.includes("WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION") || "WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION" in runtimeIndex,
-    "Should re-export workflow step checkpoint schema version");
+test("core/runtime index excludes workflow-step-checkpoint runtime helpers", () => {
+  assert.equal("createWorkflowStepCheckpoint" in runtimeIndex, false);
+  assert.equal("WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION" in runtimeIndex, false);
 });

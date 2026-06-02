@@ -39,7 +39,7 @@ function seedTaskAndExecution(
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: `Task ${taskId}`,
       status: "in_progress",
       source: "user",

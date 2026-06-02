@@ -35,7 +35,7 @@ function makeWorkflow(overrides: {
   return {
     id: "wf-test-001",
     taskId: "task-wf-001",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "wf-test-001",
     status: "running",
     createdAt: now,
@@ -287,7 +287,7 @@ test("integration: WorkflowRepository.updateWorkflowStateCas clears lastErrorCod
     const now = new Date().toISOString();
     repo.insertWorkflowState({
       taskId: "task-error-clear-001",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf-error-clear-001",
       currentStepIndex: 0,
       status: "failed",

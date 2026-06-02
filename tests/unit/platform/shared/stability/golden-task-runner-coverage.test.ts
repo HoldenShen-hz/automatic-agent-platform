@@ -101,6 +101,7 @@ test("GoldenTaskRunResult structure validation [golden-task-runner-coverage]", (
       sessionStatus: "completed",
       eventTypes: ["task:status_changed"],
       stepOutputs: 1,
+      taskOutputResult: "golden:test_case",
     },
   };
 
@@ -121,6 +122,7 @@ test("GoldenTaskRunResult can represent failed run [golden-task-runner-coverage]
       sessionStatus: null,
       eventTypes: [],
       stepOutputs: 0,
+      taskOutputResult: null,
     },
   };
 
@@ -237,6 +239,14 @@ test("GoldenTaskCase eventTypes are non-empty for default expected outcome [gold
   for (const task of SINGLE_TASK_GOLDEN_TASKS) {
     assert.ok(task.expected.eventTypes.length > 0, `eventTypes should not be empty for ${task.id}`);
   }
+});
+
+test("GoldenTaskCase task output markers are unique per case [golden-task-runner-coverage]", () => {
+  const markers = SINGLE_TASK_GOLDEN_TASKS.map((task) => task.expected.taskOutputResult);
+  const uniqueMarkers = new Set(markers);
+
+  assert.equal(uniqueMarkers.size, SINGLE_TASK_GOLDEN_TASKS.length);
+  assert.ok(markers.every((marker) => typeof marker === "string" && marker.startsWith("golden:")));
 });
 
 test("GoldenTaskInventoryCaseSummary can be constructed from case [golden-task-runner-coverage]", () => {

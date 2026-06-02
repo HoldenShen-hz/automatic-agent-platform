@@ -85,10 +85,15 @@ test("AsyncEventRepository listEventDeadLetters returns dead letters with defaul
 
   const result = await repo.listEventDeadLetters();
 
-  assert.deepEqual(result, [deadLetter]);
+  assert.deepEqual(result, {
+    records: [deadLetter],
+    hasMore: false,
+    nextCursor: null,
+    limit: 100,
+  });
   assert.match(calls[0]!.sql, /FROM event_dead_letters/);
-  assert.match(calls[0]!.sql, /ORDER BY dead_lettered_at DESC/);
-  assert.deepEqual(calls[0]!.params, [100]); // default limit
+  assert.match(calls[0]!.sql, /ORDER BY dead_lettered_at DESC, id DESC/);
+  assert.deepEqual(calls[0]!.params, [101]);
 });
 
 test("AsyncEventRepository listEventDeadLetters respects custom limit and cursor", async () => {
@@ -107,11 +112,19 @@ test("AsyncEventRepository listEventDeadLetters respects custom limit and cursor
   const { connection, calls } = createConnection({ queryRows: [[deadLetter]] });
   const repo = new AsyncEventRepository(connection);
 
-  const result = await repo.listEventDeadLetters(25, "2026-04-20T11:00:00.000Z");
+  const result = await repo.listEventDeadLetters(25, {
+    deadLetteredAt: "2026-04-20T11:00:00.000Z",
+    id: "dl-9",
+  });
 
-  assert.deepEqual(result, [deadLetter]);
-  assert.match(calls[0]!.sql, /WHERE dead_lettered_at < \$1/);
-  assert.deepEqual(calls[0]!.params, ["2026-04-20T11:00:00.000Z", 25]);
+  assert.deepEqual(result, {
+    records: [deadLetter],
+    hasMore: false,
+    nextCursor: null,
+    limit: 25,
+  });
+  assert.match(calls[0]!.sql, /WHERE \(dead_lettered_at < \$1 OR \(dead_lettered_at = \$1 AND id < \$2\)\)/);
+  assert.deepEqual(calls[0]!.params, ["2026-04-20T11:00:00.000Z", "dl-9", 26]);
 });
 
 test("AsyncEventRepository listEventsByType returns events filtered by type without limit", async () => {

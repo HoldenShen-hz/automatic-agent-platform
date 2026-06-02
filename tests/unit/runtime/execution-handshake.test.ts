@@ -156,7 +156,7 @@ function createTaskAndExecution(
     id: taskId,
     parentId: null,
     rootId: taskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     title: "Test task",
     status: taskStatus,
     source: "user",

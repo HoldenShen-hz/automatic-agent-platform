@@ -41,6 +41,8 @@ export interface GatewayRouteDeps {
   channelGatewayService: ChannelGatewayService | null;
   channelGatewayDeliveryService: ChannelGatewayDeliveryService | null;
   webhookSecret: string | null;
+  webhookSignatureToleranceSeconds?: number;
+  webhookNonceTtlSeconds?: number;
 }
 
 export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
@@ -132,23 +134,30 @@ export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
         const nonce = ctx.request.headers["x-webhook-nonce"] as string | undefined ?? null;
 
         const webhookSecret = deps.webhookSecret ?? null;
-        if (webhookSecret != null) {
-          if (!signature) {
-            throw new ApiError(401, "gateway.signature_required", "Webhook request must include x-webhook-signature header.");
-          }
-          const signatureResult = deliveryService.verifySignature(
-            payloadText,
-            signature,
-            timestamp,
-            { secret: webhookSecret, toleranceSeconds: 300 },
-          );
-          if (!signatureResult.valid) {
-            throw new ApiError(401, "gateway.signature_invalid", signatureResult.error ?? "Invalid signature");
-          }
+        if (webhookSecret == null) {
+          throw new ApiError(503, "gateway.webhook_secret_required", "Gateway webhook secret is not configured.");
+        }
+        if (!signature) {
+          throw new ApiError(401, "gateway.signature_required", "Webhook request must include x-webhook-signature header.");
+        }
+        const signatureResult = deliveryService.verifySignature(
+          payloadText,
+          signature,
+          timestamp,
+          {
+            secret: webhookSecret,
+            toleranceSeconds: Math.max(1, Math.trunc(deps.webhookSignatureToleranceSeconds ?? 300)),
+          },
+        );
+        if (!signatureResult.valid) {
+          throw new ApiError(401, "gateway.signature_invalid", signatureResult.error ?? "Invalid signature");
         }
 
         if (nonce) {
-          const nonceResult = deliveryService.verifyNonce(nonce, 300);
+          const nonceResult = deliveryService.verifyNonce(
+            nonce,
+            Math.max(1, Math.trunc(deps.webhookNonceTtlSeconds ?? 300)),
+          );
           if (!nonceResult.valid) {
             throw new ApiError(401, "gateway.nonce_reused", nonceResult.error ?? "Nonce already used");
           }

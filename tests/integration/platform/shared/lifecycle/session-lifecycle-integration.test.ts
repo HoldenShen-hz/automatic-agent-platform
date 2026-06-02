@@ -33,7 +33,7 @@ test("lifecycle: session can transition through open -> closed states", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Session lifecycle test",
         status: "in_progress",
         source: "user",

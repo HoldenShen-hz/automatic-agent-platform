@@ -6,6 +6,7 @@
  */
 
 import { newId, nowIso } from "../sqlite-repository-contracts.js";
+import type { PermissionSet } from "../../../../five-plane-orchestration/agent-delegation/delegation-types.js";
 
 export type DelegationStatus = "pending" | "pending_approval" | "discovery" | "bid" | "awarded" | "active" | "completed" | "failed" | "cancelled" | "expired" | "timed_out";
 
@@ -14,6 +15,8 @@ export interface DelegationRecord {
   parentAgentId: string;
   childAgentId: string;
   delegationChain: readonly string[];
+  permissions: PermissionSet;
+  grantedPermissions: PermissionSet;
   status: DelegationStatus;
   depth: number;
   expiresAt: string | null;
@@ -47,6 +50,8 @@ export interface CreateDelegationInput {
   parentAgentId: string;
   childAgentId: string;
   delegationChain: readonly string[];
+  permissions: PermissionSet;
+  grantedPermissions: PermissionSet;
   depth: number;
   expiresAt?: string;
   status?: DelegationStatus;
@@ -79,6 +84,8 @@ export class InMemoryDelegationRepository implements DelegationRepository {
       parentAgentId: input.parentAgentId,
       childAgentId: input.childAgentId,
       delegationChain: input.delegationChain,
+      permissions: clonePermissionSet(input.permissions),
+      grantedPermissions: clonePermissionSet(input.grantedPermissions),
       status: input.status ?? "pending",
       depth: input.depth,
       expiresAt: input.expiresAt ?? null,
@@ -137,6 +144,19 @@ export class InMemoryDelegationRepository implements DelegationRepository {
   public async delete(delegationId: string): Promise<void> {
     this.delegations.delete(delegationId);
   }
+}
+
+function clonePermissionSet(permissionSet: PermissionSet): PermissionSet {
+  return {
+    resources: [...permissionSet.resources],
+    actions: [...permissionSet.actions],
+    constraints: {
+      ...(permissionSet.constraints.maxDurationMs !== undefined ? { maxDurationMs: permissionSet.constraints.maxDurationMs } : {}),
+      ...(permissionSet.constraints.maxTokens !== undefined ? { maxTokens: permissionSet.constraints.maxTokens } : {}),
+      ...(permissionSet.constraints.allowedDomains !== undefined ? { allowedDomains: [...permissionSet.constraints.allowedDomains] } : {}),
+      ...(permissionSet.constraints.deniedDomains !== undefined ? { deniedDomains: [...permissionSet.constraints.deniedDomains] } : {}),
+    },
+  };
 }
 
 /**

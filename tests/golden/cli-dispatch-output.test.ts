@@ -66,7 +66,7 @@ test("golden: dispatch execution workflow state structure", () => {
   db.transaction(() => {
     store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",
@@ -114,7 +114,7 @@ test("golden: dispatch execution queue status format", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: `Queue task ${i}`,
         status: statuses[i],
         source: "user",

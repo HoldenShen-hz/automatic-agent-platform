@@ -263,7 +263,7 @@ export const defaultMockApiShape: MockApiShape = {
         targetClaimLevel: "local_leader",
         owner: "engineering-platform-owner",
         canonicalFamilies: ["engineering", "data", "operations", "quality"],
-        canonicalDivisions: ["coding", "data-engineering", "devops", "engineering_ops", "quality-assurance"],
+        canonicalDivisions: ["coding", "data-engineering", "devops", "engineering-ops", "quality-assurance"],
         benchmarkRefs: ["swe-bench-verified", "bfcl-v4", "aidev-github"],
         minimumEvidenceRef: "engineering-core",
         notes: "issue-to-patch closure is measurable",

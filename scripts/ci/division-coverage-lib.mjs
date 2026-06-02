@@ -1,5 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { parse as parseYaml } from "yaml";
+
+const DEFAULT_PLATFORM_ROOT = fileURLToPath(new URL("../../", import.meta.url));
+const ALLOWED_CLI_FLAGS = new Set(["root", "now", "mode", "check"]);
 
 export const P0_DIVISION_IDS = Object.freeze([
   "coding",
@@ -72,7 +77,7 @@ export const DEFAULT_ALIAS_ENTRIES = Object.freeze([
   { alias: "research", canonical: "industry-research", mode: "ambiguous_alias", removalTargetVersion: "v3.6" },
 ]);
 
-export function resolvePlatformRoot(platformRoot = process.cwd()) {
+export function resolvePlatformRoot(platformRoot = DEFAULT_PLATFORM_ROOT) {
   return resolve(platformRoot);
 }
 
@@ -97,37 +102,6 @@ export function writeTextFile(path, value) {
   writeFileSync(path, value.endsWith("\n") ? value : `${value}\n`);
 }
 
-export function tokenizeYaml(raw) {
-  return raw
-    .split(/\r?\n/)
-    .map((line, index) => ({ rawLine: line, lineNumber: index + 1 }))
-    .filter(({ rawLine }) => rawLine.trim().length > 0 && !rawLine.trimStart().startsWith("#"))
-    .map(({ rawLine, lineNumber }) => ({
-      indent: rawLine.match(/^ */)?.[0].length ?? 0,
-      text: rawLine.trim(),
-      lineNumber,
-    }));
-}
-
-function isYamlArrayItem(text) {
-  return text === "-" || text.startsWith("- ");
-}
-
-function splitKeyValue(text, sourcePath, lineNumber) {
-  const separatorIndex = text.indexOf(":");
-  if (separatorIndex <= 0) {
-    throw new Error(`division_coverage.invalid_yaml_mapping:${sourcePath}:${lineNumber}:${text}`);
-  }
-  return [text.slice(0, separatorIndex).trim(), text.slice(separatorIndex + 1).trim()];
-}
-
-function looksLikeKeyValue(text) {
-  if ((text.startsWith("\"") && text.endsWith("\"")) || (text.startsWith("'") && text.endsWith("'"))) {
-    return false;
-  }
-  return text.includes(":");
-}
-
 function parseScalar(raw) {
   if (raw === "true") return true;
   if (raw === "false") return false;
@@ -143,98 +117,14 @@ function parseScalar(raw) {
   return raw;
 }
 
-function parseObject(lines, startIndex, indent, sourcePath) {
-  const result = {};
-  let index = startIndex;
-  while (index < lines.length) {
-    const line = lines[index];
-    if (!line || line.indent < indent) {
-      break;
-    }
-    if (line.indent > indent) {
-      throw new Error(`division_coverage.invalid_yaml_indent:${sourcePath}:${line.lineNumber}`);
-    }
-    if (line.text.startsWith("- ")) {
-      break;
-    }
-    const [key, inlineValue] = splitKeyValue(line.text, sourcePath, line.lineNumber);
-    index += 1;
-    if (inlineValue.length > 0) {
-      result[key] = parseScalar(inlineValue);
-      continue;
-    }
-    if (index < lines.length && (lines[index]?.indent ?? -1) > indent) {
-      const [nestedValue, nextIndex] = parseBlock(lines, index, indent + 2, sourcePath);
-      result[key] = nestedValue;
-      index = nextIndex;
-      continue;
-    }
-    result[key] = null;
-  }
-  return [result, index];
-}
-
-function parseArray(lines, startIndex, indent, sourcePath) {
-  const result = [];
-  let index = startIndex;
-  while (index < lines.length) {
-    const line = lines[index];
-    if (!line || line.indent < indent) {
-      break;
-    }
-    if (line.indent > indent) {
-      throw new Error(`division_coverage.invalid_yaml_indent:${sourcePath}:${line.lineNumber}`);
-    }
-    if (!isYamlArrayItem(line.text)) {
-      break;
-    }
-    const itemText = line.text === "-" ? "" : line.text.slice(2).trim();
-    index += 1;
-    if (itemText.length === 0) {
-      if (index >= lines.length || (lines[index]?.indent ?? -1) <= indent) {
-        result.push(null);
-        continue;
-      }
-      const [nestedValue, nextIndex] = parseBlock(lines, index, indent + 2, sourcePath);
-      result.push(nestedValue);
-      index = nextIndex;
-      continue;
-    }
-    if (looksLikeKeyValue(itemText)) {
-      const [key, inlineValue] = splitKeyValue(itemText, sourcePath, line.lineNumber);
-      const objectValue = { [key]: inlineValue.length > 0 ? parseScalar(inlineValue) : null };
-      if (index < lines.length && (lines[index]?.indent ?? -1) > indent) {
-        const [nestedValue, nextIndex] = parseObject(lines, index, indent + 2, sourcePath);
-        Object.assign(objectValue, nestedValue);
-        index = nextIndex;
-      }
-      result.push(objectValue);
-      continue;
-    }
-    result.push(parseScalar(itemText));
-  }
-  return [result, index];
-}
-
-function parseBlock(lines, startIndex, indent, sourcePath) {
-  const line = lines[startIndex];
-  if (!line || line.indent < indent) {
-    return [{}, startIndex];
-  }
-  if (line.indent !== indent) {
-    throw new Error(`division_coverage.invalid_yaml_indent:${sourcePath}:${line.lineNumber}`);
-  }
-  return isYamlArrayItem(line.text)
-    ? parseArray(lines, startIndex, indent, sourcePath)
-    : parseObject(lines, startIndex, indent, sourcePath);
-}
-
 export function parseLimitedYaml(raw, sourcePath = "<inline>") {
-  const lines = tokenizeYaml(raw);
-  if (lines.length === 0) {
-    return {};
+  try {
+    const parsed = parseYaml(raw);
+    return parsed == null ? {} : parsed;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`division_coverage.invalid_yaml:${sourcePath}:${message}`);
   }
-  return parseBlock(lines, 0, lines[0].indent, sourcePath)[0];
 }
 
 export function loadYamlObject(path) {
@@ -295,14 +185,26 @@ export function relativeToRoot(platformRoot, absolutePath) {
   return relative(platformRoot, absolutePath).replace(/\\/g, "/");
 }
 
-export function parseCliArgs(argv) {
+export function parseCliArgs(argv, options = {}) {
   const flags = {};
+  const cwdRoot = resolve(options.cwd ?? process.cwd());
   for (const arg of argv) {
     if (!arg.startsWith("--")) {
-      continue;
+      throw new Error(`division_coverage.invalid_cli_argument:${arg}`);
     }
     const [key, rawValue] = arg.slice(2).split("=", 2);
+    if (!ALLOWED_CLI_FLAGS.has(key)) {
+      throw new Error(`division_coverage.unknown_flag:${key}`);
+    }
     flags[key] = rawValue ?? "true";
+  }
+  if (typeof flags.root === "string") {
+    const resolvedRoot = resolve(cwdRoot, flags.root);
+    const normalizedCwd = `${cwdRoot}${cwdRoot.endsWith("/") ? "" : "/"}`;
+    if (resolvedRoot !== cwdRoot && !resolvedRoot.startsWith(normalizedCwd)) {
+      throw new Error(`division_coverage.invalid_root:${flags.root}`);
+    }
+    flags.root = resolvedRoot;
   }
   return flags;
 }
@@ -329,7 +231,7 @@ export function resolveCoverageFamilyId(divisionId, legacyFamily = null) {
     "quality-assurance",
     "qa",
     "engineering-ops",
-    "engineering_ops",
+    "engineering-ops",
     "data-engineering",
   ].includes(normalizedDivisionId) || ["engineering", "quality", "security", "data"].includes(family)) {
     return "engineering";
@@ -349,7 +251,7 @@ export function resolveCoverageFamilyId(divisionId, legacyFamily = null) {
     "user-operations",
     "operations",
     "general-ops",
-    "general_ops",
+    "general-ops",
     "it-operations",
     "project-management",
   ].includes(normalizedDivisionId) || ["customer-ops", "operations", "delivery"].includes(family)) {

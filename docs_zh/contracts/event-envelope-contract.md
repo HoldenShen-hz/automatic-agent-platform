@@ -12,29 +12,35 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `schema_version` | `string` | envelope wire schema 版本；用于跨存储、跨队列与跨语言兼容 |
 | `eventId` | `string` | 事件 ID |
+| `runId` | `string` | 所属 run / lifecycle 关联 ID |
 | `eventType` | `string` | 事件类型 |
-| `eventVersion` | `string` | 事件 schema 版本 |
-| `idempotency_key` | `string` | 生产侧幂等键；用于 append / relay / consumer 去重 |
+| `schemaVersion` | `number` | executable contract schema 版本号 |
 | `aggregateType` | `string` | 聚合类型 |
 | `aggregateId` | `string` | 聚合 ID |
 | `aggregateSeq` | `number` | 聚合序列 |
 | `tenantId` | `string` | 租户 |
 | `traceId` | `string` | trace |
-| `causation_id` | `string?` | 直接触发该事件的上游事件或命令 ID |
+| `causationId` | `string?` | 直接触发该事件的上游事件或命令 ID |
 | `correlationId` | `string?` | 关联链 |
-| `partition_key` | `string` | 分区路由键；同一 truth aggregate 必须稳定路由到同一分区策略 |
-| `ttl` | `duration?` | 保留/失效提示；用于 relay、cache、view rebuild 或临时投影过期策略 |
 | `payloadHash` | `string` | payload hash |
 | `payload` | `json` | payload |
-| `occurredAt` | `timestamp` | 发生时间 |
+| `replayBehavior` | `replay_as_fact \| skip_side_effect \| simulate \| forbidden` | replay 语义 |
+| `sourceOfTruth` | `platform \| projection?` | truth / projection 来源标记 |
+| `schemaOwner` | `string?` | schema owner |
+| `consumerContractTests` | `string[]?` | 消费方 contract tests 标识 |
+| `occurredAt` | `RFC3339 timestamp` | 发生时间 |
+
+说明：
+
+- v4.3 executable contract 使用 camelCase，并以 `schemaVersion:number` 作为 canonical 形态。
+- 历史 `schema_version`、`eventVersion`、`idempotency_key`、`partition_key`、`ttl` 只允许作为 adapter / migration 输入，不再是当前 executable contract 的最小字段。
+- executable contract validation 入口按 `additionalProperties: false` 拒绝未知顶层字段；旧 snake_case 字段不会作为 canonical payload 被接受。
 
 规则：
 
 - `(aggregateType, aggregateId, aggregateSeq)` 必须唯一。
-- `schema_version`、`idempotency_key`、`partition_key` 缺一不可；缺失时不得进入 canonical event bus。
-- `ttl` 只控制 envelope 生命周期策略，不得改变已提交 truth fact 的审计保留义务。
+- `occurredAt` 必须是 RFC3339 / ISO-8601 带时区时间戳。
 - Tier 1 platform fact 必须支持 per-consumer ack 与 replay。
 - event append 必须与 truth mutation 同事务。
 
@@ -58,7 +64,9 @@
 规则：
 
 - truth projector、recovery scanner、budget projector、side-effect projector 只能消费 `platform.*`。
+- `PlatformFactEvent` 在 executable schema 中额外要求 `source` 与非空 `correlationId`。
 - platform fact 不得由 UI view projector 直接生成；必须来自状态机、admission、scheduler、budget、side-effect、decision 等权威路径。
+- `platform.*` namespace 约束由 `PlatformFactEvent` 子类型负责；基础 `EventEnvelope` 保持通用，便于 adapter / projection 共用。
 
 ## 4. OapeflirViewEvent
 
@@ -75,7 +83,7 @@
 规则：
 
 - 不得驱动 `HarnessRun`、`NodeRun`、`BudgetLedger`、`SideEffectRecord` truth mutation。
-- 必须声明 `derivedFromEventId` 或 `derivedFromEventIds`。
+- 当前 executable contract 只接受 `derivedFromEventIds:string[]`，且至少包含 1 个来源 fact。
 - 可以丢失后重建；不得作为唯一审计事实。
 
 ## 5. Legacy / Deprecated 映射
@@ -99,6 +107,6 @@
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-5: 缺少架构 ContractEnvelope 要求的5个必需字段：schema_version/idempotency_key/causation_id/partition_key/ttl。根因：早期文档只描述了事件事实存储字段，遗漏了 envelope 层的幂等、分区和生命周期元数据。修复：这 5 个字段现已进入 `EventEnvelope` canonical 最小字段；旧 camelCase / 省略字段写法只能作为 adapter 或 migration 输入，不得作为新实现入口。
+- T-5: 早期文档把架构草案中的 envelope 元数据直接写成 canonical 字段，和当前 executable contract 脱节。修复：本文已明确 v4.3 executable contract 的实际最小字段，并把 `schema_version` / `idempotency_key` / `partition_key` / `ttl` 收口为历史 adapter 语义，而非当前 canonical payload。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

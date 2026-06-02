@@ -146,7 +146,7 @@ export class ApprovalPolicyEngine {
   private compareValues(fieldValue: unknown, operator: RuleOperator, ruleValue: unknown): boolean {
     switch (operator) {
       case "eq":
-        return fieldValue === ruleValue;
+        return deepEqual(fieldValue, ruleValue);
 
       case "neq":
         return fieldValue !== ruleValue;
@@ -395,10 +395,33 @@ export class ApprovalPolicyEngine {
         .map((c) => `${c.field}:${c.operator}:${JSON.stringify(c.value)}`)
         .sort();
 
-      return higherConditionStrings.every((hc) => lowerConditionStrings.includes(hc));
+      const subsetMatch = higherConditionStrings.every((hc) => lowerConditionStrings.includes(hc));
+      if (!subsetMatch) {
+        return false;
+      }
+      if ((lower.conditionLogic ?? "and") === "or" && (higher.conditionLogic ?? "and") !== "or") {
+        return false;
+      }
+      return true;
     }
     return false;
   }
+}
+
+function deepEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) {
+    return true;
+  }
+  if (Array.isArray(left) && Array.isArray(right)) {
+    return left.length === right.length && left.every((value, index) => deepEqual(value, right[index]));
+  }
+  if (left != null && right != null && typeof left === "object" && typeof right === "object") {
+    const leftEntries = Object.entries(left as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b));
+    const rightEntries = Object.entries(right as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b));
+    return leftEntries.length === rightEntries.length
+      && leftEntries.every(([key, value], index) => key === rightEntries[index]?.[0] && deepEqual(value, rightEntries[index]?.[1]));
+  }
+  return false;
 }
 
 /**

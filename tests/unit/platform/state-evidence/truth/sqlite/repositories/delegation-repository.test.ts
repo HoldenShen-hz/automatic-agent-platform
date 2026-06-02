@@ -12,6 +12,12 @@ import {
   type CreateDelegationInput,
 } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/delegation-repository.js";
 
+const defaultPermissions = {
+  resources: ["workspace"],
+  actions: ["tool:invoke"],
+  constraints: {},
+} as const;
+
 test("InMemoryDelegationRepository creates delegation", async () => {
   const repo = new InMemoryDelegationRepository();
 
@@ -19,6 +25,8 @@ test("InMemoryDelegationRepository creates delegation", async () => {
     parentAgentId: "agent-1",
     childAgentId: "agent-2",
     delegationChain: ["agent-1", "agent-2"],
+    permissions: defaultPermissions,
+    grantedPermissions: defaultPermissions,
     depth: 2,
     expiresAt: "2026-05-01T00:00:00Z",
   };
@@ -31,6 +39,8 @@ test("InMemoryDelegationRepository creates delegation", async () => {
   assert.equal(delegation.childAgentId, "agent-2");
   assert.equal(delegation.status, "pending");
   assert.equal(delegation.depth, 2);
+  assert.deepEqual(delegation.permissions.resources, ["workspace"]);
+  assert.deepEqual(delegation.grantedPermissions.actions, ["tool:invoke"]);
 });
 
 test("InMemoryDelegationRepository finds by id", async () => {
@@ -39,6 +49,8 @@ test("InMemoryDelegationRepository finds by id", async () => {
     parentAgentId: "parent",
     childAgentId: "child",
     delegationChain: ["parent", "child"],
+    permissions: defaultPermissions,
+    grantedPermissions: defaultPermissions,
     depth: 1,
   });
 
@@ -55,12 +67,16 @@ test("InMemoryDelegationRepository finds by parent agent id", async () => {
     parentAgentId: "parent-1",
     childAgentId: "child-1",
     delegationChain: ["parent-1", "child-1"],
+    permissions: defaultPermissions,
+    grantedPermissions: defaultPermissions,
     depth: 1,
   });
   await repo.create({
     parentAgentId: "parent-1",
     childAgentId: "child-2",
     delegationChain: ["parent-1", "child-2"],
+    permissions: defaultPermissions,
+    grantedPermissions: defaultPermissions,
     depth: 1,
   });
 
@@ -75,6 +91,8 @@ test("InMemoryDelegationRepository updates status", async () => {
     parentAgentId: "p",
     childAgentId: "c",
     delegationChain: ["p", "c"],
+    permissions: defaultPermissions,
+    grantedPermissions: defaultPermissions,
     depth: 1,
   });
 
@@ -90,6 +108,8 @@ test("InMemoryDelegationRepository completes delegation", async () => {
     parentAgentId: "p",
     childAgentId: "c",
     delegationChain: ["p", "c"],
+    permissions: defaultPermissions,
+    grantedPermissions: defaultPermissions,
     depth: 1,
   });
 
@@ -106,6 +126,8 @@ test("InMemoryDelegationRepository fails delegation", async () => {
     parentAgentId: "p",
     childAgentId: "c",
     delegationChain: ["p", "c"],
+    permissions: defaultPermissions,
+    grantedPermissions: defaultPermissions,
     depth: 1,
   });
 
@@ -124,6 +146,8 @@ test("InMemoryDelegationRepository finds expired delegations", async () => {
     parentAgentId: "p1",
     childAgentId: "c1",
     delegationChain: ["p1", "c1"],
+    permissions: defaultPermissions,
+    grantedPermissions: defaultPermissions,
     depth: 1,
     expiresAt: "2020-01-01T00:00:00Z", // Expired
   });
@@ -133,6 +157,8 @@ test("InMemoryDelegationRepository finds expired delegations", async () => {
     parentAgentId: "p2",
     childAgentId: "c2",
     delegationChain: ["p2", "c2"],
+    permissions: defaultPermissions,
+    grantedPermissions: defaultPermissions,
     depth: 1,
     expiresAt: "2099-01-01T00:00:00Z", // Not expired
   });
@@ -149,6 +175,8 @@ test("InMemoryDelegationRepository deletes delegation", async () => {
     parentAgentId: "p",
     childAgentId: "c",
     delegationChain: ["p", "c"],
+    permissions: defaultPermissions,
+    grantedPermissions: defaultPermissions,
     depth: 1,
   });
 
@@ -165,6 +193,8 @@ test("InMemoryDelegationEventRepository creates event", async () => {
     parentAgentId: "p",
     childAgentId: "c",
     delegationChain: ["p", "c"],
+    permissions: defaultPermissions,
+    grantedPermissions: defaultPermissions,
     depth: 1,
   });
 
@@ -187,6 +217,8 @@ test("InMemoryDelegationEventRepository finds by delegation id", async () => {
     parentAgentId: "p",
     childAgentId: "c",
     delegationChain: ["p", "c"],
+    permissions: defaultPermissions,
+    grantedPermissions: defaultPermissions,
     depth: 1,
   });
 
@@ -213,6 +245,8 @@ test("InMemoryDelegationEventRepository deletes by delegation id", async () => {
     parentAgentId: "p",
     childAgentId: "c",
     delegationChain: ["p", "c"],
+    permissions: defaultPermissions,
+    grantedPermissions: defaultPermissions,
     depth: 1,
   });
 

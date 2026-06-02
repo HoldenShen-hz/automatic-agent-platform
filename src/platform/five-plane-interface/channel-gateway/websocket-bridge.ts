@@ -19,6 +19,7 @@ import {
   WEBSOCKET_CLOSE_CODE_MISSING_TOKEN,
   WEBSOCKET_CLOSE_CODE_SERVER_SHUTDOWN,
 } from "../../contracts/constants/network.js";
+import { newId } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { TenantScopeFilter, type TaskProjectionScopeResolver } from "./tenant-scope-filter.js";
 
@@ -125,6 +126,8 @@ export interface WebSocketBridgeOptions {
   closeTimeoutMs?: number;
   taskHistoryRetentionMs?: number;
   allowedOrigins?: readonly string[];
+  backPressureThresholdBytes?: number;
+  eventIdFactory?: () => string;
 }
 
 export interface WebSocketBridgeMetrics {
@@ -154,6 +157,8 @@ export class WebSocketBridge {
   private readonly closeTimeoutMs: number;
   private readonly taskHistoryRetentionMs: number;
   private readonly allowedOrigins: readonly string[];
+  private readonly backPressureThresholdBytes: number;
+  private readonly eventIdFactory: () => string;
   private readonly historyCleanupTimers = new Map<string, NodeJS.Timeout>();
 
   public constructor(
@@ -177,6 +182,8 @@ export class WebSocketBridge {
     this.closeTimeoutMs = options.closeTimeoutMs ?? DEFAULT_CLOSE_TIMEOUT_MS;
     this.taskHistoryRetentionMs = options.taskHistoryRetentionMs ?? DEFAULT_TASK_HISTORY_RETENTION_MS;
     this.allowedOrigins = options.allowedOrigins ?? [];
+    this.backPressureThresholdBytes = options.backPressureThresholdBytes ?? DEFAULT_BACK_PRESSURE_THRESHOLD_BYTES;
+    this.eventIdFactory = options.eventIdFactory ?? (() => newId("evt"));
     this.wss = new WebSocketServer({
       server,
       path: WS_PATH,
@@ -224,7 +231,11 @@ export class WebSocketBridge {
     let principal: { actorId: string; tenantId: string | null; scopes: readonly string[] };
     try {
       const apiPrincipal = this.authService.authenticate({ authorization: `Bearer ${params.token}` });
-      principal = { actorId: apiPrincipal.actorId, tenantId: apiPrincipal.tenantId, scopes: apiPrincipal.roles };
+      principal = {
+        actorId: apiPrincipal.actorId,
+        tenantId: apiPrincipal.tenantId,
+        scopes: derivePrincipalScopes(apiPrincipal.roles),
+      };
     } catch (error) {
       this.closeClient(ws, WEBSOCKET_CLOSE_CODE_INVALID_TOKEN, "Invalid token");
       logger.warn("websocket.connection_rejected", {
@@ -453,7 +464,7 @@ export class WebSocketBridge {
     this.clients.delete(ws);
   }
 
-  public broadcastToTask(taskId: string, event: TaskWebSocketEvent, eventId: string = `evt-${Date.now()}`): void {
+  public broadcastToTask(taskId: string, event: TaskWebSocketEvent, eventId: string = this.eventIdFactory()): void {
     const subscribers = this.taskSubscribers.get(taskId);
     this.cancelTaskHistoryCleanup(taskId);
     this.recordTaskEvent(taskId, eventId, event);
@@ -473,10 +484,13 @@ export class WebSocketBridge {
     }
   }
 
-  public broadcastToAll(message: WebSocketMessageType): void {
+  public broadcastToAll(message: WebSocketMessageType, options: { tenantId?: string | null } = {}): void {
     const payload = JSON.stringify(message);
-    for (const [ws] of this.clients) {
-      if (ws.readyState === ws.OPEN) {
+    for (const [ws, client] of this.clients) {
+      if (
+        ws.readyState === ws.OPEN
+        && (options.tenantId === undefined ? client.principal.tenantId == null : client.principal.tenantId === options.tenantId)
+      ) {
         ws.send(payload);
       }
     }
@@ -724,15 +738,7 @@ export class WebSocketBridge {
   }
 
   private getBackPressureThreshold(): number {
-    const raw = process.env.WS_BACK_PRESSURE_THRESHOLD;
-    if (raw == null || raw.trim().length === 0) {
-      return DEFAULT_BACK_PRESSURE_THRESHOLD_BYTES;
-    }
-    const parsed = Number.parseInt(raw, 10);
-    if (!Number.isFinite(parsed) || parsed < 0) {
-      return DEFAULT_BACK_PRESSURE_THRESHOLD_BYTES;
-    }
-    return parsed;
+    return this.backPressureThresholdBytes;
   }
 
   private recordTaskEvent(taskId: string, eventId: string, event: TaskWebSocketEvent): void {
@@ -835,6 +841,27 @@ export class WebSocketBridge {
       reason: message.reason,
     } satisfies WebSocketMessageType));
   }
+}
+
+function derivePrincipalScopes(roles: readonly string[]): string[] {
+  const scopes = new Set<string>();
+  for (const role of roles) {
+    scopes.add(`role:${role}`);
+    if (role === "viewer") {
+      scopes.add("tasks:read");
+    }
+    if (role === "operator") {
+      scopes.add("tasks:read");
+      scopes.add("tasks:write");
+    }
+    if (role === "admin") {
+      scopes.add("tasks:read");
+      scopes.add("tasks:write");
+      scopes.add("tasks:admin");
+      scopes.add("admin");
+    }
+  }
+  return [...scopes];
 }
 
 function isSupportedProtocolToken(protocol: string): boolean {

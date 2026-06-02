@@ -74,7 +74,7 @@ test("VaultHttpSecretProvider reads KV v2 secrets through Vault HTTP API", async
     assert.equal(secret.value, "vault-prod-deploy-token-1234");
     assert.equal(secret.source, "vault");
     assert.equal(secret.maskedValue?.endsWith("1234"), true);
-    assert.equal(fetchMock.calls.length, 1);
+    assert.equal(fetchMock.calls.length, 2);
   } finally {
     fetchMock.restore();
   }

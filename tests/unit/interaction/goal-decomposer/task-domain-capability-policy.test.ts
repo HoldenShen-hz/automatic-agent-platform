@@ -58,7 +58,7 @@ test("GoalDecompositionService narrows task permissions while still surfacing un
   };
 
   const result = await service.decompose(goal);
-  const engineeringTask = result.tasks.find((task) => task.domainId === "engineering_ops");
+  const engineeringTask = result.tasks.find((task) => task.domainId === "engineering-ops");
   const operationsTask = result.tasks.find((task) => task.domainId === "operations");
   const analyticsTask = result.tasks.find((task) => task.domainId === "data_analysis");
   const qaTask = result.tasks.find((task) => task.domainId === "quality_assurance");

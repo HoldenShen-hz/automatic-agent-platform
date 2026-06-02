@@ -20,11 +20,32 @@ import {
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 // Helper to generate valid TOTP code
+function decodeBase32(secret: string): Buffer {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const normalized = secret.replace(/=+$/u, "").replace(/\s+/gu, "").toUpperCase();
+  let bits = 0;
+  let value = 0;
+  const bytes: number[] = [];
+  for (const char of normalized) {
+    const index = alphabet.indexOf(char);
+    if (index < 0) {
+      throw new Error("invalid test base32 secret");
+    }
+    value = (value << 5) | index;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+  return Buffer.from(bytes);
+}
+
 function generateValidTotpCode(secret: string, timestamp: number = Date.now()): string {
   const counter = Math.floor(timestamp / 30000);
   const counterBuffer = Buffer.alloc(8);
   counterBuffer.writeBigInt64BE(BigInt(counter));
-  const hmac = createHmac("sha1", Buffer.from(secret, "utf8"));
+  const hmac = createHmac("sha1", decodeBase32(secret));
   const hash = hmac.update(counterBuffer).digest();
   const hashLen = hash.length;
   const offset = (hash[hashLen - 1] ?? 0) & 0x0f;

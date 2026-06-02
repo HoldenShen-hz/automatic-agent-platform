@@ -41,6 +41,7 @@ test("evaluate rejects when estimated cost exceeds budget remaining [admission-c
 
   const decision = controller.evaluate({
     priority: "normal",
+    riskClass: "low",
     estimatedCostUsd: 100,
     budgetRemainingUsd: 50,
   });
@@ -55,6 +56,7 @@ test("evaluate allows when estimated cost equals budget remaining [admission-con
 
   const decision = controller.evaluate({
     priority: "normal",
+    riskClass: "low",
     estimatedCostUsd: 50,
     budgetRemainingUsd: 50,
   });
@@ -69,6 +71,7 @@ test("evaluate allows when estimated cost is less than budget remaining [admissi
 
   const decision = controller.evaluate({
     priority: "normal",
+    riskClass: "low",
     estimatedCostUsd: 30,
     budgetRemainingUsd: 50,
   });
@@ -83,6 +86,7 @@ test("evaluate allows when estimated cost is null [admission-controller-budget]"
 
   const decision = controller.evaluate({
     priority: "normal",
+    riskClass: "low",
     estimatedCostUsd: null,
     budgetRemainingUsd: 0,
   });
@@ -96,6 +100,7 @@ test("evaluate allows when budget remaining is null [admission-controller-budget
 
   const decision = controller.evaluate({
     priority: "normal",
+    riskClass: "low",
     estimatedCostUsd: 100,
     budgetRemainingUsd: null,
   });
@@ -109,6 +114,7 @@ test("evaluate allows when both estimated cost and budget are null [admission-co
 
   const decision = controller.evaluate({
     priority: "normal",
+    riskClass: "low",
     estimatedCostUsd: null,
     budgetRemainingUsd: null,
   });
@@ -120,7 +126,7 @@ test("evaluate allows when neither cost nor budget are provided [admission-contr
   const store = createMockStore({});
   const controller = new AdmissionController(store);
 
-  const decision = controller.evaluate({ priority: "normal" });
+  const decision = controller.evaluate({ priority: "normal", riskClass: "low" });
 
   assert.equal(decision.decision, "allow");
   assert.equal(decision.reasonCode, "admission.ok");
@@ -133,6 +139,7 @@ test("evaluate rejects high priority task when budget exceeded [admission-contro
   // Even high priority tasks should be rejected if budget is exceeded
   const decision = controller.evaluate({
     priority: "high",
+    riskClass: "high",
     estimatedCostUsd: 1000,
     budgetRemainingUsd: 100,
   });
@@ -147,6 +154,7 @@ test("evaluate rejects critical priority task when budget exceeded [admission-co
 
   const decision = controller.evaluate({
     priority: "critical",
+    riskClass: "critical",
     estimatedCostUsd: 500,
     budgetRemainingUsd: 100,
   });
@@ -162,6 +170,7 @@ test("evaluate budget check happens before other checks [admission-controller-bu
   // Budget check should happen before queue/execution limits
   const decision = controller.evaluate({
     priority: "normal",
+    riskClass: "low",
     estimatedCostUsd: 200,
     budgetRemainingUsd: 50,
   });
@@ -177,6 +186,7 @@ test("evaluate with zero budget remaining rejects any cost > 0 [admission-contro
 
   const decision = controller.evaluate({
     priority: "normal",
+    riskClass: "low",
     estimatedCostUsd: 1,
     budgetRemainingUsd: 0,
   });
@@ -191,6 +201,7 @@ test("evaluate with zero budget allows zero estimated cost [admission-controller
 
   const decision = controller.evaluate({
     priority: "normal",
+    riskClass: "low",
     estimatedCostUsd: 0,
     budgetRemainingUsd: 0,
   });
@@ -204,6 +215,7 @@ test("decision snapshot contains correct queue state even when budget exceeded [
 
   const decision = controller.evaluate({
     priority: "normal",
+    riskClass: "low",
     estimatedCostUsd: 100,
     budgetRemainingUsd: 50,
   });
@@ -219,6 +231,7 @@ test("decision backpressure is null when budget check fails (no backpressure inv
 
   const decision = controller.evaluate({
     priority: "normal",
+    riskClass: "low",
     estimatedCostUsd: 100,
     budgetRemainingUsd: 50,
   });

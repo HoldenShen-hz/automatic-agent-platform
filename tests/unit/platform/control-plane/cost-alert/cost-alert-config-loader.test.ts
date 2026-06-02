@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 
 import { createTempWorkspace, cleanupPath, createFile } from "../../../../helpers/fs.js";
 import { partial } from "../../../../helpers/typed-factories.js";
-import { clearCostAlertConfigCache, loadCostAlertConfig } from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-config-loader.js";
+import { CostAlertConfigLoader, clearCostAlertConfigCache, loadCostAlertConfig } from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-config-loader.js";
 import { PolicyDeniedError, ValidationError } from "../../../../../src/platform/contracts/errors.js";
 import { createConfigReadPolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import type { CostAlertConfig } from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-types.js";
@@ -200,4 +200,33 @@ test("loadCostAlertConfig uses partial helper for minimal overrides", () => {
     cleanupPath(workspace);
     clearCostAlertConfigCache();
   }
+});
+
+test("CostAlertConfigLoader.validateBudgetPolicy rejects invalid scope and threshold ranges", () => {
+  const loader = new CostAlertConfigLoader();
+
+  assert.equal(loader.validateBudgetPolicy({
+    scope: "tenant",
+    budgetLimitUsd: 100,
+    warningThreshold: 0.7,
+    criticalThreshold: 0.9,
+  }), true);
+  assert.equal(loader.validateBudgetPolicy({
+    scope: "invalid",
+    budgetLimitUsd: 100,
+    warningThreshold: 0.7,
+    criticalThreshold: 0.9,
+  }), false);
+  assert.equal(loader.validateBudgetPolicy({
+    scope: "tenant",
+    budgetLimitUsd: 100,
+    warningThreshold: 0.7,
+    criticalThreshold: 1.2,
+  }), false);
+  assert.equal(loader.validateBudgetPolicy({
+    scope: "tenant",
+    budgetLimitUsd: 100,
+    warningThreshold: 0.7,
+    criticalThreshold: 0,
+  }), false);
 });

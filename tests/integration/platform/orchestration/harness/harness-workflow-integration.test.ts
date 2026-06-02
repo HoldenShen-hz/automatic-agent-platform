@@ -318,7 +318,7 @@ test("Harness workflow stores task and execution in SQLite via store", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Harness workflow store test",
         status: "in_progress",
         source: "user",

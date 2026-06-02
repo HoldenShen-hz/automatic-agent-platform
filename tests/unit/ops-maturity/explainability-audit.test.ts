@@ -80,6 +80,8 @@ test("explainability: recordExplanationView creates audit entry", () => {
   assert.ok(viewEntry !== undefined);
   assert.strictEqual(viewEntry?.userId, "user-123");
   assert.strictEqual(viewEntry?.audience, "technical");
+  assert.match(viewEntry?.ipAddress ?? "", /^ipv4:/);
+  assert.match(viewEntry?.userAgent ?? "", /test-agent \[redacted\]#/);
 });
 
 test("explainability: generate with audit options", () => {
@@ -104,7 +106,23 @@ test("explainability: generate with audit options", () => {
   const genEntry = trail.find((e) => e.accessType === "generate");
   assert.ok(genEntry !== undefined);
   assert.strictEqual(genEntry?.userId, "auditor-001");
-  assert.strictEqual(genEntry?.ipAddress, "10.0.0.1");
+  assert.match(genEntry?.ipAddress ?? "", /^ipv4:/);
+  assert.match(genEntry?.userAgent ?? "", /audit-tool \[redacted\]#/);
+});
+
+test("explainability: version lock uses full sha256-sized digest", () => {
+  const service = new ExplanationPipelineService();
+  const bundle = service.generate({
+    taskId: "task-full-version-lock",
+    stageId: "stage-full-version-lock",
+    summary: "Digest length check",
+    decision: "accept",
+    decisionFactors: [],
+    evidence: [],
+    riskNotes: [],
+  });
+
+  assert.match(bundle.versionLockRef, /^vlock:[0-9a-f]{64}$/);
 });
 
 test("explainability: audit trail tracks multiple accesses", () => {
@@ -324,11 +342,12 @@ test("explainability: generate with provided version lock ref", () => {
     riskNotes: [],
   };
 
-  const bundle = service.generate(request, "L2", {
-    versionLockRef: "custom-vlock-12345",
-  });
-
-  assert.strictEqual(bundle.versionLockRef, "custom-vlock-12345");
+  assert.throws(
+    () => service.generate(request, "L2", {
+      versionLockRef: "custom-vlock-12345",
+    }),
+    /explanation\.version_lock_mismatch/,
+  );
 });
 
 test("explainability: generate with visibility labels", () => {

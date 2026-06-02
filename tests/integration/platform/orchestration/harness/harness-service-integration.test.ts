@@ -277,7 +277,7 @@ test("HarnessRuntimeService persists harness run with task in SQLite", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Harness persist test",
         status: "in_progress",
         source: "user",

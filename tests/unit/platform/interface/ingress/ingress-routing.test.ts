@@ -8,8 +8,16 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 import { DistributedRateLimiter } from "../../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
+
+test.afterEach(() => {
+  try {
+    mock.timers.reset();
+  } catch {
+    // Only some tests enable mocked timers.
+  }
+});
 
 test.describe("Ingress routing - key patterns", () => {
   test("routes requests by tenant identifier", async () => {
@@ -210,6 +218,7 @@ test.describe("Ingress routing - retryAfter calculation", () => {
   });
 
   test("retryAfter decreases as time passes within window", async () => {
+    mock.timers.enable({ apis: ["setTimeout", "Date"] });
     const limiter = new DistributedRateLimiter({
       maxCalls: 1,
       windowMs: 500,
@@ -219,7 +228,7 @@ test.describe("Ingress routing - retryAfter calculation", () => {
     const firstRetry = await limiter.checkAndConsume("time_key");
 
     // Wait 250ms (half the window)
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    mock.timers.tick(250);
 
     const secondRetry = await limiter.checkAndConsume("time_key");
 
@@ -245,6 +254,7 @@ test.describe("Ingress routing - retryAfter calculation", () => {
 
 test.describe("Ingress routing - window expiration", () => {
   test("resets route quota after window expires", async () => {
+    mock.timers.enable({ apis: ["setTimeout", "Date"] });
     const limiter = new DistributedRateLimiter({
       maxCalls: 1,
       windowMs: 50,
@@ -256,7 +266,7 @@ test.describe("Ingress routing - window expiration", () => {
     assert.equal(blocked.allowed, false);
 
     // Wait for window
-    await new Promise((resolve) => setTimeout(resolve, 60));
+    mock.timers.tick(60);
 
     // Should be reset
     const reset = await limiter.checkAndConsume("expire_route");

@@ -119,9 +119,20 @@ test("TenantBoundaryRegistryService authorizes members and governance exceptions
     tenants: [makeTenant()],
     workspaceMemberships: [makeWorkspaceMembership()],
     organizationMemberships: [makeOrganizationMembership()],
+    governanceExceptions: [{
+      governanceRef: "gov_123",
+      userId: "user_123",
+      tenantId: "tenant_123",
+      workspaceId: null,
+      organizationId: "org_123",
+      status: "approved",
+      reasonCode: "tenant.break_glass",
+      approvedAt: "2026-04-01T00:00:00.000Z",
+    }],
   });
 
   assert.equal(service.authorizeTenantAccess({ userId: "user_123", tenantId: "tenant_123" }).decision, "allow");
+  assert.equal(service.authorizeTenantAccess({ userId: "user_123", tenantId: "tenant_123", governanceRef: "gov_123" }).decision, "allow");
   assert.throws(
     () => service.authorizeTenantAccess({
       userId: "user_missing",
@@ -161,4 +172,17 @@ test("TenantBoundaryRegistryService denies workspace and tenant mismatches by de
     "tenant.workspace_tenant_mismatch",
   );
   assert.throws(() => service.assertSameTenant({ sourceTenantId: "tenant_123", targetTenantId: "tenant_456" }));
+});
+
+test("TenantBoundaryRegistryService rejects duplicate deployment binding ids", () => {
+  const service = new TenantBoundaryRegistryService({
+    organizations: [makeOrganization()],
+    tenants: [makeTenant()],
+  });
+
+  service.registerDeploymentBinding(makeBinding());
+  assert.throws(
+    () => service.registerDeploymentBinding(makeBinding()),
+    (error: unknown) => error instanceof Error && (error as { code?: string }).code === "tenant.deployment_binding_conflict",
+  );
 });

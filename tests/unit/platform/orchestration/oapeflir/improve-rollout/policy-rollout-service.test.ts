@@ -84,16 +84,15 @@ function createFailingMetrics(): RolloutMetrics {
 // evaluateMetricsGate tests
 // =============================================================================
 
-test("evaluateMetricsGate allows non-progressive status", () => {
+test("evaluateMetricsGate rejects non-evaluation targets when metrics are missing", () => {
   const service = new PolicyRolloutService();
   const record = createRolloutRecord({ status: "rejected" });
 
-  // rejected is not in PROGRESSIVE_STATUSES
   const result = service.evaluateMetricsGate(record, "rejected");
 
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
   assert.equal(result.rollback, false);
-  assert.deepEqual(result.reasonCodes, []);
+  assert.deepEqual(result.reasonCodes, ["rollout.metrics_required"]);
 });
 
 test("evaluateMetricsGate allows when current status is shadow", () => {
@@ -270,7 +269,7 @@ test("decide allows shadow with approved candidate", () => {
   assert.equal(result.releaseLevel, "shadow");
 });
 
-test("decide returns candidate_not_approved when status is shadow_running and releaseLevel is shadow", () => {
+test("decide forces non-approved shadow candidates fully off", () => {
   // This test exercises lines 48-55: when candidate.status !== "approved" && releaseLevel === "shadow"
   // shadow_running passes the guardrail (line 22) but fails the direct check at line 48
   const service = new PolicyRolloutService();
@@ -286,9 +285,8 @@ test("decide returns candidate_not_approved when status is shadow_running and re
 
   const result = service.decide(candidate, strategy);
 
-  // shadow_running passes guardrail but fails the direct check at line 48
   assert.equal(result.allowed, false);
-  assert.equal(result.releaseLevel, "suggest");
+  assert.equal(result.releaseLevel, "off");
   assert.ok(result.reasonCodes.includes("improvement.candidate_not_approved"));
 });
 
@@ -374,28 +372,29 @@ test("start creates rollout record when decide allows", () => {
 // inferLevelFromStatus coverage - all statuses
 // =============================================================================
 
-test("inferLevelFromStatus maps draft/rejected/rolled_back/paused to off", () => {
+test("evaluateMetricsGate blocks metric-free non-evaluation targets", () => {
   const service = new PolicyRolloutService();
-  const candidate = createMinimalCandidate();
-
-  // These are terminal statuses that map to "off" level
-  const terminalStatuses: RolloutStatus[] = ["draft", "rejected", "rolled_back", "paused"];
-  for (const status of terminalStatuses) {
-    const record = createRolloutRecord({ status });
-    // We test this indirectly through promote behavior
-    const result = service.evaluateMetricsGate(record, status);
-    assert.equal(result.allowed, true, `Status ${status} should allow self-transition`);
-  }
+  const record = createRolloutRecord({ status: "draft" });
+  assert.deepEqual(service.evaluateMetricsGate(record, "rejected"), {
+    allowed: false,
+    rollback: false,
+    reasonCodes: ["rollout.metrics_required"],
+  });
 });
 
-test("evaluateMetricsGate allows pending_approval status (non-progressive)", () => {
+test("evaluateMetricsGate only defers metrics for evaluation_enabled", () => {
   const service = new PolicyRolloutService();
-  const candidate = createMinimalCandidate({ status: "approved" });
   const record = createRolloutRecord({ status: "pending_approval" });
-
-  // pending_approval is not progressive, so gate allows
-  const result = service.evaluateMetricsGate(record, "pending_approval");
-  assert.equal(result.allowed, true);
+  assert.deepEqual(service.evaluateMetricsGate(record, "evaluation_enabled"), {
+    allowed: true,
+    rollback: false,
+    reasonCodes: ["rollout.metrics_deferred_for_evaluation"],
+  });
+  assert.deepEqual(service.evaluateMetricsGate(record, "pending_approval"), {
+    allowed: false,
+    rollback: false,
+    reasonCodes: ["rollout.metrics_required"],
+  });
 });
 
 test("inferLevelFromStatus maps progressive statuses correctly", () => {
@@ -425,38 +424,33 @@ test("inferLevelFromStatus maps progressive statuses correctly", () => {
   }
 });
 
-test("promote to pending_approval calls inferLevelFromStatus with suggest level", () => {
+test("promote to pending_approval requires explicit metrics", () => {
   const service = new PolicyRolloutService();
   const candidate = createMinimalCandidate();
   const record = createRolloutRecord({ status: "draft" });
 
-  const result = service.promote(candidate, record, "pending_approval", undefined);
-
-  // pending_approval maps to "suggest" level
-  assert.equal(result.level, "suggest");
+  assert.throws(() => service.promote(candidate, record, "pending_approval", undefined), /rollout.metrics_required/);
 });
 
-test("promote to shadow calls inferLevelFromStatus with shadow level", () => {
+test("promote to shadow requires explicit metrics", () => {
   const service = new PolicyRolloutService();
   const candidate = createMinimalCandidate();
   const record = createRolloutRecord({ status: "draft" });
 
-  const result = service.promote(candidate, record, "shadow", undefined);
-
-  // shadow maps to "shadow" level
-  assert.equal(result.level, "shadow");
+  assert.throws(() => service.promote(candidate, record, "shadow", undefined), /rollout.metrics_required/);
 });
 
 // =============================================================================
 // inferStatusFromLevel coverage - all levels
 // =============================================================================
 
-test("inferStatusFromLevel maps suggest to pending_approval", () => {
+test("inferStatusFromLevel maps suggest to pending_approval when metrics are present", () => {
   const service = new PolicyRolloutService();
   const candidate = createMinimalCandidate();
   const record = createRolloutRecord({ status: "draft" });
+  const metrics = createHealthyMetrics();
 
-  const result = service.promote(candidate, record, "pending_approval", undefined);
+  const result = service.promote(candidate, record, "pending_approval", metrics);
   assert.equal(result.level, "suggest");
   assert.equal(result.status, "pending_approval");
 });
@@ -496,15 +490,14 @@ test("inferStatusFromLevel maps canary_5, partial_25, partial_50, partial_75, st
 // inferLevelFromStatus coverage - all statuses including terminal and progressive
 // =============================================================================
 
-test("inferLevelFromStatus maps rejected/rolled_back/paused to off via self-transition", () => {
+test("evaluateMetricsGate allows terminal self-transitions when metrics are present", () => {
   const service = new PolicyRolloutService();
-  const candidate = createMinimalCandidate();
+  const metrics = createHealthyMetrics();
 
   const terminalStatuses: RolloutStatus[] = ["rejected", "rolled_back", "paused"];
   for (const status of terminalStatuses) {
     const record = createRolloutRecord({ status });
-    // Use self-transition to test mapping without invalid transition
-    const result = service.evaluateMetricsGate(record, status);
+    const result = service.evaluateMetricsGate(record, status, metrics);
     assert.equal(result.allowed, true, `Status ${status} should allow self-transition`);
   }
 });
@@ -513,8 +506,9 @@ test("inferLevelFromStatus maps pending_approval to suggest", () => {
   const service = new PolicyRolloutService();
   const candidate = createMinimalCandidate();
   const record = createRolloutRecord({ status: "draft" });
+  const metrics = createHealthyMetrics();
 
-  const result = service.promote(candidate, record, "pending_approval", undefined);
+  const result = service.promote(candidate, record, "pending_approval", metrics);
   assert.equal(result.level, "suggest");
 });
 
@@ -542,15 +536,14 @@ test("inferLevelFromStatus maps all progressive statuses", () => {
 // evaluateMetricsGate additional branches
 // =============================================================================
 
-test("evaluateMetricsGate returns early when target not in PROGRESSIVE_STATUSES", () => {
+test("evaluateMetricsGate still blocks metric-free non-progressive targets", () => {
   const service = new PolicyRolloutService();
   const record = createRolloutRecord({ status: "stable" });
-
-  // stable is in PROGRESSIVE_STATUSES, use rejected which is not
   const result = service.evaluateMetricsGate(record, "rejected");
 
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
   assert.equal(result.rollback, false);
+  assert.ok(result.reasonCodes.includes("rollout.metrics_required"));
 });
 
 test("evaluateMetricsGate returns early when current status is shadow", () => {
@@ -564,14 +557,13 @@ test("evaluateMetricsGate returns early when current status is shadow", () => {
   assert.equal(result.rollback, false);
 });
 
-test("evaluateMetricsGate allows pending_approval as target (non-progressive)", () => {
+test("evaluateMetricsGate blocks pending_approval without metrics", () => {
   const service = new PolicyRolloutService();
   const record = createRolloutRecord({ status: "stable" });
-
-  // pending_approval is not in PROGRESSIVE_STATUSES
   const result = service.evaluateMetricsGate(record, "pending_approval");
 
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
+  assert.ok(result.reasonCodes.includes("rollout.metrics_required"));
 });
 
 test("evaluateMetricsGate returns rollback=false when autoRollback returns rollback=false", () => {

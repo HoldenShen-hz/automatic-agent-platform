@@ -283,17 +283,20 @@ const report = {
   items
 };
 
-writeJson("artifacts/current-codebase-gap-review-v1.9.json", report);
-writeText("docs_zh/reviews/current-codebase-gap-review-v1.9.md", renderMarkdown(report, summary));
+const jsonArtifactRelativePath = "artifacts/current-codebase-gap-review-v1.9.json";
+const markdownArtifactRelativePath = "artifacts/current-codebase-gap-review-v1.9.md";
+
+writeJson(jsonArtifactRelativePath, report);
+writeText(markdownArtifactRelativePath, renderMarkdown(report, summary));
 
 console.log(
   `current codebase gap review generated: ${
-    join(root, "docs_zh/reviews/current-codebase-gap-review-v1.9.md")
+    join(root, markdownArtifactRelativePath)
   }`
 );
 console.log(
   `current codebase gap artifact generated: ${
-    join(root, "artifacts/current-codebase-gap-review-v1.9.json")
+    join(root, jsonArtifactRelativePath)
   }`
 );
 

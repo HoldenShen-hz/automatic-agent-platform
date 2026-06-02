@@ -1,7 +1,9 @@
 /**
- * Legacy queue contracts retained for compatibility with older scheduler
- * references. Current workflow sleep/runtime scheduling lives in the
- * scheduler module barrel.
+ * Scheduler queue contracts shared by interface-level queue APIs and tests.
+ *
+ * This module remains the canonical type surface for queue payloads and
+ * scheduler metadata; workflow sleep/runtime scheduling implementations are
+ * exported separately from the scheduler barrel.
  */
 
 export interface TaskQueueConfig {
@@ -65,4 +67,3 @@ export interface TaskDequeueResult {
 }
 
 export * from "./index.js";
-

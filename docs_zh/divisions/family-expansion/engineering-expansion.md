@@ -8,7 +8,7 @@
 ## Target Divisions
 
 - devops
-- engineering_ops
+- engineering-ops
 - quality-assurance
 
 ## Required Evidence

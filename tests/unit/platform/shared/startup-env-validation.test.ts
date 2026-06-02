@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import {
   StartupEnvSchema,
@@ -110,7 +112,7 @@ test("[SYS-SEC-4.1] validateStartupEnv returns structured result with errors arr
   const previousDbPath = process.env.AA_DB_PATH;
 
   try {
-    process.env.AA_DB_PATH = "/tmp/test.db";
+    process.env.AA_DB_PATH = join(tmpdir(), "aa-startup-env-test.db");
     process.env.AA_API_PORT = "not-a-port";
 
     const result = validateStartupEnv();
@@ -145,7 +147,7 @@ test("[SYS-SEC-4.1] validateStartupEnv succeeds with valid env", () => {
     }
 
     // Set minimal valid env
-    process.env.AA_DB_PATH = "/tmp/valid.db";
+    process.env.AA_DB_PATH = join(tmpdir(), "aa-startup-env-valid.db");
     process.env.AA_CONFIG_ENV = "dev";
     process.env.AA_STORAGE_DRIVER = "sqlite";
 
@@ -172,7 +174,7 @@ test("[SYS-SEC-4.1] validateStartupEnv requires postgres DSN when AA_STORAGE_DRI
   };
 
   try {
-    process.env.AA_DB_PATH = "/tmp/postgres.db";
+    process.env.AA_DB_PATH = join(tmpdir(), "aa-startup-env-postgres.db");
     process.env.AA_STORAGE_DRIVER = "postgres";
     delete process.env.AA_STORAGE_POSTGRES_DSN;
     delete process.env.AA_PG_DSN;
@@ -199,7 +201,7 @@ test("[SYS-SEC-4.1] validateStartupEnv requires sandbox root when plugin egress 
   };
 
   try {
-    process.env.AA_DB_PATH = "/tmp/plugin.db";
+    process.env.AA_DB_PATH = join(tmpdir(), "aa-startup-env-plugin.db");
     process.env.AA_PLUGIN_ALLOW_NETWORK_EGRESS = "true";
     delete process.env.AA_PLUGIN_SANDBOX_ROOT;
 

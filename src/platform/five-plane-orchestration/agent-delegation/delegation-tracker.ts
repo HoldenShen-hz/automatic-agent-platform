@@ -64,6 +64,14 @@ export class DelegationTracker {
   private readonly ENTRY_TTL_MS = 30 * 60 * 1000; // 30 minutes
   private lastEvictionTime = 0;
   private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
+  private readonly evictionTimer: ReturnType<typeof setInterval>;
+
+  public constructor() {
+    this.evictionTimer = setInterval(() => {
+      this.evictExpired();
+    }, this.EVICTION_INTERVAL_MS);
+    this.evictionTimer.unref?.();
+  }
 
   private isTerminalStatus(status: DelegationChainNode["status"] | undefined): boolean {
     return status === "completed" || status === "failed" || status === "cancelled" || status === "expired" || status === "timed_out";
@@ -391,6 +399,7 @@ export class DelegationTracker {
     status: NonNullable<DelegationChainNode["status"]>,
     transitionedAt?: string,
   ): void {
+    this.evictExpired();
     const rootAgentId = this.delegationToRoot.get(delegationId);
     const chain = rootAgentId ? this.rootToChain.get(rootAgentId) : null;
     if (!rootAgentId || !chain) {

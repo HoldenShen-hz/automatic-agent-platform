@@ -16,7 +16,7 @@ import {
 function makeScheduleTrigger(overrides: Partial<TriggerDefinition> = {}): TriggerDefinition {
   return {
     triggerId: "trigger_daily_report",
-    domainId: "general_ops",
+    domainId: "general-ops",
     name: "daily report",
     type: "schedule",
     config: {
@@ -101,7 +101,7 @@ test("ProactiveAgentService.registerTrigger stores trigger", async () => {
 
 test("ProactiveAgentService.registerTrigger validates declared trigger ids", async () => {
   const service = new ProactiveAgentService({
-    declaredTriggerIdsByDomain: { general_ops: ["allowed_trigger"] },
+    declaredTriggerIdsByDomain: { "general-ops": ["allowed_trigger"] },
   });
 
   await assert.rejects(
@@ -195,7 +195,7 @@ test("ProactiveAgentService.evaluate enforces rate limiting", () => {
 
 test("ProactiveAgentService.evaluate enforces daily trigger budget", () => {
   const service = new ProactiveAgentService({
-    dailyTriggerBudgetByDomain: { general_ops: 1 },
+    dailyTriggerBudgetByDomain: { "general-ops": 1 },
   });
   service.registerTrigger(
     makeScheduleTrigger({ action: { actionType: "create_task", template: {}, requireConfirmation: false } }),

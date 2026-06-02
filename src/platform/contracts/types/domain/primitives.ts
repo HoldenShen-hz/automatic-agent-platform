@@ -101,13 +101,15 @@ export type LeaseAuditEventType =
 export type TakeoverSessionStatus = "open" | "closed";
 export type OperatorActionType =
   | "take_over_task"
+  | "acknowledge_takeover"
   | "modify_input"
   | "retry_execution"
   | "skip_step"
   | "set_current_step"
   | "switch_worker"
   | "write_step_output"
-  | "complete_task";
+  | "complete_task"
+  | "escalate_takeover";
 
 // ---------------------------------------------------------------------------
 // Evolution primitives

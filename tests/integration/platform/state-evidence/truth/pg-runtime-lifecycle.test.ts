@@ -31,7 +31,7 @@ test("PostgreSQL async repositories cover execution authoritative view reads", a
       id: "pg_task_runtime",
       parentId: null,
       rootId: "pg_task_runtime",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       tenantId: null,
       title: "PG runtime task",
       status: "in_progress",
@@ -49,7 +49,7 @@ test("PostgreSQL async repositories cover execution authoritative view reads", a
     });
     await repos.workflow.insertWorkflowState({
       taskId: "pg_task_runtime",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_pg_runtime",
       currentStepIndex: 0,
       status: "running",
@@ -155,7 +155,7 @@ test("PostgreSQL async repositories cover worker lease and ticket lifecycle", as
       id: "pg_task_worker",
       parentId: null,
       rootId: "pg_task_worker",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       tenantId: null,
       title: "PG worker task",
       status: "in_progress",

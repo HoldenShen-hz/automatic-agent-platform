@@ -78,6 +78,13 @@ const DEFAULT_THRESHOLDS: FullTrajectoryThresholds = {
   llmJudgeMinimumAgreementRate: 0.8,
 };
 
+const RISK_ADJUSTED_TRAJECTORY_MIN_SCORE = {
+  low: 28,
+  medium: 32,
+  high: 34,
+  critical: 36,
+} as const;
+
 export class FullTrajectoryEvaluator {
   private readonly orchestrationEvaluator: EvaluatorService;
   private readonly outcomeEvaluator: ExecutionOutcomeEvaluator;
@@ -91,11 +98,8 @@ export class FullTrajectoryEvaluator {
   }
 
   public evaluate(input: FullTrajectoryEvaluationInput): FullTrajectoryEvaluationReport {
-    const thresholds = {
-      ...DEFAULT_THRESHOLDS,
-      ...(input.thresholds ?? {}),
-    };
     const riskClass = resolveRiskClass(input.planGraphBundle);
+    const thresholds = resolveThresholds(riskClass, input.thresholds);
     const orchestrationReport = this.orchestrationEvaluator.evaluate({
       planGraphBundle: input.planGraphBundle,
       feedback: input.feedback,
@@ -161,7 +165,7 @@ export class FullTrajectoryEvaluator {
     const blockingEligibleJudge = input.llmJudge == null
       ? false
       : input.llmJudge.agreementRate >= thresholds.llmJudgeMinimumAgreementRate;
-    const score = llmJudgeScore == null
+    const score = llmJudgeScore == null || !blockingEligibleJudge
       ? ruleScore
       : Number((((ruleScore / 40) + (llmJudgeScore / 40)) / 2 * 40).toFixed(2));
 
@@ -206,6 +210,19 @@ export class FullTrajectoryEvaluator {
 
 function resolveRiskClass(planGraphBundle: PlanGraphBundle): string {
   return planGraphBundle.riskProfile?.riskClass ?? "medium";
+}
+
+function resolveThresholds(
+  riskClass: string,
+  overrides?: Partial<FullTrajectoryThresholds>,
+): FullTrajectoryThresholds {
+  const defaultTrajectoryMinScore =
+    RISK_ADJUSTED_TRAJECTORY_MIN_SCORE[riskClass as keyof typeof RISK_ADJUSTED_TRAJECTORY_MIN_SCORE]
+    ?? DEFAULT_THRESHOLDS.trajectoryMinScore;
+  return {
+    trajectoryMinScore: overrides?.trajectoryMinScore ?? defaultTrajectoryMinScore,
+    llmJudgeMinimumAgreementRate: overrides?.llmJudgeMinimumAgreementRate ?? DEFAULT_THRESHOLDS.llmJudgeMinimumAgreementRate,
+  };
 }
 
 function buildBooleanDimension(

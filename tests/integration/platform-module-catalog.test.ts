@@ -152,7 +152,7 @@ test("resolvePlatformSurfaceManifest error message includes invalid surfaceId", 
 test("resolveArchitectureReadinessRing error message includes invalid ringId", async () => {
   const invalidId = "nonexistent-ring";
   try {
-    resolveArchitectureReadinessRing(invalidId as any);
+    resolveArchitectureReadinessRing(invalidId as unknown as ArchitectureReadinessRing["ringId"]);
     assert.fail("Expected error to be thrown");
   } catch (err) {
     assert.ok(err instanceof Error);
@@ -183,9 +183,9 @@ test("full roundtrip: list and verify all rings", async () => {
   const rings = listArchitectureReadinessRings();
   assert.equal(rings.length, 4);
 
-  const ringIds = ["contract-freeze", "hardening", "usability", "expansion"];
+  const ringIds: ArchitectureReadinessRing["ringId"][] = ["contract-freeze", "hardening", "usability", "expansion"];
   for (const id of ringIds) {
-    const ring = resolveArchitectureReadinessRing(id as any);
+    const ring = resolveArchitectureReadinessRing(id);
     assert.ok(ring != null);
     assert.equal(ring.ringId, id);
   }

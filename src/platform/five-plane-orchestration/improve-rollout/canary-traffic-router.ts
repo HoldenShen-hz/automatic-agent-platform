@@ -49,13 +49,13 @@ export class CanaryTrafficRouter {
     return TRAFFIC_PERCENTAGES[status] ?? 0;
   }
 
-  public shouldRoute(taskId: string, status: RolloutStatus | string): boolean {
-    return this.route(taskId, status).matched;
+  public shouldRoute(taskId: string, status: RolloutStatus | string, rolloutSalt?: string): boolean {
+    return this.route(taskId, status, rolloutSalt).matched;
   }
 
-  public route(taskId: string, status: RolloutStatus | string): CanaryRoutingDecision {
+  public route(taskId: string, status: RolloutStatus | string, rolloutSalt?: string): CanaryRoutingDecision {
     const trafficPercentage = this.getTrafficPercentage(status);
-    const bucket = hashToBucket(taskId);
+    const bucket = hashToBucket(buildRoutingKey(taskId, status, rolloutSalt));
     return {
       matched: bucket < trafficPercentage,
       trafficPercentage,
@@ -71,4 +71,9 @@ export class CanaryTrafficRouter {
       stablePercentage: 100 - canaryPercentage,
     };
   }
+}
+
+function buildRoutingKey(taskId: string, status: RolloutStatus | string, rolloutSalt?: string): string {
+  const salt = rolloutSalt?.trim() || String(status);
+  return `${salt}::${taskId}`;
 }

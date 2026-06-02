@@ -1,14 +1,14 @@
 {
-  "approvalMode": "supervised",
+  "approvalMode": "guided",
   "sandboxMode": "read_only",
   "allowDestructiveActions": false,
   "remoteWorkerRegistration": {
-    "challengeTtlMs": 300000,
+    "challengeTtlMs": 60000,
     "allowedCapabilities": ["mcp"],
     "mcpPolicy": {
       "allowNetworkEgress": false,
       "allowedDomains": [],
-      "maxRequestsPerMinute": 60,
+      "maxRequestsPerMinute": 180,
       "sandboxMode": "read_only",
       "allowedTransports": ["stdio"]
     }

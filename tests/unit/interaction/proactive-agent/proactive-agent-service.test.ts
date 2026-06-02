@@ -64,9 +64,9 @@ test("ProactiveAgentService.registerTrigger accepts TriggerDefinition", async ()
 
 test("ProactiveAgentService.registerTrigger throws for undeclared trigger", async () => {
   const service = new ProactiveAgentService({
-    declaredTriggerIdsByDomain: { general_ops: ["allowed-trigger"] },
+    declaredTriggerIdsByDomain: { "general-ops": ["allowed-trigger"] },
   });
-  // ProactiveTrigger gets converted to TriggerDefinition with domainId="general_ops"
+  // ProactiveTrigger gets converted to TriggerDefinition with domainId="general-ops"
   const trigger: ProactiveTrigger = {
     triggerId: "forbidden-trigger",
     kind: "schedule",

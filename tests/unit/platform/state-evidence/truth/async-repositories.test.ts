@@ -442,7 +442,7 @@ test("AsyncEvolutionRepository writes and reads PMF validation reports", async (
     profileName: "routing_v2",
     windowStart: "2026-04-01T00:00:00.000Z",
     windowEnd: "2026-04-15T23:59:59.999Z",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     verdict: "pass",
     summaryJson: '{"score":0.85}',
     reportJson: '{"details":[]}',

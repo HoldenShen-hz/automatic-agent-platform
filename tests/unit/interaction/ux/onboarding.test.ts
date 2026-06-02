@@ -229,7 +229,7 @@ test("UserPortalService buildOnboardingPlan recommends customer_support domain",
   assert.ok(plan.recommendedDomains.includes("customer_support"));
 });
 
-test("UserPortalService buildOnboardingPlan recommends engineering_ops domain", () => {
+test("UserPortalService buildOnboardingPlan recommends engineering-ops domain", () => {
   const service = new UserPortalService();
   const context: UserPortalContext = {
     memberCount: 1,
@@ -239,10 +239,10 @@ test("UserPortalService buildOnboardingPlan recommends engineering_ops domain", 
 
   const plan = service.buildOnboardingPlan("代码发布到生产环境", context);
 
-  assert.ok(plan.recommendedDomains.includes("engineering_ops"));
+  assert.ok(plan.recommendedDomains.includes("engineering-ops"));
 });
 
-test("UserPortalService buildOnboardingPlan defaults to general_ops", () => {
+test("UserPortalService buildOnboardingPlan defaults to general-ops", () => {
   const service = new UserPortalService();
   const context: UserPortalContext = {
     memberCount: 1,
@@ -252,7 +252,7 @@ test("UserPortalService buildOnboardingPlan defaults to general_ops", () => {
 
   const plan = service.buildOnboardingPlan("做一些任务", context);
 
-  assert.ok(plan.recommendedDomains.includes("general_ops"));
+  assert.ok(plan.recommendedDomains.includes("general-ops"));
 });
 
 test("UserPortalService buildDomainOnboardingWizard returns wizard with 4 steps", () => {
@@ -284,7 +284,7 @@ test("UserPortalService buildDomainOnboardingWizard recommends domains", () => {
   const wizard = service.buildDomainOnboardingWizard("财务和代码发布", context);
 
   assert.ok(wizard.recommendedDomains.includes("finance"));
-  assert.ok(wizard.recommendedDomains.includes("engineering_ops"));
+  assert.ok(wizard.recommendedDomains.includes("engineering-ops"));
 });
 
 test("UserPortalService buildVisualWorkflowBuilder returns builder structure", () => {
@@ -352,7 +352,7 @@ test("UserPortalService buildVisualWorkflowBuilder sets production deploy risk t
 
   const engComponents = builder.componentPalette
     .flatMap(cat => cat.components)
-    .filter(comp => comp.domainId === "engineering_ops");
+    .filter(comp => comp.domainId === "engineering-ops");
 
   assert.ok(engComponents.length > 0);
   assert.equal(engComponents[0]!.riskLevel, "high");

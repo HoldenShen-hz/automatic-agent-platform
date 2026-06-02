@@ -91,6 +91,8 @@ export interface ExplanationPipelineServiceDeps {
   readonly validateForensicBudgetReservation?: (reservationId: string) => void;
 }
 
+const REDACTED_AUDIT_VALUE = "[redacted]";
+
 function explanationCacheKey(taskId: string, stageId: string, depth: ExplanationDepth): string {
   const depthKey = depth === "L3" ? "audit" : depth;
   return `${taskId}:${stageId}:${depthKey}`;
@@ -123,13 +125,13 @@ function buildVersionLockRef(rationale: Omit<StageRationale, "versionLockRef">):
   const digest = createHash("sha256")
     .update(serialized)
     .digest("hex")
-    .slice(0, 24);
   return `vlock:${digest}`;
 }
 
 export class ExplanationPipelineService {
-  private cache: Record<string, ExplanationCacheEntry> = {};
+  private cache: Record<string, ExplanationCacheEntry> = Object.create(null) as Record<string, ExplanationCacheEntry>;
   private readonly versionLocks = new Map<string, string>();
+  private readonly rationales = new Map<string, StageRationale>();
   private readonly auditTrail = new Map<string, ExplanationAuditTrailEntry[]>();
 
   public constructor(private readonly deps: ExplanationPipelineServiceDeps = {}) {}
@@ -187,7 +189,12 @@ export class ExplanationPipelineService {
       summary: rationale.inferredSummary,
       ttlHours: depth === "L3" ? 0 : 24,
     });
+    const expectedVersionLockRef = buildVersionLockRef(rationaleWithoutLock);
+    if (options.versionLockRef != null && options.versionLockRef !== expectedVersionLockRef) {
+      throw new Error(`explanation.version_lock_mismatch:${rationale.rationaleId}`);
+    }
     this.versionLocks.set(rationale.rationaleId, versionLockRef);
+    this.rationales.set(rationale.rationaleId, rationale);
 
     const explanationId = newId("explanation");
     this.appendAuditEntry(rationale.rationaleId, {
@@ -197,8 +204,8 @@ export class ExplanationPipelineService {
       accessType: "generate",
       audience: audienceForDepth(depth),
       userId: options.auditUserId ?? null,
-      ipAddress: options.auditIpAddress ?? null,
-      userAgent: options.auditUserAgent ?? null,
+      ipAddress: redactAuditIpAddress(options.auditIpAddress),
+      userAgent: redactAuditUserAgent(options.auditUserAgent),
       recordedAt: rationale.generatedAt,
     });
 
@@ -219,9 +226,14 @@ export class ExplanationPipelineService {
   }
 
   public verifyVersionLock(rationaleId: string, versionLockRef: string): boolean {
+    const rationale = this.rationales.get(rationaleId);
+    if (rationale == null) {
+      return false;
+    }
+    const { versionLockRef: _ignored, renderedExplanation: _rendered, ...rationaleWithoutLock } = rationale;
+    const expected = buildVersionLockRef(rationaleWithoutLock);
     const stored = this.versionLocks.get(rationaleId);
-    if (stored === undefined) return false;
-    return stored === versionLockRef;
+    return stored === expected && versionLockRef === expected;
   }
 
   public isVersionLocked(rationaleId: string): boolean {
@@ -240,8 +252,8 @@ export class ExplanationPipelineService {
       accessType: "view",
       audience: options.audience ?? null,
       userId: options.userId ?? null,
-      ipAddress: options.ipAddress ?? null,
-      userAgent: options.userAgent ?? null,
+      ipAddress: redactAuditIpAddress(options.ipAddress),
+      userAgent: redactAuditUserAgent(options.userAgent),
       recordedAt: nowIso(),
     });
   }
@@ -299,4 +311,24 @@ export class ExplanationPipelineService {
     }
     this.deps.validateForensicBudgetReservation?.(reservationId);
   }
+}
+
+function redactAuditIpAddress(value: string | undefined): string | null {
+  const normalized = value?.trim();
+  if (normalized == null || normalized.length === 0) {
+    return null;
+  }
+  const family = normalized.includes(":") ? "ipv6" : "ipv4";
+  const digest = createHash("sha256").update(normalized).digest("hex").slice(0, 16);
+  return `${family}:${digest}`;
+}
+
+function redactAuditUserAgent(value: string | undefined): string | null {
+  const normalized = value?.trim();
+  if (normalized == null || normalized.length === 0) {
+    return null;
+  }
+  const primaryToken = normalized.split(/\s+/u, 1)[0] ?? "ua";
+  const digest = createHash("sha256").update(normalized).digest("hex").slice(0, 12);
+  return `${primaryToken} ${REDACTED_AUDIT_VALUE}#${digest}`;
 }

@@ -204,16 +204,27 @@ test("PolicyRolloutService.rollback creates rolled_back record", () => {
   assert.equal(record.status, "rolled_back");
 });
 
-test("PolicyRolloutService.evaluateMetricsGate returns allowed for non-progressive statuses", () => {
+test("PolicyRolloutService.evaluateMetricsGate blocks non-evaluation promotion without metrics", () => {
   const service = new PolicyRolloutService();
   const current = makeRecord({ status: "evaluation_enabled" });
 
   const gate = service.evaluateMetricsGate(current, "rejected");
 
-  assert.equal(gate.allowed, true);
+  assert.equal(gate.allowed, false);
+  assert.ok(gate.reasonCodes.includes("rollout.metrics_required"));
 });
 
-test("PolicyRolloutService.evaluateMetricsGate returns allowed for evaluation_enabled current status", () => {
+test("PolicyRolloutService.evaluateMetricsGate allows evaluation_enabled without metrics", () => {
+  const service = new PolicyRolloutService();
+  const current = makeRecord({ status: "approved" });
+
+  const gate = service.evaluateMetricsGate(current, "evaluation_enabled");
+
+  assert.equal(gate.allowed, true);
+  assert.ok(gate.reasonCodes.includes("rollout.metrics_deferred_for_evaluation"));
+});
+
+test("PolicyRolloutService.evaluateMetricsGate returns allowed for canary progression with good metrics", () => {
   const service = new PolicyRolloutService();
   const current = makeRecord({ status: "evaluation_enabled" });
 

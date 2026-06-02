@@ -28,7 +28,7 @@
 - `division_definition_contract.md`
 - `adr/006-llm-provider-strategy.md`
 
-## 2. 配置五层
+## 2. 逻辑配置五层
 
 - `system config`
 - `domain config`
@@ -39,6 +39,11 @@
 优先级链：
 
 `runtime override > role config > division config > domain config > system config > default registry`
+
+说明：
+
+- 这五层是**逻辑优先级模型**，不是要求 `config/` 顶层必须存在同名物理目录。
+- 当前仓库的 `config/` 目录按能力域组织；`division` / `role` 叠加通常由 domain catalog、治理配置和 runtime override 在加载阶段合成。
 
 ## 3. 四类职责分离
 
@@ -55,7 +60,7 @@
 
 ## 3A. 配置治理 Bundle
 
-配置治理层通过 `ConfigBundle` 统一加载和校验所有配置层。当前阶段必须包含以下 6 个层：
+配置治理层通过 `ConfigBundle` 统一加载和校验默认配置来源。当前仓库实际受管的默认目录如下：
 
 | 层名 | 文件路径 | 职责 |
 | --- | --- | --- |
@@ -63,17 +68,24 @@
 | `gateways` | `config/gateways/default.json` | API 网关与渠道适配配置 |
 | `domains` | `config/domains/default.json` | domain/tool bundle/plugin/namespace 默认配置 |
 | `knowledge` | `config/knowledge/default.json` | knowledge namespace、trust、freshness 配置 |
-| `memory` | `config/memory/default.json` | memory layer、promotion、decay 配置 |
-| `kvcache` | `config/kvcache/default.json` | fixed prefix / domain block / variable suffix 预算策略 |
+| `constitution` | `config/constitution/default.json` | 平台宪章与治理基线 |
 | `providers` | `config/providers/default.json` | LLM provider 连接与 profile 选择 |
 | `runtime` | `config/runtime/default.json` | 运行时参数：timeout、并发、agent rounds、tool calls |
 | `security` | `config/security/default.json` | 沙箱模式、审批模式、远程 worker 注册策略 |
 | `workflows` | `config/workflows/default.json` | 工作流定义与默认步骤模板 |
+| `risk` | `config/risk/default.json` | 风险注册表与默认治理阈值 |
+| `quality` | `config/quality/default.json` | 质量、coverage 与 CI 门禁默认值 |
+| `plugins` | `config/plugins/default.json` | 插件默认配置 |
+| `product` | `config/product/default.json` | 产品面、计费与市场配置 |
+| `environments` | `config/environments/default.json` | 环境级 promote / gate 配置 |
+| `dr` | `config/dr/default.json` | disaster recovery 默认配置 |
+
+当前仓库不存在 `config/memory/`、`config/kvcache/` 两个顶层默认目录；相关能力分别落在 `memory` 实现、provider config、runtime config 与 gateway config 中，不得再写成当前事实。
 
 ### 3A.1 配置版本
 
-- 系统通过对 bundle 做确定性 JSON 序列化后取 SHA256 前 16 位生成 `configVersion`。
-- `configVersion` 用于篡改检测：若运行时 bundle 重新计算的版本与已记录版本不一致，doctor 应报告 `config.version_tampered`。
+- `configVersion` / `configSchemaVersion` 在默认值文件中允许使用 `bundle-derived` 占位，表示版本值由 bundle loader 在加载后确定。
+- 若运行时 bundle 重新计算的版本与已记录版本不一致，doctor 应报告 `config.version_tampered`。
 
 ### 3A.2 验证规则
 
@@ -99,7 +111,6 @@
 | `providers` | provider / profile 引用 | 必须在 model metadata registry 中存在匹配项 |
 | `domains` | domain/tool bundle/plugin refs | 必须与注册表一致 |
 | `knowledge` | namespace / trust tier | 必须满足枚举与边界约束 |
-| `kvcache` | budget partition | fixed/domain/variable 三段预算之和必须可解释 |
 | 生产环境 | `allowDestructiveActions` | 不得为 `true`（fail-closed） |
 
 ### 3A.3 JSONC 支持

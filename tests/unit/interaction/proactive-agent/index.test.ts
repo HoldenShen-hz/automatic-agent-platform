@@ -6,7 +6,7 @@ import { ProactiveAgentService, type TriggerDefinition, type ThresholdTriggerCon
 function makeTrigger(overrides: Partial<TriggerDefinition> = {}): TriggerDefinition {
   return {
     triggerId: "trigger_daily_report",
-    domainId: "general_ops",
+    domainId: "general-ops",
     name: "daily report",
     type: "schedule",
     config: {
@@ -45,7 +45,7 @@ test("ProactiveAgentService queues suggestions for confirmation-required trigger
 test("ProactiveAgentService enforces domain daily trigger budget", async () => {
   const service = new ProactiveAgentService({
     dailyTriggerBudgetByDomain: {
-      general_ops: 1,
+      "general-ops": 1,
     },
   });
   await service.registerTrigger(makeTrigger({ action: { actionType: "create_task", template: {}, requireConfirmation: false } }));
@@ -344,7 +344,7 @@ test("ProactiveAgentService recordExecutionOutcome resets on success", () => {
 
 test("ProactiveAgentService registerTrigger validates declared triggers", async () => {
   const service = new ProactiveAgentService({
-    declaredTriggerIdsByDomain: { general_ops: ["allowed_trigger"] },
+    declaredTriggerIdsByDomain: { "general-ops": ["allowed_trigger"] },
   });
 
   await assert.rejects(

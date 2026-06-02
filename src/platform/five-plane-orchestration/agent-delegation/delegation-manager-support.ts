@@ -44,6 +44,55 @@ export const ALLOWED_STATUS_TRANSITIONS: Readonly<Record<DelegationStatus, reado
 };
 const HYDRATED_NO_EXPIRY_FALLBACK = "9999-12-31T23:59:59.999Z";
 
+export function clonePermissionSet(permissionSet: PermissionSet): PermissionSet {
+  return {
+    resources: [...permissionSet.resources],
+    actions: [...permissionSet.actions],
+    constraints: {
+      ...(permissionSet.constraints.maxDurationMs !== undefined ? { maxDurationMs: permissionSet.constraints.maxDurationMs } : {}),
+      ...(permissionSet.constraints.maxTokens !== undefined ? { maxTokens: permissionSet.constraints.maxTokens } : {}),
+      ...(permissionSet.constraints.allowedDomains !== undefined ? { allowedDomains: [...permissionSet.constraints.allowedDomains] } : {}),
+      ...(permissionSet.constraints.deniedDomains !== undefined ? { deniedDomains: [...permissionSet.constraints.deniedDomains] } : {}),
+    },
+  };
+}
+
+export function buildDelegationResultFromRecord(
+  record: {
+    readonly delegationId: string;
+    readonly parentAgentId: string;
+    readonly childAgentId: string;
+    readonly depth: number;
+    readonly status: DelegationStatus;
+    readonly createdAt: string;
+    readonly expiresAt: string | null;
+    readonly permissions: PermissionSet;
+    readonly grantedPermissions: PermissionSet;
+  },
+  policyOutcome: string,
+  summary: string,
+): DelegationResult {
+  return {
+    delegationId: record.delegationId,
+    parentAgentId: record.parentAgentId,
+    childAgentId: record.childAgentId,
+    depth: record.depth,
+    status: record.status,
+    createdAt: record.createdAt,
+    expiresAt: record.expiresAt ?? HYDRATED_NO_EXPIRY_FALLBACK,
+    permissions: clonePermissionSet(record.permissions),
+    grantedPermissions: clonePermissionSet(record.grantedPermissions),
+    correlationId: record.delegationId,
+    artifact_refs: [],
+    trust_level: 0,
+    taint_labels: [],
+    evidence_refs: [],
+    policy_outcome: policyOutcome,
+    data_class: "delegation",
+    summary,
+  };
+}
+
 export function evictExpiredDelegationEntries(input: {
   readonly useRepositoryAsPrimaryStore: boolean;
   readonly nowMs: number;
@@ -110,25 +159,11 @@ export async function hydrateDelegationStoresFromRepository(input: {
     }
     const delegations = result.value;
     for (const record of delegations) {
-      const delegationResult: DelegationResult = {
-        delegationId: record.delegationId,
-        parentAgentId: record.parentAgentId,
-        childAgentId: record.childAgentId,
-        depth: record.depth,
-        status: record.status,
-        createdAt: record.createdAt,
-        expiresAt: record.expiresAt ?? HYDRATED_NO_EXPIRY_FALLBACK,
-        permissions: { resources: [], actions: [], constraints: {} },
-        grantedPermissions: { resources: [], actions: [], constraints: {} },
-        correlationId: record.delegationId,
-        artifact_refs: [],
-        trust_level: 0,
-        taint_labels: [],
-        evidence_refs: [],
-        policy_outcome: "delegation.hydrated_from_repository",
-        data_class: "delegation",
-        summary: `Hydrated delegation from repository: ${record.delegationId}`,
-      };
+      const delegationResult = buildDelegationResultFromRecord(
+        record,
+        "delegation.hydrated_from_repository",
+        `Hydrated delegation from repository: ${record.delegationId}`,
+      );
 
       input.delegationStore.set(record.delegationId, delegationResult);
       const rootAgentId = record.delegationChain[0] ?? record.parentAgentId;
@@ -218,6 +253,8 @@ export async function createDelegationResultRecord(input: {
       parentAgentId: delegation.parentAgentId,
       childAgentId: delegation.childAgentId,
       delegationChain,
+      permissions: clonePermissionSet(delegation.permissions),
+      grantedPermissions: clonePermissionSet(delegation.grantedPermissions),
       depth: delegation.depth,
       expiresAt: delegation.expiresAt,
       status: delegation.status,

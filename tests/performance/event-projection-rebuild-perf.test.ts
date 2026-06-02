@@ -45,7 +45,7 @@ function createTaskAndExecution(db: SqliteDatabase, store: AuthoritativeTaskStor
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Projection rebuild test",
       status: "queued",
       source: "user",

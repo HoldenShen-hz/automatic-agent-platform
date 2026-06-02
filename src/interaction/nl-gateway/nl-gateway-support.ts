@@ -417,7 +417,7 @@ export function buildClarificationQuestions(
   if (hasGenericAmbiguityPattern(message, ambiguousPatterns)) {
     questions.push("请补充更具体的范围，例如业务域、时间区间或目标对象。");
   }
-  if (divisionId === "general_ops" && /(报表|report|campaign|广告|合同|招聘|deploy|release|代码|bug)/i.test(message)) {
+  if (divisionId === "general-ops" && /(报表|report|campaign|广告|合同|招聘|deploy|release|代码|bug)/i.test(message)) {
     questions.push("这是哪个业务域的请求？例如工程、营销、法务或 HR。");
   }
   if (entities.length === 0 && /(modify|update|delete|修改|更新|删除|deploy|release|发布)/i.test(message)) {
@@ -633,7 +633,7 @@ export function buildConfirmationScope(divisionId: string, context: ContextEnric
 }
 
 export function buildCanonicalDomainId(divisionId: string): string {
-  if (divisionId === "platform_engineering" || divisionId === "engineering_ops") {
+  if (divisionId === "platform_engineering" || divisionId === "engineering-ops") {
     return "coding";
   }
   return divisionId;

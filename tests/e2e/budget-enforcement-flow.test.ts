@@ -188,7 +188,7 @@ test("E2E Budget Enforcement: budget is reserved before execution starts", async
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Budget reservation test",
           status: "pending",
@@ -314,7 +314,7 @@ test("E2E Budget Enforcement: execution fails when budget is exhausted", async (
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Budget exhausted test",
           status: "in_progress",
@@ -362,7 +362,7 @@ test("E2E Budget Enforcement: execution fails when budget is exhausted", async (
 
         harness.store.insertWorkflowState({
           taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           workflowId: "single_agent_minimal",
           currentStepIndex: 0,
           status: "running",
@@ -430,7 +430,7 @@ test("E2E Budget Enforcement: execution succeeds with sufficient budget", async 
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Sufficient budget test",
           status: "in_progress",
@@ -478,7 +478,7 @@ test("E2E Budget Enforcement: execution succeeds with sufficient budget", async 
 
         harness.store.insertWorkflowState({
           taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           workflowId: "single_agent_minimal",
           currentStepIndex: 0,
           status: "running",
@@ -545,7 +545,7 @@ test("E2E Budget Enforcement: budget check blocks transition to executing when i
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Budget block transition test",
           status: "pending",

@@ -82,7 +82,7 @@ test("WorkflowPlanner.plan preserves workflow metadata", () => {
   const planned = planner.plan(input);
 
   assert.equal(planned.workflow.workflowId, "single_agent_minimal");
-  assert.equal(planned.workflow.divisionId, "general_ops");
+  assert.equal(planned.workflow.divisionId, "general-ops");
 });
 
 test("WorkflowPlanner.plan timeout and maxAttempts are preserved", () => {
@@ -168,7 +168,7 @@ test("WorkflowPlanner.plan multi-step workflow assigns division IDs", () => {
 
   // All steps should have divisionId set to workflow's divisionId
   for (const step of planned.executionSteps) {
-    assert.equal(step.divisionId, "general_ops");
+    assert.equal(step.divisionId, "general-ops");
   }
 });
 

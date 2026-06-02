@@ -152,7 +152,11 @@ test("builtin coding presenter and github adapter expose production-shaped behav
         body: "details",
         labels: ["bug"],
       });
-      assert.equal(result["endpoint"], "https://api.github.com/repos/openai/example/issues");
+      assert.deepEqual(result["requestSummary"], {
+        endpointHost: "api.github.com",
+        endpointTemplate: "/repos/{repository}/issues",
+        payloadKeys: ["body", "labels", "title"],
+      });
     }
   } finally {
     globalThis.fetch = originalFetch;

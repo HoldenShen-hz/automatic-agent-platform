@@ -20,7 +20,7 @@ test("multi-step orchestration runs intake routing, planned multi-step workflow,
     });
 
     assert.equal(result.routing.requiresOrchestration, true);
-    // The request routes to research_orchestration (priority 40 > general_ops priority 10 when both match "review")
+    // The request routes to research_orchestration (priority 40 > general-ops priority 10 when both match "review")
     assert.equal(result.plannedWorkflow.executionSteps.length, 4);
     assert.equal(result.snapshot.task.status, "done");
     assert.equal(result.snapshot.workflow?.status, "completed");
@@ -100,7 +100,7 @@ test("multi-step orchestration records full role permissions and deferred visibl
       request: "Implement a code fix for a production defect, apply a patch to update repository, verify with bash, produce handoff summary.",
     });
 
-    assert.equal(result.routing.divisionId, "engineering_ops");
+    assert.equal(result.routing.divisionId, "engineering-ops");
     assert.equal(result.snapshot.workflow?.workflowId, "engineering_multi_step_delivery");
 
     const db = new SqliteDatabase(dbPath);

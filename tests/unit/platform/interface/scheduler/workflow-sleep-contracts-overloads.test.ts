@@ -37,7 +37,7 @@ function makeRecord(overrides: Partial<WorkflowSuspensionRecord> = {}): Workflow
     taskId: "task_overload_1",
     executionId: "exec_overload_1",
     workflowId: "wf_overload_1",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     reasonCode: "test_reason",
     waitKind: "timer",
     status: "active",

@@ -67,6 +67,9 @@ export interface HttpApiServerOptions {
   apiMaxTimeoutMs?: number;
   workerHeartbeatSweepIntervalMs?: number;
   workerHeartbeatTtlMs?: number;
+  platformRoot?: string;
+  gatewayWebhookSignatureToleranceSeconds?: number;
+  gatewayWebhookNonceTtlSeconds?: number;
   env?: NodeJS.ProcessEnv;
   buildVersion?: string;
   contractVersion?: string;

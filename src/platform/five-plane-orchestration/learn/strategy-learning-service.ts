@@ -36,9 +36,9 @@ export class StrategyLearningService {
   }
 
   private normalizeSignal(signal: LearningSignal): LearningSignal {
-    const evidenceRefs = signal.evidenceRefs.length > 0
-      ? signal.evidenceRefs
-      : [signal.sourceFeedbackId, signal.learningSignalId];
+    const evidenceRefs = signal.evidenceRefs
+      .map((ref) => ref.trim())
+      .filter((ref) => ref.length > 0);
     const sourceSignalIds = signal.sourceSignalIds.length > 0
       ? signal.sourceSignalIds
       : [signal.learningSignalId];
@@ -46,7 +46,7 @@ export class StrategyLearningService {
     return {
       ...signal,
       evidenceRefs: [...new Set(evidenceRefs)],
-      sourceSignalIds: [...new Set(sourceSignalIds)],
+      sourceSignalIds: [...new Set(sourceSignalIds.map((id) => id.trim()).filter((id) => id.length > 0))],
     };
   }
 }

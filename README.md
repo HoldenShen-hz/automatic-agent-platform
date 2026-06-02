@@ -66,7 +66,8 @@ Stable script overview:
 - `docs_zh/governance/naming_and_directory_conventions.md` — naming and directory constraints
 - `docs_zh/reference/automatic_agent_platform_v3_2_final_release.md` — unique v3.2 governance baseline release document
 - `docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md` — v3.3 implementation baseline + P0 pilot launch readiness
-- `docs_zh/quality/buglist.md` — canonical buglist
+- `docs_zh/quality/buglist.md` — 中文 buglist 事实源
+- `docs_en/quality/buglist.md` — English buglist index
 - `docs_zh/reference/docs-sync.md` — zh/en sync rules and delayed-translation policy
 - `docs_zh/reference/division-catalog.md` — division family map, canonical surfaces, and legacy aliases
 - `translate_docs.py` — maintenance-only translation helper that auto-discovers `docs_en/**/*.md` files still containing Chinese text
@@ -98,14 +99,13 @@ tests/
   fixtures/packs/   # example pack fixtures for naming/validation coverage, not publishable packages
 ```
 
-## Current Notes
+## Engineering Notes
 
-- `src/core/runtime/` remains as a compatibility surface for legacy imports; primary runtime changes should land in the five-plane modules unless a compatibility export is intentionally required.
-- `src/runtime/agent-runtime/` and `src/core/runtime/` are compatibility/runtime-boundary surfaces; document changes there alongside the governance source-of-truth notes.
+- `src/core/runtime/` remains a compatibility surface for legacy imports; primary runtime changes should land in the five-plane modules unless a compatibility export is intentionally required.
+- `src/runtime/agent-runtime/` and `src/core/runtime/` are compatibility/runtime-boundary surfaces; update the matching governance notes when touching them.
 - `src/plugins/` contains built-in runtime plugins, `tests/fixtures/packs/` contains pack fixtures only, `src/sdk/harness-sdk/` contains the harness-facing SDK surface, and `src/scale-ecosystem/marketplace/` contains marketplace/runtime registry services.
 - Division families are intentionally scoped, not synonymous: `quality-assurance` is the canonical release-certification division, while `qa` is a lightweight smoke-validation alias; the operations family split is documented in `docs_zh/reference/division-catalog.md` and `config/quality/division-catalog.json`.
-- Root docs, ADR, contracts, and review matrices are expected to stay consistent. If a boundary changes, update the matching contract and tests in the same change.
-- Common operator commands are summarized here; contributor workflow details live in `CONTRIBUTING.md`.
+- Common operator commands are summarized here; contributor workflow details live in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## License
 

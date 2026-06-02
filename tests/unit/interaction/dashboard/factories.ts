@@ -25,7 +25,7 @@ export function createTaskBoardItem(overrides: Partial<TaskBoardItem> = {}): Tas
     sessionStatus: null,
     latestEventAt: null,
     updatedAt: new Date().toISOString(),
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     ...overrides,
   };
 }
@@ -93,7 +93,7 @@ export function createAttentionItem(overrides: Partial<AttentionItem> = {}): Att
     description: "Test description",
     actionOptions: ["inspect", "retry"],
     createdAt: new Date().toISOString(),
-    domainId: "general_ops",
+    domainId: "general-ops",
     ...overrides,
   };
 }

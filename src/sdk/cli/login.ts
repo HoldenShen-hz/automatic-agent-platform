@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 
+import { readCliProcessEnv, type CliEnv } from "./cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { readTrimmedEnv } from "../../platform/five-plane-control-plane/config-center/runtime-env.js";
 
@@ -96,7 +97,7 @@ async function exchangeCodeForTokens(config: OAuthPkceConfig, code: string, veri
   return assertTokenResponse(await response.json());
 }
 
-function resolveSecureCliHome(env: NodeJS.ProcessEnv = process.env): string {
+function resolveSecureCliHome(env: NodeJS.ProcessEnv): string {
   const explicitHome = readTrimmedEnv(env, "HOME");
   const fallbackHome = homedir().trim();
   const home = explicitHome ?? (fallbackHome.length > 0 ? fallbackHome : null);
@@ -111,7 +112,7 @@ function saveOAuthTokens(tokens: {
   tokenType: string;
   expiresIn: number;
   refreshToken?: string;
-}, env: NodeJS.ProcessEnv = process.env): string {
+}, env: NodeJS.ProcessEnv): string {
   const credentialsPath = env.AA_CREDENTIALS_PATH ?? join(resolveSecureCliHome(env), ".automatic-agent", "credentials.json");
   mkdirSync(dirname(credentialsPath), { recursive: true, mode: 0o700 });
   const payload = JSON.stringify(tokens, null, 2);
@@ -169,11 +170,11 @@ export interface LoginFinishResult {
   expiresIn: number;
 }
 
-export function clearLegacyLoginTokenEnv(env: NodeJS.ProcessEnv = process.env): void {
+export function clearLegacyLoginTokenEnv(env: NodeJS.ProcessEnv): void {
   delete env.AA_LOGIN_TOKEN;
 }
 
-function resolveAuthorizationCode(env: NodeJS.ProcessEnv = process.env): string {
+function resolveAuthorizationCode(env: NodeJS.ProcessEnv): string {
   const codeFile = readTrimmedEnv(env, "AA_OAUTH_AUTH_CODE_FILE");
   if (codeFile != null) {
     const code = readFileSync(codeFile, "utf8").trim();
@@ -185,11 +186,11 @@ function resolveAuthorizationCode(env: NodeJS.ProcessEnv = process.env): string 
   return requireEnv("AA_OAUTH_AUTH_CODE", env);
 }
 
-function hasAuthorizationCodeInput(env: NodeJS.ProcessEnv = process.env): boolean {
+function hasAuthorizationCodeInput(env: NodeJS.ProcessEnv): boolean {
   return readTrimmedEnv(env, "AA_OAUTH_AUTH_CODE_FILE") != null || readTrimmedEnv(env, "AA_OAUTH_AUTH_CODE") != null;
 }
 
-function resolveReturnedState(env: NodeJS.ProcessEnv = process.env): string {
+function resolveReturnedState(env: NodeJS.ProcessEnv): string {
   const stateFile = readTrimmedEnv(env, "AA_OAUTH_CALLBACK_STATE_FILE");
   if (stateFile != null) {
     const state = readFileSync(stateFile, "utf8").trim();
@@ -201,7 +202,7 @@ function resolveReturnedState(env: NodeJS.ProcessEnv = process.env): string {
   return requireEnv("AA_OAUTH_CALLBACK_STATE", env);
 }
 
-function requireEnv(name: string, env: NodeJS.ProcessEnv = process.env): string {
+function requireEnv(name: string, env: NodeJS.ProcessEnv): string {
   const value = readTrimmedEnv(env, name);
   if (value == null) {
     throw new ValidationError(`missing_env:${name}`, `missing_env:${name}`);
@@ -216,7 +217,7 @@ function parseScopes(raw: string): readonly string[] {
     .filter((value) => value.length > 0);
 }
 
-export function loadOAuthPkceConfig(env: NodeJS.ProcessEnv = process.env): OAuthPkceConfig {
+export function loadOAuthPkceConfig(env: NodeJS.ProcessEnv): OAuthPkceConfig {
   const scopes = parseScopes(requireEnv("AA_OAUTH_SCOPES", env));
   if (scopes.length === 0) {
     throw new ValidationError("invalid_env:AA_OAUTH_SCOPES", "invalid_env:AA_OAUTH_SCOPES");
@@ -230,7 +231,7 @@ export function loadOAuthPkceConfig(env: NodeJS.ProcessEnv = process.env): OAuth
   };
 }
 
-export function resolveOAuthLoginStatePath(env: NodeJS.ProcessEnv = process.env): string {
+export function resolveOAuthLoginStatePath(env: NodeJS.ProcessEnv): string {
   return readTrimmedEnv(env, "AA_OAUTH_STATE_PATH")
     ?? join(resolveSecureCliHome(env), ".automatic-agent", "oauth-login-state.json");
 }
@@ -252,7 +253,7 @@ function readLoginState(statePath: string): LoginStateRecord {
 }
 
 export function startOAuthLogin(
-  env: NodeJS.ProcessEnv = process.env,
+  env: NodeJS.ProcessEnv,
   config: OAuthPkceConfig = loadOAuthPkceConfig(env),
 ): LoginStartResult {
   const pkce = generatePkcePair();
@@ -276,7 +277,7 @@ export function startOAuthLogin(
 }
 
 export async function finishOAuthLogin(
-  env: NodeJS.ProcessEnv = process.env,
+  env: NodeJS.ProcessEnv,
   config: OAuthPkceConfig = loadOAuthPkceConfig(env),
 ): Promise<LoginFinishResult> {
   const code = resolveAuthorizationCode(env);
@@ -314,7 +315,7 @@ export async function finishOAuthLogin(
 }
 
 export async function main(): Promise<void> {
-  const env = process.env;
+  const env: CliEnv = readCliProcessEnv();
   clearLegacyLoginTokenEnv(env);
   const result = !hasAuthorizationCodeInput(env)
     ? startOAuthLogin(env)

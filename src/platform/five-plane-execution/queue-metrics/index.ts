@@ -205,10 +205,9 @@ export class QueueMetricsService {
     const totalActive = stats.waiting + stats.delayed + stats.active;
     this.recordDepth(stats.queueName, totalActive);
 
-    const deadLetterFailed = stats.failed + stats.deadLetter;
     const currentFailed = this.failedByQueue.get(stats.queueName) ?? 0;
-    if (deadLetterFailed > currentFailed) {
-      this.failedByQueue.set(stats.queueName, deadLetterFailed);
+    if (stats.deadLetter > currentFailed) {
+      this.failedByQueue.set(stats.queueName, stats.deadLetter);
     }
   }
 

@@ -111,13 +111,14 @@ export function calculateQuorumStatus(
   votingStartTime: string,
   currentTime: string,
 ): QuorumStatus {
-  const approvalsReceived = votes.filter((v) => v.voteType === VoteType.APPROVE).length;
-  const rejectionsReceived = votes.filter((v) => v.voteType === VoteType.REJECT).length;
-  const abstentionsReceived = votes.filter((v) => v.voteType === VoteType.ABSTAIN).length;
+  const normalizedVotes = normalizeVotesByCanonicalApprover(votes);
+  const approvalsReceived = normalizedVotes.filter((v) => v.voteType === VoteType.APPROVE).length;
+  const rejectionsReceived = normalizedVotes.filter((v) => v.voteType === VoteType.REJECT).length;
+  const abstentionsReceived = normalizedVotes.filter((v) => v.voteType === VoteType.ABSTAIN).length;
 
   // Count unique approvers (not counting delegation sources)
   const uniqueApprovers = new Set(
-    votes.map((v) => (v.delegationSource ?? v.approverId)),
+    normalizedVotes.map((v) => canonicalApproverKey(v)),
   );
 
   // Calculate if voting window has expired
@@ -196,7 +197,7 @@ export function getRemainingVotes(status: QuorumStatus): { approvals: number; re
  */
 export function mergeVotes(existing: QuorumVote[], newVote: QuorumVote): QuorumVote[] {
   const existingIndex = existing.findIndex(
-    (v) => v.approverId === newVote.approverId,
+    (v) => canonicalApproverKey(v) === canonicalApproverKey(newVote),
   );
 
   if (existingIndex >= 0) {
@@ -204,6 +205,24 @@ export function mergeVotes(existing: QuorumVote[], newVote: QuorumVote): QuorumV
   }
 
   return [...existing, newVote];
+}
+
+function canonicalApproverKey(vote: QuorumVote): string {
+  return vote.delegationSource ?? vote.approverId;
+}
+
+function normalizeVotesByCanonicalApprover(votes: readonly QuorumVote[]): QuorumVote[] {
+  const seen = new Set<string>();
+  const normalized: QuorumVote[] = [];
+  for (const vote of votes) {
+    const key = canonicalApproverKey(vote);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    normalized.push(vote);
+  }
+  return normalized;
 }
 
 /**

@@ -94,7 +94,7 @@ test("[SYS-REL-2.7] concurrent workflow transitions - only one succeeds via CAS 
   const now = new Date().toISOString();
   const repository = createWorkflowRepository({
     taskId: "workflow-concurrent-001",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "multi_step_v1",
     currentStepIndex: 0,
     status: "running",
@@ -166,7 +166,7 @@ test("[SYS-REL-2.7] runConcurrentInvariant - workflow transitions CAS protection
   const now = new Date().toISOString();
   const repository = createWorkflowRepository({
     taskId: "workflow-invariant-001",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "multi_step_v1",
     currentStepIndex: 0,
     status: "running",

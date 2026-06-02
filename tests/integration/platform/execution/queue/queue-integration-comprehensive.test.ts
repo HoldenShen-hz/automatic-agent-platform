@@ -39,7 +39,7 @@ test("Queue integration: task lifecycle with queue jobs in transaction", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Queue Lifecycle Test",
         status: "queued",
         source: "user",

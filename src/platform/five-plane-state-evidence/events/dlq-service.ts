@@ -16,6 +16,8 @@ import type { SqliteConnection } from "../truth/sqlite/query-helper.js";
 import { SqliteDlqRepository } from "./sqlite-dlq-repository.js";
 import { DEFAULT_DLQ_RETRY_BACKOFF_MS, DEFAULT_MAX_DLQ_RETRIES } from "../dlq/dlq-policy.js";
 
+const MAX_DLQ_RETRY_BACKOFF_MS = 6 * 60 * 60 * 1000;
+
 /**
  * Failure categories for DLQ entries
  * Helps operators understand the nature of failures for triage
@@ -153,18 +155,13 @@ export class DlqService {
     for (const record of this.records.values()) {
       repo.insert(record);
     }
+    this.records.clear();
+    for (const record of repo.listAll()) {
+      this.records.set(record.deadLetterId, record);
+    }
   }
 
   private getRecords(): Map<string, ExtendedDeadLetterRecord> {
-    // If we have a repository, try to load from it
-    if (this.repository) {
-      const allRecords = this.repository.listAll();
-      const map = new Map<string, ExtendedDeadLetterRecord>();
-      for (const record of allRecords) {
-        map.set(record.deadLetterId, record);
-      }
-      return map;
-    }
     return this.records;
   }
 
@@ -182,6 +179,21 @@ export class DlqService {
     failureCategory?: FailureCategory | null;
     reason?: string | null;
   }): ExtendedDeadLetterRecord {
+    const existing = [...this.getRecords().values()].find((record) =>
+      record.sourceEventId === input.sourceEventId && record.consumerId === input.consumerId && record.status !== "resolved",
+    );
+    if (existing != null) {
+      const updatedExisting: ExtendedDeadLetterRecord = {
+        ...existing,
+        updatedAt: nowIso(),
+        lastFailedAt: nowIso(),
+        errorCode: input.errorCode,
+        errorMessage: input.errorMessage ?? existing.errorMessage,
+        reason: input.reason ?? existing.reason,
+      };
+      this.updateRecord(updatedExisting);
+      return updatedExisting;
+    }
     const now = nowIso();
     const record: ExtendedDeadLetterRecord = {
       deadLetterId: newId("dlq"),
@@ -201,7 +213,7 @@ export class DlqService {
       firstFailedAt: input.originalTimestamp ?? now,
       lastFailedAt: now,
       lastAttemptAt: null,
-      failureCategory: input.failureCategory ?? null,
+      failureCategory: input.failureCategory ?? "unknown",
       reason: input.reason ?? null,
       retryExhaustedAt: null,
       linkedIncidentId: null,
@@ -235,7 +247,8 @@ export class DlqService {
       );
     }
 
-    const backoffDelay = delayMs ?? DEFAULT_DLQ_RETRY_BACKOFF_MS * Math.pow(2, record.retryCount);
+    const exponentialDelay = DEFAULT_DLQ_RETRY_BACKOFF_MS * Math.pow(2, record.retryCount);
+    const backoffDelay = delayMs ?? Math.min(MAX_DLQ_RETRY_BACKOFF_MS, Math.max(0, exponentialDelay));
     const nextRetryAt = new Date(Date.parse(now) + backoffDelay).toISOString();
 
     const updated: ExtendedDeadLetterRecord = {
@@ -282,9 +295,8 @@ export class DlqService {
   private updateRecord(record: ExtendedDeadLetterRecord): void {
     if (this.repository) {
       this.repository.update(record);
-    } else {
-      this.records.set(record.deadLetterId, record);
     }
+    this.records.set(record.deadLetterId, record);
   }
 
   /**
@@ -307,7 +319,7 @@ export class DlqService {
     const updated: ExtendedDeadLetterRecord = {
       ...record,
       status: "discarded",
-      errorCode: reason,
+      reason,
       nextRetryAt: null,
       updatedAt: now,
       operatorActionLog: [...record.operatorActionLog, actionLog],
@@ -566,8 +578,8 @@ export class DlqService {
     const record = this.getRecords().get(deadLetterId);
     if (record == null) {
       throw new ValidationError(
-        `dlq.not_found:${deadLetterId}`,
-        `Dead-letter record ${deadLetterId} was not found.`,
+        "dlq.not_found",
+        "Dead-letter record was not found.",
       );
     }
     return record;

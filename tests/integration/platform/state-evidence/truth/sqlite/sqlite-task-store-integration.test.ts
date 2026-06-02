@@ -57,7 +57,7 @@ function createTaskRecord(overrides: Partial<{
     id: overrides.id ?? `task-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     parentId: overrides.parentId ?? null,
     rootId: overrides.rootId ?? overrides.id ?? `task-${Date.now()}`,
-    divisionId: overrides.divisionId ?? "general_ops",
+    divisionId: overrides.divisionId ?? "general-ops",
     tenantId: overrides.tenantId ?? null,
     title: overrides.title ?? "Test Task",
     status: overrides.status ?? "queued",

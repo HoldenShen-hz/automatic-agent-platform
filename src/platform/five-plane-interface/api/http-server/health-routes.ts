@@ -15,11 +15,10 @@ import { buildJsonDocumentResponse, buildJsonErrorResponse, buildJsonResponse } 
 import type { MissionControlService } from "../mission-control-service.js";
 import { buildOpenApiDocument } from "../openapi-document.js";
 
-const PLATFORM_API_VERSION = "v1";
-
 export interface HealthRouteDeps {
   missionControlService: MissionControlService;
   isShuttingDown?: () => boolean;
+  apiVersion?: string;
   platformVersion?: string;
   contractVersion?: string;
   minClientVersion?: string;
@@ -94,7 +93,7 @@ export function createHealthRoutes(deps: HealthRouteDeps): RouteDefinition[] {
       pathname: "/v1/version",
       handler: async (ctx) => buildJsonResponse(ctx.requestId, 200, {
         accepted: true,
-        apiVersion: PLATFORM_API_VERSION,
+        apiVersion: deps.apiVersion ?? "v1",
         platformVersion: deps.platformVersion ?? "0.1.0",
         contractVersion: deps.contractVersion ?? "2026-04-01",
         minClientVersion: deps.minClientVersion ?? "0.1.0",
@@ -105,7 +104,7 @@ export function createHealthRoutes(deps: HealthRouteDeps): RouteDefinition[] {
       pathname: "/v1/handshake",
       handler: async (ctx) => buildJsonResponse(ctx.requestId, 200, {
         accepted: true,
-        apiVersion: PLATFORM_API_VERSION,
+        apiVersion: deps.apiVersion ?? "v1",
         platformVersion: deps.platformVersion ?? "0.1.0",
         contractVersion: deps.contractVersion ?? "2026-04-01",
         minClientVersion: deps.minClientVersion ?? "0.1.0",

@@ -10,6 +10,7 @@ import {
   withCliStorage,
 } from "../../../../src/sdk/cli/authoritative-storage.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
+import { buildTestPostgresDsn } from "../../../helpers/network-test-constants.js";
 import type { SqliteAuthoritativeStorageContext } from "../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js";
 
 test("cli authoritative storage context binds store and sql handle from AA_DB_PATH", () => {
@@ -26,7 +27,7 @@ test("cli authoritative storage context binds store and sql handle from AA_DB_PA
       id: "task-cli-context",
       parentId: null,
       rootId: "task-cli-context",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "cli context task",
       status: "queued",
       source: "user",
@@ -84,7 +85,7 @@ test("cli authoritative storage async context fail-closes postgres-backed author
 
   try {
     process.env.AA_STORAGE_DRIVER = "postgres";
-    process.env.AA_STORAGE_POSTGRES_DSN = "postgresql://agent:secret@postgres.internal/agent_db?sslmode=require";
+    process.env.AA_STORAGE_POSTGRES_DSN = `${buildTestPostgresDsn({ database: "agent_db", host: "postgres.internal", user: "agent", password: "test-password-placeholder" })}?sslmode=require`;
 
     await assert.rejects(
       async () => openCliAuthoritativeStorageContextAsync(dbPath),
@@ -121,7 +122,7 @@ test("cli authoritative storage sync context uses postgres dual-run shadow sqlit
   try {
     process.env.AA_DB_PATH = dbPath;
     process.env.AA_STORAGE_DRIVER = "postgres";
-    process.env.AA_STORAGE_POSTGRES_DSN = "postgresql://agent:secret@postgres.internal/agent_db?sslmode=require";
+    process.env.AA_STORAGE_POSTGRES_DSN = `${buildTestPostgresDsn({ database: "agent_db", host: "postgres.internal", user: "agent", password: "test-password-placeholder" })}?sslmode=require`;
     process.env.AA_STORAGE_POSTGRES_DUAL_RUN = "true";
     process.env.AA_STORAGE_POSTGRES_SHADOW_SQLITE_PATH = shadowDbPath;
 
@@ -132,7 +133,7 @@ test("cli authoritative storage sync context uses postgres dual-run shadow sqlit
       id: "task-cli-shadow",
       parentId: null,
       rootId: "task-cli-shadow",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "cli shadow task",
       status: "queued",
       source: "user",
@@ -196,7 +197,7 @@ test("cli authoritative storage sync context fail-closes postgres mode without s
   try {
     process.env.AA_DB_PATH = dbPath;
     process.env.AA_STORAGE_DRIVER = "postgres";
-    process.env.AA_STORAGE_POSTGRES_DSN = "postgresql://agent:secret@postgres.internal/agent_db?sslmode=require";
+    process.env.AA_STORAGE_POSTGRES_DSN = `${buildTestPostgresDsn({ database: "agent_db", host: "postgres.internal", user: "agent", password: "test-password-placeholder" })}?sslmode=require`;
     delete process.env.AA_STORAGE_POSTGRES_DUAL_RUN;
     delete process.env.AA_STORAGE_POSTGRES_SHADOW_SQLITE_PATH;
 
@@ -256,7 +257,7 @@ test("withCliStorage migrates and closes the storage automatically", () => {
         id: "task-cli-helper",
         parentId: null,
         rootId: "task-cli-helper",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "cli helper task",
         status: "queued",
         source: "user",

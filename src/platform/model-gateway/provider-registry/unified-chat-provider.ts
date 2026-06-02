@@ -18,8 +18,18 @@ import { AppError, ValidationError } from "../../contracts/errors.js";
 import { CircuitBreaker } from "./circuit-breaker.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
+import { sha256HexPrefix } from "../../shared/cache/utils/sha256.js";
 import { HashEmbeddingProvider, MiniMaxEmbeddingProvider, OpenAIEmbeddingProvider, type EmbeddingProvider } from "../../five-plane-state-evidence/knowledge/indexing/embedding-provider.js";
 import { DEFAULT_MODEL_METADATA_REGISTRY } from "../../five-plane-control-plane/config-center/model-metadata-registry.js";
+
+const llmRequestLogger = new StructuredLogger({ retentionLimit: 100 });
+
+function redactRoutingIdentifier(value: string | null | undefined): string | null {
+  if (value == null || value.trim().length === 0) {
+    return null;
+  }
+  return `redacted:${sha256HexPrefix(value, 12)}`;
+}
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -303,12 +313,11 @@ export class UnifiedChatProvider {
       : { ...normalizedRequest, abortSignal: runtimeSignal };
 
     // Audit logging per §11.1-11.2: log principal/tenantId/policyOutcome for all LLM calls
-    const logger_1 = new StructuredLogger({ retentionLimit: 100 });
-    logger_1.info("llm:request_started", {
+    llmRequestLogger.info("llm:request_started", {
       model: normalizedRequest.model,
       provider,
-      tenantId: normalizedRequest.tenantId,
-      principalId: normalizedRequest.principalId,
+      tenantId: redactRoutingIdentifier(normalizedRequest.tenantId),
+      principalId: redactRoutingIdentifier(normalizedRequest.principalId),
       policyOutcome: normalizedRequest.policyOutcome,
       traceId: normalizedRequest.traceId,
       spanId: normalizedRequest.spanId,

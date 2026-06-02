@@ -142,7 +142,7 @@ export function isIso8601Timestamp(value: string): boolean {
   if (trimmed.length === 0) {
     return false;
   }
-  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{2}:\d{2})$/.test(trimmed)
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2}|[+-]\d{4})$/.test(trimmed)
     && !Number.isNaN(Date.parse(trimmed));
 }
 
@@ -260,8 +260,24 @@ export function buildPlanGraphBundle(input: PlanGraphBuildInput): {
   const graphHash = createHash("sha256")
     .update(JSON.stringify({
       harnessRunId: input.harnessRunId,
-      nodeIds: normalizedNodes.map((node) => node.nodeId),
-      edges: normalizedEdges.map((edge) => [edge.fromNodeId, edge.toNodeId, edge.dependencyType]),
+      nodes: normalizedNodes.map((node) => ({
+        nodeId: node.nodeId,
+        nodeType: node.nodeType,
+        inputRefs: [...node.inputRefs],
+        outputSchemaRef: node.outputSchemaRef,
+        riskClass: node.riskClass,
+        budgetIntent: node.budgetIntent,
+        sideEffectProfile: node.sideEffectProfile,
+        retryPolicyRef: node.retryPolicyRef,
+        timeoutMs: node.timeoutMs,
+      })),
+      edges: normalizedEdges.map((edge) => ({
+        edgeId: edge.edgeId,
+        fromNodeId: edge.fromNodeId,
+        toNodeId: edge.toNodeId,
+        condition: edge.condition,
+        dependencyType: edge.dependencyType,
+      })),
       entryNodeIds: input.entryNodeIds,
       terminalNodeIds: input.terminalNodeIds,
     }))

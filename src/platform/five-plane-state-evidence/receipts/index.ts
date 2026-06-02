@@ -43,6 +43,8 @@ export interface BaseReceiptFull extends BaseReceiptMinimal {
   eventSequence: number;
   canonicalizationVersion: string;
   hashAlgorithm: "sha256";
+  integrityHash: string;
+  integritySignature: string;
   capability: HarnessCapabilityDomain;
   plane: ArchitecturePlane;
   policyBundleVersion?: string;

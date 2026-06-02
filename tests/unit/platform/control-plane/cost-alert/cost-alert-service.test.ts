@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync, unlinkSync } from "node:fs";
 import test from "node:test";
 
 import type { CostAlertConfig, BudgetPolicy, CostThresholdExceededEvent } from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-types.js";
@@ -164,6 +165,49 @@ test("CostAlertService tracks step-level usage", () => {
   assert.equal(accumulator!.accumulatedTokens, 1000);
 });
 
+test("CostAlertService writes step usage artifact content, not just metadata", () => {
+  const insertedArtifacts: Array<{ storagePath: string }> = [];
+  const store = {
+    event: {
+      insertEvent: () => ({}),
+    },
+    artifact: {
+      insertArtifact: (artifact: { storagePath: string }) => {
+        insertedArtifacts.push(artifact);
+      },
+    },
+  } as any;
+  const config: Partial<CostAlertConfig> = {
+    enabled: true,
+    tenantBudgetPolicies: {
+      "tenant-1": {
+        scope: "tenant",
+        scopeId: "tenant-1",
+        period: "monthly",
+        limitCostUsd: 100,
+        warningThreshold: 0.8,
+        actionsOnWarning: ["sev3_alert"],
+        actionsOnBreach: ["sev2_alert"],
+      },
+    },
+  };
+
+  const service = new CostAlertService(mockDb, store, config);
+  service.recordCost({
+    scope: "tenant",
+    scopeId: "tenant-1",
+    actualCostUsd: 2,
+    tenantId: "tenant-1",
+    taskId: "task-artifact",
+    executionId: "exec-artifact",
+    stepId: "step-artifact",
+  });
+
+  assert.equal(insertedArtifacts.length, 1);
+  assert.equal(existsSync(insertedArtifacts[0]!.storagePath), true);
+  unlinkSync(insertedArtifacts[0]!.storagePath);
+});
+
 test("CostAlertService.resetAccumulator resets cost to zero", () => {
   const config: Partial<CostAlertConfig> = {
     enabled: true,
@@ -210,6 +254,38 @@ test("CostAlertService.updateConfig updates configuration", () => {
   service.updateConfig({ enabled: false });
 
   assert.equal(service["config"].enabled, false);
+});
+
+test("CostAlertService emits warning before exceeded when spend jumps across both thresholds", () => {
+  const events: CostThresholdExceededEvent[] = [];
+  const config: Partial<CostAlertConfig> = {
+    enabled: true,
+    tenantBudgetPolicies: {
+      "tenant-1": {
+        scope: "tenant",
+        scopeId: "tenant-1",
+        period: "monthly",
+        limitCostUsd: 100,
+        warningThreshold: 0.8,
+        actionsOnWarning: ["sev3_alert"],
+        actionsOnBreach: ["sev2_alert"],
+      },
+    },
+  };
+  const service = new CostAlertService(mockDb, mockStore, config);
+  service.on("cost:limit_reached", (event: unknown) => {
+    events.push(event as CostThresholdExceededEvent);
+  });
+
+  service.recordCost({
+    scope: "tenant",
+    scopeId: "tenant-1",
+    actualCostUsd: 120,
+    tenantId: "tenant-1",
+    taskId: "task-1",
+  });
+
+  assert.deepEqual(events.map((event) => event.alertLevel), ["warning", "critical", "exceeded"]);
 });
 
 test("CostAlertService allows cost when under warning threshold", () => {

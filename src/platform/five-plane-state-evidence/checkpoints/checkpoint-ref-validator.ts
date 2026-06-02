@@ -196,8 +196,8 @@ function isValidStorageUri(uri: string): boolean {
  * Validates ISO 8601 date format.
  */
 function isValidIsoDate(dateStr: string): boolean {
-  const date = new Date(dateStr);
-  return !isNaN(date.getTime()) && dateStr.includes("T");
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{2}:\d{2})$/u.test(dateStr)
+    && Number.isFinite(Date.parse(dateStr));
 }
 
 /**

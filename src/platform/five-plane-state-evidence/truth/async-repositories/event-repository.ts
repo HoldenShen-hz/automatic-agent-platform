@@ -14,6 +14,18 @@ const EVENT_COLS = `id, task_id AS "taskId", session_id AS "sessionId", executio
         event_type AS "eventType", event_tier AS "eventTier", payload_json AS "payloadJson",
         trace_id AS "traceId", created_at AS "createdAt"`;
 
+export interface AsyncEventDeadLetterCursor {
+  deadLetteredAt: string;
+  id: string;
+}
+
+export interface AsyncEventDeadLetterPage {
+  records: EventDeadLetterRecord[];
+  hasMore: boolean;
+  nextCursor: AsyncEventDeadLetterCursor | null;
+  limit: number;
+}
+
 export class AsyncEventRepository {
   public constructor(private readonly conn: AsyncSqlConnection) {}
 
@@ -23,7 +35,33 @@ export class AsyncEventRepository {
     const record = materializeEventRecord(event);
     const consumerIds = getRequiredConsumers(record.eventType);
 
-    if (consumerIds.length === 0) {
+    await asyncExecute(this.conn, "BEGIN");
+    try {
+      if (consumerIds.length === 0) {
+        await asyncExecute(
+          this.conn,
+          `INSERT INTO events (
+            id, task_id, session_id, execution_id, event_type, event_tier,
+            payload_json, trace_id, created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          record.id,
+          record.taskId,
+          record.sessionId,
+          record.executionId,
+          record.eventType,
+          record.eventTier,
+          record.payloadJson,
+          record.traceId,
+          record.createdAt,
+        );
+        await asyncExecute(this.conn, "COMMIT");
+        return record;
+      }
+
+      const ackRecords = consumerIds.map((consumerId) => ({
+        id: newId("eack"),
+        consumerId,
+      }));
       await asyncExecute(
         this.conn,
         `INSERT INTO events (
@@ -40,44 +78,32 @@ export class AsyncEventRepository {
         record.traceId,
         record.createdAt,
       );
+
+      const ackPlaceholders = ackRecords.map((_, index) => {
+        const offset = 1 + (index * 3);
+        return `($${offset}, $${offset + 1}, $${offset + 2}, 'pending', NULL, NULL, NULL, 0)`;
+      }).join(", ");
+
+      await asyncExecute(
+        this.conn,
+        `INSERT INTO event_consumer_acks (
+          id, event_id, consumer_id, status, last_attempt_at, acked_at, error_code, attempt_count
+        ) VALUES ${ackPlaceholders}
+        ON CONFLICT (event_id, consumer_id) DO UPDATE SET
+          status = EXCLUDED.status,
+          last_attempt_at = EXCLUDED.last_attempt_at,
+          acked_at = EXCLUDED.acked_at,
+          error_code = EXCLUDED.error_code,
+          attempt_count = event_consumer_acks.attempt_count`,
+        ...ackRecords.flatMap((ack) => [ack.id, record.id, ack.consumerId]),
+      );
+
+      await asyncExecute(this.conn, "COMMIT");
       return record;
+    } catch (error) {
+      await asyncExecute(this.conn, "ROLLBACK");
+      throw error;
     }
-
-    const ackRecords = consumerIds.map((consumerId) => ({
-      id: newId("eack"),
-      consumerId,
-    }));
-    await asyncExecute(
-      this.conn,
-      `INSERT INTO events (
-        id, task_id, session_id, execution_id, event_type, event_tier,
-        payload_json, trace_id, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      record.id,
-      record.taskId,
-      record.sessionId,
-      record.executionId,
-      record.eventType,
-      record.eventTier,
-      record.payloadJson,
-      record.traceId,
-      record.createdAt,
-    );
-
-    const ackPlaceholders = ackRecords.map((_, index) => {
-      const offset = 1 + (index * 3);
-      return `($${offset}, $${offset + 1}, $${offset + 2}, 'pending', NULL, NULL, NULL, 0)`;
-    }).join(", ");
-
-    await asyncExecute(
-      this.conn,
-      `INSERT INTO event_consumer_acks (
-        id, event_id, consumer_id, status, last_attempt_at, acked_at, error_code, attempt_count
-      ) VALUES ${ackPlaceholders}`,
-      ...ackRecords.flatMap((ack) => [ack.id, record.id, ack.consumerId]),
-    );
-
-    return record;
   }
 
   public async insertEventDeadLetter(record: EventDeadLetterRecord): Promise<void> {
@@ -92,20 +118,30 @@ export class AsyncEventRepository {
     );
   }
 
-  public async listEventDeadLetters(limit: number = 100, cursor?: string | null): Promise<EventDeadLetterRecord[]> {
+  public async listEventDeadLetters(limit: number = 100, cursor?: AsyncEventDeadLetterCursor | null): Promise<AsyncEventDeadLetterPage> {
     let sql = `SELECT id, original_event_id AS "originalEventId", event_type AS "eventType",
         payload_json AS "payloadJson", consumer_id AS "consumerId", failure_count AS "failureCount",
         last_error AS "lastError", dead_lettered_at AS "deadLetteredAt",
         reprocessed_at AS "reprocessedAt", reprocess_result AS "reprocessResult"
        FROM event_dead_letters`;
     const params: unknown[] = [];
+    const normalizedLimit = Math.max(1, limit);
     if (cursor !== undefined && cursor !== null) {
-      sql += ` WHERE dead_lettered_at < $${params.length + 1}`;
-      params.push(cursor);
+      sql += ` WHERE (dead_lettered_at < $${params.length + 1} OR (dead_lettered_at = $${params.length + 1} AND id < $${params.length + 2}))`;
+      params.push(cursor.deadLetteredAt, cursor.id);
     }
-    sql += ` ORDER BY dead_lettered_at DESC LIMIT $${params.length + 1}`;
-    params.push(limit);
-    return asyncQueryAll<EventDeadLetterRecord>(this.conn, sql, ...params);
+    sql += ` ORDER BY dead_lettered_at DESC, id DESC LIMIT $${params.length + 1}`;
+    params.push(normalizedLimit + 1);
+    const rows = await asyncQueryAll<EventDeadLetterRecord>(this.conn, sql, ...params);
+    const hasMore = rows.length > normalizedLimit;
+    const records = rows.slice(0, normalizedLimit);
+    const tail = records.at(-1);
+    return {
+      records,
+      hasMore,
+      nextCursor: hasMore && tail != null ? { deadLetteredAt: tail.deadLetteredAt, id: tail.id } : null,
+      limit: normalizedLimit,
+    };
   }
 
   public async listEventsByType(eventType: string, limit?: number): Promise<EventRecord[]> {

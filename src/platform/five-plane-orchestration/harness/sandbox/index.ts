@@ -1,3 +1,6 @@
+import { ValidationError } from "../../../contracts/errors.js";
+import { newId } from "../../../contracts/types/ids.js";
+
 /**
  * Harness Sandbox Layer - per-tool sandbox binding per §45.4 step 5.
  *
@@ -42,16 +45,23 @@ export function createSandboxLayer(
     };
   },
 ): HarnessSandboxLayer {
-  // R12-1 fix: "none" is not a valid sandbox tier - must be explicitly rejected
-  // per §171/R21-15. Use "ephemeral" as the minimal-isolation default.
-  const defaultLayer = constraintPack.sandboxRequirement?.sandboxMode ?? "ephemeral";
+  const requestedLayer = constraintPack.sandboxRequirement?.sandboxMode;
+  if (requestedLayer === "none") {
+    throw new ValidationError(
+      "harness.sandbox.none_not_allowed",
+      "Harness sandboxMode 'none' is not allowed; use at least ephemeral isolation",
+    );
+  }
+  // R12-1 fix: "none" is not a valid sandbox tier - must be explicitly rejected.
+  // Use "ephemeral" as the minimal-isolation default.
+  const defaultLayer = requestedLayer ?? "ephemeral";
   const timeoutMs = constraintPack.sandboxRequirement?.timeoutMs ?? 30000;
   const allowedHosts = constraintPack.sandboxRequirement?.allowedHosts;
 
   const bindings: ToolSandboxBinding[] = requestedTools.map((toolName) => ({
     toolName,
     layer: defaultLayer,
-    isolationId: `sandbox_${toolName}_${Date.now()}`,
+    isolationId: `sandbox_${toolName}_${newId("isolation")}`,
     timeoutMs,
     ...(allowedHosts ? { allowedHosts } : {}),
   }));

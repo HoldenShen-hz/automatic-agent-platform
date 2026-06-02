@@ -12,7 +12,7 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 
 // ─── Import all module exports ────────────────────────────────────────────────
 
@@ -44,6 +44,14 @@ import type {
   SubWorkflowDefinition,
   WorkflowStepDefinition,
 } from "../../../../src/platform/five-plane-execution/plugin-executor/sub-workflow-executor.js";
+
+test.afterEach(() => {
+  try {
+    mock.timers.reset();
+  } catch {
+    // Only some tests enable mocked timers.
+  }
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures
@@ -348,6 +356,7 @@ test("PluginExecutorService.execute() with validator action returns output [plug
 });
 
 test("PluginExecutorService.execute() records error count on failure [plugin-executor]", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const service = new PluginExecutorService();
   const manifest = createTestManifest({
     spiTypes: ["retriever"],
@@ -377,7 +386,9 @@ test("PluginExecutorService.execute() records error count on failure [plugin-exe
   await service.load("test-plugin");
   await service.activate("test-plugin");
 
-  await service.execute("test-plugin", "retriever", createTestContext(), {});
+  const executionPromise = service.execute("test-plugin", "retriever", createTestContext(), {});
+  mock.timers.tick(200);
+  await executionPromise;
 
   // errorCount is now 1, health check uses errorCount < 5 threshold
   // so with errorCount = 1, healthCheck should return true
@@ -405,6 +416,7 @@ test("PluginExecutorService.execute() writes artifact on success [plugin-executo
 });
 
 test("PluginExecutorService.execute() writes artifact on error [plugin-executor]", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const service = new PluginExecutorService();
   const manifest = createTestManifest({
     spiTypes: ["retriever"],
@@ -434,7 +446,9 @@ test("PluginExecutorService.execute() writes artifact on error [plugin-executor]
   await service.load("test-plugin");
   await service.activate("test-plugin");
 
-  const result = await service.execute("test-plugin", "retriever", createTestContext(), {});
+  const executionPromise = service.execute("test-plugin", "retriever", createTestContext(), {});
+  mock.timers.tick(200);
+  const result = await executionPromise;
 
   assert.equal(result.status, "timeout");
   assert.ok(result.error);

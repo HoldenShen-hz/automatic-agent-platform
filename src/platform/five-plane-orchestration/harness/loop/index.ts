@@ -54,7 +54,7 @@ export class HarnessLoopController {
       maxCost: 100000,
       maxDurationMs: MS_PER_HOUR,
     };
-    const rawIterations = Math.max(1, Math.floor(budget.maxSteps / 3));
+    const rawIterations = Math.max(1, Math.floor(budget.maxSteps));
     this.guards = {
       maxIterations: rawIterations,
       maxReplans: 3,
@@ -77,8 +77,6 @@ export class HarnessLoopController {
       ...this.state,
       iteration: this.state.iteration + 1,
       totalCost: Number((this.state.totalCost + cost).toFixed(6)),
-      lastRetryAt: Date.now(),
-      retryAttempt: this.state.retryAttempt + 1,
     };
   }
 
@@ -86,6 +84,16 @@ export class HarnessLoopController {
     this.state = {
       ...this.state,
       replanCount: this.state.replanCount + 1,
+      lastRetryAt: 0,
+      retryAttempt: 0,
+    };
+  }
+
+  public recordRetry(now = Date.now()): void {
+    this.state = {
+      ...this.state,
+      lastRetryAt: now,
+      retryAttempt: this.state.retryAttempt + 1,
     };
   }
 
@@ -94,9 +102,11 @@ export class HarnessLoopController {
    * @returns Backoff delay in milliseconds (base=1s, max=60s, 10% jitter)
    */
   public getBackoffMs(): number {
-    const exponentialDelay = BACKOFF_BASE_MS * Math.pow(DEFAULT_EXPONENTIAL_BACKOFF_MULTIPLIER, this.state.retryAttempt - 1);
+    const effectiveAttempt = Math.max(1, this.state.retryAttempt);
+    const exponentialDelay = BACKOFF_BASE_MS * Math.pow(DEFAULT_EXPONENTIAL_BACKOFF_MULTIPLIER, effectiveAttempt - 1);
     const cappedDelay = Math.min(exponentialDelay, BACKOFF_MAX_MS);
-    const jitter = computeDeterministicJitter(this.state.startedAt + this.state.retryAttempt, cappedDelay, JITTER_FACTOR);
+    const jitterSeedBase = this.state.lastRetryAt > 0 ? this.state.lastRetryAt : this.state.startedAt;
+    const jitter = computeDeterministicJitter(jitterSeedBase + effectiveAttempt, cappedDelay, JITTER_FACTOR);
     return Math.min(BACKOFF_MAX_MS, Math.floor(cappedDelay + jitter));
   }
 

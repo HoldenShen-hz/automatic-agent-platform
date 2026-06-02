@@ -16,16 +16,13 @@
  * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/architecture/00-platform-architecture.md}
  */
 
-import { type ChildProcess } from "node:child_process";
+import { execFileSync, type ChildProcess } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
-import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-
-const commandExecutorLogger = new StructuredLogger({ retentionLimit: 100 });
-import { checkSandboxPath } from "../../five-plane-control-plane/iam/index.js";
-import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import { checkSandboxPath } from "../../shared/sandbox-path-policy.js";
 import { sanitizeToolOutput, type SanitizedToolOutput } from "./tool-output-sanitizer.js";
 import { assessCommand } from "./command-security.js";
 import { isToolCallSuccessful, type ToolCallResult } from "./tool-call-result.js";
@@ -76,9 +73,30 @@ export interface CommandExecutionResult extends ToolCallResult<
 export interface CommandExecutorOptions {
   persistedMessageLimitChars?: number;
   artifactRootDirName?: string;
-  store?: AuthoritativeTaskStore;
+  store?: CommandExecutionStore;
   maxCapturedOutputBytes?: number;
+  maxConcurrentProcesses?: number;
+  artifactWriter?: CommandArtifactWriter;
 }
+
+interface CommandExecutionStore {
+  getExecution(executionId: string): unknown;
+}
+
+interface CommandArtifactWriterInput {
+  readonly taskId: string;
+  readonly stepId: string;
+  readonly toolName: string;
+  readonly command: string;
+  readonly args: readonly string[];
+  readonly traceId: string | null | undefined;
+  readonly cwd: string;
+  readonly artifactRootDirName: string;
+  readonly sandboxPolicy: CommandToolRequest["sandboxPolicy"];
+  readonly content: string;
+}
+
+type CommandArtifactWriter = (input: CommandArtifactWriterInput) => string;
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
@@ -98,13 +116,12 @@ function killProcessTree(child: ChildProcess, forceKillAfterDelayMs: number = 50
     return;
   }
 
-  const killSignal = process.platform !== "win32" ? "SIGTERM" : "SIGTERM";
   const killPgid = process.platform !== "win32";
 
   try {
     if (killPgid) {
       // First try SIGTERM for graceful shutdown of entire process group
-      process.kill(-pid, killSignal);
+      process.kill(-pid, "SIGTERM");
 
       // Schedule SIGKILL as fallback after grace period
       const escalationTimer = setTimeout(() => {
@@ -117,10 +134,14 @@ function killProcessTree(child: ChildProcess, forceKillAfterDelayMs: number = 50
       escalationTimer.unref();
       child.once("close", () => clearTimeout(escalationTimer));
     } else {
-      child.kill(killSignal);
+      try {
+        execFileSync("taskkill", ["/pid", String(pid), "/t", "/f"], { stdio: "ignore" });
+      } catch {
+        child.kill("SIGTERM");
+      }
       const escalationTimer = setTimeout(() => {
         try {
-          child.kill("SIGKILL");
+          execFileSync("taskkill", ["/pid", String(pid), "/t", "/f"], { stdio: "ignore" });
         } catch {
           // Process may have already exited
         }
@@ -129,13 +150,13 @@ function killProcessTree(child: ChildProcess, forceKillAfterDelayMs: number = 50
       child.once("close", () => clearTimeout(escalationTimer));
     }
   } catch (err) {
-    commandExecutorLogger.warn("command_executor: process kill failed, forcing SIGKILL", { error: err instanceof Error ? err.message : String(err) });
+    console.warn("command_executor: process kill failed, forcing SIGKILL", { error: err instanceof Error ? err.message : String(err) });
     // Fallback to SIGKILL immediately
     try {
       if (killPgid) {
         process.kill(-pid, "SIGKILL");
       } else {
-        child.kill("SIGKILL");
+        execFileSync("taskkill", ["/pid", String(pid), "/t", "/f"], { stdio: "ignore" });
       }
     } catch {
       // Process may have already exited
@@ -143,10 +164,18 @@ function killProcessTree(child: ChildProcess, forceKillAfterDelayMs: number = 50
   }
 }
 
-function writeFallbackArtifactFile(path: string, content: string): string {
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, content, "utf8");
-  return `file://${path}`;
+function writeFallbackArtifactFile(path: string, content: string, sandboxPolicy: CommandToolRequest["sandboxPolicy"]): string {
+  const parentCheck = checkSandboxPath(sandboxPolicy, dirname(path));
+  if (!parentCheck.allowed) {
+    throw new Error("tool.output_externalize_parent_denied");
+  }
+  const fileCheck = checkSandboxPath(sandboxPolicy, path);
+  if (!fileCheck.allowed) {
+    throw new Error("tool.output_externalize_file_denied");
+  }
+  mkdirSync(dirname(fileCheck.normalizedPath), { recursive: true });
+  writeFileSync(fileCheck.normalizedPath, content, "utf8");
+  return pathToFileURL(fileCheck.normalizedPath).toString();
 }
 
 /**
@@ -167,13 +196,13 @@ function writeFallbackArtifactFile(path: string, content: string): string {
 export class CommandExecutor {
   private readonly persistedMessageLimitChars: number;
   private readonly artifactRootDirName: string;
-  private readonly store: AuthoritativeTaskStore | null;
+  private readonly store: CommandExecutionStore | null;
   private readonly processTracker: ProcessTracker;
   private readonly maxCapturedOutputBytes: number;
-
-  // Process concurrency limiter to prevent fork bomb / resource exhaustion
-  private static readonly MAX_CONCURRENT_PROCESSES = 16;
-  private static activeProcessCount = 0;
+  private readonly maxConcurrentProcesses: number;
+  private readonly logger: StructuredLogger;
+  private readonly artifactWriter: CommandArtifactWriter;
+  private activeProcessCount = 0;
 
   public constructor(options: CommandExecutorOptions = {}) {
     this.persistedMessageLimitChars = Math.max(256, Math.trunc(options.persistedMessageLimitChars ?? 6000));
@@ -181,6 +210,9 @@ export class CommandExecutor {
     this.store = options.store ?? null;
     this.processTracker = getProcessTracker();
     this.maxCapturedOutputBytes = Math.max(4096, Math.trunc(options.maxCapturedOutputBytes ?? 1_048_576));
+    this.maxConcurrentProcesses = Math.max(1, Math.trunc(options.maxConcurrentProcesses ?? 16));
+    this.logger = new StructuredLogger({ retentionLimit: 100 });
+    this.artifactWriter = options.artifactWriter ?? writeCommandArtifactToWorkspace;
   }
 
   /**
@@ -197,16 +229,16 @@ export class CommandExecutor {
     // pass the guard — producing a spawn storm that defeated the limit. We
     // now reserve the slot synchronously before any await and release it via
     // `slotReleased` on every exit path.
-    if (CommandExecutor.activeProcessCount >= CommandExecutor.MAX_CONCURRENT_PROCESSES) {
+    if (this.activeProcessCount >= this.maxConcurrentProcesses) {
       const coercedRequestResult = coerceCommandToolRequest(request);
       return this.blocked(coercedRequestResult.value, "tool.process_limit_exceeded", coercedRequestResult.traces);
     }
-    CommandExecutor.activeProcessCount++;
+    this.activeProcessCount++;
     let slotReleased = false;
     const releaseSlot = (): void => {
       if (slotReleased) return;
       slotReleased = true;
-      CommandExecutor.activeProcessCount = Math.max(0, CommandExecutor.activeProcessCount - 1);
+      this.activeProcessCount = Math.max(0, this.activeProcessCount - 1);
     };
 
     try {
@@ -458,27 +490,23 @@ export class CommandExecutor {
 
       if (fullOutput.sanitizedText.length > this.persistedMessageLimitChars) {
         try {
-          const artifactStore = new ArtifactStore({
-            rootDir: join(resolve(normalizedRequest.cwd), this.artifactRootDirName),
-            sandboxPolicy: normalizedRequest.sandboxPolicy,
-          });
-          const artifact = artifactStore.writeTextArtifact({
+          const artifactRef = this.artifactWriter({
             taskId: normalizedRequest.taskId,
             stepId: normalizedRequest.callId,
-            kind: "tool_output",
-            fileName: `${normalizedRequest.callId}-${normalizedRequest.command}.log`,
+            toolName: normalizedRequest.toolName,
+            command: normalizedRequest.command,
+            args: normalizedRequest.args,
+            traceId: normalizedRequest.traceId,
+            cwd: normalizedRequest.cwd,
+            artifactRootDirName: this.artifactRootDirName,
+            sandboxPolicy: normalizedRequest.sandboxPolicy,
             content: fullOutput.sanitizedText,
-            lineage: {
-              toolName: normalizedRequest.toolName,
-              command: normalizedRequest.command,
-              args: normalizedRequest.args,
-              traceId: normalizedRequest.traceId,
-            },
           });
-          artifacts = [artifact.ref.uri];
+          artifacts = [artifactRef];
           output = {
             ...output,
-            rawRef: artifact.ref.uri,
+            truncated: true,
+            rawRef: artifactRef,
             warnings: output.warnings.includes("output_externalized")
               ? output.warnings
               : [...output.warnings, "output_externalized"],
@@ -486,17 +514,18 @@ export class CommandExecutor {
         } catch (err) {
           const fallbackPath = join(resolve(normalizedRequest.cwd), this.artifactRootDirName, `${normalizedRequest.callId}-${normalizedRequest.command}.log`);
           try {
-            const fallbackRef = writeFallbackArtifactFile(fallbackPath, fullOutput.sanitizedText);
+            const fallbackRef = writeFallbackArtifactFile(fallbackPath, fullOutput.sanitizedText, normalizedRequest.sandboxPolicy);
             artifacts = [fallbackRef];
             output = {
               ...output,
+              truncated: true,
               rawRef: fallbackRef,
               warnings: output.warnings.includes("output_externalized")
                 ? output.warnings
                 : [...output.warnings, "output_externalized"],
             };
           } catch (fallbackError) {
-            commandExecutorLogger.warn("command_executor: failed to externalize output", {
+            this.logger.warn("command_executor: failed to externalize output", {
               error: err instanceof Error ? err.message : String(err),
               fallbackError: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
               callId: normalizedRequest.callId,
@@ -642,4 +671,13 @@ export class CommandExecutor {
       executionReceipt,
     };
   }
+}
+
+function writeCommandArtifactToWorkspace(input: CommandArtifactWriterInput): string {
+  const fallbackPath = join(
+    resolve(input.cwd),
+    input.artifactRootDirName,
+    `${input.stepId}-${input.command}.log`,
+  );
+  return writeFallbackArtifactFile(fallbackPath, input.content, input.sandboxPolicy);
 }

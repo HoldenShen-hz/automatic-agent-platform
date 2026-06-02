@@ -47,7 +47,7 @@ function seedTaskAndExecution(
       id: input.taskId,
       parentId: null,
       rootId: input.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Test task",
       status: input.status ?? "in_progress",
       source: "user",
@@ -94,7 +94,7 @@ function seedTaskAndExecution(
     });
     store.insertWorkflowState({
       taskId: input.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",
@@ -615,6 +615,63 @@ test("repairTicket requeues orphan queue claim with replacement ticket [executio
     const replacementTicket = harness.store.worker.getExecutionTicket(result!.replacementTicketId!);
     assert.ok(replacementTicket !== null);
     assert.equal(replacementTicket!.status, "pending");
+  } finally {
+    harness.close();
+  }
+});
+
+test("repairTicket preserves worker snapshot when runningExecutionsJson is malformed [execution-dispatch-reconciliation-service]", () => {
+  const harness = createReconciliationServiceHarness();
+  try {
+    const heartbeats: unknown[] = [];
+    const service = new ExecutionDispatchReconciliationService(harness.db, harness.store, {
+      workers: {
+        recordHeartbeat(input: unknown) {
+          heartbeats.push(input);
+          return input;
+        },
+      } as never,
+    });
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    const ticketId = newId("ticket");
+    const now = nowIso();
+
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId, executionStatus: "executing" });
+    harness.store.insertWorkerSnapshot({
+      workerId: "worker-malformed",
+      version: 0,
+      status: "busy",
+      capabilitiesJson: JSON.stringify(["bash"]),
+      runningExecutionsJson: "{not-json",
+      maxConcurrency: 1,
+      queueAffinity: "default",
+      runtimeInstanceId: "runtime-malformed",
+      restartedFromRuntimeInstanceId: null,
+      restartGeneration: 0,
+      cpuPct: 5,
+      memoryMb: 64,
+      toolBacklogCount: 0,
+      currentStepId: "step-1",
+      lastProgressAt: now,
+      lastHeartbeatAt: now,
+      updatedAt: now,
+    });
+    createTicket(harness.store, harness.db, {
+      ticketId,
+      executionId,
+      taskId,
+      status: "claimed",
+      assignedWorkerId: "worker-malformed",
+      leaseId: "lease-missing",
+    });
+
+    const result = service.repairTicket(ticketId);
+
+    assert.ok(result);
+    assert.equal(result.replacementTicketId !== null, true);
+    assert.equal(heartbeats.length, 0);
+    assert.equal(harness.store.worker.getWorkerSnapshot("worker-malformed")?.runningExecutionsJson, "{not-json");
   } finally {
     harness.close();
   }

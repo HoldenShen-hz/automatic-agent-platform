@@ -179,7 +179,6 @@ export class RedisIdempotencyStorage implements IdempotencyStorage {
   constructor(config: RedisConnectionConfig & { keyPrefix?: string } = {}) {
     this.keyPrefix = config.keyPrefix ?? "idempotency:";
     this.redis = new Redis(buildRedisClientOptions(config, {
-      keyPrefix: this.keyPrefix,
       maxRetriesPerRequest: config.maxRetriesPerRequest ?? 1,
       connectTimeout: config.connectTimeout ?? 500,
     }));
@@ -239,9 +238,32 @@ export class RedisIdempotencyStorage implements IdempotencyStorage {
   }
 
   async cleanup(maxDelete = 0): Promise<number> {
-    // Redis handles expiration automatically via PX argument
-    // This is a no-op for Redis but useful for scanning and logging
-    return 0;
+    let cursor = "0";
+    let deleted = 0;
+    do {
+      const [nextCursor, keys] = await this.redis.scan(cursor, "MATCH", `${this.keyPrefix}*`, "COUNT", "200");
+      cursor = nextCursor;
+      for (const fullKey of keys) {
+        const payload = await this.redis.get(fullKey);
+        if (payload == null) {
+          continue;
+        }
+        try {
+          const entry = JSON.parse(payload) as IdempotencyEntry;
+          if (Date.now() < entry.expiresAt) {
+            continue;
+          }
+        } catch {
+          // Corrupt payloads are treated as expired and removed.
+        }
+        await this.redis.del(fullKey);
+        deleted += 1;
+        if (maxDelete > 0 && deleted >= maxDelete) {
+          return deleted;
+        }
+      }
+    } while (cursor !== "0");
+    return deleted;
   }
 }
 

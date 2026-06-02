@@ -16,7 +16,7 @@ function createTestTask(db: SqliteDatabase, taskId: string, now: string, tenantI
     id: taskId,
     parentId: null,
     rootId: taskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     tenantId,
     title: "Test task",
     status: "in_progress",
@@ -551,11 +551,11 @@ test("DispatchRepository getExecution with tenantId returns execution for matchi
     const now = "2026-04-14T10:00:00.000Z";
     db.connection.exec(`
       INSERT INTO tasks (id, parent_id, root_id, division_id, tenant_id, title, status, source, priority, input_json, normalized_input_json, output_json, estimated_cost_usd, actual_cost_usd, error_code, created_at, updated_at, completed_at)
-      VALUES ('task-tenant-exec-a', NULL, 'task-tenant-exec-a', 'general_ops', 'tenant-a', 'Test task', 'in_progress', 'user', 'normal', '{}', NULL, NULL, NULL, 0, NULL, '${now}', '${now}', NULL)
+      VALUES ('task-tenant-exec-a', NULL, 'task-tenant-exec-a', 'general-ops', 'tenant-a', 'Test task', 'in_progress', 'user', 'normal', '{}', NULL, NULL, NULL, 0, NULL, '${now}', '${now}', NULL)
     `);
     db.connection.exec(`
       INSERT INTO tasks (id, parent_id, root_id, division_id, tenant_id, title, status, source, priority, input_json, normalized_input_json, output_json, estimated_cost_usd, actual_cost_usd, error_code, created_at, updated_at, completed_at)
-      VALUES ('task-tenant-exec-b', NULL, 'task-tenant-exec-b', 'general_ops', 'tenant-b', 'Test task', 'in_progress', 'user', 'normal', '{}', NULL, NULL, NULL, 0, NULL, '${now}', '${now}', NULL)
+      VALUES ('task-tenant-exec-b', NULL, 'task-tenant-exec-b', 'general-ops', 'tenant-b', 'Test task', 'in_progress', 'user', 'normal', '{}', NULL, NULL, NULL, 0, NULL, '${now}', '${now}', NULL)
     `);
     execRepo.insertExecution({
       id: "exec-tenant-a",
@@ -640,11 +640,11 @@ test("DispatchRepository getDeadLetterByExecutionId with tenantId returns dead l
     const now = "2026-04-14T10:00:00.000Z";
     db.connection.exec(`
       INSERT INTO tasks (id, parent_id, root_id, division_id, tenant_id, title, status, source, priority, input_json, normalized_input_json, output_json, estimated_cost_usd, actual_cost_usd, error_code, created_at, updated_at, completed_at)
-      VALUES ('task-dl-tenant-a', NULL, 'task-dl-tenant-a', 'general_ops', 'tenant-a', 'Test task', 'in_progress', 'user', 'normal', '{}', NULL, NULL, NULL, 0, NULL, '${now}', '${now}', NULL)
+      VALUES ('task-dl-tenant-a', NULL, 'task-dl-tenant-a', 'general-ops', 'tenant-a', 'Test task', 'in_progress', 'user', 'normal', '{}', NULL, NULL, NULL, 0, NULL, '${now}', '${now}', NULL)
     `);
     db.connection.exec(`
       INSERT INTO tasks (id, parent_id, root_id, division_id, tenant_id, title, status, source, priority, input_json, normalized_input_json, output_json, estimated_cost_usd, actual_cost_usd, error_code, created_at, updated_at, completed_at)
-      VALUES ('task-dl-tenant-b', NULL, 'task-dl-tenant-b', 'general_ops', 'tenant-b', 'Test task', 'in_progress', 'user', 'normal', '{}', NULL, NULL, NULL, 0, NULL, '${now}', '${now}', NULL)
+      VALUES ('task-dl-tenant-b', NULL, 'task-dl-tenant-b', 'general-ops', 'tenant-b', 'Test task', 'in_progress', 'user', 'normal', '{}', NULL, NULL, NULL, 0, NULL, '${now}', '${now}', NULL)
     `);
     execRepo.insertExecution({
       id: "exec-dl-a",

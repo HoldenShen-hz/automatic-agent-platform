@@ -1,7 +1,7 @@
 import type { KnowledgeChunk, RetrievalHit } from "./knowledge-model.js";
 
 function countOccurrences(content: string, keyword: string): number {
-  const normalizedContent = content.toLowerCase();
+  const normalizedContent = content.slice(0, 100_000).toLowerCase();
   const normalizedKeyword = keyword.toLowerCase();
   let count = 0;
   let start = 0;
@@ -51,12 +51,13 @@ export class KeywordKnowledgeIndex {
     this.chunks.delete(chunkId);
   }
 
-  public query(keyword: string): RetrievalHit[] {
+  public query(keyword: string, options: { namespace?: string | null } = {}): RetrievalHit[] {
     const normalizedKeyword = keyword.toLowerCase();
     const ids = this.inverted.get(normalizedKeyword) ?? new Set<string>();
     return [...ids]
       .map((id) => this.chunks.get(id))
       .filter((chunk): chunk is KnowledgeChunk => chunk != null)
+      .filter((chunk) => options.namespace == null || chunk.namespace === options.namespace)
       .map((chunk) => ({
         chunkId: chunk.chunkId,
         documentId: chunk.documentId,
@@ -72,5 +73,6 @@ export class KeywordKnowledgeIndex {
   public reset(): void {
     this.chunks.clear();
     this.inverted.clear();
+    this.keywordScores.clear();
   }
 }

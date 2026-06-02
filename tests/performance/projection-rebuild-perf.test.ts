@@ -48,7 +48,7 @@ function createTestEvents(db: SqliteDatabase, count: number, taskId: string): vo
       taskId,
       null,
       taskId,
-      "general_ops",
+      "general-ops",
       "Projection rebuild performance task",
       "pending",
       "user",

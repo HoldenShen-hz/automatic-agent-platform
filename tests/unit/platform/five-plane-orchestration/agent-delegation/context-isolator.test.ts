@@ -154,6 +154,26 @@ test("intersection correctly filters actions", () => {
   );
 });
 
+test("empty override does not widen to the full parent permission set", () => {
+  const parent: PermissionSet = {
+    resources: ["resource-a", "resource-b"],
+    actions: ["action-read", "action-write"],
+    constraints: {},
+  };
+
+  const child: PermissionSet = {
+    resources: [],
+    actions: [],
+    constraints: {},
+  };
+
+  const isolator = new ContextIsolator();
+  const result = isolator.mergePermissions(parent, child);
+
+  assert.deepEqual(result.resources, []);
+  assert.deepEqual(result.actions, []);
+});
+
 // R9-07 fix verification: SANDBOXED level uses proper intersection
 test("SANDBOXED level uses proper intersection for resources and actions", () => {
   const parentPermissions: PermissionSet = {
@@ -318,8 +338,8 @@ test("mergePermissions takes minimum for maxDurationMs when child has no constra
   assert.equal(result.constraints.maxDurationMs, 120000, "Should use parent maxDurationMs when child has none");
 });
 
-// R9-07 fix verification: Empty override permissions falls back to base resources
-test("empty override permissions falls back to base resources", () => {
+// Empty overrides must fail closed instead of widening back to the parent scope.
+test("empty override permissions collapse to an empty permission set", () => {
   const parent: PermissionSet = {
     resources: ["resource-a", "resource-b"],
     actions: ["action-read", "action-write"],
@@ -335,8 +355,8 @@ test("empty override permissions falls back to base resources", () => {
   const isolator = new ContextIsolator();
   const result = isolator.mergePermissions(parent, child);
 
-  assert.deepEqual(result.resources, ["resource-a", "resource-b"], "Should return base resources when override is empty");
-  assert.deepEqual(result.actions, ["action-read", "action-write"], "Should return base actions when override is empty");
+  assert.deepEqual(result.resources, [], "Empty resource overrides must not widen to the parent scope");
+  assert.deepEqual(result.actions, [], "Empty action overrides must not widen to the parent scope");
 });
 
 // R9-07 fix verification: Full isolation level returns parent permissions unchanged

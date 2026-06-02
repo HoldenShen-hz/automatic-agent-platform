@@ -197,6 +197,12 @@ test("IncidentDetector shouldAutoEscalate handles very old P1", () => {
   assert.equal(result, true);
 });
 
+test("IncidentDetector shouldAutoEscalate fails closed on invalid P1 timestamps", () => {
+  const detector = new IncidentDetector({ autoEscalateP1AfterSeconds: 300 });
+  assert.equal(detector.shouldAutoEscalate("not-a-timestamp", "SEV1"), true);
+  assert.equal(detector.shouldAutoEscalate("not-a-timestamp", "SEV2"), false);
+});
+
 test("IncidentDetector classifyUrgency is exhaustive for all severity levels", () => {
   const detector = new IncidentDetector();
 

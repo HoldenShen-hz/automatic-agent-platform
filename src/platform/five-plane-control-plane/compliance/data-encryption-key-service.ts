@@ -241,7 +241,7 @@ export class DataEncryptionKeyService {
       if (existingActive) {
         const rotated: DataEncryptionKey = {
           ...existingActive,
-          status: "rotating",
+          status: "rotated",
           updatedAt: now,
         };
         this.store.compliance.updateDataEncryptionKey(rotated);
@@ -313,7 +313,7 @@ export class DataEncryptionKeyService {
         // Mark current as rotated
         const rotated: DataEncryptionKey = {
           ...currentActive,
-          status: "rotating",
+          status: "rotated",
           updatedAt: now,
         };
         this.store.compliance.updateDataEncryptionKey(rotated);
@@ -329,7 +329,7 @@ export class DataEncryptionKeyService {
         version: maxVersion + 1,
         status: "active",
         encryptedKeyMaterial: input.newEncryptedKeyMaterial,
-        algorithm: "AES-256-GCM",
+        algorithm: currentActive?.algorithm ?? "AES-256-GCM",
         externalKeyId: input.newExternalKeyId ?? null,
         createdAt: now,
         updatedAt: now,

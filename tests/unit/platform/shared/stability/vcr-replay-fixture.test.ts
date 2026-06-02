@@ -230,6 +230,69 @@ test("buildRequestFingerprint produces consistent SHA-256 hex string [vcr-replay
   assert.ok(/^[a-f0-9]+$/.test(fingerprint1));
 });
 
+test("buildRequestFingerprint includes advanced settings in the hash [vcr-replay-fixture]", () => {
+  const baseRequest: VcrReplayRequest = {
+    provider: "anthropic",
+    model: "claude-opus-4-5",
+    messages: [{ role: "user", content: "Hello" }],
+    settings: {
+      seed: 7,
+      maxTokens: 512,
+      stop: ["END"],
+      topK: 20,
+      responseFormat: { type: "json_schema", schema: { type: "object" } },
+    },
+  };
+
+  const changedRequest: VcrReplayRequest = {
+    ...baseRequest,
+    settings: {
+      ...baseRequest.settings,
+      maxTokens: 1024,
+    },
+  };
+
+  assert.notEqual(buildRequestFingerprint(baseRequest), buildRequestFingerprint(changedRequest));
+});
+
+test("buildRequestFingerprint includes tool version and schema in the hash [vcr-replay-fixture]", () => {
+  const request1: VcrReplayRequest = {
+    provider: "openai",
+    model: "gpt-4",
+    messages: [{ role: "user", content: "Use tool" }],
+    tools: [{
+      name: "write",
+      version: "1.0.0",
+      inputSchema: { type: "object", properties: { path: { type: "string" } } },
+    }],
+  };
+  const request2: VcrReplayRequest = {
+    ...request1,
+    tools: [{
+      name: "write",
+      version: "1.1.0",
+      inputSchema: { type: "object", properties: { path: { type: "string" } } },
+    }],
+  };
+
+  assert.notEqual(buildRequestFingerprint(request1), buildRequestFingerprint(request2));
+});
+
+test("buildRequestFingerprint redacts JSON secrets and x-api-key style headers [vcr-replay-fixture]", () => {
+  const request1: VcrReplayRequest = {
+    provider: "openai",
+    model: "gpt-4",
+    messages: [{ role: "user", content: "{\"secret\":\"abc\",\"X-Api-Key\":\"key-1\"}" }],
+  };
+  const request2: VcrReplayRequest = {
+    provider: "openai",
+    model: "gpt-4",
+    messages: [{ role: "user", content: "{\"secret\":\"xyz\",\"X-Api-Key\":\"key-2\"}" }],
+  };
+
+  assert.equal(buildRequestFingerprint(request1), buildRequestFingerprint(request2));
+});
+
 test("buildRequestFingerprint differs for different requests [vcr-replay-fixture]", () => {
   const request1: VcrReplayRequest = {
     provider: "anthropic",
@@ -297,6 +360,26 @@ test("VcrFixtureStore mode vcr_record does not throw on missing fixture [vcr-rep
     () => store.replay(request),
     (err: unknown) => err instanceof ValidationError && err.code === "vcr.fixture_missing",
   );
+});
+
+test("VcrFixtureStore mode vcr_record can record on cache miss via callback [vcr-replay-fixture]", () => {
+  const store = new VcrFixtureStore([], "vcr_record");
+  const request: VcrReplayRequest = {
+    provider: "anthropic",
+    model: "claude-opus-4-5",
+    messages: [{ role: "user", content: "Record me" }],
+  };
+
+  const recorded = store.replay(request, {
+    record: () => ({
+      interactionId: "recorded_on_miss",
+      responsePayload: { completion: "captured" },
+      recordedAt: "2026-06-02T00:00:00.000Z",
+    }),
+  });
+
+  assert.equal(recorded.interactionId, "recorded_on_miss");
+  assert.equal(store.replay(request).interactionId, "recorded_on_miss");
 });
 
 test("VcrFixtureStore mode fixture_only uses only stored fixtures [vcr-replay-fixture]", () => {

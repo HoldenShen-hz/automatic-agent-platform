@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -62,7 +62,9 @@ const report = {
 mkdirSync(artifactRoot, { recursive: true });
 const artifactPath = join(artifactRoot, artifactName(mode));
 writeFileSync(artifactPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
-writeClosureReports(report);
+if (issues.length === 0) {
+  writeClosureReports(report);
+}
 
 if (issues.length > 0) {
   console.error(`${mode} platform validation failed: ${issues.join("; ")}`);
@@ -400,45 +402,49 @@ function extractValidationSpanNames() {
 }
 
 function writeClosureReports(reportValue) {
-  mkdirSync(reportsRoot, { recursive: true });
+  const stagingRoot = join(artifactRoot, "reports.staging");
+  rmSync(stagingRoot, { recursive: true, force: true });
+  mkdirSync(stagingRoot, { recursive: true });
   const issueCount = (prefix) =>
     reportValue.issues.filter((issue) => issue.startsWith(prefix)).length;
-  writeReport("validation-bundle.json", reportValue);
-  writeReport("contract-report.json", {
+  writeReport(stagingRoot, "validation-bundle.json", reportValue);
+  writeReport(stagingRoot, "contract-report.json", {
     status: reportValue.status,
     registryVersion: reportValue.registryVersion,
     eventRegistrySnapshot: "contracts/event-registry.canonical.json",
     generatedPayloadTypes: "generated/typed-event-payloads.generated.ts",
   });
-  writeReport("metric-registry-closure-report.json", {
+  writeReport(stagingRoot, "metric-registry-closure-report.json", {
     status: issueCount("monitoring.") === 0 ? "passed" : "failed",
     registryVersion: reportValue.registryVersion,
     runtimeMetricMappingCount: reportValue.checkedCounts.monitoringMetrics,
     targetMetricRegistry: "contracts/metric-registry.canonical.json",
   });
-  writeReport("gate-registry-closure-report.json", {
+  writeReport(stagingRoot, "gate-registry-closure-report.json", {
     status: issueCount("gate.") === 0 ? "passed" : "failed",
     registryVersion: reportValue.registryVersion,
     gateCount: reportValue.checkedCounts.gates,
     gateRegistrySnapshot: "contracts/gate-registry.canonical.json",
   });
-  writeReport("event-schema-coverage-report.json", {
+  writeReport(stagingRoot, "event-schema-coverage-report.json", {
     status:
       issueCount("artifact.event_payload_schema") === 0 ? "passed" : "failed",
     registryVersion: reportValue.registryVersion,
     eventRegistrySnapshot: "contracts/event-registry.canonical.json",
     payloadSchemaDirectory: "schemas/event-payload-schemas",
   });
-  writeReport("runbook-registry-closure-report.json", {
+  writeReport(stagingRoot, "runbook-registry-closure-report.json", {
     status: issueCount("runbook.") === 0 ? "passed" : "failed",
     registryVersion: reportValue.registryVersion,
     runbookCount: reportValue.checkedCounts.runbooks,
     runbookRegistrySnapshot: "contracts/runbook-registry.canonical.yaml",
   });
+  rmSync(reportsRoot, { recursive: true, force: true });
+  renameSync(stagingRoot, reportsRoot);
 }
 
-function writeReport(name, value) {
-  writeFileSync(join(reportsRoot, name), `${JSON.stringify(value, null, 2)}\n`);
+function writeReport(targetRoot, name, value) {
+  writeFileSync(join(targetRoot, name), `${JSON.stringify(value, null, 2)}\n`);
 }
 
 function schemaFileName(eventType) {

@@ -62,7 +62,7 @@ export interface LeadershipEpoch {
   leaderNodeId: string | null;
   startedAt: string;
   endedAt: string | null;
-  cause: "acquired" | "renewed" | "expired" | "preempted" | "voluntary";
+  cause: "acquired" | "renewed" | "expired" | "preempted" | "voluntary" | "removed";
   fencingToken: number;
 }
 

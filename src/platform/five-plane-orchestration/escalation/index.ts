@@ -67,6 +67,8 @@ export interface EscalationRequest {
   slaDeadline: string | null;
   /** R29-07 fix: Timeout in milliseconds for human takeover — exceeded SLA triggers escalation */
   timeoutMs: number | null;
+  /** Optional stable start timestamp for timeout-based escalation. */
+  timeoutStartedAtMs?: number | null;
   /** R17-19: Per-request cost threshold override to avoid a fixed $10 policy. */
   costThresholdUsd?: number;
 }
@@ -101,6 +103,9 @@ export interface EscalationServiceOptions {
   ) => EscalationOperatorNotification;
   /** R14-01 fix: Routes takeover decisions to HITL/panic controller */
   readonly hitlTakeoverHandler?: (request: EscalationTakeoverRequest) => EscalationTakeoverRequest;
+  readonly panicActivationFailureHandler?: (input: EscalationRequest, reasonCode: string) => void;
+  readonly nowMs?: () => number;
+  readonly ignoreCostThresholdOverride?: boolean;
 }
 
 /** R14-01: Takeover request routed to HITL/panic controller */
@@ -115,10 +120,6 @@ export interface EscalationTakeoverRequest {
 }
 
 const DEFAULT_COST_THRESHOLD_USD = 10;
-
-function shouldIgnoreCostThresholdOverride(): boolean {
-  return new Error().stack?.includes("escalation-state-machine.test.ts") ?? false;
-}
 
 /**
  * Default freeze modes for platform panic.
@@ -145,6 +146,9 @@ export class EscalationService {
   /** R14-01 fix: Routes takeover decisions to HITL/panic controller */
   private readonly hitlTakeoverHandler: ((request: EscalationTakeoverRequest) => EscalationTakeoverRequest) | null;
   private readonly activatePanicOnCriticalProduction: boolean;
+  private readonly panicActivationFailureHandler: ((input: EscalationRequest, reasonCode: string) => void) | null;
+  private readonly nowMs: () => number;
+  private readonly ignoreCostThresholdOverride: boolean;
 
   /**
    * Duck-type check to detect ApprovalService without circular import issues.
@@ -188,6 +192,9 @@ export class EscalationService {
       this.operatorNotificationHandler = null;
       this.hitlTakeoverHandler = null;
       this.activatePanicOnCriticalProduction = false;
+      this.panicActivationFailureHandler = null;
+      this.nowMs = () => Date.now();
+      this.ignoreCostThresholdOverride = false;
       return;
     }
     // Duck-type check for ApprovalService passed as first argument
@@ -214,6 +221,9 @@ export class EscalationService {
       this.operatorNotificationHandler = null;
       this.hitlTakeoverHandler = null;
       this.activatePanicOnCriticalProduction = false;
+      this.panicActivationFailureHandler = null;
+      this.nowMs = () => Date.now();
+      this.ignoreCostThresholdOverride = false;
       return;
     }
     if (panicOptions instanceof PlatformPanicService) {
@@ -222,6 +232,9 @@ export class EscalationService {
       this.operatorNotificationHandler = null;
       this.hitlTakeoverHandler = null;
       this.activatePanicOnCriticalProduction = true;
+      this.panicActivationFailureHandler = null;
+      this.nowMs = () => Date.now();
+      this.ignoreCostThresholdOverride = false;
       return;
     }
     // Handle null/undefined panicOptions (default case)
@@ -231,6 +244,9 @@ export class EscalationService {
       this.operatorNotificationHandler = null;
       this.hitlTakeoverHandler = null;
       this.activatePanicOnCriticalProduction = false;
+      this.panicActivationFailureHandler = null;
+      this.nowMs = () => Date.now();
+      this.ignoreCostThresholdOverride = false;
       return;
     }
     // options is now EscalationServiceOptions
@@ -240,6 +256,9 @@ export class EscalationService {
     this.operatorNotificationHandler = opts.operatorNotificationHandler ?? null;
     this.hitlTakeoverHandler = opts.hitlTakeoverHandler ?? null;
     this.activatePanicOnCriticalProduction = opts.panicService != null;
+    this.panicActivationFailureHandler = opts.panicActivationFailureHandler ?? null;
+    this.nowMs = opts.nowMs ?? (() => Date.now());
+    this.ignoreCostThresholdOverride = opts.ignoreCostThresholdOverride ?? false;
   }
 
   /**
@@ -267,6 +286,8 @@ export class EscalationService {
         directiveId: activation.directiveId ?? null,
       };
       if (activation.error) {
+        this.routeToHitlTakeover(input);
+        this.panicActivationFailureHandler?.(input, activation.error);
         panicActivation.error = activation.error;
       }
       return {
@@ -300,7 +321,10 @@ export class EscalationService {
     }
 
     // High risk or critical (non-production) = human takeover
-    if (input.riskLevel === "critical" || (input.riskLevel === "high" && input.stage === "execute")) {
+    if (
+      input.riskLevel === "critical"
+      || (input.riskLevel === "high" && input.stage !== "assess")
+    ) {
       this.routeToHitlTakeover(input);
       return {
         decision: "takeover",
@@ -313,7 +337,7 @@ export class EscalationService {
     }
 
     // Production-affecting or high cost = approval required
-    const costThresholdUsd = shouldIgnoreCostThresholdOverride()
+    const costThresholdUsd = this.ignoreCostThresholdOverride
       ? DEFAULT_COST_THRESHOLD_USD
       : input.costThresholdUsd ?? DEFAULT_COST_THRESHOLD_USD;
     if (input.affectsProduction || (input.estimatedCostUsd ?? 0) >= costThresholdUsd || input.riskLevel === "high") {
@@ -341,10 +365,18 @@ export class EscalationService {
   private evaluateSlaPressure(
     input: EscalationRequest,
   ): Pick<EscalationDecision, "decision" | "reasonCode"> | null {
-    const nowMs = Date.now();
+    const nowMs = this.nowMs();
     const timeoutMs = input.timeoutMs;
-    const timeoutExpired = timeoutMs != null && timeoutMs <= 0;
-    const timeoutImminent = timeoutMs != null && timeoutMs > 0 && timeoutMs <= 60_000;
+    const timeoutStartedAtMs = input.timeoutStartedAtMs ?? null;
+    const computedTimeoutDeadlineMs = timeoutMs == null
+      ? null
+      : timeoutStartedAtMs == null
+        ? nowMs + timeoutMs
+        : timeoutStartedAtMs + timeoutMs;
+    const timeoutExpired = computedTimeoutDeadlineMs != null && computedTimeoutDeadlineMs <= nowMs;
+    const timeoutImminent = computedTimeoutDeadlineMs != null
+      && computedTimeoutDeadlineMs > nowMs
+      && computedTimeoutDeadlineMs - nowMs <= 60_000;
 
     const deadlineMs = input.slaDeadline == null ? null : Date.parse(input.slaDeadline);
     const hasValidDeadline = deadlineMs != null && Number.isFinite(deadlineMs);
@@ -425,11 +457,30 @@ export class EscalationService {
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return {
-        activated: false,
-        directiveId: null,
-        error: `panic.activation_failed: ${message}`,
-      };
+      try {
+        const activation = this.panicService.activate({
+          scope: input.tenantId ? `tenant/${input.tenantId}` : "platform/global",
+          reasonCode: input.reasonCode,
+          issuedBy: "escalation_service_retry",
+          issuedAt: nowIso(),
+          freezeModes: DEFAULT_PANIC_FREEZE_MODES,
+          forensicArtifactIds: [],
+          severity: "full",
+          activeIncidents: 1,
+        });
+        return {
+          activated: true,
+          directiveId: activation.directive.directiveId,
+          error: null,
+        };
+      } catch (retryErr) {
+        const retryMessage = retryErr instanceof Error ? retryErr.message : String(retryErr);
+        return {
+          activated: false,
+          directiveId: null,
+          error: `panic.activation_failed:${message};retry_failed:${retryMessage}`,
+        };
+      }
     }
   }
 

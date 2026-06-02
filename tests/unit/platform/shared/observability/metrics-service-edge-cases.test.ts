@@ -21,7 +21,7 @@ function seedWorkflowState(
 ): void {
   store.insertWorkflowState({
     taskId: input.taskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "single_agent_minimal",
     currentStepIndex: 0,
     status: input.status,

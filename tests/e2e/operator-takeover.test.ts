@@ -80,7 +80,7 @@ function insertTaskAndExecution(
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "E2E takeover test task",
       status: "in_progress",
       source: "user",

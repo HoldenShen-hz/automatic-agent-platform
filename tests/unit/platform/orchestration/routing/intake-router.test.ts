@@ -39,6 +39,12 @@ function createRouteInput(overrides: Partial<IntakeRouteInput> = {}): IntakeRout
   return {
     title: overrides.title ?? "Test request",
     request: overrides.request ?? "",
+    tenantId: overrides.tenantId,
+    traceId: overrides.traceId,
+    principal: overrides.principal,
+    preferredIntent: overrides.preferredIntent,
+    confirmedTaskSpecId: overrides.confirmedTaskSpecId,
+    riskPreview: overrides.riskPreview,
   };
 }
 
@@ -170,14 +176,14 @@ test("IntakeRouter.route selects higher priority division when multiple match", 
   assert.equal(result.divisionId, "high");
 });
 
-test("IntakeRouter.route falls back to general_ops when no division matches", () => {
-  const generalOps = createMockDivision({ id: "general_ops", priority: 0, triggers: [] });
+test("IntakeRouter.route falls back to general-ops when no division matches", () => {
+  const generalOps = createMockDivision({ id: "general-ops", priority: 0, triggers: [] });
   const registry = createMockRegistry([generalOps]);
   const router = new IntakeRouter({ divisionRegistry: registry });
 
   const result = router.route(createRouteInput({ title: "Unknown", request: "xyz123" }));
 
-  assert.equal(result.divisionId, "general_ops");
+  assert.equal(result.divisionId, "general-ops");
 });
 
 test("IntakeRouter.route uses default workflow for simple requests", () => {
@@ -687,6 +693,62 @@ test("IntakeRouter round-robin trace includes load balancing info", () => {
   const result = router.route(createRouteInput({ title: "Task", request: "do work" }));
 
   assert.ok(result.routeTrace.some((t) => t.startsWith("lb_round_robin:") || t.startsWith("matched_divisions:")));
+});
+
+test("IntakeRouter round-robin counters are isolated per tenant scope", () => {
+  const div1 = createMockDivision({
+    id: "div1",
+    priority: 10,
+    triggers: ["task"],
+    roles: [{ roleId: "role1", agentType: "worker", tools: ["tool-a"], maxConcurrency: 1 }] as never,
+  });
+  const div2 = createMockDivision({
+    id: "div2",
+    priority: 10,
+    triggers: ["task"],
+    roles: [{ roleId: "role2", agentType: "worker", tools: ["tool-a"], maxConcurrency: 1 }] as never,
+  });
+  const registry = createMockRegistry([div1, div2]);
+  const router = new IntakeRouter({
+    divisionRegistry: registry,
+    loadBalancing: "round-robin",
+  });
+
+  const tenantAFirst = router.route(createRouteInput({ title: "Task", request: "do work", tenantId: "tenant-a" }));
+  const tenantASecond = router.route(createRouteInput({ title: "Task", request: "do work", tenantId: "tenant-a" }));
+  const tenantBFirst = router.route(createRouteInput({ title: "Task", request: "do work", tenantId: "tenant-b" }));
+
+  assert.equal(tenantAFirst.divisionId, "div1");
+  assert.equal(tenantASecond.divisionId, "div2");
+  assert.equal(tenantBFirst.divisionId, "div1");
+});
+
+test("IntakeRouter stable selection ignores tenant and principal trace metadata", () => {
+  const div1 = createMockDivision({
+    id: "div1",
+    priority: 10,
+    triggers: ["task"],
+  });
+  const div2 = createMockDivision({
+    id: "div2",
+    priority: 10,
+    triggers: ["task"],
+  });
+  const registry = createMockRegistry([div1, div2]);
+  const router = new IntakeRouter({
+    divisionRegistry: registry,
+    loadBalancing: "random",
+  });
+
+  const base = router.route(createRouteInput({ title: "Task", request: "do work" }));
+  const variant = router.route(createRouteInput({
+    title: "Task",
+    request: "do work",
+    tenantId: "tenant-sensitive",
+    principal: { principalId: "user-sensitive", tenantId: "tenant-sensitive" },
+  } as never));
+
+  assert.equal(variant.divisionId, base.divisionId);
 });
 
 test("IntakeRouter skill taxonomy categorizes Chinese keywords", () => {

@@ -25,7 +25,7 @@ test("golden: workflow validator rejects duplicate step IDs", () => {
 
   const invalidWorkflow = {
     workflowId: "test-invalid",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: [
       { stepId: "same-id", roleId: "general_executor", outputKey: "out1", outputSchemaPath: "test", timeoutMs: 60000, maxAttempts: 1, compensationModel: "idempotent_replay" as const },
       { stepId: "same-id", roleId: "general_executor", outputKey: "out2", outputSchemaPath: "test", timeoutMs: 60000, maxAttempts: 1, compensationModel: "idempotent_replay" as const },
@@ -44,7 +44,7 @@ test("golden: workflow validator rejects negative timeout values", () => {
 
   const invalidWorkflow = {
     workflowId: "test-invalid-timeout",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: [
       { stepId: "step-1", roleId: "general_executor", outputKey: "out", outputSchemaPath: "test", timeoutMs: -1, maxAttempts: 1, compensationModel: "idempotent_replay" as const },
     ],
@@ -61,7 +61,7 @@ test("golden: workflow validator rejects zero maxAttempts", () => {
 
   const invalidWorkflow = {
     workflowId: "test-invalid-attempts",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: [
       { stepId: "step-1", roleId: "general_executor", outputKey: "out", outputSchemaPath: "test", timeoutMs: 60000, maxAttempts: 0, compensationModel: "idempotent_replay" as const },
     ],
@@ -78,7 +78,7 @@ test("golden: workflow validator accepts complete workflow definition", () => {
 
   const completeWorkflow = {
     workflowId: "test-complete-workflow",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: [
       {
         stepId: "step-1",
@@ -104,7 +104,7 @@ test("golden: workflow validator detects dependency cycles", () => {
   // Create a workflow with a cycle: step1 -> step2 -> step3 -> step1
   const cyclicWorkflow = {
     workflowId: "test-cyclic",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: [
       { stepId: "step-1", roleId: "general_executor", outputKey: "out1", outputSchemaPath: "test", timeoutMs: 60000, maxAttempts: 1, compensationModel: "idempotent_replay" as const, dependsOnStepIds: ["step-3"] },
       { stepId: "step-2", roleId: "general_executor", outputKey: "out2", outputSchemaPath: "test", timeoutMs: 60000, maxAttempts: 1, compensationModel: "idempotent_replay" as const, dependsOnStepIds: ["step-1"] },
@@ -123,7 +123,7 @@ test("golden: workflow validator reports missing output schema path", () => {
 
   const workflowWithoutSchema = {
     workflowId: "test-no-schema",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: [
       { stepId: "step-1", roleId: "general_executor", outputKey: "out", outputSchemaPath: "", timeoutMs: 60000, maxAttempts: 1, compensationModel: "idempotent_replay" as const },
     ],

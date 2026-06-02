@@ -215,7 +215,7 @@ test("DefaultSbomScanner rejects non-file protocols with message", async () => {
   const result = await scanner.scan("https://example.com/sbom.json");
 
   assert.equal(result.valid, false);
-  assert.ok(result.scanErrors.some((error) => error.includes("Remote SBOM scanning requires a supplied SBOM fetcher")));
+  assert.ok(result.scanErrors.some((error) => error.includes("Unsupported SBOM protocol")));
 });
 
 test("DefaultSbomScanner scans valid CycloneDX SBOM", async () => {
@@ -234,6 +234,7 @@ test("DefaultSbomScanner scans valid CycloneDX SBOM", async () => {
     assert.equal(result.valid, false); // Has vulnerabilities
     assert.ok(result.vulnerabilities.length > 0);
     assert.ok(result.scanErrors.length === 0);
+    assert.ok(result.vulnerabilities.some((entry) => entry.packageName === "axios"));
   } finally {
     unlinkSync(TEMP_SBOM_FILE);
   }
@@ -448,15 +449,15 @@ test("definePlugin with SBOM that has critical vulnerabilities rejects asynchron
   writeFileSync(TEMP_SBOM_FILE, sbom);
 
   try {
-    await assert.rejects(
-      Promise.resolve(definePlugin({
+    assert.throws(
+      () => definePlugin({
         pluginId: "sbom-critical-test",
         name: "SBOM Critical Test",
         version: "1.0.0",
         type: "tool",
         capabilities: [{ name: "execute", description: "Test", inputSchema: {}, outputSchema: {} }],
         sbomRef: `file://${TEMP_SBOM_FILE}`,
-      })),
+      }),
       (error: unknown) =>
         error instanceof Error
         && "code" in error

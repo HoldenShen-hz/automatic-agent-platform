@@ -1,20 +1,13 @@
 import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const distPath = resolve(process.cwd(), "dist");
-const tsBuildInfoPath = resolve(process.cwd(), ".cache", "tsconfig.tsbuildinfo");
+const repoRoot = fileURLToPath(new URL("../", import.meta.url));
+const distPath = resolve(repoRoot, "dist");
+const tsBuildInfoPath = resolve(repoRoot, ".cache", "tsconfig.tsbuildinfo");
 const dryRun = process.argv.includes("--dry-run");
 const explicitPreserveDist = process.env.AA_PRESERVE_DIST;
-const preserveDist = explicitPreserveDist === "0"
-  ? false
-  : explicitPreserveDist === "1"
-    ? true
-    : (
-      process.env.AA_RUNNING_TESTS === "1"
-      || (process.env.npm_lifecycle_event ?? "").startsWith("test")
-      || process.env.C8_PROCESS_INFO != null
-      || process.env.NODE_V8_COVERAGE != null
-    );
+const preserveDist = explicitPreserveDist === "1";
 
 const shouldPruneStaleDistTests =
   preserveDist
@@ -75,7 +68,7 @@ if (!preserveDist && existsSync(distPath)) {
   try {
     rmSync(distPath, { recursive: true, force: true });
   } catch (err) {
-    if (err.code !== "ENOENT" && err.code !== "ENOTEMPTY") {
+    if (err.code !== "ENOENT") {
       throw err;
     }
   }

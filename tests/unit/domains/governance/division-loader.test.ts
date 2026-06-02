@@ -7,7 +7,7 @@ import { createWorkspaceWritePolicy } from "../../../../src/platform/five-plane-
 import { cleanupPath, createFile, createTempWorkspace } from "../../../helpers/fs.js";
 
 function seedDivisionTree(root: string): void {
-  createFile(join(root, "general_ops/schemas/minimal-output.json"), JSON.stringify({
+  createFile(join(root, "general-ops/schemas/minimal-output.json"), JSON.stringify({
     type: "object",
     required: ["summary", "result"],
     properties: {
@@ -17,9 +17,9 @@ function seedDivisionTree(root: string): void {
     additionalProperties: false,
   }));
   createFile(
-    join(root, "general_ops/division.yaml"),
+    join(root, "general-ops/division.yaml"),
     [
-      "id: general_ops",
+      "id: general-ops",
       "version: 1",
       "name: General Operations",
       "default_workflow: single_agent_minimal",
@@ -33,12 +33,12 @@ function seedDivisionTree(root: string): void {
       "    tools: [read, bash]",
     ].join("\n"),
   );
-  createFile(join(root, "general_ops/roles/general_executor.prompt.md"), "# general\n");
+  createFile(join(root, "general-ops/roles/general_executor.prompt.md"), "# general\n");
   createFile(
-    join(root, "general_ops/workflows/minimal.yaml"),
+    join(root, "general-ops/workflows/minimal.yaml"),
     [
       "id: single_agent_minimal",
-      "division_id: general_ops",
+      "division_id: general-ops",
       "steps:",
       "  - step_id: analyze_request",
       "    role_id: general_executor",
@@ -49,10 +49,10 @@ function seedDivisionTree(root: string): void {
     ].join("\n"),
   );
   createFile(
-    join(root, "general_ops/workflows/orchestration.yaml"),
+    join(root, "general-ops/workflows/orchestration.yaml"),
     [
       "id: single_division_multi_step_orchestration",
-      "division_id: general_ops",
+      "division_id: general-ops",
       "steps:",
       "  - step_id: intake_triage",
       "    role_id: general_executor",
@@ -70,7 +70,7 @@ function seedDivisionTree(root: string): void {
     ].join("\n"),
   );
 
-  createFile(join(root, "engineering_ops/schemas/minimal-output.json"), JSON.stringify({
+  createFile(join(root, "engineering-ops/schemas/minimal-output.json"), JSON.stringify({
     type: "object",
     required: ["summary", "result"],
     properties: {
@@ -80,9 +80,9 @@ function seedDivisionTree(root: string): void {
     additionalProperties: false,
   }));
   createFile(
-    join(root, "engineering_ops/division.yaml"),
+    join(root, "engineering-ops/division.yaml"),
     [
-      "id: engineering_ops",
+      "id: engineering-ops",
       "version: 1",
       "name: Engineering Operations",
       "default_workflow: engineering_single_agent_minimal",
@@ -103,13 +103,13 @@ function seedDivisionTree(root: string): void {
       "    tools: [read]",
     ].join("\n"),
   );
-  createFile(join(root, "engineering_ops/roles/engineer.prompt.md"), "# engineer\n");
-  createFile(join(root, "engineering_ops/roles/reviewer.prompt.md"), "# reviewer\n");
+  createFile(join(root, "engineering-ops/roles/engineer.prompt.md"), "# engineer\n");
+  createFile(join(root, "engineering-ops/roles/reviewer.prompt.md"), "# reviewer\n");
   createFile(
-    join(root, "engineering_ops/workflows/minimal.yaml"),
+    join(root, "engineering-ops/workflows/minimal.yaml"),
     [
       "id: engineering_single_agent_minimal",
-      "division_id: engineering_ops",
+      "division_id: engineering-ops",
       "steps:",
       "  - step_id: implement_request",
       "    role_id: engineer",
@@ -120,10 +120,10 @@ function seedDivisionTree(root: string): void {
     ].join("\n"),
   );
   createFile(
-    join(root, "engineering_ops/workflows/orchestration.yaml"),
+    join(root, "engineering-ops/workflows/orchestration.yaml"),
     [
       "id: engineering_multi_step_delivery",
-      "division_id: engineering_ops",
+      "division_id: engineering-ops",
       "steps:",
       "  - step_id: analyze_request",
       "    role_id: engineer",
@@ -175,8 +175,8 @@ test("division loader loads multiple divisions, prompts, and workflows", () => {
     }).loadAll();
 
     assert.equal(registry.divisions.size, 2);
-    assert.ok(registry.divisions.has("general_ops"));
-    assert.ok(registry.divisions.has("engineering_ops"));
+    assert.ok(registry.divisions.has("general-ops"));
+    assert.ok(registry.divisions.has("engineering-ops"));
     assert.ok(registry.workflows.has("engineering_multi_step_delivery"));
     assert.equal(
       registry.workflows.get("engineering_multi_step_delivery")?.steps[2]?.roleId,
@@ -184,12 +184,12 @@ test("division loader loads multiple divisions, prompts, and workflows", () => {
     );
     assert.equal(
       registry.workflows.get("single_agent_minimal")?.steps[0]?.outputSchemaPath?.endsWith(
-        "general_ops/schemas/minimal-output.json",
+        "general-ops/schemas/minimal-output.json",
       ),
       true,
     );
     assert.match(
-      registry.divisions.get("engineering_ops")?.roles[0]?.promptText ?? "",
+      registry.divisions.get("engineering-ops")?.roles[0]?.promptText ?? "",
       /engineer/,
     );
   } finally {
@@ -204,10 +204,10 @@ test("division loader rejects workflows that reference undefined roles", () => {
   try {
     seedDivisionTree(divisionsRoot);
     createFile(
-      join(divisionsRoot, "engineering_ops/workflows/orchestration.yaml"),
+      join(divisionsRoot, "engineering-ops/workflows/orchestration.yaml"),
       [
         "id: engineering_multi_step_delivery",
-        "division_id: engineering_ops",
+        "division_id: engineering-ops",
         "steps:",
         "  - step_id: analyze_request",
         "    role_id: missing_role",
@@ -238,10 +238,10 @@ test("division loader accepts cross-division workflow steps when explicitly enab
   try {
     seedDivisionTree(divisionsRoot);
     createFile(
-      join(divisionsRoot, "general_ops/workflows/cross-division.yaml"),
+      join(divisionsRoot, "general-ops/workflows/cross-division.yaml"),
       [
         "id: cross_division_delivery",
-        "division_id: general_ops",
+        "division_id: general-ops",
         "steps:",
         "  - step_id: intake",
         "    role_id: general_executor",
@@ -250,7 +250,7 @@ test("division loader accepts cross-division workflow steps when explicitly enab
         "    timeout_ms: 120000",
         "    max_attempts: 1",
         "  - step_id: implement",
-        "    division_id: engineering_ops",
+        "    division_id: engineering-ops",
         "    role_id: engineer",
         "    input_keys: [triage]",
         "    output_key: implementation_plan",
@@ -269,7 +269,7 @@ test("division loader accepts cross-division workflow steps when explicitly enab
 
     assert.equal(
       registry.workflows.get("cross_division_delivery")?.steps[1]?.divisionId,
-      "engineering_ops",
+      "engineering-ops",
     );
     assert.deepEqual(
       registry.workflows.get("cross_division_delivery")?.steps[1]?.inputKeys,
@@ -287,10 +287,10 @@ test("division loader rejects cross-division workflow steps when the DAG feature
   try {
     seedDivisionTree(divisionsRoot);
     createFile(
-      join(divisionsRoot, "general_ops/workflows/cross-division.yaml"),
+      join(divisionsRoot, "general-ops/workflows/cross-division.yaml"),
       [
         "id: cross_division_delivery",
-        "division_id: general_ops",
+        "division_id: general-ops",
         "steps:",
         "  - step_id: intake",
         "    role_id: general_executor",
@@ -299,7 +299,7 @@ test("division loader rejects cross-division workflow steps when the DAG feature
         "    timeout_ms: 120000",
         "    max_attempts: 1",
         "  - step_id: implement",
-        "    division_id: engineering_ops",
+        "    division_id: engineering-ops",
         "    role_id: engineer",
         "    input_keys: [triage]",
         "    output_key: implementation_plan",
@@ -332,10 +332,10 @@ test("configured division registry loader honors the cross-division DAG config f
     seedDivisionTree(divisionsRoot);
     seedWorkflowConfig(configRoot, true);
     createFile(
-      join(divisionsRoot, "general_ops/workflows/cross-division.yaml"),
+      join(divisionsRoot, "general-ops/workflows/cross-division.yaml"),
       [
         "id: cross_division_delivery",
-        "division_id: general_ops",
+        "division_id: general-ops",
         "steps:",
         "  - step_id: intake",
         "    role_id: general_executor",
@@ -344,7 +344,7 @@ test("configured division registry loader honors the cross-division DAG config f
         "    timeout_ms: 120000",
         "    max_attempts: 1",
         "  - step_id: implement",
-        "    division_id: engineering_ops",
+        "    division_id: engineering-ops",
         "    role_id: engineer",
         "    input_keys: [triage]",
         "    output_key: implementation_plan",
@@ -363,7 +363,7 @@ test("configured division registry loader honors the cross-division DAG config f
 
     assert.equal(
       registry.workflows.get("cross_division_delivery")?.steps[1]?.divisionId,
-      "engineering_ops",
+      "engineering-ops",
     );
   } finally {
     cleanupPath(workspace);
@@ -377,10 +377,10 @@ test("division loader rejects orphan workflow steps that are disconnected from t
   try {
     seedDivisionTree(divisionsRoot);
     createFile(
-      join(divisionsRoot, "general_ops/workflows/orphan.yaml"),
+      join(divisionsRoot, "general-ops/workflows/orphan.yaml"),
       [
         "id: orphan_workflow",
-        "division_id: general_ops",
+        "division_id: general-ops",
         "steps:",
         "  - step_id: intake",
         "    role_id: general_executor",
@@ -417,10 +417,10 @@ test("division loader rejects disconnected workflow components that never join t
   try {
     seedDivisionTree(divisionsRoot);
     createFile(
-      join(divisionsRoot, "general_ops/workflows/disconnected.yaml"),
+      join(divisionsRoot, "general-ops/workflows/disconnected.yaml"),
       [
         "id: disconnected_workflow",
-        "division_id: general_ops",
+        "division_id: general-ops",
         "steps:",
         "  - step_id: intake",
         "    role_id: general_executor",
@@ -471,10 +471,10 @@ test("division loader rejects cross-division workflow steps that reference a mis
   try {
     seedDivisionTree(divisionsRoot);
     createFile(
-      join(divisionsRoot, "general_ops/workflows/cross-division-missing-division.yaml"),
+      join(divisionsRoot, "general-ops/workflows/cross-division-missing-division.yaml"),
       [
         "id: cross_division_missing_division",
-        "division_id: general_ops",
+        "division_id: general-ops",
         "steps:",
         "  - step_id: intake",
         "    role_id: general_executor",

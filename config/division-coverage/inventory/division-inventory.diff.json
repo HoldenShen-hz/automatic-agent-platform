@@ -1,5 +1,24 @@
 {
   "added": [],
-  "changed": [],
+  "changed": [
+    {
+      "changes": [
+        "roi:=>roi/divisions/coding.yaml"
+      ],
+      "divisionId": "coding"
+    },
+    {
+      "changes": [
+        "roi:=>roi/divisions/customer-service.yaml"
+      ],
+      "divisionId": "customer-service"
+    },
+    {
+      "changes": [
+        "roi:=>roi/divisions/knowledge-base.yaml"
+      ],
+      "divisionId": "knowledge-base"
+    }
+  ],
   "removed": []
 }

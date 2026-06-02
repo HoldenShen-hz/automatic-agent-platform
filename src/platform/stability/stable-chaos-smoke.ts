@@ -104,7 +104,7 @@ function seedTaskAndExecution(
       id: input.taskId,
       parentId: null,
       rootId: input.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Chaos smoke seed task",
       status: "in_progress",
       source: "user",
@@ -121,7 +121,7 @@ function seedTaskAndExecution(
     });
     store.workflow.insertWorkflowState({
       taskId: input.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",
@@ -252,7 +252,7 @@ async function runOrphanSessionRepairScenario(outputDir: string): Promise<Stable
       id: "task-orphan-chaos",
       parentId: null,
       rootId: "task-orphan-chaos",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Orphan session chaos",
       status: "done",
       source: "user",

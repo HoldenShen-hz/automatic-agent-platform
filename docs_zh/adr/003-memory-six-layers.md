@@ -1,4 +1,4 @@
-# ADR-003 六层记忆模型
+# ADR-003A 六层记忆模型与 KV Cache 固定前缀
 
 - 状态：Superseded by ADR-020
 - 决策日期：2026-04-02

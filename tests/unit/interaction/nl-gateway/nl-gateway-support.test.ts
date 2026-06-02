@@ -275,22 +275,22 @@ test("estimateSlotConfidence handles no entities for deploy message", () => {
 });
 
 test("buildClarificationQuestions adds question when confidence is low", () => {
-  const questions = buildClarificationQuestions("做一下", 0.5, "general_ops", []);
+  const questions = buildClarificationQuestions("做一下", 0.5, "general-ops", []);
   assert.ok(questions.some((q) => q.includes("查询现状")));
 });
 
 test("buildClarificationQuestions adds question for ambiguous input", () => {
-  const questions = buildClarificationQuestions("帮我处理", 0.9, "general_ops", []);
+  const questions = buildClarificationQuestions("帮我处理", 0.9, "general-ops", []);
   assert.ok(questions.some((q) => q.includes("更具体")));
 });
 
-test("buildClarificationQuestions adds question for general_ops with specific keywords", () => {
-  const questions = buildClarificationQuestions("帮我做报表", 0.9, "general_ops", []);
+test("buildClarificationQuestions adds question for general-ops with specific keywords", () => {
+  const questions = buildClarificationQuestions("帮我做报表", 0.9, "general-ops", []);
   assert.ok(questions.some((q) => q.includes("业务域")));
 });
 
 test("buildClarificationQuestions adds question for modify without entities", () => {
-  const questions = buildClarificationQuestions("修改一下", 0.9, "engineering_ops", []);
+  const questions = buildClarificationQuestions("修改一下", 0.9, "engineering-ops", []);
   assert.ok(questions.some((q) => q.includes("具体对象")));
 });
 

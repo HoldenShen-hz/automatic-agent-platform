@@ -50,6 +50,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
+import { readCliProcessEnv } from "./cli-env.js";
 import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 
 // ---------------------------------------------------------------------------
@@ -123,6 +124,7 @@ export function createStableCli<TOptions = StableRunnerOptions, TReport = unknow
    */
   includeOutputDir?: boolean;
 }): void {
+  const env = readCliProcessEnv();
   const {
     envVar,
     defaultDir,
@@ -139,7 +141,7 @@ export function createStableCli<TOptions = StableRunnerOptions, TReport = unknow
   // -------------------------------------------------------------------------
   function resolveOutputDir(): string {
     const envKey = `${envVar}_OUTPUT_DIR`;
-    const fromEnv = process.env[envKey];
+    const fromEnv = env[envKey];
     if (fromEnv && fromEnv.length > 0) {
       return fromEnv;
     }

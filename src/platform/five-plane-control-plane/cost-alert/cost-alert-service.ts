@@ -15,6 +15,7 @@ import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/t
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { StorageError } from "../../contracts/errors.js";
+import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import { LocalTypedEventEmitter } from "../../shared/events/local-typed-event-emitter.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type {
@@ -44,6 +45,13 @@ interface AlertDedupEntry {
   readonly lastAlertLevel: CostAlertLevel;
 }
 
+interface PendingReservation {
+  readonly scopeKey: string;
+  readonly projectedCostUsd: number;
+  readonly projectedTokens: number;
+  readonly updatedAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Cost Alert Service
 // ---------------------------------------------------------------------------
@@ -63,6 +71,8 @@ interface AlertDedupEntry {
 export class CostAlertService extends LocalTypedEventEmitter<Record<string, unknown>> {
   private readonly accumulators: Map<string, CostAccumulator> = new Map();
   private readonly lastAlertByKey: Map<string, AlertDedupEntry> = new Map();
+  private readonly pendingReservations: Map<string, PendingReservation> = new Map();
+  private readonly artifactStore = new ArtifactStore();
   private config: CostAlertConfig;
   // C-11: TTL-based eviction to prevent memory leaks
   private readonly MAX_ACCUMULATORS = 500;
@@ -111,6 +121,7 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
 
     for (const key of entriesToDelete) {
       this.accumulators.delete(key);
+      this.deletePendingReservationsForScope(key);
     }
 
     // If still over capacity, remove oldest accumulators
@@ -123,7 +134,9 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
 
       const toRemove = this.accumulators.size - this.MAX_ACCUMULATORS;
       for (let i = 0; i < toRemove; i++) {
-        this.accumulators.delete(sortedEntries[i]![0]);
+        const scopeKey = sortedEntries[i]![0];
+        this.accumulators.delete(scopeKey);
+        this.deletePendingReservationsForScope(scopeKey);
       }
     }
   }
@@ -159,8 +172,11 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
     }
 
     const accumulator = this.getOrCreateAccumulator(policy);
-    const currentCost = accumulator.accumulatedCostUsd + accumulator.pendingProjectedCostUsd;
-    const currentTokens = accumulator.accumulatedTokens + accumulator.pendingProjectedTokens;
+    const scopeKey = this.getAccumulatorKey(policy.scope, policy.scopeId);
+    const reservationKey = this.buildPendingReservationKey(input);
+    const existingReservation = this.pendingReservations.get(reservationKey);
+    const currentCost = accumulator.accumulatedCostUsd + Math.max(0, accumulator.pendingProjectedCostUsd - (existingReservation?.projectedCostUsd ?? 0));
+    const currentTokens = accumulator.accumulatedTokens + Math.max(0, accumulator.pendingProjectedTokens - (existingReservation?.projectedTokens ?? 0));
     const projectedCost = currentCost + input.projectedCostUsd;
     const projectedTokens = currentTokens + (input.projectedTokens ?? 0);
 
@@ -193,9 +209,21 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
 
     const allowed = alertLevel === "ok" || alertLevel === "warning";
     if (allowed) {
-      accumulator.pendingProjectedCostUsd += input.projectedCostUsd;
-      accumulator.pendingProjectedTokens += input.projectedTokens ?? 0;
+      accumulator.pendingProjectedCostUsd = Math.max(
+        0,
+        accumulator.pendingProjectedCostUsd - (existingReservation?.projectedCostUsd ?? 0) + input.projectedCostUsd,
+      );
+      accumulator.pendingProjectedTokens = Math.max(
+        0,
+        accumulator.pendingProjectedTokens - (existingReservation?.projectedTokens ?? 0) + (input.projectedTokens ?? 0),
+      );
       accumulator.lastUpdatedAt = nowIso();
+      this.pendingReservations.set(reservationKey, {
+        scopeKey,
+        projectedCostUsd: input.projectedCostUsd,
+        projectedTokens: input.projectedTokens ?? 0,
+        updatedAt: accumulator.lastUpdatedAt,
+      });
     }
 
     return {
@@ -239,9 +267,13 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
     const accumulator = this.getOrCreateAccumulator(policy);
     const previousCost = accumulator.accumulatedCostUsd;
     const previousTokens = accumulator.accumulatedTokens;
-
-    accumulator.pendingProjectedCostUsd = Math.max(0, accumulator.pendingProjectedCostUsd - input.actualCostUsd);
-    accumulator.pendingProjectedTokens = Math.max(0, accumulator.pendingProjectedTokens - (input.tokens ?? 0));
+    const reservationKey = this.buildPendingReservationKey(input);
+    const existingReservation = this.pendingReservations.get(reservationKey);
+    accumulator.pendingProjectedCostUsd = Math.max(0, accumulator.pendingProjectedCostUsd - (existingReservation?.projectedCostUsd ?? 0));
+    accumulator.pendingProjectedTokens = Math.max(0, accumulator.pendingProjectedTokens - (existingReservation?.projectedTokens ?? 0));
+    if (existingReservation != null) {
+      this.pendingReservations.delete(reservationKey);
+    }
     accumulator.accumulatedCostUsd += input.actualCostUsd;
     accumulator.accumulatedTokens += input.tokens ?? 0;
     accumulator.lastUpdatedAt = nowIso();
@@ -271,33 +303,31 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
         ? accumulator.accumulatedTokens / policy.limitTokens
         : 0;
 
-    const warningThresholdBoundary = usesCostMetric
-      ? policy.limitCostUsd! * (policy.warningThreshold ?? this.config.defaultWarningThreshold)
-      : (policy.limitTokens ?? Infinity) * (policy.warningThreshold ?? this.config.defaultWarningThreshold);
-    const criticalThresholdBoundary = usesCostMetric
-      ? policy.limitCostUsd! * DEFAULT_CRITICAL_THRESHOLD
-      : (policy.limitTokens ?? Infinity) * DEFAULT_CRITICAL_THRESHOLD;
-    const breachBoundary = usesCostMetric ? policy.limitCostUsd! : (policy.limitTokens ?? Infinity);
+    const warningThresholdBoundary = this.resolveThresholdBoundary(policy, "warning");
+    const criticalThresholdBoundary = this.resolveThresholdBoundary(policy, "critical");
+    const breachBoundary = this.resolveThresholdBoundary(policy, "exceeded");
 
     const previousMetricValue = usesCostMetric ? previousCost : previousTokens;
     const currentMetricValue = usesCostMetric ? accumulator.accumulatedCostUsd : accumulator.accumulatedTokens;
 
-    const wasWarning = previousMetricValue >= warningThresholdBoundary;
+    const hasWarningBoundary = warningThresholdBoundary != null;
+    const hasCriticalBoundary = criticalThresholdBoundary != null;
+    const hasExceededBoundary = breachBoundary != null;
+    const wasWarning = hasWarningBoundary && previousMetricValue >= warningThresholdBoundary;
     const isWarning = thresholdRatio >= (policy.warningThreshold ?? this.config.defaultWarningThreshold);
 
-    const wasCritical = previousMetricValue >= criticalThresholdBoundary;
+    const wasCritical = hasCriticalBoundary && previousMetricValue >= criticalThresholdBoundary;
     const isCritical = thresholdRatio >= DEFAULT_CRITICAL_THRESHOLD;
 
-    const wasExceeded = previousMetricValue >= breachBoundary;
-    const isExceeded = thresholdRatio >= 1.0;
+    const wasExceeded = hasExceededBoundary && previousMetricValue >= breachBoundary;
+    const isExceeded = thresholdRatio >= 1.0 || (usesCostMetric && policy.limitCostUsd === 0 && currentMetricValue > 0);
 
-    // Emit events if thresholds were crossed (order matters: exceeded > critical > warning)
-    if (!wasExceeded && isExceeded) {
+    if (hasWarningBoundary && !wasWarning && isWarning) {
       this.emitThresholdExceeded({
         scope: input.scope,
         scopeId: input.scopeId,
-        alertLevel: "exceeded",
-        reasonCode: this.getExceededReasonCode(input.scope, policy),
+        alertLevel: "warning",
+        reasonCode: "cost.approaching_limit",
         currentCostUsd: accumulator.accumulatedCostUsd,
         limitCostUsd: policy.limitCostUsd ?? null,
         accumulatedTokens: accumulator.accumulatedTokens,
@@ -309,9 +339,11 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
         taskId: input.taskId ?? null,
         executionId: input.executionId ?? null,
         stepId: input.stepId ?? null,
-        actions: policy.actionsOnBreach,
+        actions: policy.actionsOnWarning,
       });
-    } else if (!wasCritical && isCritical) {
+    }
+
+    if (hasCriticalBoundary && !wasCritical && isCritical) {
       this.emitThresholdExceeded({
         scope: input.scope,
         scopeId: input.scopeId,
@@ -332,14 +364,12 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
       });
     }
 
-    // Warning is checked separately from exceeded/critical to ensure it fires
-    // even when cost crosses warning threshold before exceeding
-    if (!wasWarning && isWarning && !isExceeded && !isCritical) {
+    if (!wasExceeded && isExceeded) {
       this.emitThresholdExceeded({
         scope: input.scope,
         scopeId: input.scopeId,
-        alertLevel: "warning",
-        reasonCode: "cost.approaching_limit",
+        alertLevel: "exceeded",
+        reasonCode: this.getExceededReasonCode(input.scope, policy),
         currentCostUsd: accumulator.accumulatedCostUsd,
         limitCostUsd: policy.limitCostUsd ?? null,
         accumulatedTokens: accumulator.accumulatedTokens,
@@ -351,7 +381,7 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
         taskId: input.taskId ?? null,
         executionId: input.executionId ?? null,
         stepId: input.stepId ?? null,
-        actions: policy.actionsOnWarning,
+        actions: policy.actionsOnBreach,
       });
     }
   }
@@ -639,28 +669,25 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
         cached: input.cached ?? false,
       };
       const serialized = JSON.stringify(record);
-      const artifactId = newId("artifact");
-      const checksum = createHash("sha256").update(serialized).digest("hex");
       if (input.taskId == null) {
         return;
       }
 
-      // Store in artifact for retrieval
-      // The artifact store can be queried to build cost reports
-      this.store.artifact.insertArtifact({
-        artifactId,
+      const artifact = this.artifactStore.writeJsonArtifact({
         taskId: input.taskId,
         executionId: input.executionId ?? null,
         stepId: input.stepId,
         kind: "step_usage_record",
-        storagePath: `step-usage/${input.stepId}/${record.recordId}.json`,
         fileName: `step-usage-${input.stepId}-${record.timestamp}.json`,
         mimeType: "application/json",
-        sizeBytes: Buffer.byteLength(serialized, "utf8"),
-        checksum,
-        lineageJson: null,
-        createdAt: record.timestamp,
+        content: record,
+        lineage: {
+          tenantId: record.tenantId,
+          workflowRunId: record.workflowRunId,
+          recordId: record.recordId,
+        },
       });
+      this.store.artifact.insertArtifact(artifact.record);
     } catch (error) {
       logger.warn("cost_alert.step_usage_record_failed", {
         taskId: input.taskId ?? null,
@@ -768,10 +795,74 @@ export class CostAlertService extends LocalTypedEventEmitter<Record<string, unkn
       return rows.some((row) => {
         const title = typeof row.title === "string" ? row.title : "";
         const detail = typeof row.detail === "string" ? row.detail : "";
-        return hints.some((hint) => title.includes(hint) || detail.includes(hint));
+        return hints.some((hint) => this.containsStructuredSubject(title, hint) || this.containsStructuredSubject(detail, hint));
       });
     } catch {
       return false;
     }
+  }
+
+  private buildPendingReservationKey(input: {
+    readonly scope: BudgetScope;
+    readonly scopeId: string;
+    readonly tenantId?: string | null;
+    readonly taskId?: string | null;
+    readonly executionId?: string | null;
+    readonly stepId?: string | null;
+  }): string {
+    return [
+      input.scope,
+      input.scopeId,
+      input.tenantId ?? "",
+      input.taskId ?? "",
+      input.executionId ?? "",
+      input.stepId ?? "",
+    ].join("|");
+  }
+
+  private deletePendingReservationsForScope(scopeKey: string): void {
+    for (const [reservationKey, reservation] of this.pendingReservations) {
+      if (reservation.scopeKey === scopeKey) {
+        this.pendingReservations.delete(reservationKey);
+      }
+    }
+  }
+
+  private resolveThresholdBoundary(
+    policy: BudgetPolicy,
+    threshold: "warning" | "critical" | "exceeded",
+  ): number | null {
+    if (policy.limitCostUsd != null) {
+      if (policy.limitCostUsd <= 0) {
+        return threshold === "exceeded" ? 0 : null;
+      }
+      switch (threshold) {
+        case "warning":
+          return policy.limitCostUsd * (policy.warningThreshold ?? this.config.defaultWarningThreshold);
+        case "critical":
+          return policy.limitCostUsd * DEFAULT_CRITICAL_THRESHOLD;
+        case "exceeded":
+          return policy.limitCostUsd;
+      }
+    }
+    if (policy.limitTokens != null) {
+      if (policy.limitTokens <= 0) {
+        return threshold === "exceeded" ? 0 : null;
+      }
+      switch (threshold) {
+        case "warning":
+          return policy.limitTokens * (policy.warningThreshold ?? this.config.defaultWarningThreshold);
+        case "critical":
+          return policy.limitTokens * DEFAULT_CRITICAL_THRESHOLD;
+        case "exceeded":
+          return policy.limitTokens;
+      }
+    }
+    return null;
+  }
+
+  private containsStructuredSubject(text: string, subject: string): boolean {
+    const escaped = subject.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(^|[^A-Za-z0-9_-])${escaped}([^A-Za-z0-9_-]|$)`).test(text);
   }
 }

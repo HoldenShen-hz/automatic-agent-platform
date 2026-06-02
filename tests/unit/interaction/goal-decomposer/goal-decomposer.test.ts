@@ -453,7 +453,7 @@ test("GoalDecompositionService matches release_launch template", async () => {
 
   const result = await service.decompose(goal);
   assert.equal(result.decompositionStrategy, "template");
-  assert.ok(result.tasks.some((t) => t.domainId === "engineering_ops"));
+  assert.ok(result.tasks.some((t) => t.domainId === "engineering-ops"));
   assert.ok(result.tasks.some((t) => t.domainId === "quality_assurance"));
 });
 

@@ -9,7 +9,10 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { HumanTakeoverServiceAsync } from "../../../../../src/platform/five-plane-control-plane/incident-control/human-takeover-service-async.js";
+import {
+  HumanTakeoverServiceAsync,
+  type TakeoverRequestPayload,
+} from "../../../../../src/platform/five-plane-control-plane/incident-control/human-takeover-service-async.js";
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
@@ -407,7 +410,7 @@ test("HumanTakeoverServiceAsync integration: all async action types can be enque
         operatorId: "operator-async",
         reasonCode: "incident.testing",
         actionType,
-        payload: { type: actionType, sessionId: "s1" } as any,
+        payload: { type: actionType, sessionId: "s1" } as TakeoverRequestPayload,
       });
       assert.equal(entry.actionType, actionType);
     }

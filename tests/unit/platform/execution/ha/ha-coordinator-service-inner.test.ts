@@ -94,6 +94,7 @@ class MockDatabase {
           const hasIsLeader1 = /is_leader\s*=\s*1/i.test(sql);
           const hasExpiresAt = /expires_at\s*>/i.test(sql);
           const hasSequenceNumber = /sequence_number\s*>/i.test(sql);
+          const hasMaxFencingToken = /MAX\(fencing_token\)\s+AS\s+fencingToken/i.test(sql);
 
           return {
             run() { return { changes: 0 }; },
@@ -116,6 +117,14 @@ class MockDatabase {
                   }
                   return undefined;
                 }
+              }
+
+              if (hasMaxFencingToken) {
+                let maxFencingToken = 0;
+                for (const row of table.values()) {
+                  maxFencingToken = Math.max(maxFencingToken, Number(row["fencing_token"] ?? 0));
+                }
+                return { fencingToken: maxFencingToken };
               }
 
               if (hasIsLeader1) {
@@ -444,6 +453,63 @@ test("HaCoordinatorService - acquireLeadership with forceAcquire preempts existi
   const result = service.acquireLeadership({ nodeId: "node-2", forceAcquire: true });
 
   assert.equal(result.acquired, true);
+});
+
+test("HaCoordinatorService - acquireLeadership fails closed when current leader lease expiry is malformed [ha-coordinator-service-inner]", () => {
+  const db = new MockDatabase();
+  const service = new HaCoordinatorService(db as any);
+
+  db.setTableData("coordinator_nodes", [
+    {
+      node_id: "node-1",
+      region: "us-east-1",
+      status: "active",
+      is_leader: 1,
+      leadership_epoch: 1,
+      last_heartbeat_at: nowIso(),
+      metadata: null,
+      created_at: nowIso(),
+      updated_at: nowIso(),
+    },
+    {
+      node_id: "node-2",
+      region: "us-east-1",
+      status: "active",
+      is_leader: 0,
+      leadership_epoch: 0,
+      last_heartbeat_at: nowIso(),
+      metadata: null,
+      created_at: nowIso(),
+      updated_at: nowIso(),
+    },
+  ]);
+  db.setTableData("leadership_epochs", [
+    {
+      epoch: 1,
+      leader_node_id: "node-1",
+      started_at: nowIso(),
+      ended_at: null,
+      cause: "acquired",
+      fencing_token: 3,
+    },
+  ]);
+  db.setTableData("leadership_leases", [
+    {
+      lease_id: "lease-1",
+      node_id: "node-1",
+      epoch: 1,
+      acquired_at: nowIso(),
+      expires_at: "not-an-iso-timestamp",
+      status: "active",
+      ttl_ms: 15000,
+      fencing_token: 3,
+    },
+  ]);
+
+  const result = service.acquireLeadership({ nodeId: "node-2" });
+
+  assert.equal(result.acquired, false);
+  assert.equal(result.cause, "current_leader_lease_expiry_invalid");
 });
 
 test("HaCoordinatorService - getCurrentLeader returns current leader [ha-coordinator-service-inner]", () => {

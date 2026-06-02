@@ -44,7 +44,7 @@ export function createMinimalTask(overrides: Partial<TaskRecord> = {}): TaskReco
     id: "task-test-001",
     parentId: null,
     rootId: "task-test-001",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     tenantId: null,
     title: "Test task",
     status: "queued",

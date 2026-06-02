@@ -23,7 +23,7 @@ test("Integration: LongRunningWorkflowService suspends and resumes workflow", ()
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Test task",
         status: "in_progress",
@@ -70,7 +70,7 @@ test("Integration: LongRunningWorkflowService suspends and resumes workflow", ()
 
       ctx.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId,
         currentStepIndex: 0,
         status: "running",
@@ -134,7 +134,7 @@ test("Integration: LongRunningWorkflowService handles workflow state updates", (
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Workflow state test",
         status: "in_progress",
@@ -181,7 +181,7 @@ test("Integration: LongRunningWorkflowService handles workflow state updates", (
 
       ctx.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId,
         currentStepIndex: 1,
         status: "running",

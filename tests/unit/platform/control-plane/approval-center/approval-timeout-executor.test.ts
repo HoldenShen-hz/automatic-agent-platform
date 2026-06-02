@@ -4,12 +4,28 @@ import test from "node:test";
 
 import { ApprovalTimeoutExecutor, type ApprovalTimeoutExecutorOptions } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-timeout-executor.js";
 import { ApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import {
+  __dangerousResetAuditIntegrityConfigForTests,
+  configureAuditIntegrity,
+} from "../../../../../src/platform/five-plane-control-plane/iam/audit-event-integrity.js";
 import { ApprovalRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/approval-repository.js";
 import { TaskRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/task-repository.js";
 import { ExecutionRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/execution-repository.js";
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
+
+test.beforeEach(() => {
+  __dangerousResetAuditIntegrityConfigForTests();
+  configureAuditIntegrity({
+    hmacKey: "audit-integrity-secret-key-32-bytes!",
+    isProduction: false,
+  });
+});
+
+test.afterEach(() => {
+  __dangerousResetAuditIntegrityConfigForTests();
+});
 
 function createTestHarness(prefix: string) {
   const workspace = createTempWorkspace(prefix);
@@ -25,7 +41,7 @@ function createTestTask(store: AuthoritativeTaskStore, taskId: string, now: stri
     id: taskId,
     parentId: null,
     rootId: taskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     tenantId: null,
     title: "Test task",
     status: "in_progress",

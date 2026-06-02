@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   HarnessSdk,
   buildPlanGraphBundle,
+  isIso8601Timestamp,
   validatePlanGraph,
   validatePlanGraphBundle,
   type HarnessSdkCreateRunInput,
@@ -137,6 +138,33 @@ test("buildPlanGraphBundle normalizes graph inputs and validatePlanGraph detects
   assert.equal(bundle.graph.terminalNodeIds[0], "node_2");
   assert.equal(invalidReport.valid, false);
   assert.equal(invalidReport.findings.some((finding) => finding.includes("missing_node")), true);
+});
+
+test("isIso8601Timestamp accepts broader valid offset and precision forms", () => {
+  assert.equal(isIso8601Timestamp("2026-06-02T10:20:30.123456789Z"), true);
+  assert.equal(isIso8601Timestamp("2026-06-02T10:20:30+0800"), true);
+  assert.equal(isIso8601Timestamp("2026-06-02T10:20:30+08:00"), true);
+});
+
+test("buildPlanGraphBundle graphHash changes when critical node fields change", () => {
+  const baseInput: PlanGraphBuildInput = {
+    harnessRunId: "run_hash_1",
+    nodes: [createPlanNode("node_1")],
+    edges: [],
+    entryNodeIds: ["node_1"],
+    terminalNodeIds: ["node_1"],
+  };
+
+  const base = buildPlanGraphBundle(baseInput);
+  const changed = buildPlanGraphBundle({
+    ...baseInput,
+    nodes: [{
+      ...createPlanNode("node_1"),
+      sideEffectProfile: { mayCommitExternalEffect: true, reversible: false },
+    }],
+  });
+
+  assert.notEqual(base.bundle.graph.graphHash, changed.bundle.graph.graphHash);
 });
 
 test("HarnessSdk persistence helpers operate on run ids and facade runs", () => {

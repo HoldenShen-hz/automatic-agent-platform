@@ -50,7 +50,7 @@ export class WorkflowRepository {
   }): void {
     this.insertWorkflowState({
       taskId: workflow.taskId,
-      divisionId: workflow.divisionId ?? "general_ops",
+      divisionId: workflow.divisionId ?? "general-ops",
       workflowId: workflow.id ?? workflow.workflowId ?? workflow.workflowDefinitionId ?? "workflow",
       currentStepIndex: 0,
       status: workflow.status as WorkflowStateRecord["status"],
@@ -74,7 +74,7 @@ export class WorkflowRepository {
       )
       .run(
         workflow.taskId,
-        workflow.divisionId ?? "general_ops",
+        workflow.divisionId ?? "general-ops",
         workflow.workflowId ?? workflow.taskId,
         workflow.currentStepIndex,
         workflow.status,

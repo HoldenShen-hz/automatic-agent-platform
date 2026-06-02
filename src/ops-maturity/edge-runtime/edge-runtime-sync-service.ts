@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { buildOfflineExecutionRecord, type OfflineExecutionRecord } from "./edge-executor/index.js";
 import { buildEdgeExecutionPlan } from "./edge-orchestrator/index.js";
@@ -103,6 +103,9 @@ export interface EdgeControlCommandReceipt {
   readonly resultingConnectivityMode: EdgeRuntimeProfile["connectivityMode"];
 }
 
+const EDGE_ATTESTATION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const EDGE_TIMESTAMP_FUTURE_SKEW_MS = 5 * 60 * 1000;
+
 export class EdgeRuntimeSyncService {
   public executeOffline(
     profile: EdgeRuntimeProfile,
@@ -124,6 +127,7 @@ export class EdgeRuntimeSyncService {
     if (profile.deviceAttestation == null || profile.deviceAttestation.status !== "valid") {
       throw new Error("edge_runtime.device_attestation_invalid");
     }
+    assertAttestationFresh(profile.deviceAttestation.attestedAt);
     if (profile.certificateStatus === "revoked") {
       throw new Error("edge_runtime.certificate_revoked");
     }
@@ -142,6 +146,9 @@ export class EdgeRuntimeSyncService {
     const createdAtMillis = Date.parse(createdAt);
     if (Number.isNaN(createdAtMillis)) {
       throw new Error("edge_runtime.invalid_created_at");
+    }
+    if (createdAtMillis > Date.now() + EDGE_TIMESTAMP_FUTURE_SKEW_MS) {
+      throw new Error("edge_runtime.created_at_in_future");
     }
     const offlineMaxDuration = profile.offlineMaxDuration;
     if (offlineMaxDuration == null) {
@@ -181,9 +188,16 @@ export class EdgeRuntimeSyncService {
     prevHash: string | null = null,
   ): SyncEnvelope {
     const recordId = `${record.edgeNodeId}:${record.taskId}:${record.createdAt}`;
-    const signature = createHash("sha256")
-      .update(`${profile.edgeNodeId}:${recordId}:${payloadDigest}:${prevHash ?? "root"}`)
-      .digest("hex");
+    assertCreatedAtNotInFuture(createdAt);
+    const signature = signSyncEnvelope(profile.keyLease ?? "", {
+      edgeNodeId: profile.edgeNodeId,
+      recordId,
+      payloadDigest,
+      prevHash,
+      priority,
+      dataClassification,
+      createdAt,
+    });
     return {
       envelopeId: newId("sync"),
       recordId,
@@ -221,7 +235,8 @@ export class EdgeRuntimeSyncService {
         });
         continue;
       }
-      if (!this.verifyEnvelopeSignature(envelope)) {
+      assertCreatedAtNotInFuture(envelope.createdAt);
+      if (!this.verifyEnvelopeSignature(profile, envelope)) {
         rejectedEnvelopeIds.push(envelope.envelopeId);
         decisions.push({
           envelopeId: envelope.envelopeId,
@@ -285,11 +300,17 @@ export class EdgeRuntimeSyncService {
     };
   }
 
-  private verifyEnvelopeSignature(envelope: SyncEnvelope): boolean {
-    const expected = createHash("sha256")
-      .update(`${envelope.edgeNodeId}:${envelope.recordId}:${envelope.payloadDigest}:${envelope.prevHash ?? "root"}`)
-      .digest("hex");
-    return expected === envelope.signature;
+  private verifyEnvelopeSignature(profile: EdgeRuntimeProfile, envelope: SyncEnvelope): boolean {
+    const expected = signSyncEnvelope(profile.keyLease ?? "", {
+      edgeNodeId: envelope.edgeNodeId,
+      recordId: envelope.recordId,
+      payloadDigest: envelope.payloadDigest,
+      prevHash: envelope.prevHash,
+      priority: envelope.priority,
+      dataClassification: envelope.dataClassification,
+      createdAt: envelope.createdAt,
+    });
+    return safeHexDigestEquals(expected, envelope.signature);
   }
 
   /**
@@ -347,17 +368,7 @@ export class EdgeRuntimeSyncService {
     const edgeObject = tryParseJsonObject(envelopePayload);
     const cloudObject = tryParseJsonObject(cloudPayload);
     if (edgeObject != null || cloudObject != null) {
-      const mergedObject: Record<string, unknown> = {
-        ...(cloudObject ?? {}),
-        ...(edgeObject ?? {}),
-        _merged: true,
-        _mergeStrategy: "edge_structured_overlay",
-        _recordId: envelopeRecordId,
-        _sources: {
-          edgeDigest: createHash("sha256").update(envelopePayload).digest("hex"),
-          cloudDigest,
-        },
-      };
+      const mergedObject = mergeStructuredPayloads(edgeObject, cloudObject, envelopeRecordId, envelopePayload, cloudDigest);
       return JSON.stringify(mergedObject);
     }
     return JSON.stringify({
@@ -388,6 +399,108 @@ function tryParseJsonObject(payload: string | undefined): Record<string, unknown
     return null;
   }
   return null;
+}
+
+function assertAttestationFresh(attestedAt: string): void {
+  const attestedAtMillis = Date.parse(attestedAt);
+  if (Number.isNaN(attestedAtMillis) || attestedAtMillis > Date.now() + EDGE_TIMESTAMP_FUTURE_SKEW_MS) {
+    throw new Error("edge_runtime.device_attestation_invalid");
+  }
+  if (Date.now() - attestedAtMillis > EDGE_ATTESTATION_MAX_AGE_MS) {
+    throw new Error("edge_runtime.device_attestation_stale");
+  }
+}
+
+function assertCreatedAtNotInFuture(createdAt: string): void {
+  const createdAtMillis = Date.parse(createdAt);
+  if (Number.isNaN(createdAtMillis)) {
+    throw new Error("edge_runtime.invalid_created_at");
+  }
+  if (createdAtMillis > Date.now() + EDGE_TIMESTAMP_FUTURE_SKEW_MS) {
+    throw new Error("edge_runtime.created_at_in_future");
+  }
+}
+
+function signSyncEnvelope(
+  keyLease: string,
+  payload: {
+    readonly edgeNodeId: string;
+    readonly recordId: string;
+    readonly payloadDigest: string;
+    readonly prevHash: string | null;
+    readonly priority: number;
+    readonly dataClassification: SyncEnvelope["dataClassification"];
+    readonly createdAt: string;
+  },
+): string {
+  return createHmac("sha256", keyLease)
+    .update([
+      payload.edgeNodeId,
+      payload.recordId,
+      payload.payloadDigest,
+      payload.prevHash ?? "root",
+      String(payload.priority),
+      payload.dataClassification,
+      payload.createdAt,
+    ].join(":"))
+    .digest("hex");
+}
+
+function safeHexDigestEquals(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left, "hex");
+  const rightBuffer = Buffer.from(right, "hex");
+  if (leftBuffer.length === 0 || leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+  return timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function mergeStructuredPayloads(
+  edgeObject: Record<string, unknown> | null,
+  cloudObject: Record<string, unknown> | null,
+  envelopeRecordId: string,
+  envelopePayload: string,
+  cloudDigest: string,
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+  const conflicts: Array<{ readonly field: string; readonly edge: unknown; readonly cloud: unknown }> = [];
+  const keys = new Set([
+    ...Object.keys(cloudObject ?? {}),
+    ...Object.keys(edgeObject ?? {}),
+  ]);
+  for (const key of keys) {
+    const hasEdge = edgeObject != null && Object.prototype.hasOwnProperty.call(edgeObject, key);
+    const hasCloud = cloudObject != null && Object.prototype.hasOwnProperty.call(cloudObject, key);
+    if (hasEdge && !hasCloud) {
+      merged[key] = edgeObject?.[key];
+      continue;
+    }
+    if (!hasEdge && hasCloud) {
+      merged[key] = cloudObject?.[key];
+      continue;
+    }
+    const edgeValue = edgeObject?.[key];
+    const cloudValue = cloudObject?.[key];
+    if (JSON.stringify(edgeValue) === JSON.stringify(cloudValue)) {
+      merged[key] = edgeValue;
+      continue;
+    }
+    merged[key] = {
+      conflict: true,
+      edge: edgeValue,
+      cloud: cloudValue,
+    };
+    conflicts.push({ field: key, edge: edgeValue, cloud: cloudValue });
+  }
+  merged._merged = true;
+  merged._mergeStrategy = "field_conflict_preserving_merge";
+  merged._recordId = envelopeRecordId;
+  merged._sources = {
+    edgeDigest: createHash("sha256").update(envelopePayload).digest("hex"),
+    cloudDigest,
+  };
+  merged._conflicts = conflicts;
+  return merged;
 }
 
 export function resolveEdgeDeploymentMode(profile: EdgeRuntimeProfile): EdgeDeploymentMode {

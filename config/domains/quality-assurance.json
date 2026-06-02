@@ -1,7 +1,7 @@
 {
   "domainId": "quality-assurance",
   "phase": "9c",
-  "divisionId": "engineering_ops",
+  "divisionId": "engineering-ops",
   "latencyTier": "near_realtime",
   "workflowProfile": {
     "workflowId": "quality-assurance.primary",

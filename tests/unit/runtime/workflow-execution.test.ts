@@ -22,7 +22,7 @@ import { StorageError } from "../../../src/platform/contracts/errors.js";
 
 test("SINGLE_AGENT_MINIMAL_WORKFLOW has correct structure [workflow-execution]", () => {
   assert.equal(SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId, "single_agent_minimal");
-  assert.equal(SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId, "general_ops");
+  assert.equal(SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId, "general-ops");
   assert.equal(SINGLE_AGENT_MINIMAL_WORKFLOW.steps.length, 1);
 });
 
@@ -39,7 +39,7 @@ test("SINGLE_AGENT_MINIMAL_WORKFLOW has correct step configuration [workflow-exe
 
 test("PHASE_1B_SINGLE_DIVISION_WORKFLOW has correct structure [workflow-execution]", () => {
   assert.equal(PHASE_1B_SINGLE_DIVISION_WORKFLOW.workflowId, "single_division_multi_step_orchestration");
-  assert.equal(PHASE_1B_SINGLE_DIVISION_WORKFLOW.divisionId, "general_ops");
+  assert.equal(PHASE_1B_SINGLE_DIVISION_WORKFLOW.divisionId, "general-ops");
   assert.equal(PHASE_1B_SINGLE_DIVISION_WORKFLOW.steps.length, 3);
 });
 
@@ -210,7 +210,7 @@ test("WorkflowPlanner.plan() preserves step division ID [workflow-execution]", (
 
   for (const step of planned.executionSteps) {
     assert.ok(step.divisionId != null);
-    assert.equal(step.divisionId, "general_ops");
+    assert.equal(step.divisionId, "general-ops");
   }
 });
 

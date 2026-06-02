@@ -14,10 +14,7 @@
     "@aa/shared-sync": "0.1.0",
     "@aa/shared-telemetry": "0.1.0",
     "@aa/shared-types": "0.1.0",
-    "@aa/ui-core": "0.1.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-router-dom": "^7.6.0"
+    "@aa/ui-core": "0.1.0"
   },
   "scripts": {
     "dev": "vite --config vite.config.ts",

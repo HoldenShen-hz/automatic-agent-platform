@@ -95,7 +95,7 @@ describe("seed helpers", () => {
       assert.strictEqual(exec.status, "executing");
     });
 
-    it("should set task divisionId to general_ops", () => {
+    it("should set task divisionId to general-ops", () => {
       seedTaskAndExecution(db, store, {
         taskId: "task-seed-005",
         executionId: "exec-seed-005",
@@ -103,7 +103,7 @@ describe("seed helpers", () => {
 
       const task = findTaskById(store, "task-seed-005");
       assert.ok(task, "task should exist");
-      assert.strictEqual(task.divisionId, "general_ops");
+      assert.strictEqual(task.divisionId, "general-ops");
     });
 
     it("should handle multiple seed calls", () => {

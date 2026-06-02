@@ -112,12 +112,28 @@ export class MemoryPromotionEngine {
         continue;
       }
 
-      promoted.push(promotionCandidate);
+      if (promotionCandidate.targetLayer === "project" && !context.projectId) {
+        rejected.push(promotionCandidate);
+        retained.push(promotionCandidate);
+        continue;
+      }
+      if (promotionCandidate.targetLayer === "user" && !context.userId) {
+        rejected.push(promotionCandidate);
+        retained.push(promotionCandidate);
+        continue;
+      }
+
+      const promotedMemory = cloneMemoryWithLayer(memory, promotionCandidate.targetLayer);
+      const promotedCandidate: MemoryPromotionCandidate = {
+        ...promotionCandidate,
+        memory: promotedMemory,
+      };
+      promoted.push(promotedCandidate);
       if (promotionCandidate.targetLayer === "project" && context.projectId) {
-        projectEntries.push(this.projectStore.upsert(context.projectId, cloneMemoryWithLayer(memory, "project")));
+        projectEntries.push(this.projectStore.upsert(context.projectId, promotedMemory));
       }
       if (promotionCandidate.targetLayer === "user" && context.userId) {
-        userEntries.push(this.userStore.upsert(context.userId, cloneMemoryWithLayer(memory, "user")));
+        userEntries.push(this.userStore.upsert(context.userId, promotedMemory));
       }
     }
 

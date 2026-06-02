@@ -7,7 +7,7 @@ test("ProgressiveAutonomyService routes semi_auto to full_auto promotions into p
   const service = new ProgressiveAutonomyService();
   const profile: AgentTrustProfile = {
     agentId: "agent-approval-attribution",
-    domainId: "engineering_ops",
+    domainId: "engineering-ops",
     overallTrustLevel: "trusted",
     lastEvaluation: "2026-04-19T00:00:00.000Z",
     capabilityScores: [

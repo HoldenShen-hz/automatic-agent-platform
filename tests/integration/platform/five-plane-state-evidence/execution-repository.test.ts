@@ -27,7 +27,7 @@ function insertTaskAndExecution(
       id: exec.taskId,
       parentId: null,
       rootId: exec.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       tenantId: null,
       title: `Task for execution ${exec.id}`,
       status: "in_progress",

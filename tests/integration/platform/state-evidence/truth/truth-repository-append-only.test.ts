@@ -24,7 +24,7 @@ test("truth-repository: storeAggregate creates entity with append-only guarantee
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Append-only test",
         status: "queued",
@@ -65,7 +65,7 @@ test("truth-repository: Multiple tasks maintain independent append-only historie
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: `Task ${taskId}`,
           status: "queued",
@@ -121,7 +121,7 @@ test("truth-repository: Workflow state append-only update cycle", () => {
     ctx.db.transaction(() => {
       ctx.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "wf-append-001",
         status: "running",
         currentStepIndex: 0,
@@ -239,7 +239,7 @@ test("truth-repository: CAS update enforces optimistic concurrency", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "CAS test",
         status: "queued",
@@ -343,7 +343,7 @@ test("truth-repository: Task with workflow maintains referential integrity", () 
     ctx.db.transaction(() => {
       ctx.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "wf-ref-001",
         status: "running",
         currentStepIndex: 0,
@@ -447,7 +447,7 @@ test("truth-repository: Session append-only lifecycle", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Session test",
         status: "in_progress",

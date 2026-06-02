@@ -16,7 +16,7 @@ function seedTaskAndSession(db: SqliteDatabase, store: AuthoritativeTaskStore, i
       id: input.taskId,
       parentId: null,
       rootId: input.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Compaction task",
       status: "in_progress",
       source: "user",

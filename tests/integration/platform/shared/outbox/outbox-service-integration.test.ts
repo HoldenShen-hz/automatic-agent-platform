@@ -91,7 +91,7 @@ test.describe("OutboxService integration tests", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Outbox service integration test task",
         status: "in_progress",

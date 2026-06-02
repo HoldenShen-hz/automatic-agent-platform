@@ -148,7 +148,7 @@ test("integration: execution dispatch preempts low-priority execution for urgent
 
     store.insertWorkflowState({
       taskId: "task-preempt-low",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_division_multi_step_orchestration",
       currentStepIndex: 1,
       status: "running",

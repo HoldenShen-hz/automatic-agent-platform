@@ -32,6 +32,7 @@
  * @see EnvSecretProvider for the interface this implements
  */
 
+import { createHash } from "node:crypto";
 import { closeSync, fstatSync, lstatSync, openSync, realpathSync, statSync } from "node:fs";
 import { open as openFile } from "node:fs/promises";
 import { resolve, sep } from "node:path";
@@ -243,6 +244,10 @@ function normalizeRecord(value: unknown, code: string): Record<string, unknown> 
     });
   }
   return value as Record<string, unknown>;
+}
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
 /**
@@ -547,7 +552,7 @@ export class ExternalSecretProvider {
     const inlineJson = this.env[inlineEnv]?.trim() || "";
     if (inlineJson.length > 0) {
       try {
-        const cacheKey = `${this.providerKind}:inline:${inlineJson}`;
+        const cacheKey = `${this.providerKind}:inline:${sha256(inlineJson)}`;
         if (this.cachedSource?.cacheKey === cacheKey) {
           return this.cachedSource;
         }

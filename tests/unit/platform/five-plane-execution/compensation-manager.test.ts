@@ -113,6 +113,26 @@ test("CompensationManager executes generated steps and returns evidence refs", (
   assert.match(result.evidenceRefs[0]?.uri ?? "", /^compensation:\/\//);
 });
 
+test("CompensationManager rejects duplicate compensation execution by compensationId", () => {
+  let reverseCalls = 0;
+  const manager = new CompensationManager({
+    reverseEffect: () => {
+      reverseCalls += 1;
+      return true;
+    },
+  });
+  const plan = manager.planCompensation(createSideEffect(), createContext());
+
+  const first = manager.executeCompensationSteps(plan, createContext());
+  const duplicate = manager.executeCompensationSteps(plan, createContext());
+
+  assert.equal(first.success, true);
+  assert.equal(duplicate.success, false);
+  assert.equal(duplicate.finalStatus, "failed");
+  assert.match(duplicate.evidenceRefs[0]?.uri ?? "", /duplicate_execution/);
+  assert.equal(reverseCalls, 1);
+});
+
 test("CompensationManager maps compensation states to target side-effect states", () => {
   const manager = new CompensationManager();
 

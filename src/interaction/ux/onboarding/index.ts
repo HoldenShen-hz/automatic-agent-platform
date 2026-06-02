@@ -366,7 +366,7 @@ export class UserPortalService implements UserPortalPort {
         departmentCount: 1,
         requiresSso: false,
       }).domains;
-    const primaryDomain = domains[0] ?? "general_ops";
+    const primaryDomain = domains[0] ?? "general-ops";
     const mode = context == null
       ? null
       : this.resolveMode(context);
@@ -553,7 +553,7 @@ export class UserPortalService implements UserPortalPort {
         riskMultiplier: 1.1,
       },
       {
-        domainId: "engineering_ops",
+        domainId: "engineering-ops",
         keywords: ["code", "engineering", "deploy", "bug", "代码", "研发", "发布", "生产环境", "pipeline", "ci/cd", "测试", "staging"],
         baseScore: 2,
         riskMultiplier: 1.3,
@@ -587,7 +587,7 @@ export class UserPortalService implements UserPortalPort {
       }
 
       // Apply enterprise/integration bonus
-      if (context?.requiresSso && signal.domainId === "engineering_ops") {
+      if (context?.requiresSso && signal.domainId === "engineering-ops") {
         score += 1;
         matchedKeywords.push("enterprise_integration");
       }
@@ -610,10 +610,10 @@ export class UserPortalService implements UserPortalPort {
       }
     }
 
-    // Add general_ops as fallback if no domain matched
+    // Add general-ops as fallback if no domain matched
     if (scores.size === 0 && normalized.length > 0) {
-      scores.set("general_ops", 1);
-      reasons.set("general_ops", ["fallback:general_ops"]);
+      scores.set("general-ops", 1);
+      reasons.set("general-ops", ["fallback:general-ops"]);
     }
 
     const ranked = [...scores.entries()]
@@ -624,7 +624,7 @@ export class UserPortalService implements UserPortalPort {
       })
       .map(([domainId]) => domainId);
 
-    const domains = ranked.length > 0 ? ranked : normalized.length > 0 ? ["general_ops"] : [];
+    const domains = ranked.length > 0 ? ranked : normalized.length > 0 ? ["general-ops"] : [];
     return {
       domains,
       reasons: domains.flatMap((domainId) => reasons.get(domainId) ?? [`fallback:${domainId}`]),
@@ -660,7 +660,7 @@ export class UserPortalService implements UserPortalPort {
       }
       return "high";
     }
-    if (domainId === "engineering_ops" && /(production|prod|发布到生产|线上变更)/i.test(description)) {
+    if (domainId === "engineering-ops" && /(production|prod|发布到生产|线上变更)/i.test(description)) {
       return "high";
     }
     return "medium";

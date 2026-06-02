@@ -14,7 +14,7 @@ function createTestTask(
   now: string,
   tenantId: string | null = null,
   status = "in_progress",
-  divisionId = "general_ops",
+  divisionId = "general-ops",
 ): void {
   taskRepo.insertTask({
     id: taskId,
@@ -46,7 +46,7 @@ function createTestWorkflow(
 ): void {
   workflowRepo.insertWorkflowState({
     taskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: taskId,
     currentStepIndex: 0,
     status,

@@ -37,7 +37,7 @@ test("pmf CLI can report, export, and inspect history", () => {
       AA_PMF_ACTION: "report",
       AA_PMF_PROFILE_NAME: "cli_report",
       AA_PMF_EVALUATED_AT: PMF_EVALUATED_AT,
-      AA_PMF_DIVISION_ID: "general_ops",
+      AA_PMF_DIVISION_ID: "general-ops",
     });
     assert.equal(report.verdict, "pass");
     assert.equal(report.metrics.taskCount, 5);

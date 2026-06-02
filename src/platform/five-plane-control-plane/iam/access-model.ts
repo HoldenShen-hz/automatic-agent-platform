@@ -185,6 +185,18 @@ const ACTION_CAPABILITY_MAP = {
   promote_memory_layer: ["memory:promote"],
 } as const satisfies Record<AuthorizationAction, readonly PlatformCapability[]>;
 
+const PRODUCTION_OPERATOR_REQUIRED_ACTIONS = new Set<AuthorizationAction>([
+  "exec_command",
+  "org_change",
+  "install_extension",
+  "dispatch_execution",
+  "set_isolation_level",
+  "advance_rollout",
+  "promote_improvement",
+  "modify_knowledge_trust",
+  "promote_memory_layer",
+]);
+
 export function listPlatformPrincipalTypes(): readonly PlatformPrincipalType[] {
   return ["user", "agent", "system", "service", "worker", "plugin"];
 }
@@ -309,9 +321,17 @@ export function evaluateAuthorizationContext(input: {
     };
   }
 
+  const scopedTenantId = context?.tenantId ?? null;
+  const originalPrincipalTenantId = context?.originalPrincipal?.tenantId ?? null;
+  const principalTenantId = originalPrincipalTenantId ?? input.principalTenantId ?? null;
+  const tenantScopeRequired = context?.requiresTenantScope === true
+    || scopedTenantId != null
+    || originalPrincipalTenantId != null
+    || context?.manualTakeoverActive === true;
+
   // N-0075: Tenant validation for impersonation/on-behalf-of
-  if (context?.requiresTenantScope === true) {
-    if (context.tenantId == null || context.tenantId.length === 0) {
+  if (tenantScopeRequired) {
+    if (scopedTenantId == null || scopedTenantId.length === 0) {
       return deny(
         "context_aware",
         allLayers,
@@ -321,8 +341,21 @@ export function evaluateAuthorizationContext(input: {
         "Context-aware authorization requires a tenant scope for this action.",
       );
     }
-    const principalTenantId = input.principalTenantId ?? context.originalPrincipal?.tenantId ?? null;
-    if (principalTenantId != null && principalTenantId.length > 0 && principalTenantId !== context.tenantId) {
+    if (principalTenantId == null || principalTenantId.length === 0) {
+      return deny(
+        "context_aware",
+        allLayers,
+        "policy.context_principal_tenant_required",
+        ["context.principal_tenant_required"],
+        {
+          tenantScopeRequired: true,
+          requestedTenant: scopedTenantId,
+          originalPrincipal: context?.originalPrincipal ?? null,
+        },
+        "Tenant-scoped authorization requires the principal tenant to be known.",
+      );
+    }
+    if (principalTenantId !== scopedTenantId) {
       return deny(
         "context_aware",
         allLayers,
@@ -330,9 +363,9 @@ export function evaluateAuthorizationContext(input: {
         ["context.tenant_mismatch"],
         {
           tenantScopeRequired: true,
-          requestedTenant: context.tenantId,
+          requestedTenant: scopedTenantId,
           principalTenantId,
-          originalPrincipal: context.originalPrincipal ?? null,
+          originalPrincipal: context?.originalPrincipal ?? null,
         },
         "On-behalf-of authorization failed: original principal tenant does not match target tenant.",
       );
@@ -341,7 +374,7 @@ export function evaluateAuthorizationContext(input: {
 
   if (
     context?.environment === "production"
-    && ["exec_command", "org_change", "install_extension"].includes(input.action)
+    && PRODUCTION_OPERATOR_REQUIRED_ACTIONS.has(input.action)
     && !input.roles.some((role) => role === "platform_admin" || role === "human_operator" || role === "service_operator")
   ) {
     return deny(
@@ -349,9 +382,37 @@ export function evaluateAuthorizationContext(input: {
       allLayers,
       "policy.context_production_operator_required",
       ["context.production_operator_required"],
-      { environment: "production", requiredRoles: ["platform_admin", "human_operator", "service_operator"] },
+      {
+        environment: "production",
+        requiredRoles: ["platform_admin", "human_operator", "service_operator"],
+        action: input.action,
+      },
       "Production-scoped execution requires an operator-grade principal role.",
     );
+  }
+
+  if (
+    context?.manualTakeoverActive === true
+    && (
+      scopedTenantId == null
+      || originalPrincipalTenantId == null
+      || originalPrincipalTenantId !== scopedTenantId
+    )
+  ) {
+    if (context.tenantId == null || context.tenantId.length === 0) {
+      return deny(
+        "context_aware",
+        allLayers,
+        "policy.context_manual_takeover_tenant_required",
+        ["context.manual_takeover_tenant_required"],
+        {
+          manualTakeoverActive: true,
+          requestedTenant: scopedTenantId,
+          originalPrincipal: context.originalPrincipal ?? null,
+        },
+        "Manual takeover requires a verified original-principal tenant scope.",
+      );
+    }
   }
 
   const requiredCapabilities = inferCapabilitiesForAction(input.action);

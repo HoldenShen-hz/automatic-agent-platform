@@ -53,7 +53,7 @@ test("integration: Goal decomposition with custom LLM plan generator", async () 
         tasks: [
           {
             taskId: `${goal.goalId}:custom_1`,
-            domainId: "engineering_ops",
+            domainId: "engineering-ops",
             description: "Custom task 1",
             inputs: {},
             expectedOutputs: ["result"],
@@ -63,7 +63,7 @@ test("integration: Goal decomposition with custom LLM plan generator", async () 
               estimatedCostUsd: 0.2,
               confidence: "high",
               sampleCount: 10,
-              divisionId: "engineering_ops",
+              divisionId: "engineering-ops",
               basedOn: "division_avg",
             },
           },
@@ -179,7 +179,7 @@ test("integration: Goal decomposition handles cycle detection", async () => {
         tasks: [
           {
             taskId: `${goal.goalId}:cycle_1`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "Cycle task 1",
             inputs: {},
             expectedOutputs: ["result"],
@@ -196,7 +196,7 @@ test("integration: Goal decomposition handles cycle detection", async () => {
           },
           {
             taskId: `${goal.goalId}:cycle_2`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "Cycle task 2",
             inputs: {},
             expectedOutputs: ["result"],
@@ -267,7 +267,7 @@ test("integration: Goal decomposition topologically sorts DAG", async () => {
         tasks: [
           {
             taskId: `${goal.goalId}:start`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "Start task",
             inputs: {},
             expectedOutputs: ["result"],
@@ -283,7 +283,7 @@ test("integration: Goal decomposition topologically sorts DAG", async () => {
           },
           {
             taskId: `${goal.goalId}:middle`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "Middle task",
             inputs: {},
             expectedOutputs: ["result"],
@@ -300,7 +300,7 @@ test("integration: Goal decomposition topologically sorts DAG", async () => {
           },
           {
             taskId: `${goal.goalId}:end`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "End task",
             inputs: {},
             expectedOutputs: ["result"],
@@ -370,7 +370,7 @@ test("integration: Goal decomposition computes parallel task groups", async () =
         tasks: [
           {
             taskId: `${goal.goalId}:task_a`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "Task A",
             inputs: {},
             expectedOutputs: ["result"],
@@ -386,7 +386,7 @@ test("integration: Goal decomposition computes parallel task groups", async () =
           },
           {
             taskId: `${goal.goalId}:task_b`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "Task B",
             inputs: {},
             expectedOutputs: ["result"],

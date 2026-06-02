@@ -60,7 +60,7 @@ function createTestAssessment(taskId: string, situationRef: string) {
       factors: ["multi_step", "review_required"],
     },
     routingDecision: {
-      division: "general_ops",
+      division: "general-ops",
       workflow: "single_division_multi_step_orchestration",
       rationale: "test routing",
     },
@@ -426,8 +426,8 @@ test("Planner WorkflowPlanner preserves workflow division ID in steps", () => {
 
     const result = planner.plan(input);
 
-    assert.equal(result.workflow.divisionId, "general_ops");
-    assert.equal(result.executionSteps[0]!.divisionId, "general_ops");
+    assert.equal(result.workflow.divisionId, "general-ops");
+    assert.equal(result.executionSteps[0]!.divisionId, "general-ops");
   } finally {
     ctx.cleanup();
   }

@@ -41,6 +41,7 @@ export interface RateLimitDecision {
 interface TokenBucket {
   tokens: number;
   lastRefillAt: number;
+  lastActivityAt: number;
 }
 
 /**
@@ -56,6 +57,7 @@ type RateLimitKey = string;
  */
 export class RateLimiter {
   private static readonly MAX_BUCKETS = 10_000;
+  private static readonly BUCKET_IDLE_TTL_MULTIPLIER = 2;
   private readonly maxRequests: number;
   private readonly windowMs: number;
   private readonly perTenant: boolean;
@@ -95,6 +97,7 @@ export class RateLimiter {
    */
   public check(key: RateLimitKey): RateLimitDecision {
     const now = Date.now();
+    this.pruneInactiveBuckets(now);
     let bucket = this.buckets.get(key);
 
     // Initialize bucket if needed
@@ -102,6 +105,7 @@ export class RateLimiter {
       bucket = {
         tokens: this.maxRequests - 1, // Consume one token for this request
         lastRefillAt: now,
+        lastActivityAt: now,
       };
       this.buckets.set(key, bucket);
       this.evictIfNeeded();
@@ -119,6 +123,7 @@ export class RateLimiter {
       // Window has passed, refill all tokens
       bucket.tokens = this.maxRequests - 1; // Consume one token
       bucket.lastRefillAt = now;
+      bucket.lastActivityAt = now;
       return {
         allowed: true,
         remaining: this.maxRequests - 1,
@@ -138,6 +143,7 @@ export class RateLimiter {
     // Check if we have tokens available
     if (bucket.tokens <= 0) {
       const retryAfterMs = this.windowMs - elapsed;
+      bucket.lastActivityAt = now;
       return {
         allowed: false,
         remaining: 0,
@@ -148,6 +154,7 @@ export class RateLimiter {
 
     // Consume a token
     bucket.tokens--;
+    bucket.lastActivityAt = now;
     return {
       allowed: true,
       remaining: bucket.tokens,
@@ -184,10 +191,26 @@ export class RateLimiter {
     };
   }
 
+  private pruneInactiveBuckets(now: number): void {
+    const idleTtlMs = Math.max(this.windowMs, this.windowMs * RateLimiter.BUCKET_IDLE_TTL_MULTIPLIER);
+    for (const [key, bucket] of this.buckets.entries()) {
+      if (now - bucket.lastActivityAt >= idleTtlMs) {
+        this.buckets.delete(key);
+      }
+    }
+  }
+
   private evictIfNeeded(): void {
     while (this.buckets.size > RateLimiter.MAX_BUCKETS) {
-      const oldestKey = this.buckets.keys().next().value;
-      if (typeof oldestKey !== "string") {
+      let oldestKey: string | null = null;
+      let oldestActivity = Number.POSITIVE_INFINITY;
+      for (const [key, bucket] of this.buckets.entries()) {
+        if (bucket.lastActivityAt < oldestActivity) {
+          oldestActivity = bucket.lastActivityAt;
+          oldestKey = key;
+        }
+      }
+      if (oldestKey == null) {
         break;
       }
       this.buckets.delete(oldestKey);

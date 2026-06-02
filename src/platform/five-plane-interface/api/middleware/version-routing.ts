@@ -174,4 +174,8 @@ export class VersionRoutingMiddleware {
 /**
  * Global version routing middleware instance.
  */
-export const globalVersionRoutingMiddleware = new VersionRoutingMiddleware();
+export function createVersionRoutingMiddleware(config: Partial<VersionRoutingConfig> = {}): VersionRoutingMiddleware {
+  return new VersionRoutingMiddleware(config);
+}
+
+export const globalVersionRoutingMiddleware = Object.freeze(createVersionRoutingMiddleware());

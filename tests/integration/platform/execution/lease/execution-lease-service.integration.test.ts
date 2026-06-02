@@ -45,6 +45,7 @@ test("ExecutionLeaseService acquires and releases lease", () => {
     const released = service.releaseLease({
       leaseId: granted.lease!.id,
       workerId: "worker-lease",
+      fencingToken: granted.lease!.fencingToken,
       occurredAt: "2026-04-03T10:00:30.000Z",
     });
 
@@ -120,7 +121,7 @@ test("ExecutionLeaseService renews lease", () => {
     const renewed = service.renewLease({
       leaseId: granted.lease!.id,
       workerId: "worker-renew",
-      ttlMs: 60_000,
+      ttlMs: 30_000,
       occurredAt: "2026-04-03T12:00:15.000Z",
     });
 
@@ -197,6 +198,7 @@ test("ExecutionLeaseService rejects stale write access", () => {
     service.releaseLease({
       leaseId: first.lease!.id,
       workerId: "worker-first",
+      fencingToken: first.lease!.fencingToken,
       occurredAt: "2026-04-03T14:00:30.000Z",
     });
 

@@ -7,6 +7,7 @@
  *   npm run pack-create -- --pack-id my-pack --domain my-domain --owner me
  */
 
+import { writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 import { validateBusinessPackManifest, type BusinessPackManifest } from "../pack-sdk/pack-manifest.js";
@@ -23,8 +24,18 @@ interface PackCreateOptions {
   output?: string;
 }
 
-function parseArgs(): PackCreateOptions {
-  const args = process.argv.slice(2);
+const PACK_CREATE_TOKEN_PATTERN = /^[A-Za-z0-9._:-]+$/u;
+
+function parseListValue(value: string, label: "capabilities" | "tools"): string[] {
+  const entries = [...new Set(value.split(",").map((entry) => entry.trim()).filter((entry) => entry.length > 0))];
+  if (entries.length === 0 || entries.some((entry) => !PACK_CREATE_TOKEN_PATTERN.test(entry))) {
+    throw new Error(`Invalid --${label} value`);
+  }
+  return entries;
+}
+
+export function parsePackCreateArgs(argv = process.argv.slice(2)): PackCreateOptions {
+  const args = argv;
   const opts: PackCreateOptions = {
     packId: "",
     domain: "",
@@ -46,10 +57,10 @@ function parseArgs(): PackCreateOptions {
       opts.version = next;
       i++;
     } else if (arg === "--capabilities" && next !== undefined) {
-      opts.capabilities = next.split(",");
+      opts.capabilities = parseListValue(next, "capabilities");
       i++;
     } else if (arg === "--tools" && next !== undefined) {
-      opts.tools = next.split(",");
+      opts.tools = parseListValue(next, "tools");
       i++;
     } else if (arg === "--output" && next !== undefined) {
       opts.output = next;
@@ -59,7 +70,7 @@ function parseArgs(): PackCreateOptions {
   return opts;
 }
 
-function buildManifest(opts: PackCreateOptions): BusinessPackManifest {
+export function buildPackCreateManifest(opts: PackCreateOptions): BusinessPackManifest {
   const manifest: BusinessPackManifest = {
     packId: opts.packId,
     version: opts.version ?? "1.0.0",
@@ -76,20 +87,19 @@ function buildManifest(opts: PackCreateOptions): BusinessPackManifest {
 }
 
 function main(): number {
-  const opts = parseArgs();
+  const opts = parsePackCreateArgs();
   if (!opts.packId || !opts.domain || !opts.owner) {
     process.stderr.write("Error: --pack-id, --domain, and --owner are required\n");
     return CLI_EXIT_FAILURE;
   }
 
-  const manifest = buildManifest(opts);
+  const manifest = buildPackCreateManifest(opts);
   const validated = validateBusinessPackManifest(manifest);
 
-  const output = opts.output
-    ? JSON.stringify(validated, null, 2)
-    : JSON.stringify({ packId: validated.packId, version: validated.version, domainId: validated.domainId }, null, 2);
-
-  process.stdout.write(`${output}\n`);
+  if (opts.output) {
+    writeFileSync(opts.output, `${JSON.stringify(validated, null, 2)}\n`);
+  }
+  process.stdout.write(`${JSON.stringify({ packId: validated.packId, version: validated.version, domainId: validated.domainId, outputPath: opts.output ?? null }, null, 2)}\n`);
   return CLI_EXIT_SUCCESS;
 }
 

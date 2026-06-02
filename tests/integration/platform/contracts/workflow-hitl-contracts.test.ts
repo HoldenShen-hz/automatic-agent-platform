@@ -28,7 +28,7 @@ test("contract: workflow cannot resume before its sleep window is due", () => {
     const now = nowIso();
     h.store.insertWorkflowState({
       taskId: "task_contract_sleep_1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_contract",
       currentStepIndex: 1,
       status: "running",
@@ -68,7 +68,7 @@ test("contract: expired workflow sleep with fail policy must move workflow into 
     const now = nowIso();
     h.store.insertWorkflowState({
       taskId: "task_contract_sleep_2",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_contract",
       currentStepIndex: 1,
       status: "running",

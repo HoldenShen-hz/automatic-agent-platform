@@ -263,7 +263,7 @@ test("EventRepository: list events for task", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Test Task",
         status: "in_progress",

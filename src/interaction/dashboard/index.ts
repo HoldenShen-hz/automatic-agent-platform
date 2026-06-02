@@ -192,7 +192,7 @@ function formatUsd(value: number): string {
 function buildAgentCards(items: readonly TaskBoardItem[]): AgentHealthCard[] {
   const grouped = new Map<string, TaskBoardItem[]>();
   for (const item of items) {
-    const key = item.divisionId ?? "general_ops";
+    const key = item.divisionId ?? "general-ops";
     grouped.set(key, [...(grouped.get(key) ?? []), item]);
   }
   return [...grouped.entries()].map(([domainId, groupedItems], index) => {
@@ -290,7 +290,7 @@ export class DashboardAggregationService implements DashboardPort {
   }
 
   public buildDomainAdminDashboard(domainId: string, limit = 50): DomainAdminDashboard {
-    const tasks = this.options.taskSource.list(limit).filter((item) => (item.divisionId ?? "general_ops") === domainId);
+    const tasks = this.options.taskSource.list(limit).filter((item) => (item.divisionId ?? "general-ops") === domainId);
     const approvals = this.buildAttentionQueue(tasks, this.options.systemSource.build())
       .filter((item) => item.itemType === "approval_needed");
     return {
@@ -344,7 +344,7 @@ export class DashboardAggregationService implements DashboardPort {
     const system = this.options.systemSource.build();
     const grouped = new Map<string, TaskBoardItem[]>();
     for (const item of tasks) {
-      const key = item.divisionId ?? "general_ops";
+      const key = item.divisionId ?? "general-ops";
       grouped.set(key, [...(grouped.get(key) ?? []), item]);
     }
 
@@ -357,7 +357,7 @@ export class DashboardAggregationService implements DashboardPort {
         const incidentsOpen = items.filter((item) => item.taskStatus === "failed").length;
         return {
           departmentId,
-          agentCount: Math.max(1, new Set(items.map((item) => item.divisionId ?? "general_ops")).size),
+          agentCount: Math.max(1, new Set(items.map((item) => item.divisionId ?? "general-ops")).size),
           activeWorkflows: items.filter((item) => item.taskStatus !== "done").length,
           healthScore: Math.max(20, 100 - incidentsOpen * 20),
           incidentsOpen,
@@ -380,7 +380,7 @@ export class DashboardAggregationService implements DashboardPort {
           actionOptions: ["inspect", "retry"],
           actionControls: this.buildActionControls("incident", "high", ["inspect", "retry"]),
           createdAt: task.updatedAt,
-          domainId: task.divisionId ?? "general_ops",
+          domainId: task.divisionId ?? "general-ops",
         });
       }
       if (task.taskStatus === "pending") {
@@ -393,7 +393,7 @@ export class DashboardAggregationService implements DashboardPort {
           actionOptions: ["open_task", "prioritize"],
           actionControls: this.buildActionControls("approval_needed", "normal", ["open_task", "prioritize"]),
           createdAt: task.updatedAt,
-          domainId: task.divisionId ?? "general_ops",
+          domainId: task.divisionId ?? "general-ops",
         });
       }
     }

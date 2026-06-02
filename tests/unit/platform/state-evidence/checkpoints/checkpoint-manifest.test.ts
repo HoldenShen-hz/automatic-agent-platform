@@ -317,8 +317,8 @@ describe("CheckpointManifest", () => {
         requireCombinedChecksum: true,
       });
 
-      assert.strictEqual(result.valid, true);
-      assert.ok(result.warnings.some((w) => w.includes("combined_checksum_missing")));
+      assert.strictEqual(result.valid, false);
+      assert.ok(result.errors.some((w) => w.includes("combined_checksum_missing")));
     });
 
     it("should reject non-object metadata", () => {
@@ -443,7 +443,9 @@ describe("CheckpointManifest", () => {
           checksum: createHash("sha256").update("content1").digest("hex"),
         },
       ];
-      const combinedChecksum = computeCombinedChecksum(checkpointRefs);
+      const combinedChecksum = computeCombinedChecksum(checkpointRefs, {
+        manifestId: "manifest-001",
+      });
 
       const manifest: CheckpointManifest = {
         manifestId: "manifest-001",
@@ -524,7 +526,9 @@ describe("CheckpointManifest", () => {
           checksum: createHash("sha256").update("content1").digest("hex"),
         },
       ];
-      const combinedChecksum = computeCombinedChecksum(checkpointRefs);
+      const combinedChecksum = computeCombinedChecksum(checkpointRefs, {
+        manifestId: "manifest-001",
+      });
 
       const manifest: CheckpointManifest = {
         manifestId: "manifest-001",

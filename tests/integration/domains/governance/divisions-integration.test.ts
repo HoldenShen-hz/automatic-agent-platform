@@ -7,13 +7,13 @@ import { IntakeRouter } from "../../../../src/platform/five-plane-orchestration/
 test("division registry loads the real overlapping routing definitions", () => {
   const registry = loadConfiguredDivisionRegistry();
 
-  assert.ok(registry.divisions.has("engineering_ops"));
+  assert.ok(registry.divisions.has("engineering-ops"));
   assert.ok(registry.divisions.has("support"));
   assert.ok(registry.divisions.has("operations"));
   assert.ok(registry.divisions.has("devops"));
 });
 
-test("intake router deterministically prefers engineering_ops over support for overlapping fix triggers", () => {
+test("intake router deterministically prefers engineering-ops over support for overlapping fix triggers", () => {
   const router = new IntakeRouter({
     divisionRegistry: loadConfiguredDivisionRegistry(),
   });
@@ -22,8 +22,8 @@ test("intake router deterministically prefers engineering_ops over support for o
     request: "Fix the production issue that is blocking checkout for users.",
   });
 
-  assert.equal(decision.divisionId, "engineering_ops");
-  assert.ok(decision.routeTrace.some((item) => item.includes("engineering_ops:fix")));
+  assert.equal(decision.divisionId, "engineering-ops");
+  assert.ok(decision.routeTrace.some((item) => item.includes("engineering-ops:fix")));
   assert.ok(decision.routeTrace.some((item) => item.includes("support:issue") || item.includes("support:fix")));
 });
 

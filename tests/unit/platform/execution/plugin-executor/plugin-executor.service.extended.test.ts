@@ -11,7 +11,7 @@
 
 import assert from "node:assert/strict";
 import { generateKeyPairSync, sign as signDetached } from "node:crypto";
-import test from "node:test";
+import test, { mock } from "node:test";
 
 import { PluginExecutorService, type ExecutionContext } from "../../../../../src/platform/five-plane-execution/plugin-executor/index.js";
 import type { PluginManifest, PluginLifecycleHooks } from "../../../../../src/domains/registry/plugin-spi.js";
@@ -28,6 +28,14 @@ registerPluginSigningVerificationKey({
   keyId: TEST_SIGNING_KEY_ID,
   publicKeyPem: TEST_SIGNING_PUBLIC_KEY.export({ type: "spki", format: "pem" }).toString(),
   algorithm: "ed25519",
+});
+
+test.afterEach(() => {
+  try {
+    mock.timers.reset();
+  } catch {
+    // Only some tests enable mocked timers.
+  }
 });
 
 type SignedPluginManifest = PluginManifest & {
@@ -730,6 +738,7 @@ test("PluginExecutorService handles none sandbox tier [plugin-executor.service.e
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("PluginExecutorService execute uses manifest timeout [plugin-executor.service.extended]", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({
@@ -750,7 +759,9 @@ test("PluginExecutorService execute uses manifest timeout [plugin-executor.servi
   await service.activate("test-plugin");
 
   const context = createTestContext({ sandboxTier: "process" });
-  const result = await service.execute("test-plugin", "retriever", context, {});
+  const executionPromise = service.execute("test-plugin", "retriever", context, {});
+  mock.timers.tick(500);
+  const result = await executionPromise;
 
   assert.equal(result.status, "timeout");
   assert.ok(result.error?.includes("timed out"));

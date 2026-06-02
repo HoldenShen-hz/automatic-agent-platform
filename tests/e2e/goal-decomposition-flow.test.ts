@@ -138,7 +138,7 @@ test("E2E Goal Decomposition: release launch uses template decomposition", async
 
     // Verify release-specific domains
     const domains = result.tasks.map((t) => t.domainId);
-    assert.ok(domains.includes("engineering_ops"), "Should include engineering_ops");
+    assert.ok(domains.includes("engineering-ops"), "Should include engineering-ops");
     assert.ok(domains.includes("quality_assurance"), "Should include quality_assurance");
     assert.ok(domains.includes("operations"), "Should include operations");
     assert.ok(domains.includes("data_analysis"), "Should include data_analysis");
@@ -470,7 +470,7 @@ test("E2E Goal Decomposition: incident response template decomposes correctly", 
     // Verify incident-specific domains
     const domains = result.tasks.map((t) => t.domainId);
     assert.ok(domains.includes("operations"), "Should include operations");
-    assert.ok(domains.includes("engineering_ops"), "Should include engineering_ops");
+    assert.ok(domains.includes("engineering-ops"), "Should include engineering-ops");
     assert.ok(domains.includes("security"), "Should include security");
     assert.ok(domains.includes("communications"), "Should include communications");
 

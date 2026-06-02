@@ -72,7 +72,7 @@ test("runtime recovery service groups stale and approval-blocked runs by divisio
         id: "task-general-stale",
         parentId: null,
         rootId: "task-general-stale",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "General stale task",
         status: "in_progress",
         source: "user",
@@ -143,7 +143,7 @@ test("runtime recovery service groups stale and approval-blocked runs by divisio
         id: "task-engineering-blocked",
         parentId: null,
         rootId: "task-engineering-blocked",
-        divisionId: "engineering_ops",
+        divisionId: "engineering-ops",
         title: "Engineering blocked task",
         status: "in_progress",
         source: "user",
@@ -230,12 +230,12 @@ test("runtime recovery service groups stale and approval-blocked runs by divisio
       })),
       [
         {
-          divisionId: "engineering_ops",
+          divisionId: "engineering-ops",
           blockedApprovalCount: 1,
           staleExecutionCount: 0,
         },
         {
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           blockedApprovalCount: 0,
           staleExecutionCount: 1,
         },

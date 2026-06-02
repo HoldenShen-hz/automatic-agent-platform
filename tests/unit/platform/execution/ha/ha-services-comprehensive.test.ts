@@ -731,7 +731,7 @@ test("LeaseReclaimerService - getWorkerId returns nodeId [ha-services-comprehens
   });
 
   const workerId = service.getWorkerId();
-  assert.ok(workerId.startsWith("lease-reclaimer-"));
+  assert.equal(workerId, "lease-reclaimer");
 
   service.dispose();
 });
@@ -966,6 +966,108 @@ test("StuckRunSweeperService - cleaned_up runs are filtered in sweep [ha-service
 
   const affected = await service.sweepOnce();
   assert.equal(affected.length, 0);
+
+  service.stop();
+  service.dispose();
+});
+
+test("StuckRunSweeperService - reportProgress clears warning state after progress resumes [ha-services-comprehensive]", async () => {
+  const clock = new TestClock(0);
+  clock.install();
+
+  const service = new StuckRunSweeperService({
+    config: { sweepIntervalMs: 60_000, stuckThresholdMs: 60_000, killAfterWarningMs: 30_000, cleanupAfterKillMs: 60_000, maxRunsPerSweep: 100 },
+  });
+
+  service.start();
+  service.trackRun("exec-1", "task-1", "sess-1");
+  clock.advance(61_000);
+  await service.sweepOnce();
+
+  let tracked = service.getTrackedRuns();
+  assert.equal(tracked[0]?.status, "warning");
+
+  service.reportProgress("exec-1", "task-1b", "sess-2");
+  tracked = service.getTrackedRuns();
+  assert.equal(tracked[0]?.status, "pending");
+  assert.equal(tracked[0]?.warningIssuedAt, null);
+  assert.equal(tracked[0]?.taskId, "task-1b");
+  assert.equal(tracked[0]?.sessionId, "sess-2");
+
+  service.stop();
+  service.dispose();
+});
+
+test("StuckRunSweeperService - kill callback failure does not mark run killed [ha-services-comprehensive]", async () => {
+  const clock = new TestClock(0);
+  clock.install();
+
+  const service = new StuckRunSweeperService({
+    config: { sweepIntervalMs: 60_000, stuckThresholdMs: 60_000, killAfterWarningMs: 30_000, cleanupAfterKillMs: 60_000, maxRunsPerSweep: 100 },
+    onKillExecution: async () => false,
+  });
+
+  service.start();
+  service.trackRun("exec-1", "task-1", null);
+  clock.advance(61_000);
+  await service.sweepOnce();
+  clock.advance(31_000);
+  await service.sweepOnce();
+
+  const tracked = service.getTrackedRuns();
+  assert.equal(tracked[0]?.status, "warning");
+  assert.equal(tracked[0]?.killedAt, null);
+
+  service.stop();
+  service.dispose();
+});
+
+test("StuckRunSweeperService - cleanup callback failure preserves killed state [ha-services-comprehensive]", async () => {
+  const clock = new TestClock(0);
+  clock.install();
+
+  const service = new StuckRunSweeperService({
+    config: { sweepIntervalMs: 60_000, stuckThresholdMs: 60_000, killAfterWarningMs: 30_000, cleanupAfterKillMs: 30_000, maxRunsPerSweep: 100 },
+    onKillExecution: async () => true,
+    onCleanupExecution: async () => false,
+  });
+
+  service.start();
+  service.trackRun("exec-1", "task-1", null);
+  clock.advance(61_000);
+  await service.sweepOnce();
+  clock.advance(31_000);
+  await service.sweepOnce();
+  clock.advance(31_000);
+  await service.sweepOnce();
+
+  const tracked = service.getTrackedRuns();
+  assert.equal(tracked[0]?.status, "killed");
+  assert.equal(service.getTrackedRunCount(), 1);
+
+  service.stop();
+  service.dispose();
+});
+
+test("StuckRunSweeperService - monotonic sweep clock tolerates wall-clock rollback [ha-services-comprehensive]", async () => {
+  const clock = new TestClock(0);
+  clock.install();
+
+  const service = new StuckRunSweeperService({
+    config: { sweepIntervalMs: 60_000, stuckThresholdMs: 60_000, killAfterWarningMs: 30_000, cleanupAfterKillMs: 60_000, maxRunsPerSweep: 100 },
+    onKillExecution: async () => true,
+  });
+
+  service.start();
+  service.trackRun("exec-1", "task-1", null);
+  clock.advance(61_000);
+  await service.sweepOnce();
+  (clock as unknown as { _now: number })._now = 30_000;
+  clock.advance(61_000);
+  await service.sweepOnce();
+
+  const tracked = service.getTrackedRuns();
+  assert.equal(tracked[0]?.status, "killed");
 
   service.stop();
   service.dispose();

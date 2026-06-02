@@ -5,7 +5,10 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-const mode = normalizeMode(process.argv[2] ?? "detect-only");
+const mode = normalizeMode(process.argv[2] ?? "enforce");
+const EXIT_CODE_SUCCESS = 0;
+const EXIT_CODE_ENFORCE_FAILURE = 1;
+const EXIT_CODE_DETECT_FINDINGS = 2;
 const artifactPath = join(
   root,
   "artifacts/validation/architecture/architecture-boundary-scan-report.json"
@@ -119,7 +122,7 @@ writeFileSync(sarifArtifactPath, `${JSON.stringify(buildSarifReport(report), nul
 
 if (findings.length === 0) {
   console.log(`architecture boundary scan passed: ${artifactPath}`);
-  process.exit(0);
+  process.exit(EXIT_CODE_SUCCESS);
 }
 
 console.log(`architecture boundary scan ${mode}: ${artifactPath}`);
@@ -128,8 +131,9 @@ for (const finding of findings) {
 }
 
 if (mode === "enforce") {
-  process.exit(1);
+  process.exit(EXIT_CODE_ENFORCE_FAILURE);
 }
+process.exit(EXIT_CODE_DETECT_FINDINGS);
 
 function buildSarifReport(scanReport) {
   return {
@@ -181,7 +185,16 @@ function normalizeMode(value) {
 }
 
 function matchesRule(content, rule) {
-  return rule.matchers.some((matcher) => content.includes(matcher));
+  const importLikeStatements = content.matchAll(
+    /(?:^|[;\n\r])\s*(?:import[\s\S]*?\bfrom\s*["'][^"']+["']|import\s*["'][^"']+["']|(?:const|let|var)\s+[\w$]+\s*=\s*require\(\s*["'][^"']+["']\s*\)|require\(\s*["'][^"']+["']\s*\))/gmu,
+  );
+  for (const statement of importLikeStatements) {
+    const value = statement[0];
+    if (rule.matchers.some((matcher) => value.includes(matcher))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function listFiles(relativePath, predicate = () => true) {

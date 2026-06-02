@@ -23,6 +23,7 @@ import {
   describeCliAuthoritativeStoragePlan,
   withCliStorageBackendAsync,
 } from "./authoritative-storage.js";
+import { readCliProcessEnv } from "./cli-env.js";
 import { loadAuthoritativeStorageAdminCliEnv } from "../../platform/five-plane-control-plane/config-center/ops-cli-env.js";
 import { MigrationRunner } from "../../platform/five-plane-state-evidence/truth/migration-runner.js";
 
@@ -32,7 +33,8 @@ import { MigrationRunner } from "../../platform/five-plane-state-evidence/truth/
  * Executes the requested storage administration action and outputs the result as JSON.
  */
 async function main(): Promise<void> {
-  const envConfig = loadAuthoritativeStorageAdminCliEnv(process.env, process.argv.slice(2));
+  const env = readCliProcessEnv();
+  const envConfig = loadAuthoritativeStorageAdminCliEnv(env, process.argv.slice(2));
   const dbPath = envConfig.dbPath;
   const action = envConfig.action;
   const plan = describeCliAuthoritativeStoragePlan(dbPath);
@@ -46,7 +48,7 @@ async function main(): Promise<void> {
 
     // R31-41 FIX: Require --confirm flag for down migrations to prevent accidental data loss
     if (action === "down") {
-      const confirmFlag = process.env.AA_STORAGE_DOWN_CONFIRM ?? "";
+      const confirmFlag = env.AA_STORAGE_DOWN_CONFIRM ?? "";
       if (confirmFlag !== "yes") {
         process.stdout.write(JSON.stringify({
           error: "admin_storage.down_migration_requires_confirmation",

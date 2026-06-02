@@ -61,7 +61,7 @@ export interface HandoffBuilderInput {
  * });
  */
 export function buildFromStepResults(input: HandoffBuilderInput): AgentHandoff {
-  const factLayer = buildFactLayer(input.stepOutputs, input.primaryRefs);
+  const factLayer = buildFactLayer(input.stepOutputs, input.primaryRefs, input.completedSteps);
   const stateLayer = buildStateLayer(input);
   const planDelta = buildPlanDelta(input);
 
@@ -83,28 +83,32 @@ export function buildFromStepResults(input: HandoffBuilderInput): AgentHandoff {
 function buildFactLayer(
   stepOutputs: readonly DualChannelStepOutput[],
   primaryRefs: string[],
+  completedSteps: readonly PlanStep[],
 ): FactLayer {
   const toolCallRecords: ToolCallRecord[] = [];
+  const completedStepById = new Map(completedSteps.map((step) => [step.stepId, step]));
 
   for (const output of stepOutputs) {
     // Extract artifact refs from step output
     const artifacts = output.userFacingResult.artifacts ?? [];
+    const step = completedStepById.get(output.stepId);
 
     // Infer tool call records from telemetry (durationMs > 0 indicates real tool use)
     if (output.systemTelemetry.durationMs > 0) {
       const firstArtifact = artifacts[0] ?? null;
+      const tokenUsage = extractTokenUsage(output);
       const record: ToolCallRecord = {
         callId: output.stepId,
-        toolName: inferToolName(output.userFacingResult.summary),
-        inputArgs: {},
-        rawOutput: output.userFacingResult.summary,
-        parsedOutput: null,
+        toolName: resolveToolName(output, step),
+        inputArgs: extractInputArgs(output, step),
+        rawOutput: extractRawOutput(output),
+        parsedOutput: extractParsedOutput(output),
         success: output.systemTelemetry.validationPassed,
         errorCode: output.systemTelemetry.validationPassed ? null : "handoff.tool_call_failed",
         errorMessage: output.systemTelemetry.validationPassed ? null : output.userFacingResult.summary,
         durationMs: output.systemTelemetry.durationMs,
-        tokenUsage: { input: 0, output: output.systemTelemetry.tokensUsed },
-        sandboxViolation: false,
+        tokenUsage,
+        sandboxViolation: extractSandboxViolation(output),
         retryAttempt: output.systemTelemetry.retryCount,
         outputRef: firstArtifact,
       };
@@ -187,4 +191,92 @@ function inferToolName(summary: string): string {
     return "git";
   }
   return "unknown";
+}
+
+function resolveToolName(output: DualChannelStepOutput, step: PlanStep | undefined): string {
+  const explicitToolName = firstNonEmptyString(
+    Reflect.get(output, "toolName"),
+    Reflect.get(output.systemTelemetry as Record<string, unknown>, "toolName"),
+    Reflect.get(output.systemTelemetry as Record<string, unknown>, "tool"),
+    Reflect.get(output.userFacingResult as Record<string, unknown>, "toolName"),
+    step?.action,
+  );
+  return explicitToolName ?? inferToolName(output.userFacingResult.summary);
+}
+
+function extractInputArgs(output: DualChannelStepOutput, step: PlanStep | undefined): Record<string, unknown> {
+  const candidates = [
+    Reflect.get(output, "inputArgs"),
+    Reflect.get(output.systemTelemetry as Record<string, unknown>, "inputArgs"),
+    Reflect.get(output.userFacingResult as Record<string, unknown>, "inputArgs"),
+    step?.inputs,
+  ];
+  for (const candidate of candidates) {
+    if (candidate != null && typeof candidate === "object" && !Array.isArray(candidate)) {
+      return { ...(candidate as Record<string, unknown>) };
+    }
+  }
+  return {};
+}
+
+function extractRawOutput(output: DualChannelStepOutput): string {
+  return firstNonEmptyString(
+    Reflect.get(output, "rawOutput"),
+    Reflect.get(output.userFacingResult as Record<string, unknown>, "rawOutput"),
+    output.userFacingResult.summary,
+  ) ?? output.userFacingResult.summary;
+}
+
+function extractParsedOutput(output: DualChannelStepOutput): Record<string, unknown> | null {
+  const candidate = Reflect.get(output.userFacingResult as Record<string, unknown>, "parsedOutput")
+    ?? Reflect.get(output.systemTelemetry as Record<string, unknown>, "parsedOutput");
+  if (candidate != null && typeof candidate === "object" && !Array.isArray(candidate)) {
+    return { ...(candidate as Record<string, unknown>) };
+  }
+  return null;
+}
+
+function extractTokenUsage(output: DualChannelStepOutput): ToolCallRecord["tokenUsage"] {
+  const telemetry = output.systemTelemetry as Record<string, unknown>;
+  const nested = Reflect.get(telemetry, "tokenUsage");
+  const inputTokens = firstFiniteNumber(
+    Reflect.get(nested as Record<string, unknown> | undefined ?? {}, "input"),
+    Reflect.get(telemetry, "inputTokens"),
+    Reflect.get(telemetry, "promptTokens"),
+  ) ?? 0;
+  const outputTokens = firstFiniteNumber(
+    Reflect.get(nested as Record<string, unknown> | undefined ?? {}, "output"),
+    Reflect.get(telemetry, "outputTokens"),
+    output.systemTelemetry.tokensUsed,
+  ) ?? output.systemTelemetry.tokensUsed;
+  return { input: inputTokens, output: outputTokens };
+}
+
+function extractSandboxViolation(output: DualChannelStepOutput): boolean {
+  const telemetry = output.systemTelemetry as Record<string, unknown>;
+  const userFacing = output.userFacingResult as Record<string, unknown>;
+  return Boolean(
+    Reflect.get(output, "sandboxViolation")
+    ?? Reflect.get(telemetry, "sandboxViolation")
+    ?? Reflect.get(userFacing, "sandboxViolation")
+    ?? false,
+  );
+}
+
+function firstNonEmptyString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function firstFiniteNumber(...values: unknown[]): number | null {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+  }
+  return null;
 }

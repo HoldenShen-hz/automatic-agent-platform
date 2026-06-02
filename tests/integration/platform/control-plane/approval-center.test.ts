@@ -29,7 +29,7 @@ function seedApprovalTarget(
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       tenantId: null,
       title: `Seeded approval task ${taskId}`,
       status: "in_progress",

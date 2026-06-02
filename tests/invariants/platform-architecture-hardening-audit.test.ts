@@ -57,7 +57,7 @@ test("entry security gates enforce tenant scope, endpoint class limits, SDK hand
     recommendedSdkVersion: "2.1.0",
   });
   assert.equal(sdkHandshake.evaluate({ headers: { "X-SDK-Version": "1.9.0" } }).reasonCode, "sdk.upgrade_required");
-  assert.equal(sdkHandshake.evaluate({ headers: { "X-SDK-Version": "2.0.0", "X-Contract-Version": "4.2.0" } }).warnings.length, 2);
+  assert.equal(sdkHandshake.evaluate({ headers: { "X-SDK-Version": "2.0.0", "X-Contract-Version": "4.2.0" } }).warnings.length, 1);
 
   const workerIdentity = new WorkerServiceIdentityRegistry();
   workerIdentity.register({
@@ -324,6 +324,11 @@ test("ops maturity gates cover cache warming, canary judge availability, memory 
     differentJudgePassed: true,
     humanReviewRequired: false,
     humanApproved: false,
+    attestationVerified: true,
+    holdoutEvidenceRef: "artifact://holdout/1",
+    holdoutEvidenceVerified: true,
+    differentJudgeEvidenceRef: "artifact://judge/1",
+    differentJudgeEvidenceVerified: true,
   }).promotable, false);
 
   assert.equal(new FeedbackCollectiveAnomalyDetector(10, 0.2).evaluate({

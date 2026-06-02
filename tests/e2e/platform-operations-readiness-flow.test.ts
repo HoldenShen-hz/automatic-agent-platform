@@ -362,7 +362,7 @@ test("E2E: compliance and HA program exports summarize tenant residency and HA r
       id: "task-ha-e2e",
       parentId: null,
       rootId: "task-ha-e2e",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       tenantId: tenant.tenantId,
       title: "HA readiness validation",
       status: "in_progress",

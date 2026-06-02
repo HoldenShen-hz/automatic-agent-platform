@@ -4,13 +4,16 @@
 
 ## 权威顺序
 
+根级文档不是独立事实源；它们都从本目录治理链派生。发生冲突时，优先服从本页列出的治理入口，再回写根级文档。
+
 1. [source_of_truth.md](./source_of_truth.md)
 2. [naming_and_directory_conventions.md](./naming_and_directory_conventions.md)
-3. [../../AGENTS.md](../../AGENTS.md)
-4. [../../CLAUDE.md](../../CLAUDE.md)
-5. [../../README.md](../../README.md)
-6. [../../CONTRIBUTING.md](../../CONTRIBUTING.md)
-7. [../../MEMORY.md](../../MEMORY.md)
+3. [../../AGENTS.md](../../AGENTS.md)（工作约束，服从前两项）
+4. [../../CLAUDE.md](../../CLAUDE.md)（快速上下文，服从前两项）
+5. [../../README.md](../../README.md)（仓库入口，不定义实现边界）
+6. [../../CONTRIBUTING.md](../../CONTRIBUTING.md)（贡献流程，不定义实现边界）
+7. [../../MEMORY.md](../../MEMORY.md)（工作记忆，不是事实源）
+8. [../../CHANGELOG.md](../../CHANGELOG.md)（发布事实记录，不重定义治理规则）
 
 ## 用途分工
 
@@ -30,3 +33,4 @@
 - [../reviews/README.md](../reviews/README.md)
 - [../reference/automatic_agent_platform_v3_2_final_release.md](../reference/automatic_agent_platform_v3_2_final_release.md)
 - [../releases/automatic_agent_platform_v3_3_release_readiness.md](../releases/automatic_agent_platform_v3_3_release_readiness.md)
+- [../releases/automatic_agent_platform_v4_3_freeze_announcement.md](../releases/automatic_agent_platform_v4_3_freeze_announcement.md)

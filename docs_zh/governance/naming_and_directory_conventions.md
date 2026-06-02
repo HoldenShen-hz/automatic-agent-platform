@@ -71,6 +71,7 @@
 - `divisions/<division-id>/` 中 `<division-id>` 必须稳定、可程序引用。
 - `roles/` 下的文件名应与 `role_id` 对齐。
 - `workflows/` 下的文件名应表达业务动作，而不是作者偏好。
+- 评估资产根目录统一使用 `eval/`；`evaluation/` 仅视为历史口径，不再作为仓库路径名、文档入口名或配置引用名。
 
 ## 5. ID 约定
 

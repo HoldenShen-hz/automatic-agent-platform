@@ -60,6 +60,16 @@ interface DeduplicationEntry {
   expiresAt: number;
 }
 
+interface DeduplicationBucket {
+  entries: DeduplicationEntry[];
+  earliestExpiry: number;
+}
+
+interface ExpiryHeapEntry {
+  key: DeduplicationKey;
+  expiresAt: number;
+}
+
 /**
  * Key for tracking deduplication (tenant:method:path or just method:path).
  */
@@ -76,7 +86,8 @@ export class DeduplicationMiddleware {
   private readonly maxFingerprints: number;
   private readonly includeBody: boolean;
   private readonly perTenant: boolean;
-  private readonly entries = new Map<DeduplicationKey, DeduplicationEntry[]>();
+  private readonly entries = new Map<DeduplicationKey, DeduplicationBucket>();
+  private readonly expiryHeap: ExpiryHeapEntry[] = [];
   private readonly maxBuckets: number;
   private requestCounter = 0;
 
@@ -121,7 +132,8 @@ export class DeduplicationMiddleware {
   public check(key: DeduplicationKey, fingerprint: RequestFingerprint): DeduplicationDecision {
     const now = Date.now();
     this.evictExpiredBuckets(now);
-    const entries = this.entries.get(key) ?? [];
+    const bucket = this.entries.get(key);
+    const entries = bucket?.entries ?? [];
 
     // Clean expired entries
     const validEntries = entries.filter((e) => e.expiresAt > now);
@@ -154,7 +166,7 @@ export class DeduplicationMiddleware {
       validEntries.splice(0, validEntries.length - this.maxFingerprints);
     }
 
-    this.entries.set(key, validEntries);
+    this.setBucket(key, validEntries);
     this.enforceBucketLimit();
 
     return {
@@ -186,6 +198,7 @@ export class DeduplicationMiddleware {
    */
   public clear(): void {
     this.entries.clear();
+    this.expiryHeap.length = 0;
   }
 
   /**
@@ -203,50 +216,110 @@ export class DeduplicationMiddleware {
   }
 
   private evictExpiredBuckets(now: number): void {
-    for (const [key, entries] of this.entries.entries()) {
-      const validEntries = entries.filter((entry) => entry.expiresAt > now);
-      if (validEntries.length === 0) {
-        this.entries.delete(key);
-      } else if (validEntries.length !== entries.length) {
-        this.entries.set(key, validEntries);
+    while (this.expiryHeap.length > 0 && (this.expiryHeap[0]?.expiresAt ?? Number.POSITIVE_INFINITY) <= now) {
+      const next = this.popExpiry();
+      if (next == null) {
+        return;
       }
+      const bucket = this.entries.get(next.key);
+      if (bucket == null || bucket.earliestExpiry !== next.expiresAt) {
+        continue;
+      }
+      const validEntries = bucket.entries.filter((entry) => entry.expiresAt > now);
+      this.setBucket(next.key, validEntries);
     }
   }
 
   private enforceBucketLimit(): void {
     while (this.entries.size > this.maxBuckets) {
-      let oldestKey: string | null = null;
-      let oldestExpiresAt = Number.POSITIVE_INFINITY;
-      for (const [key, entries] of this.entries.entries()) {
-        const candidate = entries.reduce((min, entry) => Math.min(min, entry.expiresAt), Number.POSITIVE_INFINITY);
-        if (candidate < oldestExpiresAt) {
-          oldestKey = key;
-          oldestExpiresAt = candidate;
-        }
-      }
-      if (oldestKey == null) {
+      const oldest = this.popExpiry();
+      if (oldest == null) {
         return;
       }
-      this.entries.delete(oldestKey);
+      const bucket = this.entries.get(oldest.key);
+      if (bucket == null || bucket.earliestExpiry !== oldest.expiresAt) {
+        continue;
+      }
+      this.entries.delete(oldest.key);
+    }
+  }
+
+  private setBucket(key: DeduplicationKey, entries: DeduplicationEntry[]): void {
+    if (entries.length === 0) {
+      this.entries.delete(key);
+      return;
+    }
+    let earliestExpiry = Number.POSITIVE_INFINITY;
+    for (const entry of entries) {
+      earliestExpiry = Math.min(earliestExpiry, entry.expiresAt);
+    }
+    this.entries.set(key, {
+      entries,
+      earliestExpiry,
+    });
+    this.pushExpiry({ key, expiresAt: earliestExpiry });
+  }
+
+  private pushExpiry(entry: ExpiryHeapEntry): void {
+    this.expiryHeap.push(entry);
+    let index = this.expiryHeap.length - 1;
+    while (index > 0) {
+      const parentIndex = Math.floor((index - 1) / 2);
+      if ((this.expiryHeap[parentIndex]?.expiresAt ?? 0) <= (this.expiryHeap[index]?.expiresAt ?? 0)) {
+        break;
+      }
+      [this.expiryHeap[parentIndex], this.expiryHeap[index]] = [this.expiryHeap[index]!, this.expiryHeap[parentIndex]!];
+      index = parentIndex;
+    }
+  }
+
+  private popExpiry(): ExpiryHeapEntry | null {
+    if (this.expiryHeap.length === 0) {
+      return null;
+    }
+    const top = this.expiryHeap[0] ?? null;
+    const tail = this.expiryHeap.pop() ?? null;
+    if (this.expiryHeap.length > 0 && tail != null) {
+      this.expiryHeap[0] = tail;
+      this.heapifyDown(0);
+    }
+    return top;
+  }
+
+  private heapifyDown(index: number): void {
+    while (true) {
+      const left = index * 2 + 1;
+      const right = left + 1;
+      let nextIndex = index;
+      if ((this.expiryHeap[left]?.expiresAt ?? Number.POSITIVE_INFINITY) < (this.expiryHeap[nextIndex]?.expiresAt ?? Number.POSITIVE_INFINITY)) {
+        nextIndex = left;
+      }
+      if ((this.expiryHeap[right]?.expiresAt ?? Number.POSITIVE_INFINITY) < (this.expiryHeap[nextIndex]?.expiresAt ?? Number.POSITIVE_INFINITY)) {
+        nextIndex = right;
+      }
+      if (nextIndex === index) {
+        return;
+      }
+      [this.expiryHeap[index], this.expiryHeap[nextIndex]] = [this.expiryHeap[nextIndex]!, this.expiryHeap[index]!];
+      index = nextIndex;
     }
   }
 }
 
-/**
- * Default deduplication configuration per §4.2 P1.
- */
-export const DEFAULT_DEDUPLICATION_CONFIG: DeduplicationConfig = {
-  windowMs: 60_000, // 1 minute
-  maxFingerprints: 10_000,
-  includeBody: true,
-  perTenant: true,
-};
+export function createDefaultDeduplicationConfig(): DeduplicationConfig {
+  return {
+    windowMs: 60_000,
+    maxFingerprints: 10_000,
+    includeBody: true,
+    perTenant: true,
+  };
+}
 
 /**
  * Creates a deduplication middleware with the given configuration.
  */
 export function createDeduplicationMiddleware(config: Partial<DeduplicationConfig> = {}): DeduplicationMiddleware {
-  return new DeduplicationMiddleware({ ...DEFAULT_DEDUPLICATION_CONFIG, ...config });
+  return new DeduplicationMiddleware({ ...createDefaultDeduplicationConfig(), ...config });
 }
 
 /**

@@ -8,7 +8,7 @@ import { createWorkspaceWritePolicy } from "../../../../src/platform/five-plane-
 import { cleanupPath, createFile, createSymlink, createTempWorkspace } from "../../../helpers/fs.js";
 
 function seedDivision(root: string): void {
-  createFile(join(root, "general_ops/schemas/minimal-output.json"), JSON.stringify({
+  createFile(join(root, "general-ops/schemas/minimal-output.json"), JSON.stringify({
     type: "object",
     required: ["summary", "result"],
     properties: {
@@ -18,9 +18,9 @@ function seedDivision(root: string): void {
     additionalProperties: false,
   }));
   createFile(
-    join(root, "general_ops/division.yaml"),
+    join(root, "general-ops/division.yaml"),
     [
-      "id: general_ops",
+      "id: general-ops",
       "version: 1",
       "name: General Operations",
       "default_workflow: single_agent_minimal",
@@ -31,12 +31,12 @@ function seedDivision(root: string): void {
       "    prompt: roles/general_executor.prompt.md",
     ].join("\n"),
   );
-  createFile(join(root, "general_ops/roles/general_executor.prompt.md"), "# general\n");
+  createFile(join(root, "general-ops/roles/general_executor.prompt.md"), "# general\n");
   createFile(
-    join(root, "general_ops/workflows/minimal.yaml"),
+    join(root, "general-ops/workflows/minimal.yaml"),
     [
       "id: single_agent_minimal",
-      "division_id: general_ops",
+      "division_id: general-ops",
       "steps:",
       "  - step_id: analyze_request",
       "    role_id: general_executor",
@@ -74,10 +74,10 @@ test("division loader blocks symlink prompt escapes inside the division tree", (
     const divisionsRoot = join(workspace, "divisions");
     seedDivision(divisionsRoot);
     createFile(join(outside, "prompt.md"), "# escaped\n");
-    rmSync(join(divisionsRoot, "general_ops/roles/general_executor.prompt.md"));
+    rmSync(join(divisionsRoot, "general-ops/roles/general_executor.prompt.md"));
     createSymlink(
       join(outside, "prompt.md"),
-      join(divisionsRoot, "general_ops/roles/general_executor.prompt.md"),
+      join(divisionsRoot, "general-ops/roles/general_executor.prompt.md"),
     );
 
     const loader = new DivisionLoader({
@@ -107,10 +107,10 @@ test("division loader blocks output schema escapes outside the division root", (
       },
     }));
     createFile(
-      join(divisionsRoot, "general_ops/workflows/minimal.yaml"),
+      join(divisionsRoot, "general-ops/workflows/minimal.yaml"),
       [
         "id: single_agent_minimal",
-        "division_id: general_ops",
+        "division_id: general-ops",
         "steps:",
         "  - step_id: analyze_request",
         "    role_id: general_executor",

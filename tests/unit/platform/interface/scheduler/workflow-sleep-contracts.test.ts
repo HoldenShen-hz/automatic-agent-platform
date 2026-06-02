@@ -30,7 +30,7 @@ function makeRecord(overrides: Partial<WorkflowSuspensionRecord> = {}): Workflow
     taskId: "task_001",
     executionId: "exec_001",
     workflowId: "wf_001",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     reasonCode: "waiting_approval",
     waitKind: "human_input",
     status: "active",
@@ -53,7 +53,7 @@ test("toWorkflowSleepLease maps all fields", () => {
   assert.equal(lease.taskId, "task_001");
   assert.equal(lease.workflowId, "wf_001");
   assert.equal(lease.executionId, "exec_001");
-  assert.equal(lease.divisionId, "general_ops");
+  assert.equal(lease.divisionId, "general-ops");
   assert.equal(lease.waitKind, "human_input");
   assert.equal(lease.status, "active");
   assert.equal(lease.suspendedAt, "2026-04-20T09:00:00.000Z");

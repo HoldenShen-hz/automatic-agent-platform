@@ -114,6 +114,10 @@ export interface EvidenceRef {
   metadata?: Record<string, unknown>;
 }
 
+function serializeEvidenceRef(ref: EvidenceRef): string {
+  return `${ref.evidenceType}:${ref.referenceId}:${ref.timestamp}`;
+}
+
 /**
  * Validates an erasure request status transition
  *
@@ -357,7 +361,7 @@ export class ErasureRequestService {
       validateStatusTransition(existing.status, "completed");
 
       const now = nowIso();
-      const serializedEvidenceRefs = evidenceRefs.map((ref) => JSON.stringify(ref));
+      const serializedEvidenceRefs = evidenceRefs.map((ref) => serializeEvidenceRef(ref));
 
       const updated: ErasureRequest = {
         ...existing,

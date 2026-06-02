@@ -37,7 +37,7 @@ test("EvolutionMvpService applies approved budget adjustment proposals and resol
       executionId: "exec-evo-budget",
       sourceAgentId: "supervisor-1",
       scopeType: "role",
-      scopeRef: "general_ops.general_executor",
+      scopeRef: "general-ops.general_executor",
       currentPolicy: {
         maxTaskCostUsd: 5,
         maxDailyCostUsd: 50,
@@ -82,7 +82,7 @@ test("EvolutionMvpService applies approved budget adjustment proposals and resol
         mode: "supervised",
       },
       "role",
-      "general_ops.general_executor",
+      "general-ops.general_executor",
     );
 
     assert.ok(resolved.sourceProposalId);
@@ -133,7 +133,7 @@ test("EvolutionMvpService promotes experience into memory and supports rollback"
       executionId: "exec-evo-exp",
       sourceAgentId: "supervisor-1",
       scopeType: "division",
-      scopeRef: "general_ops",
+      scopeRef: "general-ops",
       targetScope: "project",
       taskContext: "stabilize rollback and queue recovery path",
       taskIntent: "prepare rollback evidence package",
@@ -216,7 +216,7 @@ test("EvolutionMvpService reuses a pending proposal when the same idempotency ke
       sourceAgentId: "supervisor-1",
       idempotencyKey: "idem-budget-adjustment-1",
       scopeType: "role",
-      scopeRef: "general_ops.general_executor",
+      scopeRef: "general-ops.general_executor",
       currentPolicy: {
         maxTaskCostUsd: 5,
         maxDailyCostUsd: 50,
@@ -236,7 +236,7 @@ test("EvolutionMvpService reuses a pending proposal when the same idempotency ke
       sourceAgentId: "supervisor-1",
       idempotencyKey: "idem-budget-adjustment-1",
       scopeType: "role",
-      scopeRef: "general_ops.general_executor",
+      scopeRef: "general-ops.general_executor",
       currentPolicy: {
         maxTaskCostUsd: 5,
         maxDailyCostUsd: 50,

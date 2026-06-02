@@ -137,7 +137,7 @@ test("OapeflirLoopService with dbPath uses RuntimeExecuteBridge by default", asy
     const workflow = {
       workflow: {
         workflowId: "wf_default_test",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         steps: [
           {
             stepId: "step_diagnose",
@@ -152,7 +152,7 @@ test("OapeflirLoopService with dbPath uses RuntimeExecuteBridge by default", asy
       executionSteps: [
         {
           stepId: "step_diagnose",
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           roleId: "diagnostic_agent",
           inputKeys: [],
           agentId: "agent_diagnostic_agent",

@@ -12,7 +12,7 @@ import {
 function makeProfile(overrides: Partial<AgentTrustProfile> = {}): AgentTrustProfile {
   return {
     agentId: "agent_1",
-    domainId: "engineering_ops",
+    domainId: "engineering-ops",
     overallTrustLevel: "trusted",
     lastEvaluation: "2026-04-19T00:00:00.000Z",
     capabilityScores: [
@@ -32,7 +32,7 @@ function makeProfile(overrides: Partial<AgentTrustProfile> = {}): AgentTrustProf
   };
 }
 
-test("ProgressiveAutonomyService promotes highly reliable capability to semi_auto under engineering_ops guardrails", () => {
+test("ProgressiveAutonomyService promotes highly reliable capability to semi_auto under engineering-ops guardrails", () => {
   const service = new ProgressiveAutonomyService();
   const evaluation = service.evaluateProfile(makeProfile());
 

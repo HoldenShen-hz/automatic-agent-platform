@@ -144,8 +144,8 @@ test("scopeToArchitectureLayer: evolution maps to meta", () => {
   assert.equal(scopeToArchitectureLayer("evolution"), "meta");
 });
 
-test("scopeToArchitectureLayer: unknown defaults to semantic", () => {
-  assert.equal(scopeToArchitectureLayer("unknown"), "semantic");
+test("scopeToArchitectureLayer: unknown throws memory.scope_unknown", () => {
+  assert.throws(() => scopeToArchitectureLayer("unknown"), /memory\.scope_unknown/);
 });
 
 // =============================================================================
@@ -236,22 +236,22 @@ test("isMemoryStale returns false when expiresAt is in future", () => {
   assert.equal(isMemoryStale(memory, Date.now()), false);
 });
 
-test("isMemoryStale uses default 7 days for unknown scope", () => {
+test("isMemoryStale throws when scope has no TTL config", () => {
   const memory = createMemory({
     scope: "unknown_scope" as any,
     createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     expiresAt: null,
   });
-  assert.equal(isMemoryStale(memory, Date.now()), true);
+  assert.throws(() => isMemoryStale(memory, Date.now()), /memory\.layer_ttl_config_missing/);
 });
 
-test("isMemoryStale returns false for 6-day-old unknown scope memory", () => {
+test("isMemoryStale still throws for recent unknown scope memory", () => {
   const memory = createMemory({
     scope: "unknown_scope" as any,
     createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
     expiresAt: null,
   });
-  assert.equal(isMemoryStale(memory, Date.now()), false);
+  assert.throws(() => isMemoryStale(memory, Date.now()), /memory\.layer_ttl_config_missing/);
 });
 
 test("isMemoryStale runtime expires in 1 minute", () => {
@@ -308,8 +308,7 @@ test("getEvictionPriority for trust returns 1 - trustWeight", () => {
     sourceTrustLevel: "trusted",
   });
   const priority = getEvictionPriority(memory);
-  // authoritative has weight 1.0, so 1 - 1.0 = 0
-  assert.ok(Math.abs(priority) < 0.001);
+  assert.ok(Math.abs(priority - 0.2) < 0.001);
 });
 
 test("getEvictionPriority for usage returns 1 / (hitCount + 1)", () => {

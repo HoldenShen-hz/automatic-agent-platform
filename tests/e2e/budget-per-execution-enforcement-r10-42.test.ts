@@ -51,7 +51,7 @@ test("E2E Per-Execution Budget Enforcement: execution BLOCKS when spend exceeds 
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Budget block test - R10-42",
           status: "pending",
@@ -235,7 +235,7 @@ test("E2E Per-Execution Budget Enforcement: task cannot complete when actualCost
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Budget exceeded - cannot complete",
           status: "in_progress",
@@ -283,7 +283,7 @@ test("E2E Per-Execution Budget Enforcement: task cannot complete when actualCost
 
         harness.store.insertWorkflowState({
           taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           workflowId: "single_agent_minimal",
           currentStepIndex: 0,
           status: "running",
@@ -467,7 +467,7 @@ test("E2E Per-Execution Budget Enforcement: TransitionService applies failed ter
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Transition block test",
           status: "in_progress",
@@ -515,7 +515,7 @@ test("E2E Per-Execution Budget Enforcement: TransitionService applies failed ter
 
         harness.store.insertWorkflowState({
           taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           workflowId: "single_agent_minimal",
           currentStepIndex: 0,
           status: "running",

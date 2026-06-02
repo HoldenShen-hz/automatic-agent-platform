@@ -135,10 +135,17 @@ function resolveBuiltinManifestOutputDataClass(input: {
 function parseBuiltinPluginManifest(
   manifest: Omit<PluginManifest, "outputDataClass"> & { outputDataClass?: DataClassificationLevel },
 ): PluginManifest {
-  return PluginManifestSchema.parse({
+  const parsed = PluginManifestSchema.parse({
     ...manifest,
     outputDataClass: manifest.outputDataClass ?? resolveBuiltinManifestOutputDataClass(manifest),
   });
+  if (parsed.sandbox.allowNetworkEgress && parsed.sandbox.allowedExternalDomains.length === 0) {
+    throw new ValidationError(
+      "plugin_registry.invalid_network_egress_manifest",
+      `Builtin plugin ${parsed.pluginId} enables network egress without declaring allowedExternalDomains.`,
+    );
+  }
+  return parsed;
 }
 
 // R8-24 FIX: Built-in plugin manifests for proper plugin metadata
@@ -593,16 +600,10 @@ function normalizeManifest(manifest: PluginManifest): PluginManifest {
   const normalizedPublicSdkSurface = manifest.publicSdkSurface
     .replace(/^@platform\//, "@automatic-agent/")
     .replace(/^@aa-platform\//, "@automatic-agent/");
-  const normalizedSandbox = manifest.sandbox.allowNetworkEgress && manifest.sandbox.allowedExternalDomains.length === 0
-    ? {
-      ...manifest.sandbox,
-      allowNetworkEgress: false,
-    }
-    : manifest.sandbox;
   return {
     ...manifest,
     publicSdkSurface: normalizedPublicSdkSurface,
-    sandbox: normalizedSandbox,
+    sandbox: manifest.sandbox,
   };
 }
 

@@ -81,20 +81,21 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `receiptId` | `string` | receipt ID |
+| `nodeAttemptReceiptId` | `string` | receipt ID；当前 executable contract 仍保留该存储形态主键名 |
 | `harnessRunId` | `string` | 所属 HarnessRun |
-| `planGraphBundleId` | `string` | 所属图 bundle |
+| `planGraphId` | `string` | 所属图 bundle ID |
 | `graphVersion` | `number` | 图版本 |
 | `nodeAttemptId` | `string` | 对应 attempt |
 | `nodeRunId` | `string` | 对应 node run |
 | `receiptKind` | `tool \| llm \| hitl \| subgraph \| evaluator \| router` | 回执类别 |
 | `status` | `succeeded \| failed \| partial \| blocked` | attempt 结果 |
 | `outputRef` | `ArtifactRef?` | 输出引用 |
-| `error` | `AppError?` | 失败原因 |
+| `error` | `AppErrorRef?` | 失败原因 |
+| `errorDetail` | `string` | 当前 executable contract 要求的诊断文本 |
 | `sideEffectRefs` | `string[]` | 关联副作用 |
 | `budgetSettlementRefs` | `string[]` | 关联预算结算 |
 | `evidenceRefs` | `ArtifactRef[]` | 证据引用 |
-| `durationMs` | `number?` | 本次 attempt 耗时 |
+| `duration` | `number` | 本次 attempt 耗时，单位毫秒 |
 | `producedAt` | `timestamp` | 产生时间 |
 
 ## 5. 推进规则
@@ -110,7 +111,7 @@
 | --- | --- |
 | `WorkflowStep` | 语义 step；执行前展开为 `PlanNode` / `NodeRun` |
 | `ExecutionReceipt` | deprecated alias；新回执使用 `NodeAttemptReceipt` |
-| `nodeAttemptReceiptId` | deprecated storage-shaped key；canonical API 字段使用 `receiptId` |
+| `receiptId` | architecture target alias；当前 executable contract 尚未迁移，canonical v4.3 payload 仍使用 `nodeAttemptReceiptId` |
 | `StepOutput` | 可作为 projection 或 output artifact，不是执行回执权威 |
 
 ## 7. 测试要求
@@ -125,6 +126,6 @@
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-46: 本文原先把回执主键写成 `nodeAttemptReceiptId`，并遗漏 `harnessRunId / planGraphBundleId / graphVersion / durationMs`，根因是 contract 直接跟随底层存储命名习惯暴露了 table-shaped 字段名，没有维持 v4.3 executable contract 的 canonical API 形状。修复：正文现把主键统一收敛到 `receiptId`，并补齐运行链 lineage 与耗时字段。
+- T-46: 架构文档曾把未来 API 形态提前写成已落地事实。修复：本文回写为当前 executable contract 的真实字段名与必填集；若后续迁移到 `receiptId / planGraphBundleId / durationMs`，需先同步模型、schema、factory 和 fixture。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

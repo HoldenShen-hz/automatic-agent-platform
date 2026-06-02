@@ -326,7 +326,7 @@ test("E2E Harness Multi-Step: follows correct state machine transitions", async 
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "State machine test",
           status: "queued",
@@ -374,7 +374,7 @@ test("E2E Harness Multi-Step: follows correct state machine transitions", async 
 
         harness.store.insertWorkflowState({
           taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           workflowId: "multi_step_harness",
           currentStepIndex: 0,
           status: "running",

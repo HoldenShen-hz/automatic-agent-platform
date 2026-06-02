@@ -13,7 +13,7 @@ function createTestTask(db: SqliteDatabase, taskId: string, tenantId: string | n
     id: taskId,
     parentId: null,
     rootId: taskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     tenantId,
     title: "Test task",
     status: "in_progress",
@@ -45,7 +45,7 @@ test("WorkflowRepository getWorkflowState returns workflow state for task", () =
 
     db.connection.exec(`
       INSERT INTO workflow_state (task_id, division_id, workflow_id, current_step_index, status, outputs_json, last_error_code, retry_count, resumable_from_step, started_at, updated_at)
-      VALUES ('task-wf-1', 'general_ops', 'multi_step_v1', 0, 'running', '{}', NULL, 0, NULL, '${now}', '${now}')
+      VALUES ('task-wf-1', 'general-ops', 'multi_step_v1', 0, 'running', '{}', NULL, 0, NULL, '${now}', '${now}')
     `);
 
     const result = repo.getWorkflowState("task-wf-1");
@@ -89,12 +89,12 @@ test("WorkflowRepository listWorkflowStates returns all workflow states", () => 
 
     db.connection.exec(`
       INSERT INTO workflow_state (task_id, division_id, workflow_id, current_step_index, status, outputs_json, last_error_code, retry_count, resumable_from_step, started_at, updated_at)
-      VALUES ('task-wf-list-1', 'general_ops', 'multi_step_v1', 1, 'running', '{}', NULL, 0, NULL, '${now}', '${now}')
+      VALUES ('task-wf-list-1', 'general-ops', 'multi_step_v1', 1, 'running', '{}', NULL, 0, NULL, '${now}', '${now}')
     `);
 
     db.connection.exec(`
       INSERT INTO workflow_state (task_id, division_id, workflow_id, current_step_index, status, outputs_json, last_error_code, retry_count, resumable_from_step, started_at, updated_at)
-      VALUES ('task-wf-list-2', 'general_ops', 'multi_step_v1', 2, 'completed', '{}', NULL, 0, NULL, '${now}', '${now}')
+      VALUES ('task-wf-list-2', 'general-ops', 'multi_step_v1', 2, 'completed', '{}', NULL, 0, NULL, '${now}', '${now}')
     `);
 
     const results = repo.listWorkflowStates();
@@ -168,12 +168,12 @@ test("WorkflowRepository getWorkflowState with tenantId returns workflow for mat
 
     db.connection.exec(`
       INSERT INTO workflow_state (task_id, division_id, workflow_id, current_step_index, status, outputs_json, last_error_code, retry_count, resumable_from_step, started_at, updated_at)
-      VALUES ('task-tenant-a', 'general_ops', 'wf-a', 0, 'running', '{}', NULL, 0, NULL, '${now}', '${now}')
+      VALUES ('task-tenant-a', 'general-ops', 'wf-a', 0, 'running', '{}', NULL, 0, NULL, '${now}', '${now}')
     `);
 
     db.connection.exec(`
       INSERT INTO workflow_state (task_id, division_id, workflow_id, current_step_index, status, outputs_json, last_error_code, retry_count, resumable_from_step, started_at, updated_at)
-      VALUES ('task-tenant-b', 'general_ops', 'wf-b', 1, 'completed', '{}', NULL, 0, NULL, '${now}', '${now}')
+      VALUES ('task-tenant-b', 'general-ops', 'wf-b', 1, 'completed', '{}', NULL, 0, NULL, '${now}', '${now}')
     `);
 
     const resultA = repo.getWorkflowState("task-tenant-a", "tenant-a");
@@ -207,12 +207,12 @@ test("WorkflowRepository listWorkflowStates with tenantId returns only tenant wo
 
     db.connection.exec(`
       INSERT INTO workflow_state (task_id, division_id, workflow_id, current_step_index, status, outputs_json, last_error_code, retry_count, resumable_from_step, started_at, updated_at)
-      VALUES ('task-list-tenant-a', 'general_ops', 'wf-a', 0, 'running', '{}', NULL, 0, NULL, '${now}', '${now}')
+      VALUES ('task-list-tenant-a', 'general-ops', 'wf-a', 0, 'running', '{}', NULL, 0, NULL, '${now}', '${now}')
     `);
 
     db.connection.exec(`
       INSERT INTO workflow_state (task_id, division_id, workflow_id, current_step_index, status, outputs_json, last_error_code, retry_count, resumable_from_step, started_at, updated_at)
-      VALUES ('task-list-tenant-b', 'general_ops', 'wf-b', 1, 'completed', '{}', NULL, 0, NULL, '${now}', '${now}')
+      VALUES ('task-list-tenant-b', 'general-ops', 'wf-b', 1, 'completed', '{}', NULL, 0, NULL, '${now}', '${now}')
     `);
 
     const resultsTenantA = repo.listWorkflowStates("tenant-a");
@@ -245,7 +245,7 @@ test("WorkflowRepository insertWorkflowState and updateWorkflowRecoveryState per
 
     repo.insertWorkflowState({
       taskId: "task-workflow-update",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf-update",
       currentStepIndex: 0,
       status: "running",

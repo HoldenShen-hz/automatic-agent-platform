@@ -134,30 +134,28 @@ test("HarnessLoopController.getState returns correct retryAttempt", () => {
   assert.equal(controller.getState().retryAttempt, initialRetryAttempt);
 });
 
-test("HarnessLoopController.recordIteration increments retryAttempt", () => {
+test("HarnessLoopController.recordRetry increments retryAttempt", () => {
   const pack = createConstraintPack();
   const controller = new HarnessLoopController(pack, {}, { retryAttempt: 0 });
 
-  controller.recordIteration(0);
+  controller.recordRetry(1000);
   assert.equal(controller.getState().retryAttempt, 1);
 
-  controller.recordIteration(0);
+  controller.recordRetry(2000);
   assert.equal(controller.getState().retryAttempt, 2);
 
-  controller.recordIteration(0);
+  controller.recordRetry(3000);
   assert.equal(controller.getState().retryAttempt, 3);
 });
 
 test("HarnessLoopController max retries enforcement via getGuardViolation", () => {
-  const pack = createConstraintPack({ maxSteps: 15 }); // maxIterations = floor(15/3) = 5
+  const pack = createConstraintPack({ maxSteps: 15 });
   const controller = new HarnessLoopController(pack, {}, { iteration: 0, retryAttempt: RETRY_MAX_ATTEMPTS });
 
-  // When retryAttempt equals max, guard violation should trigger
   const violation = controller.getGuardViolation();
+  assert.equal(violation, null);
 
-  // Actually with maxSteps=15, maxIterations=5, so iteration limit is the concern
-  // But for retry specifically, we test that recordIteration works
-  controller.recordIteration(0); // Attempt 6 (0 -> 1 -> ... -> 6)
+  controller.recordRetry(4000);
   assert.equal(controller.getState().retryAttempt, 6);
 });
 

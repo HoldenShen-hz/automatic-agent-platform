@@ -281,6 +281,39 @@ test("replayEvents preserves original event identity and keeps outbox empty", ()
   assert.equal(replayTarget.listOutbox().length, 0);
 });
 
+test("replayEvents fail-closes when aggregate is missing", () => {
+  const repository = new RuntimeTruthRepository();
+  const source = new RuntimeTruthRepository();
+  const run = createHarnessRun({
+    harnessRunId: "hrun-replay-missing",
+    tenantId: "tenant-1",
+    confirmedTaskSpecId: "ctspec-1",
+    requestEnvelopeId: "request-1",
+    requestHash: "hash-1",
+    constraintPackRef: "cp-1",
+    versionLockId: "rvlock-1",
+    budgetLedgerId: "bledger-1",
+  });
+  source.seed("HarnessRun", run);
+  const transition = source.transition(makeHarnessRunTransitionCommand(run, "created", "admitted"));
+
+  assert.throws(
+    () => repository.replayEvents([transition.event]),
+    /runtime_truth_repository\.replay_aggregate_missing/,
+  );
+});
+
+test("snapshot supports deterministic metadata injection", () => {
+  const repository = new RuntimeTruthRepository();
+  const snapshot = repository.snapshot({
+    createdAt: "2026-06-02T00:00:00.000Z",
+    versionId: "snapshot-deterministic",
+  });
+
+  assert.equal(snapshot.createdAt, "2026-06-02T00:00:00.000Z");
+  assert.equal(snapshot.snapshotVersion.versionId, "snapshot-deterministic");
+});
+
 test("transition stores event in both events list and outbox", () => {
   const repository = new RuntimeTruthRepository();
   const run = createHarnessRun({

@@ -91,6 +91,8 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
   initializeMiddleware();
   const middlewareChain = getGlobalMiddlewareChain();
   const runLogger = input.logger ?? logger;
+  const createId = (prefix: string): string => input.idFactory?.(prefix) ?? newId(prefix);
+  const currentNow = (): string => input.now?.() ?? nowIso();
 
   assertWorkflowValid(SINGLE_AGENT_MINIMAL_WORKFLOW);
 
@@ -125,15 +127,16 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       });
     }
 
-    const taskId = newId("task");
-    const sessionId = newId("sess");
-    const executionId = newId("exec");
-    const traceId = newId("trace");
+    const taskId = createId("task");
+    const sessionId = createId("sess");
+    const executionId = createId("exec");
+    const traceId = createId("trace");
     const traceContext = createRootTraceContext({
       traceId,
+      spanId: createId("span"),
       correlationId: taskId,
     });
-    const now = nowIso();
+    const now = currentNow();
 
     // Try to get model call provider and make real LLM call (must happen before provideContext)
     let llmResult: LlmModelCallResult | null = null;
@@ -210,9 +213,12 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       requestEnvelopeId: `request:${taskId}`,
       requestHash: `hash:${taskId}`,
       constraintPackRef: `constraint_pack:${SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId}`,
-      versionLockId: newId("version_lock"),
-      budgetLedgerId: newId("bledger"),
+      harnessRunId: createId("hrun"),
+      versionLockId: createId("version_lock"),
+      budgetLedgerId: createId("bledger"),
       status: "created",
+      createdAt: now,
+      updatedAt: now,
     });
     const harnessRunId = harnessRun.harnessRunId;
 
@@ -368,6 +374,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       priority: task.priority,
       estimatedCostUsd: task.estimatedCostUsd,
       budgetRemainingUsd: execution.budgetUsdLimit,
+      riskClass: riskLevel,
     });
     if (admissionDecision.decision !== "allow") {
       if (admissionDecision.decision === "queue") {
@@ -378,7 +385,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
           toStatus: "paused",
           currentStepIndex: 0,
           outputsJson: workflow.outputsJson,
-          ...createContext(traceContext, admissionDecision.reasonCode),
+          ...createContext(traceContext, admissionDecision.reasonCode, { now: currentNow, idFactory: createId }),
         });
       } else {
         transitions.transitionTaskStatus({
@@ -387,7 +394,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
           fromStatus: "queued",
           toStatus: "cancelled",
           executionId,
-          ...createContext(traceContext, admissionDecision.reasonCode),
+          ...createContext(traceContext, admissionDecision.reasonCode, { now: currentNow, idFactory: createId }),
         });
         transitions.transitionWorkflowStatus({
           entityKind: "workflow",
@@ -396,28 +403,28 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
           toStatus: "cancelled",
           currentStepIndex: 0,
           outputsJson: workflow.outputsJson,
-          ...createContext(traceContext, admissionDecision.reasonCode),
+          ...createContext(traceContext, admissionDecision.reasonCode, { now: currentNow, idFactory: createId }),
         });
         transitions.transitionSessionStatus({
           entityKind: "session",
           entityId: sessionId,
           fromStatus: "open",
           toStatus: "cancelled",
-          ...createContext(traceContext, admissionDecision.reasonCode),
+          ...createContext(traceContext, admissionDecision.reasonCode, { now: currentNow, idFactory: createId }),
         });
         transitions.transitionExecutionStatus({
           entityKind: "execution",
           entityId: executionId,
           fromStatus: "created",
           toStatus: "cancelled",
-          ...createContext(traceContext, admissionDecision.reasonCode),
+          ...createContext(traceContext, admissionDecision.reasonCode, { now: currentNow, idFactory: createId }),
         });
       }
 
-      const admissionTrace = createChildTraceContext(traceContext);
+      const admissionTrace = createChildTraceContext(traceContext, { spanId: createId("span") });
 
       store.event.insertEvent({
-        id: newId("evt"),
+        id: createId("evt"),
         taskId,
         executionId,
         eventType: admissionDecision.decision === "queue" ? "admission:queued" : "admission:rejected",
@@ -430,7 +437,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
           traceContext: admissionTrace,
         }),
         traceId,
-        createdAt: nowIso(),
+        createdAt: currentNow(),
       });
 
       return store.operations.loadTaskSnapshot(taskId);
@@ -442,7 +449,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       fromStatus: "queued",
       toStatus: "in_progress",
       executionId,
-      ...createContext(traceContext, "task.started"),
+      ...createContext(traceContext, "task.started", { now: currentNow, idFactory: createId }),
     });
 
     transitions.transitionSessionStatus({
@@ -450,7 +457,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       entityId: sessionId,
       fromStatus: "open",
       toStatus: "streaming",
-      ...createContext(traceContext, "session.streaming_started"),
+      ...createContext(traceContext, "session.streaming_started", { now: currentNow, idFactory: createId }),
     });
 
     transitions.transitionExecutionStatus({
@@ -458,11 +465,11 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       entityId: executionId,
       fromStatus: "created",
       toStatus: "prechecking",
-      ...createContext(traceContext, "execution.precheck_started"),
+      ...createContext(traceContext, "execution.precheck_started", { now: currentNow, idFactory: createId }),
     });
 
     const precheck: ExecutionPrecheckRecord = {
-      id: newId("precheck"),
+      id: createId("precheck"),
       executionId,
       allowed: 1,
       reasonCode: null,
@@ -471,7 +478,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       resolvedSandboxMode: execution.sandboxMode ?? "workspace_write",
       resolvedToolsJson: JSON.stringify(toolExposure.visibleToolNames),
       resolvedPathsJson: execution.allowedPathsJson,
-      checkedAt: nowIso(),
+      checkedAt: currentNow(),
     };
     store.execution.insertExecutionPrecheck(precheck);
 
@@ -480,7 +487,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       entityId: executionId,
       fromStatus: "prechecking",
       toStatus: "executing",
-      ...createContext(traceContext, "execution.started"),
+      ...createContext(traceContext, "execution.started", { now: currentNow, idFactory: createId }),
     });
     maybeInjectWorkflowCrash(input.crashInjection, {
       point: "step_started",
@@ -492,7 +499,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
 
     const validation = validateWorkflowStepOutput(step, stepData);
 
-    const stepProducedAt = nowIso();
+    const stepProducedAt = currentNow();
     const artifact = artifactStore.writeJsonArtifact({
       taskId,
       executionId,
@@ -536,9 +543,9 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     });
 
     const stepOutput: StepOutputRecord = {
-      id: newId("step"),
+      id: createId("step"),
       taskId,
-      nodeRunId: newId("node_run"),
+      nodeRunId: createId("node_run"),
       stepId: step.stepId,
       roleId: step.roleId,
       status: "succeeded",
@@ -560,19 +567,19 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     });
 
     db.transaction(() => {
-      const stepCompletionTrace = createChildTraceContext(traceContext);
+      const stepCompletionTrace = createChildTraceContext(traceContext, { spanId: createId("span") });
       store.artifact.insertArtifact(artifact.record);
       store.workflow.insertStepOutput(stepOutput);
 
       const costEvent: CostEventRecord = {
-        id: newId("cost"),
+        id: createId("cost"),
         ...buildExecutionCostEvent({
           taskId,
           sessionId,
           executionId,
           agentId: step.roleId,
           llmResult,
-          createdAt: nowIso(),
+          createdAt: currentNow(),
         }),
       };
       store.billing.insertCostEvent(costEvent);
@@ -585,7 +592,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
         JSON.stringify({
           [step.outputKey]: stepData,
         }),
-        nowIso(),
+        currentNow(),
       );
       store.event.createTier1StatusEvent({
         taskId,
@@ -618,13 +625,13 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
         replayBehavior: "replay_as_fact",
       });
       store.event.insertEvent({
-        id: newId("evt"),
+        id: createId("evt"),
         taskId,
         executionId,
         eventType: stepCompletionEvent.eventType,
         payloadJson: JSON.stringify(stepCompletionEvent.payload),
         traceId,
-        createdAt: nowIso(),
+        createdAt: currentNow(),
       });
     });
     maybeInjectWorkflowCrash(input.crashInjection, {
@@ -648,7 +655,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       outputsJson: JSON.stringify({
         [step.outputKey]: stepData,
       }),
-      context: createContext(traceContext, "task.completed"),
+      context: createContext(traceContext, "task.completed", { now: currentNow, idFactory: createId }),
     });
 
     const snapshot = store.operations.loadTaskSnapshot(taskId);

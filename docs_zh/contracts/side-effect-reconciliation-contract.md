@@ -20,11 +20,15 @@
 | `idempotencyKey` | `string` | 外部幂等键 |
 | `status` | `SideEffectStatus` | 状态 |
 | `riskClass` | `low \| medium \| high \| critical` | 风险 |
+| `leaseId` | `string?` | active lease |
+| `fencingToken` | `string?` | fencing token |
 | `approvalRef` | `string?` | 必要审批 |
 | `preCommitPolicyProofRef` | `ArtifactRef` | commit 前策略证明 |
 | `externalRef` | `string?` | 外部系统引用 |
+| `deadline` | `timestamp` | commit / reconcile deadline |
 | `createdAt` | `timestamp` | 创建时间 |
 | `updatedAt` | `timestamp` | 更新时间 |
+| `version` | `number` | CAS version |
 
 `SideEffectStatus`（16 states，v4.3 canonical）：
 
@@ -44,6 +48,11 @@
 - `failed`
 - `revoked`
 - `expired`
+
+状态说明：
+
+- 当前权威转移语义以 runtime state machine 与 truth services 为准；本文列出 canonical 状态集合，不再复述一套可能漂移的线性“5/8 态”图。
+- `confirmed -> reconciling/compensating`、`committed -> confirming` 等恢复性边属于当前实现允许的治理路径，不应被旧版线性图误判为非法。
 
 ## 3. ReconciliationRecord
 
@@ -111,6 +120,6 @@
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-2: 状态机 pending→executing→reconciling→settled 4步线性，架构§14.11 要求 pending→claimed→executing→awaiting_confirmation→settled/compensating 含分支。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-2: 旧 remediation 仍把线性化状态图写进正文，和现行 16 态 side-effect state machine 冲突。修复：本文已收口为当前 canonical 状态集合与最小字段集，避免第三套状态 SOT。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

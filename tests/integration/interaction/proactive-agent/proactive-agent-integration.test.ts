@@ -13,7 +13,7 @@ import { shouldConsumeProactiveEvent } from "../../../../src/interaction/proacti
 function makeScheduleTrigger(overrides: Partial<TriggerDefinition> = {}): TriggerDefinition {
   return {
     triggerId: "trigger_integration_test",
-    domainId: "general_ops",
+    domainId: "general-ops",
     name: "integration test trigger",
     type: "schedule",
     config: {
@@ -87,14 +87,14 @@ test("integration: ProactiveAgentService with event watcher", async () => {
 test("integration: ProactiveAgentService feedback loop detection", async () => {
   const service = new ProactiveAgentService({
     declaredTriggerIdsByDomain: {
-      general_ops: ["trigger_a", "trigger_b", "trigger_c"],
+      "general-ops": ["trigger_a", "trigger_b", "trigger_c"],
     },
   });
 
   // Register triggers with circular feedback
   await service.registerTrigger({
     triggerId: "trigger_a",
-    domainId: "general_ops",
+    domainId: "general-ops",
     name: "trigger A",
     type: "schedule",
     config: { cron: "0 9 * * *", timezone: "UTC", skipIfPreviousRunning: true } as ScheduleTriggerConfig,
@@ -108,7 +108,7 @@ test("integration: ProactiveAgentService feedback loop detection", async () => {
 
   await service.registerTrigger({
     triggerId: "trigger_b",
-    domainId: "general_ops",
+    domainId: "general-ops",
     name: "trigger B",
     type: "schedule",
     config: { cron: "0 9 * * *", timezone: "UTC", skipIfPreviousRunning: true } as ScheduleTriggerConfig,
@@ -122,7 +122,7 @@ test("integration: ProactiveAgentService feedback loop detection", async () => {
 
   await service.registerTrigger({
     triggerId: "trigger_c",
-    domainId: "general_ops",
+    domainId: "general-ops",
     name: "trigger C",
     type: "schedule",
     config: { cron: "0 9 * * *", timezone: "UTC", skipIfPreviousRunning: true } as ScheduleTriggerConfig,

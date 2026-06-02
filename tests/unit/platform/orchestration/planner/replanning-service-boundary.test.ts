@@ -39,6 +39,20 @@ function createFeedback(overrides: Partial<FeedbackBatch> = {}): FeedbackBatch {
   };
 }
 
+function createTrustedCorrectionSignal(overrides: Partial<FeedbackBatch["signals"][number]> = {}): FeedbackBatch["signals"][number] {
+  return {
+    signalId: "sig_correction",
+    source: "validation",
+    taskId: "task_edge",
+    category: "correction",
+    severity: "warning",
+    payload: {},
+    stepOutputRefs: [],
+    timestamp: Date.now(),
+    ...overrides,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Multiple Signal Correction Tests
 // ─────────────────────────────────────────────────────────────────────────────
@@ -50,23 +64,17 @@ test("ReplanningService.decide replans with multiple correction signals", () => 
     signals: [
       {
         signalId: "sig_c1",
-        source: "user" as const,
-        taskId: "task_edge",
-        category: "correction" as const,
-        severity: "warning" as const,
-        payload: { summary: "first correction" },
-        stepOutputRefs: [],
-        timestamp: Date.now(),
+        ...createTrustedCorrectionSignal({
+          signalId: "sig_c1",
+          payload: { summary: "first correction" },
+        }),
       },
       {
-        signalId: "sig_c2",
-        source: "user" as const,
-        taskId: "task_edge",
-        category: "correction" as const,
-        severity: "info" as const,
-        payload: { summary: "second correction" },
-        stepOutputRefs: [],
-        timestamp: Date.now(),
+        ...createTrustedCorrectionSignal({
+          signalId: "sig_c2",
+          severity: "info",
+          payload: { summary: "second correction" },
+        }),
       },
     ],
   });
@@ -165,16 +173,11 @@ test("ReplanningService.decide increments version by 1 for correction signal", (
   const feedback = createFeedback({
     outcome: "completed",
     signals: [
-      {
-        signalId: "sig_c",
-        source: "user" as const,
-        taskId: "task_edge",
-        category: "correction" as const,
-        severity: "warning" as const,
-        payload: {},
-        stepOutputRefs: [],
-        timestamp: Date.now(),
-      },
+        {
+          ...createTrustedCorrectionSignal({
+            signalId: "sig_c",
+          }),
+        },
     ],
   });
 
@@ -250,16 +253,12 @@ test("ReplanningService.decide replans for completed outcome with correction sig
   const feedback = createFeedback({
     outcome: "completed",
     signals: [
-      {
-        signalId: "sig_c",
-        source: "user" as const,
-        taskId: "task_edge",
-        category: "correction" as const,
-        severity: "warning" as const,
-        payload: { summary: "user corrected" },
-        stepOutputRefs: [],
-        timestamp: Date.now(),
-      },
+        {
+          ...createTrustedCorrectionSignal({
+            signalId: "sig_c",
+            payload: { summary: "user corrected" },
+          }),
+        },
     ],
   });
 
@@ -274,16 +273,11 @@ test("ReplanningService.decide replans for completed_with_deviations with correc
   const feedback = createFeedback({
     outcome: "completed_with_deviations",
     signals: [
-      {
-        signalId: "sig_c",
-        source: "user" as const,
-        taskId: "task_edge",
-        category: "correction" as const,
-        severity: "warning" as const,
-        payload: {},
-        stepOutputRefs: [],
-        timestamp: Date.now(),
-      },
+        {
+          ...createTrustedCorrectionSignal({
+            signalId: "sig_c",
+          }),
+        },
     ],
   });
 
@@ -296,7 +290,7 @@ test("ReplanningService.decide replans for completed_with_deviations with correc
 // Decision ID Uniqueness Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ReplanningService.decide generates unique decisionIds", () => {
+test("ReplanningService.decide generates deterministic decisionIds for identical inputs", () => {
   const service = new ReplanningService();
   const decisions = [
     service.decide(createPlan(), createFeedback()),
@@ -306,7 +300,7 @@ test("ReplanningService.decide generates unique decisionIds", () => {
 
   const ids = decisions.map((d) => d.decisionId);
   const uniqueIds = new Set(ids);
-  assert.equal(ids.length, uniqueIds.size, "All decision IDs should be unique");
+  assert.equal(uniqueIds.size, 1, "Identical replanning inputs should produce the same decisionId");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

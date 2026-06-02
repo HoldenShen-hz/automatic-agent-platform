@@ -24,7 +24,7 @@ test("WorkflowBuilderService.build creates builder with canvas nodes", () => {
   };
   const wizard: DomainOnboardingWizard = {
     steps: [],
-    recommendedDomains: ["general_ops"],
+    recommendedDomains: ["general-ops"],
     defaultMode: {
       mode: "solo",
       autoDetected: true,

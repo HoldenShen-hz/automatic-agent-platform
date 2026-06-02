@@ -21,12 +21,12 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
   };
 }
 
-test("HarnessLoopController constructor computes maxIterations from budget.maxSteps / 3", () => {
+test("HarnessLoopController constructor computes maxIterations from budget.maxSteps", () => {
   const controller = new HarnessLoopController(createConstraintPack({ budget: { maxSteps: 9, maxCost: 5, maxDurationMs: 60_000 } }));
-  assert.equal(controller.getGuards().maxIterations, 3);
+  assert.equal(controller.getGuards().maxIterations, 9);
 
   const controller2 = new HarnessLoopController(createConstraintPack({ budget: { maxSteps: 30, maxCost: 10, maxDurationMs: 120_000 } }));
-  assert.equal(controller2.getGuards().maxIterations, 10);
+  assert.equal(controller2.getGuards().maxIterations, 30);
 });
 
 test("HarnessLoopController constructor keeps at least 1 maxIteration when maxSteps is below one full loop", () => {
@@ -102,6 +102,29 @@ test("HarnessLoopController.recordReplan increments replanCount", () => {
 
   const state = controller.getState();
   assert.equal(state.replanCount, 2);
+});
+
+test("HarnessLoopController.recordRetry increments retryAttempt without consuming iteration budget", () => {
+  const controller = new HarnessLoopController(createConstraintPack());
+
+  controller.recordRetry(1234);
+  controller.recordRetry(5678);
+
+  const state = controller.getState();
+  assert.equal(state.iteration, 0);
+  assert.equal(state.retryAttempt, 2);
+  assert.equal(state.lastRetryAt, 5678);
+});
+
+test("HarnessLoopController.recordReplan resets retry bookkeeping", () => {
+  const controller = new HarnessLoopController(createConstraintPack(), {}, { retryAttempt: 3, lastRetryAt: 999 });
+
+  controller.recordReplan();
+
+  const state = controller.getState();
+  assert.equal(state.replanCount, 1);
+  assert.equal(state.retryAttempt, 0);
+  assert.equal(state.lastRetryAt, 0);
 });
 
 test("HarnessLoopController.getGuardViolation returns null when no violations", () => {
@@ -259,7 +282,7 @@ test("HarnessLoopController.getGuards returns immutable snapshot", () => {
   const controller = new HarnessLoopController(createConstraintPack());
   const guards = controller.getGuards();
 
-  assert.equal(guards.maxIterations, 3);
+  assert.equal(guards.maxIterations, 9);
   assert.equal(guards.maxReplans, 3);
   assert.equal(guards.maxDurationMs, 60_000);
   assert.equal(guards.maxCost, 5);
@@ -285,7 +308,7 @@ test("HarnessLoopController state transitions: iteration and replan tracking", (
 });
 
 test("HarnessLoopController multiple guards evaluated in priority order", () => {
-  const controller = new HarnessLoopController(createConstraintPack({ budget: { maxSteps: 3, maxCost: 5, maxDurationMs: 60_000 } }), {}, {
+  const controller = new HarnessLoopController(createConstraintPack({ budget: { maxSteps: 3, maxCost: 5, maxDurationMs: 1_000 } }), {}, {
     startedAt: Date.now() - 2000,
     iteration: 2,
   });

@@ -28,6 +28,7 @@ import {
 import { StorageError } from "../../platform/contracts/errors.js";
 import { readTrimmedEnv } from "../../platform/five-plane-control-plane/config-center/runtime-env.js";
 import { getGlobalGracefulShutdown } from "../../platform/five-plane-execution/startup/graceful-shutdown.js";
+import { readCliProcessEnv, type CliEnv } from "./cli-env.js";
 
 export { requireSqliteAuthoritativeStorageBackend };
 
@@ -117,7 +118,11 @@ function registerCliShutdownHandler<T extends { close(): void | Promise<void>; d
  * @returns The resolved database path
  */
 export function resolveCliDbPath(): string {
-  const fromEnv = readTrimmedEnv(process.env, "AA_DB_PATH");
+  return resolveCliDbPathFromEnv(readCliProcessEnv());
+}
+
+export function resolveCliDbPathFromEnv(env: CliEnv): string {
+  const fromEnv = readTrimmedEnv(env, "AA_DB_PATH");
   if (fromEnv != null) {
     return fromEnv;
   }
@@ -136,8 +141,8 @@ export function resolveCliDbPath(): string {
  * @returns The resolved storage target with path and environment
  */
 function resolveCliSyncStorageTarget(
-  dbPath: string = resolveCliDbPath(),
-  env: NodeJS.ProcessEnv = process.env,
+  dbPath: string = resolveCliDbPathFromEnv(readCliProcessEnv()),
+  env: NodeJS.ProcessEnv = readCliProcessEnv(),
 ): CliSyncStorageTarget {
   const plan = planAuthoritativeStorageBackend({
     dbPath,

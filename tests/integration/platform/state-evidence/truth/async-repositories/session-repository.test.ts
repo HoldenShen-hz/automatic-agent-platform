@@ -52,7 +52,7 @@ test.describe("AsyncSessionRepository", () => {
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       tenantId: "tenant-session",
       title: `Task ${taskId}`,
       status: "in_progress",

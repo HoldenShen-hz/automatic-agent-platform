@@ -18,12 +18,18 @@ export interface MultiPartyApprovalOptions {
   requiredApprovals?: number;
   /** Groups from which approvers can be selected. Empty means any approver. */
   approverGroups?: readonly string[];
+  /** Total eligible approvers, used to derive the rejection threshold. */
+  totalApprovers?: number;
+  /** Optional membership map keyed by group ID. */
+  groupMembers?: Readonly<Record<string, readonly string[]>>;
 }
 
 export interface PendingApprovalRecord {
   approvalId: string;
   requiredApprovals: number;
   approvalsReceived: number;
+  rejectionsReceived: number;
+  rejectionsRequired: number;
   decisions: ApprovalDecision[];
   status: "pending" | "approved" | "rejected" | "expired";
 }
@@ -31,21 +37,26 @@ export interface PendingApprovalRecord {
 export class MultiPartyApprovalService {
   private readonly repository: RuntimeLifecycleRepository;
   private readonly pendingApprovals = new Map<string, PendingApprovalRecord>();
+  private readonly groupMembers: Readonly<Record<string, readonly string[]>>;
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     store: AuthoritativeTaskStore,
     repository: RuntimeLifecycleRepository = createRuntimeLifecycleRepository(store),
+    options: Pick<MultiPartyApprovalOptions, "groupMembers"> = {},
   ) {
     this.repository = repository;
+    this.groupMembers = options.groupMembers ?? {};
   }
 
   public createMultiPartyRequest(
-    request: Omit<ApprovalRequest, "approvalId" | "createdAt" | "requiredApprovals" | "approverGroups" | "approvalsReceived">,
+    request: Omit<ApprovalRequest, "approvalId" | "createdAt" | "requiredApprovals" | "approverGroups" | "approvalsReceived" | "rejectionsReceived" | "rejectionsRequired">,
     options: MultiPartyApprovalOptions = {},
   ): ApprovalRequest {
     const requiredApprovals = options.requiredApprovals ?? 1;
     const approverGroups = options.approverGroups ?? [];
+    const totalApprovers = Math.max(options.totalApprovers ?? requiredApprovals, requiredApprovals);
+    const rejectionsRequired = Math.max(1, totalApprovers - requiredApprovals + 1);
 
     const approval: ApprovalRequest = {
       approvalId: newId("approval"),
@@ -65,6 +76,8 @@ export class MultiPartyApprovalService {
       requiredApprovals,
       approverGroups,
       approvalsReceived: 0,
+      rejectionsReceived: 0,
+      rejectionsRequired,
     };
 
     this.db.transaction(() => {
@@ -95,6 +108,8 @@ export class MultiPartyApprovalService {
       approvalId: approval.approvalId,
       requiredApprovals,
       approvalsReceived: 0,
+      rejectionsReceived: 0,
+      rejectionsRequired,
       decisions: [],
       status: "pending",
     });
@@ -117,22 +132,64 @@ export class MultiPartyApprovalService {
     }
 
     const pending = this.pendingApprovals.get(decision.approvalId);
-    const existingRequest = JSON.parse(existing.requestJson) as ApprovalRequest;
+    const existingRequest = this.parseApprovalRequest(existing.requestJson);
     const requiredApprovals = existingRequest.requiredApprovals ?? 1;
+    const rejectionsRequired = existingRequest.rejectionsRequired ?? requiredApprovals;
+    const knownDecisions = pending?.decisions ?? [];
+    if (knownDecisions.some((entry) => entry.respondedBy === decision.respondedBy)) {
+      throw new ValidationError("approval.duplicate_approver", `Approver already responded: ${decision.respondedBy}`, {
+        details: {
+          approvalId: decision.approvalId,
+          respondedBy: decision.respondedBy,
+        },
+      });
+    }
 
     if (pending) {
       pending.decisions.push(decision);
     }
 
     if (decision.decisionType === "rejected" || decision.decisionType === "expired") {
-      this.finalizeApproval(decision.approvalId, existing, decision, "rejected");
+      const newRejections = (existingRequest.rejectionsReceived ?? pending?.rejectionsReceived ?? 0) + 1;
       if (pending) {
-        pending.status = "rejected";
+        pending.rejectionsReceived = newRejections;
+      }
+      this.db.transaction(() => {
+        this.repository.updateApprovalRequest({
+          id: decision.approvalId,
+          requestJson: JSON.stringify({
+            ...existingRequest,
+            rejectionsReceived: newRejections,
+            rejectionsRequired,
+          }),
+        });
+      });
+      if (newRejections >= rejectionsRequired) {
+        this.finalizeApproval(decision.approvalId, existing, decision, "rejected");
+      } else {
+        this.repository.insertEvent({
+          id: newId("evt"),
+          taskId: existing.taskId,
+          executionId: existing.executionId,
+          eventType: "decision:partial_rejection",
+          eventTier: "tier_1",
+          payloadJson: JSON.stringify({
+            approvalId: decision.approvalId,
+            rejectionsReceived: newRejections,
+            rejectionsRequired,
+            latestDecision: decision,
+          }),
+          traceId: null,
+          createdAt: nowIso(),
+        });
+      }
+      if (pending) {
+        pending.status = newRejections >= rejectionsRequired ? "rejected" : "pending";
       }
       return;
     }
 
-    const newCount = (pending?.approvalsReceived ?? 0) + 1;
+    const newCount = (existingRequest.approvalsReceived ?? pending?.approvalsReceived ?? 0) + 1;
     if (pending) {
       pending.approvalsReceived = newCount;
     }
@@ -143,6 +200,7 @@ export class MultiPartyApprovalService {
         requestJson: JSON.stringify({
           ...existingRequest,
           approvalsReceived: newCount,
+          rejectionsRequired,
         }),
       });
     });
@@ -223,7 +281,7 @@ export class MultiPartyApprovalService {
       if (!existing) {
         return null;
       }
-      const request = JSON.parse(existing.requestJson) as ApprovalRequest;
+      const request = this.parseApprovalRequest(existing.requestJson);
       return {
         received: request.approvalsReceived ?? 0,
         required: request.requiredApprovals ?? 1,
@@ -237,10 +295,26 @@ export class MultiPartyApprovalService {
     };
   }
 
-  public isApproverInGroups(approverId: string, groups: readonly string[]): boolean {
+  public isApproverInGroups(
+    approverId: string,
+    groups: readonly string[],
+    groupMembers: Readonly<Record<string, readonly string[]>> = this.groupMembers,
+  ): boolean {
     if (groups.length === 0) {
       return true;
     }
-    return groups.includes(approverId);
+    return groups.some((groupId) => groupMembers[groupId]?.includes(approverId) === true);
+  }
+
+  private parseApprovalRequest(requestJson: string): ApprovalRequest {
+    try {
+      return JSON.parse(requestJson) as ApprovalRequest;
+    } catch (error) {
+      throw new ValidationError("approval.request_json_invalid", "Stored approval request JSON is invalid", {
+        details: {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
   }
 }

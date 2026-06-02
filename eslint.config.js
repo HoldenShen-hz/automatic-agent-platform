@@ -12,12 +12,16 @@ const typedFiles = [
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "dist-types/**", "node_modules/**", "ui/**", "coverage-report/**", ".dr-reports/**"],
+    ignores: ["dist/**", "dist-types/**", "node_modules/**", "ui/**", "coverage-report/**", ".dr-reports/**", ".stryker-tmp/**"],
   },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {
     files: [
+      "*.config.js",
+      "*.config.mjs",
+      "*.config.cjs",
+      "*.mjs",
       "src/**/*.ts",
       "src/**/*.tsx",
       "scripts/**/*.mjs",
@@ -38,8 +42,8 @@ export default tseslint.config(
     rules: {
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
       "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/no-floating-promises": "warn",
-      "@typescript-eslint/no-misused-promises": "warn",
+      "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/no-misused-promises": "error",
       "@typescript-eslint/require-await": "warn",
     },
   },

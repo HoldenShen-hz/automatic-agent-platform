@@ -130,6 +130,52 @@ describe("TimeTravelDebugService - Edge Cases", () => {
       assert.equal(state2!.currentEventIndex, 2);
       assert.equal(state3!.currentEventIndex, 2);
     });
+
+    test("isolates event stores by tenant", () => {
+      const service = createService();
+      service.loadEventStore("exec-shared", [{ stepId: "tenant-a-step", timestamp: "t", variables: {} }], {
+        actorId: "tenant-a-user",
+        tenantId: "tenant-a",
+        environment: "dev",
+        mfaVerified: false,
+        sessionExpiresAt: null,
+        permissions: ["time_travel:replay"],
+      });
+      service.loadEventStore("exec-shared", [{ stepId: "tenant-b-step", timestamp: "t", variables: {} }], {
+        actorId: "tenant-b-user",
+        tenantId: "tenant-b",
+        environment: "dev",
+        mfaVerified: false,
+        sessionExpiresAt: null,
+        permissions: ["time_travel:replay"],
+      });
+
+      const tenantASession = service.createSession("task-a", "exec-shared", {
+        actorId: "tenant-a-user",
+        tenantId: "tenant-a",
+        environment: "dev",
+        mfaVerified: false,
+        sessionExpiresAt: null,
+        permissions: ["time_travel:replay"],
+      });
+      const tenantBSession = service.createSession("task-b", "exec-shared", {
+        actorId: "tenant-b-user",
+        tenantId: "tenant-b",
+        environment: "dev",
+        mfaVerified: false,
+        sessionExpiresAt: null,
+        permissions: ["time_travel:replay"],
+      });
+
+      const tenantAState = service.replayStep(tenantASession.sessionId);
+      const tenantBState = service.replayStep(tenantBSession.sessionId);
+
+      assert.ok(tenantAState !== null);
+      assert.ok(tenantBState !== null);
+      assert.equal(service.jumpToStep(tenantASession.sessionId, "tenant-a-step")?.currentEventIndex, 1);
+      assert.equal(service.jumpToStep(tenantASession.sessionId, "tenant-b-step"), null);
+      assert.equal(service.jumpToStep(tenantBSession.sessionId, "tenant-b-step")?.currentEventIndex, 1);
+    });
   });
 
   describe("replayStep", () => {

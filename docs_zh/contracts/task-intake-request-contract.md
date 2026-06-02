@@ -25,6 +25,7 @@ RawInput -> TaskDraft -> ClarificationSession -> ConfirmedTaskSpec -> RequestEnv
 | `principal` | `PrincipalRef` | 发起主体 |
 | `source` | `nl \| webhook \| ui \| cli \| scheduler \| external_event` | 输入来源 |
 | `rawInputRef` | `ArtifactRef?` | 原始输入引用；大文本必须 artifact 化 |
+| `domainId` | `string` | 领域 ID；draft 阶段也必须确定归属域 |
 | `normalizedIntent` | `json` | 结构化意图 |
 | `missingFields` | `string[]` | 仍需澄清字段 |
 | `riskPreview` | `RiskPreview` | 初步风险判断 |
@@ -50,9 +51,10 @@ RawInput -> TaskDraft -> ClarificationSession -> ConfirmedTaskSpec -> RequestEnv
 | `taskDraftId` | `string` | 来源草稿 |
 | `tenantId` | `string` | 租户 |
 | `principal` | `PrincipalRef` | 发起主体 |
+| `domainId` | `string` | 领域 ID |
 | `goal` | `string` | 用户确认后的目标 |
 | `inputs` | `json` | 已确认输入 |
-| `constraints` | `ConstraintPackRef` | 任务级约束包 |
+| `constraintPackRef` | `ConstraintPackRef` | 任务级约束包引用 |
 | `riskClass` | `low \| medium \| high \| critical` | 风险级别 |
 | `confirmationReceipt` | `UserConfirmationReceipt?` | high / critical 必填 |
 | `idempotencyKey` | `string` | 幂等键 |
@@ -63,7 +65,7 @@ RawInput -> TaskDraft -> ClarificationSession -> ConfirmedTaskSpec -> RequestEnv
 
 - `riskClass=high|critical` 时，`confirmationReceipt` 必须存在且未过期。
 - `idempotencyKey` 在同一 tenant 下必须稳定；重复提交返回同一 admission 结果。
-- `constraints` 必须来自平台、租户、域和任务约束合并后的不可变引用。
+- `constraintPackRef` 必须来自平台、租户、域和任务约束合并后的不可变引用。
 
 ## 4. RequestEnvelope
 
@@ -77,8 +79,10 @@ RawInput -> TaskDraft -> ClarificationSession -> ConfirmedTaskSpec -> RequestEnv
 | `confirmedTaskSpecId` | `string` | 已确认任务规格 |
 | `tenantId` | `string` | 租户 |
 | `principal` | `PrincipalRef` | 发起主体 |
+| `domainId` | `string` | 领域 ID |
 | `traceId` | `string` | trace |
 | `idempotencyKey` | `string` | 幂等键 |
+| `priority` | `number` | admission 优先级 |
 | `requestHash` | `string` | admission 幂等校验 hash |
 | `constraintPackRef` | `ConstraintPackRef` | 约束包 |
 | `budgetIntent` | `BudgetIntent` | 预算意图，不是 reservation |
@@ -107,3 +111,9 @@ RawInput -> TaskDraft -> ClarificationSession -> ConfirmedTaskSpec -> RequestEnv
 - 同一 `idempotencyKey + requestHash` 重复提交不得创建多个 `HarnessRun`。
 - `TaskDraft` 不得被 P4 dispatch 消费。
 - 旧 `/api/v1/tasks` 兼容入口必须投影到 v4.3 intake 链路。
+
+## v4.3 Architecture Remediation
+
+以下条目修复 contract 与 executable intake model 的命名漂移。本文档历史段落如与本节冲突，以 `src/platform/contracts/executable-contracts/` 为准。
+
+- 本文此前延续了旧 `constraints` 命名并遗漏 `domainId` / `priority`。修复：本文已与当前 executable intake contracts 对齐，旧命名仅作历史语义说明。

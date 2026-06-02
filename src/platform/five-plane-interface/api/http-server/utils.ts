@@ -5,7 +5,7 @@
  */
 
 import { parse as parseUrl } from "node:url";
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, createHash, timingSafeEqual } from "node:crypto";
 import type { ApiRequestLike, ApiResponsePayload } from "./types.js";
 import { AppError } from "../../../contracts/errors.js";
 import type { ApiAuthService, ApiPrincipal, ApiRole } from "../api-auth-service.js";
@@ -38,7 +38,7 @@ const INTERNAL_ROUTE_AUDIENCE_ALIASES: Readonly<Record<string, readonly string[]
   costs: ["costs", "cost"],
   incidents: ["incidents", "incident"],
 });
-const OPAQUE_CURSOR_SIGNING_SECRET = randomBytes(32);
+const DEFAULT_OPAQUE_CURSOR_SECRET_SEED = "automatic-agent-platform.http.opaque-cursor.v1";
 
 export function readRequestId(request: ApiRequestLike): string {
   const candidate = request.headers["x-request-id"];
@@ -228,12 +228,41 @@ function authenticateServicePrincipal(request: ApiRequestLike): ApiPrincipal | n
   if (acceptedAudiences.length > 0 && tokenAudience !== "*" && !acceptedAudiences.includes(tokenAudience)) {
     throw mapServiceAuthError("audience_mismatch");
   }
+  const roles = deriveServicePrincipalRoles(authResult.serviceIdentity.capabilities);
+  if (roles.length === 0) {
+    throw mapServiceAuthError("capability_not_granted");
+  }
   return {
     actorId: authResult.serviceIdentity.serviceId,
-    roles: ["admin"],
+    roles,
     authMethod: "jwt",
     tenantId: null,
   };
+}
+
+function deriveServicePrincipalRoles(capabilities: readonly string[]): ApiRole[] {
+  const normalized = new Set(capabilities.map((capability) => capability.trim().toLowerCase()).filter((capability) => capability.length > 0));
+  if (normalized.has("api:admin") || normalized.has("admin") || normalized.has("*")) {
+    return ["admin"];
+  }
+  if (
+    normalized.has("api:operator")
+    || normalized.has("operator")
+    || normalized.has("invoke_tool")
+    || normalized.has("write_file")
+    || normalized.has("dispatch_execution")
+  ) {
+    return ["operator"];
+  }
+  if (
+    normalized.has("api:viewer")
+    || normalized.has("viewer")
+    || normalized.has("read")
+    || normalized.has("tasks:read")
+  ) {
+    return ["viewer"];
+  }
+  return [];
 }
 
 function inferInternalRouteAudiences(url: string | undefined): string[] {
@@ -419,9 +448,15 @@ export function decodeOpaqueCursor<T>(cursor: string, code = "api.invalid_cursor
 }
 
 function signOpaqueCursorPayload(payloadText: string): string {
-  return createHmac("sha256", OPAQUE_CURSOR_SIGNING_SECRET)
+  return createHmac("sha256", resolveOpaqueCursorSigningSecret())
     .update(payloadText, "utf8")
     .digest("base64url");
+}
+
+function resolveOpaqueCursorSigningSecret(): Buffer {
+  return createHash("sha256")
+    .update(process.env["AA_OPAQUE_CURSOR_SIGNING_SECRET"]?.trim() || DEFAULT_OPAQUE_CURSOR_SECRET_SEED, "utf8")
+    .digest();
 }
 
 /**

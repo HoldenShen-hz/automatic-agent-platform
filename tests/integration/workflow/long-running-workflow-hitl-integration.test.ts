@@ -28,7 +28,7 @@ test("integration: workflow sleep and HITL approval resolve into resumable workf
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Workflow with approval wait",
         status: "awaiting_decision",
         source: "user",
@@ -75,7 +75,7 @@ test("integration: workflow sleep and HITL approval resolve into resumable workf
       });
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "wf_ops",
         currentStepIndex: 1,
         status: "running",

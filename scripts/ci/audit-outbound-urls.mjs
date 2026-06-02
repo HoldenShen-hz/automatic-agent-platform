@@ -24,6 +24,64 @@ const INLINE_ALLOW_PATTERNS = [
   /Mozilla\/5\.0\s+\(compatible;/,
 ];
 
+function stripComments(line, inBlockComment) {
+  let result = "";
+  let currentInBlockComment = inBlockComment;
+  let quote = null;
+  let escaping = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const current = line[index];
+    const next = line[index + 1];
+
+    if (currentInBlockComment) {
+      if (current === "*" && next === "/") {
+        currentInBlockComment = false;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (quote != null) {
+      result += current;
+      if (escaping) {
+        escaping = false;
+        continue;
+      }
+      if (current === "\\") {
+        escaping = true;
+        continue;
+      }
+      if (current === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (current === "\"" || current === "'" || current === "`") {
+      quote = current;
+      result += current;
+      continue;
+    }
+
+    if (current === "/" && next === "*") {
+      currentInBlockComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (current === "/" && next === "/") {
+      break;
+    }
+
+    result += current;
+  }
+
+  return {
+    code: result.trim(),
+    inBlockComment: currentInBlockComment,
+  };
+}
+
 function walkFiles(root) {
   const files = [];
 
@@ -72,8 +130,11 @@ const hits = [];
 
 for (const file of files) {
   const lines = readFileSync(file, "utf8").split(/\r?\n/);
+  let inBlockComment = false;
   for (const [index, line] of lines.entries()) {
-    const content = line.trim();
+    const stripped = stripComments(line, inBlockComment);
+    inBlockComment = stripped.inBlockComment;
+    const content = stripped.code;
     if (!URL_PATTERN.test(content) || isCommentLike(content) || isInlineAllowed(content)) {
       continue;
     }

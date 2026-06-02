@@ -28,7 +28,7 @@ function seedWorkflowAndSession(
   db.transaction(() => {
     store.insertWorkflowState({
       taskId: input.taskId,
-      divisionId: input.divisionId ?? "general_ops",
+      divisionId: input.divisionId ?? "general-ops",
       workflowId: input.workflowId ?? "single_agent_minimal",
       currentStepIndex: 0,
       status: input.workflowStatus ?? "running",
@@ -79,7 +79,7 @@ test("inspect service query layer returns filtered task and workflow summaries",
         "Pending approval task",
         "awaiting_decision",
         "2026-04-05T10:00:00.000Z",
-        "general_ops",
+        "general-ops",
         "task-query-pending",
       );
     approvals.createRequest({

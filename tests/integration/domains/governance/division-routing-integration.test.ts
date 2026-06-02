@@ -33,7 +33,7 @@ test("division routing: tasks can be assigned to different divisions", () => {
         id: taskId1,
         parentId: null,
         rootId: taskId1,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "General ops task",
         status: "queued",
         source: "user",
@@ -72,7 +72,7 @@ test("division routing: tasks can be assigned to different divisions", () => {
 
     // Verify division assignment
     const task1 = store.getTask(taskId1);
-    assert.equal(task1!.divisionId, "general_ops", "Task 1 should be in general_ops division");
+    assert.equal(task1!.divisionId, "general-ops", "Task 1 should be in general-ops division");
 
     const task2 = store.getTask(taskId2);
     assert.equal(task2!.divisionId, "code_review", "Task 2 should be in code_review division");

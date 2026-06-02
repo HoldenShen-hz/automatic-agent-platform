@@ -44,7 +44,7 @@ export interface ApprovalTimeoutExecutionInput {
 export interface ApprovalTimeoutExecutionResult {
   approvalId: string;
   status: ApprovalRecord["status"];
-  decisionType: "expired";
+  decisionType: "expired" | "confirmed" | "remain_pending";
   respondedAt: string;
 }
 
@@ -213,7 +213,7 @@ export class ApprovalTimeoutExecutor {
         return {
           approvalId: approval.id,
           status: "approved",
-          decisionType: "expired",
+          decisionType: "confirmed",
           respondedAt,
         };
 
@@ -221,7 +221,7 @@ export class ApprovalTimeoutExecutor {
         return {
           approvalId: approval.id,
           status: "requested",
-          decisionType: "expired",
+          decisionType: "remain_pending",
           respondedAt,
         };
     }
@@ -244,9 +244,15 @@ export class ApprovalTimeoutExecutor {
 
     // Otherwise compute from createdAt + policy-based timeout
     const createdAtMs = new Date(approval.createdAt).getTime();
+    if (!Number.isFinite(createdAtMs)) {
+      return true;
+    }
     const timeoutMs = this.getTimeoutForPolicy(approval.timeoutPolicy);
     const expiresAtMs = createdAtMs + timeoutMs;
     const nowMs = new Date(now).getTime();
+    if (!Number.isFinite(nowMs)) {
+      return true;
+    }
 
     return nowMs >= expiresAtMs;
   }

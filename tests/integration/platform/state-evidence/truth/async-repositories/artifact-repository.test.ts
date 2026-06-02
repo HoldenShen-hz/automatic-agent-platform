@@ -56,7 +56,7 @@ test.describe("AsyncArtifactRepository", () => {
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       tenantId,
       title: "Test Task",
       status: "done",

@@ -80,6 +80,12 @@ interface TrackedReservationEntry {
   readonly context: BudgetAllocatorContext;
 }
 
+interface LedgerPersistenceEntry {
+  readonly before: BudgetLedger;
+  readonly after: BudgetLedger;
+  readonly expectedVersion: number;
+}
+
 export class BudgetAllocator {
   private readonly stateMachine: RuntimeStateMachine;
   private readonly watermarkConfig: WatermarkAlertConfig;
@@ -91,6 +97,7 @@ export class BudgetAllocator {
   private readonly events: BudgetAllocatorEvents | undefined;
   private readonly authoritativeStore: BudgetTruthStore | undefined;
   private activeReservations = new Map<string, TrackedReservationEntry>();
+  private readonly inMemoryLedgerVersions = new Map<string, number>();
 
   public constructor(options: {
     readonly stateMachine?: RuntimeStateMachine;
@@ -216,6 +223,7 @@ export class BudgetAllocator {
     readonly context?: BudgetAllocatorContext;
   }): BudgetReservationResult {
     const context = input.context ?? createDefaultContext(input.ledger.tenantId);
+    this.assertInMemoryLedgerVersion(input.ledger, input.expectedVersion);
     const tierLimit = resolveTierLimit(input.ledger, context);
     const activeCommittedAmount = input.ledger.reservedAmount + input.ledger.settledAmount - input.ledger.releasedAmount;
     if (activeCommittedAmount + input.amount > tierLimit) {
@@ -226,7 +234,7 @@ export class BudgetAllocator {
     }
 
     const result = reserveBudgetHardCap(input);
-    const hierarchyLedgers = input.hierarchyLedgers?.map((entry) => {
+    const hierarchyReservations = input.hierarchyLedgers?.map((entry) => {
       const reserved = reserveBudgetHardCap({
         ledger: entry.ledger,
         amount: input.amount,
@@ -235,15 +243,26 @@ export class BudgetAllocator {
         expectedVersion: entry.expectedVersion,
         ...(input.nodeRunId != null ? { nodeRunId: input.nodeRunId } : {}),
       });
-      this.persistLedger(entry.ledger, reserved.ledger, entry.expectedVersion);
-      return reserved.ledger;
+      return {
+        before: entry.ledger,
+        after: reserved.ledger,
+        expectedVersion: entry.expectedVersion,
+      } satisfies LedgerPersistenceEntry;
     });
+    this.persistLedgerBatch([
+      ...(hierarchyReservations ?? []),
+      {
+        before: input.ledger,
+        after: result.ledger,
+        expectedVersion: input.expectedVersion,
+      },
+    ]);
 
     // R11-07: Track reservation for expiry sweeper
     this.trackActiveReservation(result.reservation, result.ledger, context);
-    this.persistLedger(input.ledger, result.ledger, input.expectedVersion);
     this.emitReserveSideEffects(result.ledger, input.amount, context);
 
+    const hierarchyLedgers = hierarchyReservations?.map((entry) => entry.after);
     return {
       ...result,
       ...(hierarchyLedgers != null ? { hierarchyLedgers } : {}),
@@ -308,7 +327,7 @@ export class BudgetAllocator {
     readonly expiredReservationIds: readonly string[];
     readonly orphanedCount: number;
   } {
-    const dbNow = Date.parse(params.dbTime);
+    const dbNow = parseReservationSweepDbTime(params.dbTime);
     const releasedIds: string[] = [];
     const expiredIds: string[] = [];
     let orphanedCount = 0;
@@ -325,8 +344,7 @@ export class BudgetAllocator {
       if (params.activeRunIds.has(reservation.harnessRunId)) {
         continue;
       }
-      const reservationExpiry = Date.parse(reservation.expiresAt);
-      if (Number.isFinite(reservationExpiry) && reservationExpiry + this.sweeperConfig.clockSkewSafetyMarginMs > dbNow) {
+      if (!hasReservationExpired(reservation.expiresAt, dbNow, this.sweeperConfig.clockSkewSafetyMarginMs)) {
         continue;
       }
       expiredIds.push(reservationId);
@@ -368,9 +386,17 @@ export class BudgetAllocator {
   }): BudgetSettlementResult | Promise<BudgetSettlementResult> {
     const expectedVersion = input.expectedVersion ?? input.ledger.version;
     const context = normalizeContext(input.context);
+    if (input.ledger.version !== expectedVersion) {
+      throwVersionCasError("settle", input.context);
+    }
+    this.assertInMemoryLedgerVersion(input.ledger, expectedVersion);
     const overspendAmount = Math.max(0, input.actualAmount - input.reservation.amount);
     const overspendDetected = overspendAmount > 0;
-    if (input.ledger.settledAmount + input.actualAmount > input.ledger.hardCap && shouldUseBudgetValidationErrors(input.context)) {
+    const projectedCommittedAmount = Math.max(
+      0,
+      input.ledger.reservedAmount - input.reservation.amount,
+    ) + input.ledger.settledAmount + input.actualAmount;
+    if (projectedCommittedAmount > input.ledger.hardCap && shouldUseBudgetValidationErrors(input.context)) {
       throw new ValidationError(
         "budget.settle.hard_cap_not_satisfied",
         "budget.settle.hard_cap_not_satisfied: Budget hard cap is not satisfied at settlement time.",
@@ -392,12 +418,9 @@ export class BudgetAllocator {
     // This ensures cost records survive crashes - the settlement is written
     // in the same transaction that updates the ledger, so neither can be
     // lost without the other also being lost.
-    if (this.settlementPersistence) {
-      this.settlementPersistence.persistSettlement(settlement);
-    }
     const hardCapSatisfied =
       input.reservation.status === "reserved" &&
-      input.ledger.settledAmount + input.actualAmount <= input.ledger.hardCap;
+      projectedCommittedAmount <= input.ledger.hardCap;
 
     // R11-07 FIX: Transition reservation through RSM for proper event emission and audit trail
     const reservationCommand: RuntimeTransitionCommand<BudgetReservation> = {
@@ -437,6 +460,9 @@ export class BudgetAllocator {
       return after;
     });
     this.persistLedger(input.ledger, ledger, expectedVersion);
+    if (this.settlementPersistence) {
+      this.settlementPersistence.persistSettlement(settlement);
+    }
     this.emitLedgerFact({
       before: input.ledger,
       after: ledger,
@@ -477,6 +503,7 @@ export class BudgetAllocator {
     if (input.ledger.version !== expectedVersion) {
       throwVersionCasError("release", input.context);
     }
+    this.assertInMemoryLedgerVersion(input.ledger, expectedVersion);
 
     const context = normalizeContext(input.context);
     const settlement = createBudgetSettlement({
@@ -663,19 +690,11 @@ export class BudgetAllocator {
     ledger: BudgetLedger,
     context: BudgetAllocatorContext,
   ): void {
-    this.activeReservations = new Map(this.activeReservations).set(
-      reservation.budgetReservationId,
-      { reservation, ledger, context },
-    );
+    this.activeReservations.set(reservation.budgetReservationId, { reservation, ledger, context });
   }
 
   private untrackActiveReservation(reservationId: string): void {
-    if (!this.activeReservations.has(reservationId)) {
-      return;
-    }
-    const nextReservations = new Map(this.activeReservations);
-    nextReservations.delete(reservationId);
-    this.activeReservations = nextReservations;
+    this.activeReservations.delete(reservationId);
   }
 
   private snapshotActiveReservations(): readonly (readonly [string, TrackedReservationEntry])[] {
@@ -771,6 +790,14 @@ export class BudgetAllocator {
 
   private persistLedger(before: BudgetLedger, after: BudgetLedger, expectedVersion: number): void {
     if (this.authoritativeStore == null) {
+      const actualVersion = this.inMemoryLedgerVersions.get(after.budgetLedgerId) ?? before.version;
+      if (actualVersion !== expectedVersion) {
+        throw new ValidationError(
+          "budget_ledger.version_cas_failed",
+          `budget_ledger.version_cas_failed: expected ${expectedVersion}, actual ${actualVersion}.`,
+        );
+      }
+      this.inMemoryLedgerVersions.set(after.budgetLedgerId, after.version);
       return;
     }
     const result = this.authoritativeStore.upsertWithCas({
@@ -783,6 +810,40 @@ export class BudgetAllocator {
       throw new ValidationError(
         "budget_ledger.version_cas_failed",
         `budget_ledger.version_cas_failed: expected ${expectedVersion}, actual ${result.actualVersion ?? "unknown"}.`,
+      );
+    }
+    this.inMemoryLedgerVersions.set(after.budgetLedgerId, after.version);
+  }
+
+  private persistLedgerBatch(entries: readonly LedgerPersistenceEntry[]): void {
+    if (entries.length === 0) {
+      return;
+    }
+    const persisted: LedgerPersistenceEntry[] = [];
+    for (const entry of entries) {
+      try {
+        this.persistLedger(entry.before, entry.after, entry.expectedVersion);
+        persisted.push(entry);
+      } catch (error) {
+        this.inMemoryLedgerVersions.set(entry.before.budgetLedgerId, entry.before.version);
+        for (let index = persisted.length - 1; index >= 0; index -= 1) {
+          const persistedEntry = persisted[index]!;
+          this.inMemoryLedgerVersions.set(persistedEntry.before.budgetLedgerId, persistedEntry.before.version);
+        }
+        throw error;
+      }
+    }
+  }
+
+  private assertInMemoryLedgerVersion(ledger: BudgetLedger, expectedVersion: number): void {
+    if (this.authoritativeStore != null || this.atomicRepository != null) {
+      return;
+    }
+    const actualVersion = this.inMemoryLedgerVersions.get(ledger.budgetLedgerId) ?? ledger.version;
+    if (actualVersion !== expectedVersion) {
+      throw new ValidationError(
+        "budget_ledger.version_cas_failed",
+        `budget_ledger.version_cas_failed: expected ${expectedVersion}, actual ${actualVersion}.`,
       );
     }
   }
@@ -836,10 +897,29 @@ function shouldUseBudgetValidationErrors(context: BudgetAllocatorContext): boole
   return context.tier != null || context.fencingToken != null;
 }
 
+function parseReservationSweepDbTime(dbTime: string): number {
+  const dbNow = Date.parse(dbTime);
+  if (!Number.isFinite(dbNow)) {
+    throw new ValidationError(
+      "budget_reservation.invalid_db_time",
+      `budget_reservation.invalid_db_time: dbTime must be a valid timestamp, received ${dbTime}.`,
+    );
+  }
+  return dbNow;
+}
+
+function hasReservationExpired(expiresAt: string, dbNow: number, clockSkewSafetyMarginMs: number): boolean {
+  const reservationExpiry = Date.parse(expiresAt);
+  if (!Number.isFinite(reservationExpiry)) {
+    return true;
+  }
+  return reservationExpiry + clockSkewSafetyMarginMs <= dbNow;
+}
+
 function createDefaultContext(tenantId: string): BudgetAllocatorContext {
   return {
     tenantId,
-    traceId: newId("trace"),
+    traceId: `trace:budget-default:${tenantId}`,
     emittedBy: "budget-allocator",
     principal: "budget-allocator",
     tierLimitCurrency: "USD",

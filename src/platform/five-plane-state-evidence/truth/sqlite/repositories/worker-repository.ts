@@ -189,10 +189,25 @@ export class WorkerRepository {
     this.ticketRepo.insertExecutionLease(lease);
   }
 
+  public insertExecutionLeaseAllocatingFencingToken(lease: Omit<ExecutionLeaseRecord, "fencingToken">): number {
+    return this.ticketRepo.insertExecutionLeaseAllocatingFencingToken(lease);
+  }
+
   public renewExecutionLease(leaseId: string, expiresAt: string): void;
   public renewExecutionLease(leaseId: string, expiresAt: string, lastHeartbeatAt: string): void;
   public renewExecutionLease(leaseId: string, expiresAt: string, lastHeartbeatAt?: string): void {
     return this.ticketRepo.renewExecutionLease(leaseId, expiresAt, lastHeartbeatAt);
+  }
+
+  public renewExecutionLeaseCas(input: {
+    leaseId: string;
+    workerId: string;
+    fencingToken: number;
+    expectedStatus: ExecutionLeaseRecord["status"];
+    expiresAt: string;
+    lastHeartbeatAt: string;
+  }): boolean {
+    return this.ticketRepo.renewExecutionLeaseCas(input);
   }
 
   public closeExecutionLease(leaseId: string, releasedAt: string): void;
@@ -218,6 +233,18 @@ export class WorkerRepository {
       return;
     }
     this.ticketRepo.closeExecutionLease(leaseIdOrInput);
+  }
+
+  public closeExecutionLeaseCas(input: {
+    leaseId: string;
+    workerId: string;
+    fencingToken: number;
+    expectedStatus: ExecutionLeaseRecord["status"];
+    status: ExecutionLeaseRecord["status"];
+    releasedAt: string;
+    reasonCode: string | null;
+  }): boolean {
+    return this.ticketRepo.closeExecutionLeaseCas(input);
   }
 
   public insertLeaseAudit(audit: LeaseAuditRecord): void {

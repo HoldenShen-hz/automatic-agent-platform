@@ -4,6 +4,8 @@
  * Implements §22.4 Plugin lifecycle: PluginTestHarness for testing tools.
  */
 
+import { isDeepStrictEqual } from "node:util";
+
 import type { PluginDefinition } from "./plugin-definition.js";
 import type { PluginContextConfig } from "./plugin-context.js";
 import { PluginContext } from "./plugin-context.js";
@@ -145,7 +147,7 @@ export class PluginTestHarness {
       try {
         const actualOutput = await this.executeWithTimeout(testCase.input);
         const passed = testCase.expectedOutput
-          ? JSON.stringify(actualOutput) === JSON.stringify(testCase.expectedOutput)
+          ? isDeepStrictEqual(actualOutput, testCase.expectedOutput)
           : true;
 
         if (passed) passedCases++;
@@ -208,23 +210,33 @@ export class PluginTestHarness {
   // The current implementation does not perform actual plugin execution.
   // MockModelGateway record/replay support belongs in the plugin-harness contract.
   private async executeWithTimeout(input: Record<string, unknown>): Promise<unknown> {
-    const execution = this.executePlugin(input);
-    const timeout = new Promise<never>((_, reject) => {
-      const timer = setTimeout(() => {
-        reject(new Error(`Plugin execution timed out after ${this.timeoutMs}ms`));
-      }, this.timeoutMs);
-      execution.finally(() => clearTimeout(timer)).catch(() => undefined);
-    });
-    return Promise.race([execution, timeout]);
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort(new Error(`Plugin execution timed out after ${this.timeoutMs}ms`));
+    }, this.timeoutMs);
+    try {
+      const execution = this.executePlugin(input, controller.signal);
+      const timeout = new Promise<never>((_, reject) => {
+        controller.signal.addEventListener("abort", () => {
+          reject(controller.signal.reason instanceof Error
+            ? controller.signal.reason
+            : new Error(`Plugin execution timed out after ${this.timeoutMs}ms`));
+        }, { once: true });
+      });
+      return await Promise.race([execution, timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
-  private async executePlugin(input: Record<string, unknown>): Promise<unknown> {
+  private async executePlugin(input: Record<string, unknown>, signal: AbortSignal): Promise<unknown> {
+    const runtimeInput = attachAbortSignal(input, signal);
     if (this.mode === "live") {
       if (this.liveRunner) {
-        return this.liveRunner(input);
+        return this.liveRunner(runtimeInput);
       }
       if (this.livePlugin?.execute) {
-        return this.livePlugin.execute(input);
+        return this.livePlugin.execute(runtimeInput);
       }
       throw new ValidationError(
         "plugin_test_harness.live_runtime_required",
@@ -232,7 +244,7 @@ export class PluginTestHarness {
       );
     }
 
-    await delay(this.mockLlm?.delayMs ?? 10);
+    await delay(this.mockLlm?.delayMs ?? 10, signal);
 
     // Return mock output based on plugin type
     switch (this.plugin.type) {
@@ -250,6 +262,30 @@ export class PluginTestHarness {
   }
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function attachAbortSignal(input: Record<string, unknown>, signal: AbortSignal): Record<string, unknown> {
+  return Object.defineProperties({ ...input }, {
+    abortSignal: {
+      value: signal,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    },
+  });
+}
+
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) {
+    return Promise.reject(signal.reason instanceof Error ? signal.reason : new Error("Plugin execution aborted"));
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal?.reason instanceof Error ? signal.reason : new Error("Plugin execution aborted"));
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }

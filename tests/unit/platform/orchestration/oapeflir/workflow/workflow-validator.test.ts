@@ -31,7 +31,7 @@ function createValidStep(overrides: Partial<MinimalWorkflowStep> = {}): MinimalW
 function createValidWorkflow(steps: MinimalWorkflowStep[]): MinimalWorkflowDefinition {
   return {
     workflowId: "test_workflow",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps,
   };
 }

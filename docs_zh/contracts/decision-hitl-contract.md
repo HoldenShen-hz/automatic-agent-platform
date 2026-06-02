@@ -36,8 +36,8 @@
 - `harnessDecisionId`
 - `decisionInputBundleId`
 - `decisionKind`
-- `decision` (`accept | reject | retry | replan | escalate | abort | takeover | patch`)
-- `deciderType` (`system | policy | evaluator | human | operator`)
+- `decision` (`accept | retry_same_plan | replan | escalate_to_human | downgrade_mode | abort | quarantine | revoke_approval | pause_for_external | require_revalidation`)
+- `deciderType` (`system | policy | evaluator | human | operator | llm`)
 - `deciderRef`
 - `reasonCode`
 - `expiresAt?`
@@ -81,5 +81,5 @@
 ## 6. 测试要求
 
 - HITL responsibility record test 覆盖 high / critical 人工动作。
-- LLM judge 不能覆盖 policy deny / hard cap failure。
+- LLM judge 不能覆盖 policy deny / hard cap failure；当前 executable contract 已显式保留 `llm` 作为 `deciderType`。
 - takeover / resume 必须通过状态机推进。

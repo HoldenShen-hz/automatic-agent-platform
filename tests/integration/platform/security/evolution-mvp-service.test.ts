@@ -33,7 +33,7 @@ test("EvolutionMvpService rejects apply when approval has not been granted", () 
       executionId: "exec-evo-security",
       sourceAgentId: "supervisor-1",
       scopeType: "division",
-      scopeRef: "general_ops",
+      scopeRef: "general-ops",
       currentPolicy: {
         maxTaskCostUsd: 4,
         maxDailyCostUsd: 40,
@@ -123,7 +123,7 @@ test("EvolutionMvpService rejects invalid scope refs and missing experience cand
           executionId: "exec-evo-security-2",
           sourceAgentId: "supervisor-1",
           scopeType: "division",
-          scopeRef: "general_ops",
+          scopeRef: "general-ops",
           targetScope: "project",
           taskContext: "completely different recovery pathway",
           taskIntent: "different intent and tools",

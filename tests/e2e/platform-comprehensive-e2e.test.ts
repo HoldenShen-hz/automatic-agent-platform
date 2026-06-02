@@ -45,7 +45,7 @@ test("E2E Task: state transitions from queued through to in_progress", async () 
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "E2E happy path task",
         status: "queued",
@@ -93,7 +93,7 @@ test("E2E Task: state transitions from queued through to in_progress", async () 
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -176,7 +176,7 @@ test("E2E Task: insertStepOutput records step data correctly", async () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Step output test",
         status: "in_progress",
         source: "user",
@@ -193,7 +193,7 @@ test("E2E Task: insertStepOutput records step data correctly", async () => {
       });
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId,
         currentStepIndex: 0,
         status: "running",
@@ -258,7 +258,7 @@ test("E2E Multi-Step: workflow advances through step indices", async () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Multi-step test",
         status: "in_progress",
         source: "user",
@@ -276,7 +276,7 @@ test("E2E Multi-Step: workflow advances through step indices", async () => {
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "multi_step_wf",
         currentStepIndex: 0,
         status: "running",
@@ -365,7 +365,7 @@ test("E2E Multi-Step: multiple step outputs are recorded and retrieved", async (
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Step outputs test",
         status: "in_progress",
         source: "user",
@@ -383,7 +383,7 @@ test("E2E Multi-Step: multiple step outputs are recorded and retrieved", async (
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "three_step_wf",
         currentStepIndex: 0,
         status: "running",
@@ -452,7 +452,7 @@ test("E2E Plan Graph: workflow with parallel dependencies merges correctly", asy
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Parallel merge test",
         status: "in_progress",
         source: "user",
@@ -470,7 +470,7 @@ test("E2E Plan Graph: workflow with parallel dependencies merges correctly", asy
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "parallel_merge_wf",
         currentStepIndex: 2,
         status: "running",
@@ -549,7 +549,7 @@ test("E2E Plan Graph: DAG validation catches invalid dependency", async () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "DAG validation test",
         status: "in_progress",
         source: "user",
@@ -567,7 +567,7 @@ test("E2E Plan Graph: DAG validation catches invalid dependency", async () => {
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "invalid_dag_wf",
         currentStepIndex: 0,
         status: "running",
@@ -608,7 +608,7 @@ test("E2E Budget: execution budget is set and cost events recorded", async () =>
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Budget test task",
         status: "in_progress",
         source: "user",
@@ -703,7 +703,7 @@ test("E2E Budget: multi-step workflow aggregates costs from all steps", async ()
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Budget aggregation test",
         status: "in_progress",
         source: "user",
@@ -750,7 +750,7 @@ test("E2E Budget: multi-step workflow aggregates costs from all steps", async ()
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "multi_step_wf",
         currentStepIndex: 0,
         status: "running",
@@ -839,7 +839,7 @@ test("E2E Error: execution failure transitions to failed state", async () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Error test task",
         status: "in_progress",
         source: "user",
@@ -886,7 +886,7 @@ test("E2E Error: execution failure transitions to failed state", async () => {
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -934,7 +934,7 @@ test("E2E Error: deadlock detection sets error code on workflow", async () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Deadlock test",
         status: "in_progress",
         source: "user",
@@ -982,7 +982,7 @@ test("E2E Error: deadlock detection sets error code on workflow", async () => {
       // Workflow in stuck state with E7_DEADLOCK error code
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "multi_step_wf",
         currentStepIndex: 0,
         status: "running",
@@ -1020,7 +1020,7 @@ test("E2E Error: retry with exponential backoff is correctly recorded", async ()
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Retry test",
         status: "in_progress",
         source: "user",
@@ -1098,7 +1098,7 @@ test("E2E Error: retry with exponential backoff is correctly recorded", async ()
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -1150,7 +1150,7 @@ test("E2E Rollback: workflow records compensation events", async () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Compensation test",
         status: "in_progress",
         source: "user",
@@ -1197,7 +1197,7 @@ test("E2E Rollback: workflow records compensation events", async () => {
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "compensating_wf",
         currentStepIndex: 1,
         status: "running",
@@ -1261,7 +1261,7 @@ test("E2E Rollback: saga-style compensation for multi-step workflow", async () =
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Saga compensation test",
         status: "in_progress",
         source: "user",
@@ -1309,7 +1309,7 @@ test("E2E Rollback: saga-style compensation for multi-step workflow", async () =
       // Workflow at step 2 when failure occurred
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "saga_wf",
         currentStepIndex: 2,
         status: "running",
@@ -1394,7 +1394,7 @@ test("E2E Rollback: rollback resets step index and clears outputs", async () => 
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Rollback reset test",
         status: "in_progress",
         source: "user",
@@ -1412,7 +1412,7 @@ test("E2E Rollback: rollback resets step index and clears outputs", async () => 
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "rollback_wf",
         currentStepIndex: 2,
         status: "running",
@@ -1484,7 +1484,7 @@ test("E2E Rollback: checkpoint enables workflow resume after failure", async () 
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Checkpoint resume test",
         status: "in_progress",
         source: "user",
@@ -1502,7 +1502,7 @@ test("E2E Rollback: checkpoint enables workflow resume after failure", async () 
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "checkpoint_wf",
         currentStepIndex: 1,
         status: "running",
@@ -1548,7 +1548,7 @@ test("E2E Session: session tracks messages and reflects current status", async (
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Session test",
         status: "in_progress",
         source: "user",
@@ -1645,7 +1645,7 @@ test("E2E Events: tier-1 and tier-2 events are recorded correctly", async () => 
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Events test",
         status: "in_progress",
         source: "user",
@@ -1778,7 +1778,7 @@ test("E2E Priority: task priority is correctly set and retrieved", async () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "High priority task",
         status: "queued",
@@ -1806,7 +1806,7 @@ test("E2E Priority: task priority is correctly set and retrieved", async () => {
         id: taskId2,
         parentId: null,
         rootId: taskId2,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Low priority task",
         status: "queued",

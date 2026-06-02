@@ -46,7 +46,7 @@ function seedTaskAndExecution(
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Test task",
       status: "in_progress",
       source: "user",

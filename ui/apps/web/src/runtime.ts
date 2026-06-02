@@ -13,6 +13,7 @@ import {
   createRetryInterceptor,
   createTenantInterceptor,
   createTraceInterceptor,
+  DEFAULT_RUNTIME_API_BASE_URL,
   fetchContractVersion,
   type RESTClient,
   type WSClient,
@@ -46,7 +47,7 @@ export interface StartupBanner {
 type Constructable<TValue, TArgs extends readonly unknown[]> = new(...args: TArgs) => TValue;
 type CallableFactory<TValue, TArgs extends readonly unknown[]> = (...args: TArgs) => TValue;
 const STATIC_BOOTSTRAP_SESSION_REFRESH_TOKEN = "bootstrap-session";
-const NON_EXPIRING_BOOTSTRAP_SESSION_EXPIRY = Number.MAX_SAFE_INTEGER;
+const MAX_BOOTSTRAP_TOKEN_LIFETIME_MS = 15 * 60 * 1000;
 
 const runtimeFetch: typeof fetch = (...args) => globalThis.fetch(...args);
 
@@ -68,7 +69,16 @@ export function createWebRuntimeConfig(env: Record<string, string | boolean | un
 
 export function readBootstrapAuthToken(doc: Document = document): string | undefined {
   const metaToken = doc.querySelector('meta[name="aa-auth-token"]')?.getAttribute("content");
-  return normalizeOptionalEnv(metaToken);
+  const metaExpiry = doc.querySelector('meta[name="aa-auth-token-exp"]')?.getAttribute("content");
+  const token = normalizeOptionalEnv(metaToken);
+  const expiresAt = metaExpiry == null ? Number.NaN : Date.parse(metaExpiry);
+  if (token == null || !Number.isFinite(expiresAt)) {
+    return undefined;
+  }
+  if (expiresAt <= Date.now() || expiresAt > Date.now() + MAX_BOOTSTRAP_TOKEN_LIFETIME_MS) {
+    return undefined;
+  }
+  return token;
 }
 
 function normalizeOptionalEnv(value: string | boolean | null | undefined): string | undefined {
@@ -123,7 +133,10 @@ function seedTokenManager(tokenManager: TokenManager, authToken: string): void {
   if (typeof tokenManager.setSession !== "function") {
     return;
   }
-  const expiresAt = readJwtExpiry(authToken) ?? NON_EXPIRING_BOOTSTRAP_SESSION_EXPIRY;
+  const expiresAt = readJwtExpiry(authToken);
+  if (expiresAt == null || expiresAt <= Date.now()) {
+    return;
+  }
   tokenManager.setSession({
     accessToken: authToken,
     refreshToken: STATIC_BOOTSTRAP_SESSION_REFRESH_TOKEN,
@@ -137,10 +150,7 @@ function readJwtExpiry(token: string): number | null {
     return null;
   }
   try {
-    const encodedPayload = parts[1]!.replace(/-/g, "+").replace(/_/g, "/");
-    const decodedPayload = typeof globalThis.atob === "function"
-      ? globalThis.atob(encodedPayload)
-      : Buffer.from(encodedPayload, "base64").toString("utf8");
+    const decodedPayload = decodeBase64UrlUtf8(parts[1]!);
     const payload = JSON.parse(decodedPayload) as { exp?: unknown };
     if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp) || payload.exp <= 0) {
       return null;
@@ -149,6 +159,19 @@ function readJwtExpiry(token: string): number | null {
   } catch {
     return null;
   }
+}
+
+function decodeBase64UrlUtf8(value: string): string {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+  if (typeof TextDecoder !== "undefined") {
+    const binary = typeof globalThis.atob === "function"
+      ? globalThis.atob(padded)
+      : Buffer.from(padded, "base64").toString("binary");
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+  return Buffer.from(padded, "base64").toString("utf8");
 }
 
 export function createWebRuntimeClients(
@@ -165,7 +188,7 @@ export function createWebRuntimeClients(
     DefaultRESTClient,
     (request) =>
       constructOrCall(HttpTransport, {
-        baseUrl: config.apiBaseUrl ?? "/api",
+        baseUrl: config.apiBaseUrl ?? DEFAULT_RUNTIME_API_BASE_URL,
         fallbackToMock: false,
       }).send(request),
     [

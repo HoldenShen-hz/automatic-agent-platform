@@ -30,13 +30,17 @@ export function resolveRequiredSlots(
   requiredEntityTypes: readonly string[],
 ): { readonly missing: string[]; readonly resolved: Record<string, unknown> } {
   const resolved: Record<string, unknown> = {};
+  const ambiguousSlots = collectAmbiguousSlots(entities);
   for (const entity of entities) {
+    if (ambiguousSlots.has(entity.entityType)) {
+      continue;
+    }
     if (!Object.prototype.hasOwnProperty.call(resolved, entity.entityType)) {
       resolved[entity.entityType] = entity.normalized;
     }
   }
   return {
-    missing: requiredEntityTypes.filter((item) => !Object.prototype.hasOwnProperty.call(resolved, item)),
+    missing: requiredEntityTypes.filter((item) => ambiguousSlots.has(item) || !Object.prototype.hasOwnProperty.call(resolved, item)),
     resolved,
   };
 }
@@ -58,15 +62,19 @@ export function buildSlotClarificationState(
   const resolved: Record<string, unknown> = {
     ...(options.previousResolved ?? {}),
   };
+  const ambiguousSlots = collectAmbiguousSlots(entities);
 
   // First pass: resolve from provided entities
   for (const entity of entities) {
+    if (ambiguousSlots.has(entity.entityType)) {
+      continue;
+    }
     if (!Object.prototype.hasOwnProperty.call(resolved, entity.entityType)) {
       resolved[entity.entityType] = entity.normalized;
     }
   }
 
-  const missing = [...new Set(requiredEntityTypes.filter((item) => !Object.prototype.hasOwnProperty.call(resolved, item)))];
+  const missing = [...new Set(requiredEntityTypes.filter((item) => ambiguousSlots.has(item) || !Object.prototype.hasOwnProperty.call(resolved, item)))];
 
   // Generate questions for missing slots
   const questions = missing.map((slot) => {
@@ -105,14 +113,18 @@ export function refineSlotResolution(
   const resolved: Record<string, unknown> = {
     ...currentState.resolved,
   };
+  const ambiguousSlots = collectAmbiguousSlots(newEntities);
   for (const entity of newEntities) {
+    if (ambiguousSlots.has(entity.entityType)) {
+      continue;
+    }
     if (!Object.prototype.hasOwnProperty.call(resolved, entity.entityType)) {
       resolved[entity.entityType] = entity.normalized;
     }
   }
 
   const missing = [
-    ...new Set(currentState.missing.filter((slot) => !Object.prototype.hasOwnProperty.call(resolved, slot))),
+    ...new Set(currentState.missing.filter((slot) => ambiguousSlots.has(slot) || !Object.prototype.hasOwnProperty.call(resolved, slot))),
   ];
 
   if (missing.length === 0) {
@@ -151,13 +163,14 @@ export function refineSlotResolution(
 }
 
 function defaultQuestionForSlot(slot: string): string {
+  const safeSlot = /^[a-z][a-z0-9_-]{0,63}$/i.test(slot) ? slot : "目标字段";
   const prompts: Record<string, string> = {
     date: "请提供期望执行的日期或时间窗口。",
     environment: "请确认目标环境，例如 dev、staging 或 production。",
     channel: "请说明通知或回传结果的渠道。",
     money: "请提供预算或金额范围。",
   };
-  return prompts[slot] ?? `请补充 ${slot} 相关信息。`;
+  return prompts[safeSlot] ?? `请补充 ${safeSlot} 相关信息。`;
 }
 
 function buildEscalationPrompt(missingSlots: readonly string[]): string {
@@ -165,4 +178,18 @@ function buildEscalationPrompt(missingSlots: readonly string[]): string {
     return "已达到最大澄清轮次，需要人工复核。";
   }
   return `已达到最大澄清轮次，仍缺少 ${missingSlots.join("、")}，请转人工确认。`;
+}
+
+function collectAmbiguousSlots(entities: readonly ExtractedEntity[]): Set<string> {
+  const valuesByType = new Map<string, Set<string>>();
+  for (const entity of entities) {
+    const bucket = valuesByType.get(entity.entityType) ?? new Set<string>();
+    bucket.add(String(entity.normalized));
+    valuesByType.set(entity.entityType, bucket);
+  }
+  return new Set(
+    [...valuesByType.entries()]
+      .filter(([, values]) => values.size > 1)
+      .map(([entityType]) => entityType),
+  );
 }

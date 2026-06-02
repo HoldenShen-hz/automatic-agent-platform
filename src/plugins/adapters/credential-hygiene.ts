@@ -1,7 +1,7 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 
 export interface ZeroableCredentialSecret {
-  withSecret<T>(consumer: (secret: string) => T): T;
+  withSecretBytes<T>(consumer: (secret: Buffer) => T): T;
   clear(): void;
 }
 
@@ -12,11 +12,11 @@ class InMemoryZeroableCredentialSecret implements ZeroableCredentialSecret {
     this.bytes = Buffer.from(secret, "utf8");
   }
 
-  public withSecret<T>(consumer: (secret: string) => T): T {
+  public withSecretBytes<T>(consumer: (secret: Buffer) => T): T {
     if (this.bytes == null) {
       throw new Error("adapter.credential_unavailable");
     }
-    return consumer(this.bytes.toString("utf8"));
+    return consumer(Buffer.from(this.bytes));
   }
 
   public clear(): void {
@@ -29,6 +29,16 @@ export function createZeroableCredentialSecret(secret: string): ZeroableCredenti
   return new InMemoryZeroableCredentialSecret(secret);
 }
 
-export function buildHashedCredentialFingerprint(prefix: string, secret: string, length: number = 24): string {
-  return `${prefix}_${createHash("sha256").update(secret).digest("hex").slice(0, Math.max(12, length))}`;
+const processCredentialFingerprintSalt = randomBytes(16).toString("hex");
+
+export function buildHashedCredentialFingerprint(
+  prefix: string,
+  secret: string,
+  length: number = 24,
+  scopeSalt: string = processCredentialFingerprintSalt,
+): string {
+  return `${prefix}_${createHash("sha256")
+    .update(`${scopeSalt}\0${prefix}\0${secret}`)
+    .digest("hex")
+    .slice(0, Math.max(12, length))}`;
 }

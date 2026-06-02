@@ -119,7 +119,7 @@ function seedTaskWithRegion(
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       tenantId: null,
       title: `Task ${taskId} in ${regionId}`,
       status,

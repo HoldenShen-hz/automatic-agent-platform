@@ -13,7 +13,7 @@ export interface SdkVersionHandshakeRequest {
 export interface SdkVersionHandshakeDecision {
   readonly accepted: boolean;
   readonly statusCode: 200 | 426;
-  readonly reasonCode: "sdk.accepted" | "sdk.upgrade_required" | "sdk.platform_incompatible";
+  readonly reasonCode: "sdk.accepted" | "sdk.upgrade_required" | "sdk.platform_incompatible" | "sdk.contract_incompatible";
   readonly responseHeaders: Readonly<Record<string, string>>;
   readonly warnings: readonly string[];
 }
@@ -29,7 +29,13 @@ export class SdkVersionHandshakeService {
     const warnings: string[] = [];
 
     if (contractVersion != null && contractVersion !== this.policy.contractVersion) {
-      warnings.push(`compatibility_warning:contract=${contractVersion};expected=${this.policy.contractVersion}`);
+      return {
+        accepted: false,
+        statusCode: 426,
+        reasonCode: "sdk.contract_incompatible",
+        responseHeaders: this.buildHeaders("contract_incompatible"),
+        warnings: [`compatibility_error:contract=${contractVersion};expected=${this.policy.contractVersion}`],
+      };
     }
 
     if (platformMinVersion != null && !this.isStrictSemver(platformMinVersion)) {

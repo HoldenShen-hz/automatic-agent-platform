@@ -45,6 +45,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
       - name: Validate workflow inputs
         env:
           IMAGE_TAG: ${{ inputs.image_tag }}
@@ -62,7 +64,7 @@ jobs:
           [[ "${CONFIG_BUNDLE_REF}" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$ ]] || {
             echo "::error::Invalid config_bundle_ref"; exit 1;
           }
-          if [[ -n "${PUBLIC_DOMAIN}" ]] && [[ ! "${PUBLIC_DOMAIN}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+          if [[ -n "${PUBLIC_DOMAIN}" ]] && [[ ! "${PUBLIC_DOMAIN}" =~ ^(?=.{1,253}$)(?![.-])[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]]; then
             echo "::error::Invalid public_domain"
             exit 1
           fi
@@ -140,6 +142,8 @@ jobs:
       PUBLIC_DOMAIN: ${{ inputs.public_domain != '' && inputs.public_domain || secrets.PUBLIC_DOMAIN != '' && secrets.PUBLIC_DOMAIN || vars.PUBLIC_DOMAIN }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c
@@ -329,6 +333,8 @@ jobs:
       EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c
         with:
@@ -370,6 +376,10 @@ jobs:
             echo "::warning::No previous Helm revision available for ${RELEASE_NAME}; skipping rollback."
             exit 0
           fi
+          [[ "${PREVIOUS_REVISION}" =~ ^[0-9]+$ ]] || {
+            echo "::error::Invalid previous Helm revision: ${PREVIOUS_REVISION}"
+            exit 1
+          }
           helm rollback ${RELEASE_NAME} ${PREVIOUS_REVISION} \
             --namespace "${{ steps.namespace.outputs.namespace }}" \
             --wait --timeout 5m

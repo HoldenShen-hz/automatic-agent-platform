@@ -39,9 +39,6 @@ export class EvalRunService {
         run.steps.flatMap((step) => step.evidenceRefs ?? []),
       ),
     );
-    if (stepEvidenceRefs.length > 0) {
-      return stepEvidenceRefs;
-    }
-    return Array.from(new Set(run.feedbackEnvelope?.signals ?? []));
+    return stepEvidenceRefs;
   }
 }

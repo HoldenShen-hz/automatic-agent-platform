@@ -1,4 +1,6 @@
+$schema: roi/schemas/division-roi.schema.json
 divisionId: customer-service
+protocolRef: roi/measurement-protocol.md
 method: assisted_vs_manual
 sampleWindow: 14d
 minimumSampleSize: 100
@@ -6,4 +8,14 @@ metrics:
   - handle_time_delta
   - csat_proxy_delta
   - policy_violation_delta
+costDeltaMetrics:
+  - agent_handle_minutes_saved
+  - escalation_queue_cost_delta
+qualityDeltaMetrics:
+  - csat_proxy_delta
+  - handoff_accuracy_delta
+riskDeltaMetrics:
+  - policy_violation_delta
+  - unauthorized_write_draft_delta
 confidence: medium
+confidenceCalculation: compare assisted vs manual cohorts over 14d with minimum 100 samples and weekly variance review.

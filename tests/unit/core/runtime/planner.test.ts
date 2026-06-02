@@ -56,8 +56,8 @@ test("parseOptionalStringArray returns valid string array", () => {
 });
 
 test("parseOptionalStringArray filters out non-strings", () => {
-  assert.deepEqual(parseOptionalStringArray(["a", 123 as any, "b"]), ["a", "b"]);
-  assert.deepEqual(parseOptionalStringArray([1 as any, 2 as any]), []);
+  assert.deepEqual(parseOptionalStringArray(["a", 123, "b"]), ["a", "b"]);
+  assert.deepEqual(parseOptionalStringArray([1, 2]), []);
 });
 
 test("parseOptionalStringArray filters out empty and whitespace strings", () => {

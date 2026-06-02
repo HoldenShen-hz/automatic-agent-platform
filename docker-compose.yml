@@ -23,6 +23,7 @@ services:
       AA_STORAGE_POSTGRES_DSN: ${AA_STORAGE_POSTGRES_DSN:-}
       AA_REDIS_HOST: redis
       AA_REDIS_PORT: "6379"
+      AA_REDIS_PASSWORD: ${AA_REDIS_PASSWORD:?required}
     volumes:
       - automatic-agent-data:/app/data
     read_only: true
@@ -56,8 +57,6 @@ services:
       POSTGRES_DB: automatic_agent
       POSTGRES_USER: automatic_agent
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
-    ports:
-      - "127.0.0.1:5432:5432"
     volumes:
       - automatic-agent-postgres:/var/lib/postgresql/data
     healthcheck:
@@ -67,10 +66,15 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    mem_limit: 512m
+    pids_limit: 256
     networks:
       - automatic-agent-network
 
@@ -78,9 +82,18 @@ services:
     image: redis:7-alpine
     ports:
       - "127.0.0.1:6379:6379"
-    command: ["redis-server", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    command:
+      - redis-server
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --requirepass
+      - ${AA_REDIS_PASSWORD:?required}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${AA_REDIS_PASSWORD:?required}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -94,7 +107,7 @@ services:
       - automatic-agent-network
 
   prometheus:
-    image: prom/prometheus:v3.5.3
+    image: prom/prometheus:v3.5.3@sha256:3472eaf38a47d53edd57d2b04073210a48a278b5e21300e5b556441800cfa503
     ports:
       - "127.0.0.1:9090:9090"
     volumes:
@@ -121,7 +134,7 @@ services:
       - automatic-agent-network
 
   alertmanager:
-    image: prom/alertmanager:v0.32.1
+    image: prom/alertmanager:v0.32.1@sha256:7f188886b63dd41789f5cb2ee4c719f8281f65d8ce8ebef2fc80656ece98c512
     command:
       - /bin/sh
       - /etc/alertmanager/render-alertmanager-config.sh
@@ -152,8 +165,9 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ${PWD}/data/docker/postgres
+      device: ${AA_POSTGRES_DATA_DIR:-./data/docker/postgres}
 
 networks:
   automatic-agent-network:
     driver: bridge
+    internal: true

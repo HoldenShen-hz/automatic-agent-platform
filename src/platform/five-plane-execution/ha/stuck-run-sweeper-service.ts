@@ -84,6 +84,7 @@ export class StuckRunSweeperService implements RecoveryWorker {
   private readonly RUN_TTL_MS = 60 * 60 * 1000; // 1 hour
   private lastEvictionTime = 0;
   private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
+  private lastSweepClockMs = 0;
 
   private readonly config: Required<StuckRunSweeperConfig>;
   private readonly onStuckRunDetected: ((run: StuckRun) => void) | undefined;
@@ -247,10 +248,13 @@ export class StuckRunSweeperService implements RecoveryWorker {
   ): void {
     const existing = this.trackedRuns.get(executionId);
     if (existing) {
-      // Update last progress time and potentially reset status
-      existing.lastProgressAt = nowIso();
-      if (existing.status === "pending") {
-        existing.status = "pending"; // Stay pending until confirmed stuck
+      const progressAt = nowIso();
+      existing.taskId = taskId;
+      existing.sessionId = sessionId;
+      existing.lastProgressAt = progressAt;
+      if (existing.status === "warning") {
+        existing.status = "pending";
+        existing.warningIssuedAt = null;
       }
     }
     // If not tracked, we don't auto-add - only sweep adds runs
@@ -501,7 +505,7 @@ export class StuckRunSweeperService implements RecoveryWorker {
       return [];
     }
 
-    const now = Date.now();
+    const now = this.nextSweepClockMs();
     const affectedRuns: StuckRun[] = [];
 
     try {
@@ -643,11 +647,8 @@ export class StuckRunSweeperService implements RecoveryWorker {
    * Kills a stuck run.
    */
   private async killRun(run: StuckRun): Promise<boolean> {
-    run.status = "killed";
-    run.killedAt = nowIso();
-    this.metrics.totalKilled++;
-
     try {
+      const killedAt = nowIso();
       // Call the kill callback if provided
       if (this.onKillExecution) {
         const success = await this.onKillExecution(
@@ -660,8 +661,13 @@ export class StuckRunSweeperService implements RecoveryWorker {
             message: "stuck_run_sweeper.kill_callback_failed",
             data: { executionId: run.executionId },
           });
+          return false;
         }
       }
+
+      run.status = "killed";
+      run.killedAt = killedAt;
+      this.metrics.totalKilled++;
 
       this.onRunKilled?.(run);
 
@@ -693,9 +699,6 @@ export class StuckRunSweeperService implements RecoveryWorker {
    * Cleans up a killed run.
    */
   private async cleanupRun(run: StuckRun): Promise<boolean> {
-    run.status = "cleaned_up";
-    this.metrics.totalCleanedUp++;
-
     try {
       // Call the cleanup callback if provided
       if (this.onCleanupExecution) {
@@ -709,8 +712,12 @@ export class StuckRunSweeperService implements RecoveryWorker {
             message: "stuck_run_sweeper.cleanup_callback_failed",
             data: { executionId: run.executionId },
           });
+          return false;
         }
       }
+
+      run.status = "cleaned_up";
+      this.metrics.totalCleanedUp++;
 
       this.onRunCleanedUp?.(run);
 
@@ -738,6 +745,13 @@ export class StuckRunSweeperService implements RecoveryWorker {
       });
       return false;
     }
+  }
+
+  private nextSweepClockMs(): number {
+    const observed = Date.now();
+    const next = Math.max(observed, this.lastSweepClockMs);
+    this.lastSweepClockMs = next;
+    return next;
   }
 }
 

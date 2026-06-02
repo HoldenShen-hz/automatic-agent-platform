@@ -9,6 +9,8 @@ import {
 } from "../../../../src/platform/shared/stability/stable-event-replay-rehearsal.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 test("stable event replay rehearsal clears failed consumer acknowledgements via replay", async () => {
   const workspace = createTempWorkspace("aa-stable-replay-");
 

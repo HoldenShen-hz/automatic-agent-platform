@@ -106,18 +106,22 @@ export function loadRiskConfig(
   configPath: string = DEFAULT_CONFIG_PATH,
   sandboxPolicy?: SandboxPolicy,
 ): RiskConfig {
+  if (sandboxPolicy == null) {
+    throw new PolicyDeniedError(
+      "config.risk_sandbox_policy_required",
+      "config.risk_sandbox_policy_required",
+    );
+  }
   // Validate path before reading to prevent path traversal attacks
   let effectivePath = configPath;
-  if (sandboxPolicy != null) {
-    const check = checkSandboxPath(sandboxPolicy, configPath);
-    if (!check.allowed) {
-      throw new PolicyDeniedError(
-        check.reasonCode ?? "config.risk_denied",
-        check.reasonCode ?? "config.risk_denied",
-      );
-    }
-    effectivePath = check.normalizedPath;
+  const check = checkSandboxPath(sandboxPolicy, configPath);
+  if (!check.allowed) {
+    throw new PolicyDeniedError(
+      check.reasonCode ?? "config.risk_denied",
+      check.reasonCode ?? "config.risk_denied",
+    );
   }
+  effectivePath = check.normalizedPath;
 
   const raw = readFileSync(effectivePath, "utf-8");
   let parsed: unknown;

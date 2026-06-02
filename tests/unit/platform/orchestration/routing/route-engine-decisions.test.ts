@@ -40,6 +40,7 @@ function createRouteInput(overrides: Partial<IntakeRouteInput> = {}): IntakeRout
     request: overrides.request ?? "",
     tenantId: overrides.tenantId,
     traceId: overrides.traceId,
+    principal: overrides.principal,
     confirmedTaskSpecId: overrides.confirmedTaskSpecId,
     riskPreview: overrides.riskPreview,
     preferredIntent: overrides.preferredIntent,
@@ -297,14 +298,14 @@ test("IntakeRouter.route handles pipe-separated trigger alternatives", async () 
   assert.equal(result.divisionId, "devops");
 });
 
-test("IntakeRouter.route falls back to general_ops when no division matches", async () => {
-  const generalOps = createMockDivision({ id: "general_ops", priority: 0, triggers: [] });
+test("IntakeRouter.route falls back to general-ops when no division matches", async () => {
+  const generalOps = createMockDivision({ id: "general-ops", priority: 0, triggers: [] });
   const registry = createMockRegistry([generalOps]);
   const router = new IntakeRouter({ divisionRegistry: registry });
 
   const result = await router.route(createRouteInput({ title: "Unknown", request: "xyz123 abc456" }));
 
-  assert.equal(result.divisionId, "general_ops");
+  assert.equal(result.divisionId, "general-ops");
 });
 
 // --- Workflow Selection ---
@@ -436,7 +437,7 @@ test("IntakeRouter.route includes riskClass in trace when riskPreview provided",
 
 // --- Preferred Intent ---
 
-test("IntakeRouter.route uses preferredIntent when confidence >= 0.80", async () => {
+test("IntakeRouter.route ignores conflicting preferredIntent even when confidence is high", async () => {
   const router = new IntakeRouter();
   const result = await router.route(createRouteInput({
     title: "Task",
@@ -446,6 +447,22 @@ test("IntakeRouter.route uses preferredIntent when confidence >= 0.80", async ()
       confidence: 0.85,
       reasoning: "preferred by NL parser",
       source: "nl_intent_parser",
+    },
+  }));
+
+  assert.notEqual(result.classification.intent, "create");
+  assert.ok(result.routeTrace.some(t => t.includes("preferred_intent_rejected:create")));
+});
+
+test("IntakeRouter.route accepts preferredIntent only when it agrees with local classification", async () => {
+  const router = new IntakeRouter();
+  const result = await router.route(createRouteInput({
+    title: "Create",
+    request: "build a new feature",
+    preferredIntent: {
+      intent: "create",
+      confidence: 0.85,
+      reasoning: "preferred by NL parser",
     },
   }));
 

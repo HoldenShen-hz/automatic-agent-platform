@@ -238,6 +238,7 @@ export class RecoveryController {
         }
 
         // R9-22 fix: emit recovery event for tool_timeout node-level retry
+        loop.recordRetry();
         const backoffMs = loop.getBackoffMs();
         this.emitRecoveryEvent("recovery:repair_applied", run.runId, "tool_timeout", {
           scope: "node",
@@ -248,7 +249,6 @@ export class RecoveryController {
 
         // Use LoopController's backoff with jitter per §9.3
         const resumeAt = new Date(Date.now() + backoffMs).toISOString();
-        loop.recordIteration(0); // Record retry attempt in LoopController
         // Use LoopController's retryAttempt as the authoritative count
         const sleeping = this.runtime.sleep(recovering, `tool_timeout_retry`, resumeAt, loop.getState().retryAttempt);
         this.durableService.persist(sleeping);

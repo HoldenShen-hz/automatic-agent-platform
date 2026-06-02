@@ -39,7 +39,18 @@ import { dirname, relative, resolve, sep } from "node:path";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const sandboxLogger = new StructuredLogger({ retentionLimit: 100 });
-const DEFAULT_SANDBOX_DENIED_ROOTS = ["/etc", "/proc", "/sys", `${homedir()}/.ssh`] as const;
+const DEFAULT_SANDBOX_DENIED_ROOTS = [
+  "/etc",
+  "/proc",
+  "/root",
+  "/sys",
+  "/var/log",
+  "/var/run/docker.sock",
+  `${homedir()}/.aws`,
+  `${homedir()}/.config`,
+  `${homedir()}/.kube`,
+  `${homedir()}/.ssh`,
+] as const;
 
 /**
  * Sandbox operating mode determining what operations are permitted.
@@ -52,9 +63,9 @@ export type SandboxMode = "read_only" | "workspace_write" | "scoped_external_acc
 export type SandboxModeLike = SandboxMode | string;
 
 const SANDBOX_MODE_ALIASES = {
-  none: "read_only",
+  none: "restricted_exec",
   process: "read_only",
-  container: "workspace_write",
+  container: "restricted_exec",
   scoped_external_access: "scoped_external_access",
   read_only: "read_only",
   workspace_write: "workspace_write",
@@ -64,6 +75,12 @@ const SANDBOX_MODE_ALIASES = {
 export function normalizeSandboxMode(mode: SandboxModeLike | null | undefined): SandboxMode {
   if (mode == null) {
     return "read_only";
+  }
+  if (mode === "none" || mode === "container") {
+    sandboxLogger.warn("sandbox.mode_alias_deprecated", {
+      requestedMode: mode,
+      mappedMode: SANDBOX_MODE_ALIASES[mode],
+    });
   }
   return SANDBOX_MODE_ALIASES[mode as keyof typeof SANDBOX_MODE_ALIASES] ?? "read_only";
 }

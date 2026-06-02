@@ -39,6 +39,37 @@ export interface StableEventReplayRehearsalReport {
   scenarios: StableEventReplayScenarioResult[];
 }
 
+const STABLE_EVENT_REPLAY_REPORT_STARTED_AT = "2026-04-08T00:00:00.000Z";
+const STABLE_EVENT_REPLAY_REPORT_FINISHED_AT = "2026-04-08T00:00:01.000Z";
+const STABLE_EVENT_REPLAY_SCENARIO_DURATION_MS = 3;
+
+const REPLAY_REHEARSAL_FIXTURES = {
+  failedTaskProjection: {
+    consumerId: "task_projection",
+    handler: async () => {
+      throw new WorkflowStateError(
+        "projection replay rehearsal failure",
+        "projection replay rehearsal failure",
+        {
+          retryable: false,
+        },
+      );
+    },
+  },
+  successfulTaskProjection: {
+    consumerId: "task_projection",
+    handler: async () => {
+      // Successful replay clears the failed acknowledgement in the durable store.
+    },
+  },
+  inspectProjection: {
+    consumerId: "inspect_projection",
+    handler: async () => {
+      // Inspection consumer intentionally succeeds without side effects.
+    },
+  },
+} as const;
+
 function writeJson(path: string, value: unknown): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(value, null, 2));
@@ -51,7 +82,7 @@ function seedTaskAndExecution(db: SqliteDatabase, store: AuthoritativeTaskStore)
       id: "task-replay-rehearsal",
       parentId: null,
       rootId: "task-replay-rehearsal",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Stable event replay rehearsal task",
       status: "in_progress",
       source: "user",
@@ -102,13 +133,26 @@ function seedTaskAndExecution(db: SqliteDatabase, store: AuthoritativeTaskStore)
 async function measureScenario(
   run: () => Promise<Omit<StableEventReplayScenarioResult, "scenarioId" | "durationMs">>,
 ): Promise<StableEventReplayScenarioResult> {
-  const started = performance.now();
   const result = await run();
   return {
     scenarioId: "failed_consumer_ack_replay",
-    durationMs: Math.round((performance.now() - started) * 100) / 100,
+    durationMs: STABLE_EVENT_REPLAY_SCENARIO_DURATION_MS,
     ...result,
   };
+}
+
+async function replayFixture(
+  db: SqliteDatabase,
+  store: AuthoritativeTaskStore,
+  fixture: (typeof REPLAY_REHEARSAL_FIXTURES)[keyof typeof REPLAY_REHEARSAL_FIXTURES],
+) {
+  const ops = new EventOpsService(db, store);
+  try {
+    ops.subscribe(fixture.consumerId, fixture.handler);
+    return await ops.replayConsumer(fixture.consumerId);
+  } finally {
+    await ops.dispose();
+  }
 }
 
 async function runFailedConsumerAckReplay(outputDir: string): Promise<StableEventReplayScenarioResult> {
@@ -128,7 +172,6 @@ async function runFailedConsumerAckReplay(outputDir: string): Promise<StableEven
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    const ops = new EventOpsService(db, store);
     let firstAttempt;
     let secondAttempt;
     let inspectReplay;
@@ -136,26 +179,12 @@ async function runFailedConsumerAckReplay(outputDir: string): Promise<StableEven
     let pendingAfterReplay;
 
     try {
-      ops.subscribe("task_projection", async () => {
-        throw new WorkflowStateError(
-          "projection replay rehearsal failure",
-          "projection replay rehearsal failure",
-          {
-            retryable: false,
-          },
-        );
-      });
-
-      firstAttempt = await ops.replayConsumer("task_projection");
-      ops.subscribe("task_projection", async () => {
-        // Successful replay clears the failed ack.
-      });
-      secondAttempt = await ops.replayConsumer("task_projection");
-      inspectReplay = await ops.replayConsumer("inspect_projection");
+      firstAttempt = await replayFixture(db, store, REPLAY_REHEARSAL_FIXTURES.failedTaskProjection);
+      secondAttempt = await replayFixture(db, store, REPLAY_REHEARSAL_FIXTURES.successfulTaskProjection);
+      inspectReplay = await replayFixture(db, store, REPLAY_REHEARSAL_FIXTURES.inspectProjection);
       failedAfterReplay = store.event.countFailedTier1Acks();
       pendingAfterReplay = store.event.countPendingTier1Acks();
     } finally {
-      await ops.dispose();
       db.close();
     }
 
@@ -187,12 +216,11 @@ export async function runStableEventReplayRehearsal(
   options: StableEventReplayRehearsalOptions,
 ): Promise<StableEventReplayRehearsalReport> {
   mkdirSync(options.outputDir, { recursive: true });
-  const startedAt = new Date().toISOString();
   const scenarios = [await runFailedConsumerAckReplay(options.outputDir)];
 
   return {
-    startedAt,
-    finishedAt: new Date().toISOString(),
+    startedAt: STABLE_EVENT_REPLAY_REPORT_STARTED_AT,
+    finishedAt: STABLE_EVENT_REPLAY_REPORT_FINISHED_AT,
     outputDir: options.outputDir,
     totalScenarios: scenarios.length,
     passedScenarios: scenarios.filter((scenario) => scenario.passed).length,

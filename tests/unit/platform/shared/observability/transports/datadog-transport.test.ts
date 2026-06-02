@@ -30,7 +30,7 @@ function createMockRequestFactory() {
     path: string;
     method: string;
     headers: Record<string, string>;
-  }, callback: () => void) => {
+  }, callback: (response: { statusCode: number }) => void) => {
     lastRequest = {
       hostname: options.hostname,
       path: options.path,
@@ -46,8 +46,7 @@ function createMockRequestFactory() {
         if (lastRequest && data) {
           lastRequest.body = data;
         }
-        // Call the callback to signal request is "done"
-        callback();
+        queueMicrotask(() => callback({ statusCode: 202 }));
         return mockReq;
       },
       write: (data: string) => {
@@ -222,6 +221,7 @@ test("DatadogTransport.flushInternal sends entries to Datadog API", async () => 
     apiKey: "test-api-key",
     service: "test-service",
     requestFactory: mockRequest as any,
+    env: "production",
   });
 
   transport.write(createTestEntry({
@@ -244,21 +244,17 @@ test("DatadogTransport.flushInternal sends entries to Datadog API", async () => 
 });
 
 test("DatadogTransport.flushInternal includes ddtags with NODE_ENV", async () => {
-  const originalNodeEnv = process.env.NODE_ENV;
-  process.env.NODE_ENV = "production";
-
   const { mockRequest, getLastRequest } = createMockRequestFactory();
 
   const transport = new DatadogTransport({
     apiKey: "test-api-key",
     service: "test-service",
     requestFactory: mockRequest as any,
+    env: "production",
   });
 
   transport.write(createTestEntry({ message: "production log" }));
   await transport.flush();
-
-  process.env.NODE_ENV = originalNodeEnv;
 
   const lastReq = getLastRequest();
   assert.ok(lastReq !== null, "lastReq should not be null");
@@ -330,6 +326,7 @@ test("DatadogTransport batch entries include service and source", async () => {
     service: "my-service",
     source: "my-source",
     requestFactory: mockRequest as any,
+    env: "test",
   });
 
   transport.write(createTestEntry({ message: "batch with metadata" }));

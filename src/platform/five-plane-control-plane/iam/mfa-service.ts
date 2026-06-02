@@ -16,6 +16,10 @@ const MFA_CODE_LENGTH = 6;
 const MFA_CODE_TTL_MS = 5 * 60 * 1000; // 5 minutes for TOTP
 const MFA_MAX_VERIFICATION_ATTEMPTS = 5;
 const MFA_ENROLLMENT_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes to complete enrollment
+const MFA_MAX_PRINCIPALS = 5_000;
+const MFA_MAX_ENROLLMENT_SESSIONS = 10_000;
+const MFA_MAX_VERIFICATION_CHALLENGES = 10_000;
+const MFA_MAX_RATE_LIMIT_KEYS = 10_000;
 
 // ============================================================================
 // MFA Types
@@ -108,16 +112,54 @@ function generateEnrollmentId(): string {
 }
 
 function generateTotpSecret(): string {
-  return randomBytes(20).toString("base64url");
+  return encodeBase32(randomBytes(20));
+}
+
+function encodeBase32(bytes: Buffer): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let output = "";
+  let bits = 0;
+  let value = 0;
+  for (const byte of bytes) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      output += alphabet[(value >>> (bits - 5)) & 0x1f] ?? "";
+      bits -= 5;
+    }
+  }
+  if (bits > 0) {
+    output += alphabet[(value << (5 - bits)) & 0x1f] ?? "";
+  }
+  return output;
+}
+
+function decodeBase32(secret: string): Buffer {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const normalized = secret.replace(/=+$/u, "").replace(/\s+/gu, "").toUpperCase();
+  let bits = 0;
+  let value = 0;
+  const bytes: number[] = [];
+  for (const char of normalized) {
+    const index = alphabet.indexOf(char);
+    if (index < 0) {
+      throw new ValidationError("mfa.invalid_totp_secret", "mfa.invalid_totp_secret");
+    }
+    value = (value << 5) | index;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+  return Buffer.from(bytes);
 }
 
 function generateTotpCode(secret: string, timestamp: number = Date.now()): string {
-  // In production, use a proper TOTP library (RFC 6238)
-  // This is a simplified implementation for structure
   const counter = Math.floor(timestamp / 30000); // 30-second window
   const counterBuffer = Buffer.alloc(8);
   counterBuffer.writeBigInt64BE(BigInt(counter));
-  const hmac = createHmac("sha1", Buffer.from(secret, "utf8"));
+  const hmac = createHmac("sha1", decodeBase32(secret));
   const hash = hmac.update(counterBuffer).digest();
   const hashLen = hash.length;
   const offset = (hash[hashLen - 1] ?? 0) & 0x0f;
@@ -161,6 +203,42 @@ function pruneExpiredMfaState(now: number = Date.now()): void {
       continue;
     }
     challengeCreationTimestamps.set(key, next);
+  }
+  pruneMfaMapSizes();
+}
+
+function pruneMfaMapSizes(): void {
+  if (principalCredentials.size > MFA_MAX_PRINCIPALS) {
+    const entries = Array.from(principalCredentials.entries()).sort((left, right) => {
+      const leftTs = Math.max(...left[1].map((entry) => entry.credential.lastUsedAt ?? entry.credential.createdAt));
+      const rightTs = Math.max(...right[1].map((entry) => entry.credential.lastUsedAt ?? entry.credential.createdAt));
+      return leftTs - rightTs;
+    });
+    for (const [principalId] of entries.slice(0, principalCredentials.size - MFA_MAX_PRINCIPALS)) {
+      principalCredentials.delete(principalId);
+    }
+  }
+  if (enrollmentSessions.size > MFA_MAX_ENROLLMENT_SESSIONS) {
+    const sessions = Array.from(enrollmentSessions.values()).sort((left, right) => left.createdAt - right.createdAt);
+    for (const session of sessions.slice(0, enrollmentSessions.size - MFA_MAX_ENROLLMENT_SESSIONS)) {
+      enrollmentSessions.delete(session.enrollmentId);
+    }
+  }
+  if (verificationChallenges.size > MFA_MAX_VERIFICATION_CHALLENGES) {
+    const challenges = Array.from(verificationChallenges.values()).sort((left, right) => left.createdAt - right.createdAt);
+    for (const challenge of challenges.slice(0, verificationChallenges.size - MFA_MAX_VERIFICATION_CHALLENGES)) {
+      verificationChallenges.delete(challenge.challengeId);
+    }
+  }
+  if (challengeCreationTimestamps.size > MFA_MAX_RATE_LIMIT_KEYS) {
+    const sorted = Array.from(challengeCreationTimestamps.entries()).sort((left, right) => {
+      const leftLatest = Math.max(...left[1], Number.NEGATIVE_INFINITY);
+      const rightLatest = Math.max(...right[1], Number.NEGATIVE_INFINITY);
+      return leftLatest - rightLatest;
+    });
+    for (const [key] of sorted.slice(0, challengeCreationTimestamps.size - MFA_MAX_RATE_LIMIT_KEYS)) {
+      challengeCreationTimestamps.delete(key);
+    }
   }
 }
 
@@ -257,9 +335,11 @@ export function operationRequiresMfa(
 export function startMfaEnrollment(input: {
   principalId: string;
   method: MfaMethod;
+  policy?: MfaPolicy;
 }): MfaEnrollmentSession {
   pruneExpiredMfaState();
-  if (!DEFAULT_MFA_POLICY.allowedMethods.includes(input.method)) {
+  const policy = input.policy ?? DEFAULT_MFA_POLICY;
+  if (!policy.allowedMethods.includes(input.method)) {
     throw new ValidationError("mfa.method_not_allowed", "mfa.method_not_allowed");
   }
 
@@ -283,6 +363,7 @@ export function startMfaEnrollment(input: {
   };
 
   enrollmentSessions.set(enrollmentId, session);
+  pruneMfaMapSizes();
   return session;
 }
 

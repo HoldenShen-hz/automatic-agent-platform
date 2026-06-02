@@ -21,17 +21,20 @@ function createTestEntry(overrides: Partial<StructuredLogEntry> = {}): Structure
 
 // Mock request factory that simulates a failing request
 function createFailingMockRequestFactory() {
-  const mockRequest = (options: any, callback: () => void) => {
+  const mockRequest = (_options: any, _callback: (response: { statusCode: number }) => void) => {
+    let errorHandler: ((error: Error) => void) | null = null;
     const mockReq = {
       on: (event: string, handler: (...args: any[]) => void) => {
         if (event === "error") {
-          // Simulate an error occurring
-          setTimeout(() => handler(new Error("Network error")), 0);
+          errorHandler = handler as (error: Error) => void;
         }
         return mockReq;
       },
       once: () => mockReq,
-      end: () => mockReq,
+      end: () => {
+        queueMicrotask(() => errorHandler?.(new Error("Network error")));
+        return mockReq;
+      },
       write: () => mockReq,
       destroy: () => {},
     };
@@ -45,7 +48,7 @@ function createFailingMockRequestFactory() {
 function createTrackingMockRequestFactory() {
   const requests: any[] = [];
 
-  const mockRequest = (options: any, callback: () => void) => {
+  const mockRequest = (options: any, callback: (response: { statusCode: number }) => void) => {
     requests.push({ options, body: "" });
 
     const mockReq = {
@@ -57,7 +60,7 @@ function createTrackingMockRequestFactory() {
         if (requests.length > 0 && data) {
           requests[requests.length - 1].body = data;
         }
-        callback({ statusCode: 202 });
+        queueMicrotask(() => callback({ statusCode: 202 }));
         return mockReq;
       },
       write: (data: string) => {
@@ -81,6 +84,8 @@ test("DatadogTransport handles request error gracefully", async () => {
     apiKey: "test-api-key",
     service: "test-service",
     requestFactory: mockRequest as any,
+    maxRetryWindowMs: 0,
+    env: "test",
   });
 
   transport.write(createTestEntry({ message: "error test" }));
@@ -102,6 +107,7 @@ test("DatadogTransport flushInternal transforms entries with service metadata", 
     service: "my-service",
     source: "my-source",
     requestFactory: mockRequest as any,
+    env: "test",
   });
 
   transport.write(createTestEntry({
@@ -122,26 +128,21 @@ test("DatadogTransport flushInternal transforms entries with service metadata", 
   assert.equal(body[0].taskId, "task-123");
 });
 
-test("DatadogTransport flushInternal includes ddtags with default NODE_ENV", async () => {
-  const originalNodeEnv = process.env.NODE_ENV;
-  delete process.env.NODE_ENV;  // Ensure NODE_ENV is not set
-
+test("DatadogTransport flushInternal includes ddtags with configured env", async () => {
   const { mockRequest, getRequests } = createTrackingMockRequestFactory();
 
   const transport = new DatadogTransport({
     apiKey: "test-api-key",
     service: "test-service",
     requestFactory: mockRequest as any,
+    env: "dev",
   });
 
   transport.write(createTestEntry({ message: "no env test" }));
   await transport.flush();
 
-  process.env.NODE_ENV = originalNodeEnv;
-
   const requests = getRequests();
   const body = JSON.parse(requests[0].body);
-  // Should use default "dev" when NODE_ENV is not set
   assert.ok(body[0].ddtags.includes("env:dev"));
 });
 
@@ -153,6 +154,7 @@ test("DatadogTransport flushInternal batches multiple entries", async () => {
     service: "test-service",
     batchSize: 10,
     requestFactory: mockRequest as any,
+    env: "test",
   });
 
   // Write multiple entries
@@ -177,6 +179,7 @@ test("DatadogTransport write auto-flushes at batch size boundary", async () => {
     service: "test-service",
     batchSize: 3,
     requestFactory: mockRequest as any,
+    env: "test",
   });
 
   // Write 3 entries (equals batch size, should trigger auto-flush)
@@ -201,6 +204,7 @@ test("DatadogTransport flushInternal sends correct hostname format", async () =>
     service: "test-service",
     site: "datadoghq.eu",
     requestFactory: mockRequest as any,
+    env: "test",
   });
 
   transport.write(createTestEntry({ message: "eu site test" }));
@@ -217,6 +221,7 @@ test("DatadogTransport flushInternal sends correct API path", async () => {
     apiKey: "test-api-key",
     service: "test-service",
     requestFactory: mockRequest as any,
+    env: "test",
   });
 
   transport.write(createTestEntry({ message: "path test" }));
@@ -233,6 +238,7 @@ test("DatadogTransport flushInternal sends correct HTTP method", async () => {
     apiKey: "test-api-key",
     service: "test-service",
     requestFactory: mockRequest as any,
+    env: "test",
   });
 
   transport.write(createTestEntry({ message: "method test" }));
@@ -249,6 +255,7 @@ test("DatadogTransport flushInternal sends correct headers", async () => {
     apiKey: "test-api-key",
     service: "test-service",
     requestFactory: mockRequest as any,
+    env: "test",
   });
 
   transport.write(createTestEntry({ message: "headers test" }));
@@ -266,6 +273,7 @@ test("DatadogTransport handles entries with all optional fields", async () => {
     apiKey: "test-api-key",
     service: "test-service",
     requestFactory: mockRequest as any,
+    env: "test",
   });
 
   transport.write({
@@ -319,6 +327,7 @@ test("DatadogTransport close sends remaining entries", async () => {
     service: "test-service",
     batchSize: 100,  // Large batch size so entries aren't auto-flushed
     requestFactory: mockRequest as any,
+    env: "test",
   });
 
   // Write some entries that won't be auto-flushed
@@ -342,6 +351,8 @@ test("DatadogTransport close is safe to call multiple times", async () => {
     apiKey: "test-api-key",
     service: "test-service",
     requestFactory: mockRequest as any,
+    maxRetryWindowMs: 0,
+    env: "test",
   });
 
   transport.write(createTestEntry({ message: "multi close test" }));

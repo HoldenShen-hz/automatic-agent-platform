@@ -168,7 +168,7 @@ test("orchestration: Multi-step orchestration updates workflow state with step o
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Workflow state test",
         status: "in_progress",
@@ -187,7 +187,7 @@ test("orchestration: Multi-step orchestration updates workflow state with step o
 
       ctx.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "multi_step_workflow",
         currentStepIndex: 0,
         status: "running",

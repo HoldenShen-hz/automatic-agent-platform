@@ -20,6 +20,9 @@ import type { EventRepository } from "../truth/sqlite/repositories/event-reposit
 import type { OutboxRepository } from "../../shared/outbox/outbox-repository.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { materializeEventRecord } from "./event-record-support.js";
+import { AppError } from "../../contracts/errors.js";
+
+const MAX_OUTBOX_PAYLOAD_BYTES = 256 * 1024;
 
 /**
  * Options for transactional event append
@@ -172,24 +175,40 @@ export class TransactionalEventAppender {
    * Insert event without transaction wrapper (internal use)
    */
   private insertEventInternal(event: EventRecord): EventRecord {
-    this.db.connection
-      .prepare(
-        `INSERT INTO events (
-          id, task_id, session_id, execution_id, event_type, event_tier,
-          payload_json, trace_id, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        event.id,
-        event.taskId,
-        event.sessionId,
-        event.executionId,
-        event.eventType,
-        event.eventTier,
-        event.payloadJson,
-        event.traceId,
-        event.createdAt,
-      );
+    try {
+      this.db.connection
+        .prepare(
+          `INSERT INTO events (
+            id, task_id, session_id, execution_id, event_type, event_tier,
+            payload_json, trace_id, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          event.id,
+          event.taskId,
+          event.sessionId,
+          event.executionId,
+          event.eventType,
+          event.eventTier,
+          event.payloadJson,
+          event.traceId,
+          event.createdAt,
+        );
+    } catch (error) {
+      if (
+        typeof error === "object"
+        && error !== null
+        && "code" in error
+        && (error as { code?: string }).code === "SQLITE_CONSTRAINT_PRIMARYKEY"
+      ) {
+        throw new AppError("event.append_duplicate", "event.append_duplicate", {
+          category: "conflict",
+          source: "state_evidence",
+          retryable: false,
+        });
+      }
+      throw error;
+    }
 
     return event;
   }
@@ -202,12 +221,19 @@ export class TransactionalEventAppender {
     traceId?: string | null,
   ): string {
     const outboxId = newId("outbox");
+    if (Buffer.byteLength(event.payloadJson, "utf8") > MAX_OUTBOX_PAYLOAD_BYTES) {
+      throw new AppError("event.payload_too_large", "event.payload_too_large", {
+        category: "resource",
+        source: "state_evidence",
+        retryable: false,
+      });
+    }
     const payload = {
       eventId: event.id,
       eventType: event.eventType,
       taskId: event.taskId,
       executionId: event.executionId,
-      payload: JSON.parse(event.payloadJson),
+      payloadJson: event.payloadJson,
     };
 
     this.db.connection
@@ -219,8 +245,8 @@ export class TransactionalEventAppender {
       )
       .run(
         outboxId,
-        event.taskId ? "task" : "system",
-        event.taskId ?? "unknown",
+        event.taskId != null && event.taskId.trim().length > 0 ? "task" : "system",
+        event.taskId != null && event.taskId.trim().length > 0 ? event.taskId : event.id,
         event.eventType,
         JSON.stringify(payload),
         traceId ?? null,

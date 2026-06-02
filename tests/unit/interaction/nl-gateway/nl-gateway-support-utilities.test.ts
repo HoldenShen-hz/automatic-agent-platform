@@ -247,8 +247,8 @@ test("buildCanonicalDomainId maps platform_engineering to coding", () => {
   assert.equal(buildCanonicalDomainId("platform_engineering"), "coding");
 });
 
-test("buildCanonicalDomainId maps engineering_ops to coding", () => {
-  assert.equal(buildCanonicalDomainId("engineering_ops"), "coding");
+test("buildCanonicalDomainId maps engineering-ops to coding", () => {
+  assert.equal(buildCanonicalDomainId("engineering-ops"), "coding");
 });
 
 test("buildCanonicalDomainId passes through other division IDs", () => {

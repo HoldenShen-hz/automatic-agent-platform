@@ -326,7 +326,7 @@ test("approval service receives correct stage from request", () => {
     const request = createRequest({ riskLevel: "high", stage });
     const decision = service.decide(request);
 
-    assert.equal(decision.decision, stage === "execute" ? "takeover" : "approval");
+    assert.equal(decision.decision, stage === "assess" ? "approval" : "takeover");
   }
 });
 

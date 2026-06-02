@@ -33,7 +33,7 @@ test("integration: artifacts can be persisted and retrieved by task", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Artifact retrieval test",
         status: "in_progress",
         source: "user",

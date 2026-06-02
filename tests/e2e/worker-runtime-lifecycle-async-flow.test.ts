@@ -31,7 +31,7 @@ function insertClaimableRuntimeState(
       id: seeded.taskId,
       parentId: null,
       rootId: seeded.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Worker runtime lifecycle task",
       status: "in_progress",
       source: "user",
@@ -76,7 +76,7 @@ function insertClaimableRuntimeState(
     });
     harness.store.insertWorkflowState({
       taskId: seeded.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",

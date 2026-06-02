@@ -50,7 +50,7 @@ test("PluginContext creates with full config", () => {
   assert.equal(ctx.taskId, "task_1");
   assert.equal(ctx.tenantId, "tenant_1");
   assert.equal(ctx.userId, "user_1");
-  assert.equal(ctx.sandboxTier, "workspace_write");
+  assert.equal(ctx.sandboxTier, "restricted_exec");
 });
 
 test("PluginContext.get returns undefined for missing key", () => {
@@ -64,6 +64,15 @@ test("PluginContext.set and get work correctly", () => {
   ctx.set("custom.key", "custom-value", "plugin");
 
   assert.equal(ctx.get("custom.key"), "custom-value");
+});
+
+test("PluginContext rejects caller-declared system source", () => {
+  const ctx = new PluginContext({ pluginId: "test-plugin" });
+
+  assert.throws(
+    () => ctx.set("custom.key", "value", "system"),
+    /forbids declaring runtime values with system source/,
+  );
 });
 
 test("PluginContext rejects plugin override of reserved system namespace", () => {

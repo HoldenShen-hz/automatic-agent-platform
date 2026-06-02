@@ -255,6 +255,47 @@ test("ProjectionRebuildService cutover rejects stale active snapshot token", () 
   assert.equal(service.getProjectionSnapshotStatus("shadow_projection").active?.versionId, "active-version");
 });
 
+test("ProjectionRebuildService rebuildProjection uses cursor-bounded replay when repository exposes it", () => {
+  const pages = [
+    [
+      {
+        id: "evt_1",
+        taskId: "task_1",
+        eventType: "task:created",
+        payloadJson: "{}",
+        createdAt: "2024-01-01T00:00:00Z",
+      },
+    ],
+    [
+      {
+        id: "evt_2",
+        taskId: "task_1",
+        eventType: "task:status_changed",
+        payloadJson: "{}",
+        createdAt: "2024-01-01T00:01:00Z",
+      },
+    ],
+    [],
+  ];
+  let pageIndex = 0;
+  const service = new ProjectionRebuildService({
+    getLatestEventCursor: () => ({ createdAt: "2024-01-01T00:01:00Z", id: "evt_2" }),
+    listEventsUpToCursor: () => pages[pageIndex++] ?? [],
+  } as any);
+  service.registerHandler("cursor_projection", (state, event) => ({
+    count: ((state?.count as number) ?? 0) + 1,
+    lastEventId: event.eventId,
+  }));
+
+  const result = service.rebuildProjection("cursor_projection", { batchSize: 1 });
+  const snapshot = service.getProjectionSnapshotStatus("cursor_projection").active;
+
+  assert.equal(result.eventsProcessed, 2);
+  assert.equal(snapshot?.state.count, 2);
+  assert.equal(snapshot?.state.lastEventId, "evt_2");
+  assert.equal(pageIndex >= 2, true);
+});
+
 test("Custom projection handler registration", () => {
   // Mock event repository
   const mockEventRepo = {} as any;

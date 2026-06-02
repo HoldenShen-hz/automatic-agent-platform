@@ -188,7 +188,7 @@ test("golden: transition service workflow status transitions", () => {
   db.transaction(() => {
     store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",

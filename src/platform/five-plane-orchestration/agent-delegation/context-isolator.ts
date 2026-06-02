@@ -171,12 +171,8 @@ export class ContextIsolator {
     );
 
     return {
-      resources: override.resources.length === 0
-        ? [...base.resources]
-        : this.intersectLists(base.resources, override.resources),
-      actions: override.actions.length === 0
-        ? [...base.actions]
-        : this.intersectLists(base.actions, override.actions),
+      resources: this.intersectLists(base.resources, override.resources),
+      actions: this.intersectLists(base.actions, override.actions),
       constraints: {
         ...(mergedMaxDuration !== Infinity ? { maxDurationMs: mergedMaxDuration } : {}),
         ...(mergedMaxTokens !== Infinity ? { maxTokens: mergedMaxTokens } : {}),

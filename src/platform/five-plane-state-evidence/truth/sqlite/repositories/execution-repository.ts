@@ -204,6 +204,27 @@ export class ExecutionRepository {
     );
   }
 
+  public updateExecutionFailureDetails(input: {
+    executionId: string;
+    updatedAt: string;
+    finishedAt: string | null;
+    lastErrorCode: string | null;
+    lastErrorMessage: string | null;
+  }): void {
+    execute(
+      this.conn,
+      `UPDATE executions
+       SET updated_at = ?, finished_at = COALESCE(?, finished_at),
+           last_error_code = ?, last_error_message = ?
+       WHERE id = ?`,
+      input.updatedAt,
+      input.finishedAt,
+      input.lastErrorCode,
+      input.lastErrorMessage,
+      input.executionId,
+    );
+  }
+
   public updateExecutionAgent(executionId: string, agentId: string, updatedAt: string): void {
     execute(
       this.conn,

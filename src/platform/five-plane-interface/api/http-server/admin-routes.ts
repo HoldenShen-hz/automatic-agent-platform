@@ -21,7 +21,7 @@
  * Part of §6 API Endpoints - Missing endpoints implementation
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
@@ -157,20 +157,23 @@ interface UserPreferenceState {
   defaultDashboardLayout: string[];
 }
 
-let userPreferenceState: UserPreferenceState = {
+const DEFAULT_USER_PREFERENCE_STATE: UserPreferenceState = {
   locale: "zh-CN",
   theme: "dark",
   defaultDashboardLayout: ["overview", "tasks", "approvals"],
 };
+const userPreferenceState = new Map<string, UserPreferenceState>();
 const MAX_DIVISION_INVENTORY_SNAPSHOT_BYTES = 1024 * 1024;
 
-function resolvePlatformRoot(): string {
-  return process.env.AA_PLATFORM_ROOT ?? process.cwd();
+function resolvePlatformRoot(deps: AdminRouteDeps): string {
+  return deps.platformRoot ?? process.cwd();
 }
 
-function readDivisionInventorySnapshot(): unknown {
-  const snapshotPath = join(resolvePlatformRoot(), "config", "division-coverage", "inventory", "division-inventory.generated.json");
-  if (!existsSync(snapshotPath)) {
+async function readDivisionInventorySnapshot(deps: AdminRouteDeps): Promise<unknown> {
+  const snapshotPath = join(resolvePlatformRoot(deps), "config", "division-coverage", "inventory", "division-inventory.generated.json");
+  try {
+    await access(snapshotPath);
+  } catch {
     return {
       generatedAt: new Date(0).toISOString(),
       records: [],
@@ -182,7 +185,7 @@ function readDivisionInventorySnapshot(): unknown {
       },
     };
   }
-  return readStoredJsonValue(readFileSync(snapshotPath, "utf8"), {
+  return readStoredJsonValue(await readFile(snapshotPath, "utf8"), {
     maxBytes: MAX_DIVISION_INVENTORY_SNAPSHOT_BYTES,
     fallback: {
       generatedAt: new Date(0).toISOString(),
@@ -197,6 +200,14 @@ function readDivisionInventorySnapshot(): unknown {
   });
 }
 
+function buildUserPreferenceStateKey(principal: { actorId: string; tenantId: string | null }): string {
+  return `${principal.tenantId ?? "global"}:${principal.actorId}`;
+}
+
+function readUserPreferenceState(principal: { actorId: string; tenantId: string | null }): UserPreferenceState {
+  return userPreferenceState.get(buildUserPreferenceStateKey(principal)) ?? DEFAULT_USER_PREFERENCE_STATE;
+}
+
 // ─── Route Deps ─────────────────────────────────────────────────────────────
 
 export interface AdminRouteDeps {
@@ -208,6 +219,7 @@ export interface AdminRouteDeps {
   costReportService?: CostReportService | null;
   adminConfigService?: AdminConfigService | null;
   adminRuntimeDirectiveService?: AdminRuntimeDirectiveService | null;
+  platformRoot?: string;
 }
 
 function matchesHarnessRunRoute(segments: string[], expectedTailLength: number): boolean {
@@ -507,33 +519,35 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
       method: "GET",
       pathname: "/v1/preferences",
       handler: (ctx) => {
-        requirePrincipal(ctx.request, deps.authService, "viewer");
-        return buildJsonResponse(ctx.requestId, 200, userPreferenceState);
+        const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
+        return buildJsonResponse(ctx.requestId, 200, readUserPreferenceState(principal));
       },
     },
     {
       method: "PUT",
       pathname: "/v1/preferences",
       handler: (ctx) => {
-        requirePrincipal(ctx.request, deps.authService, "operator");
+        const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const payload = readValidatedJsonBody(ctx.request.body, (input) =>
           input != null && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {},
         );
+        const currentState = readUserPreferenceState(principal);
 
-        userPreferenceState = {
+        const nextState: UserPreferenceState = {
           locale: typeof payload.locale === "string" && payload.locale.trim().length > 0
             ? payload.locale
-            : userPreferenceState.locale,
+            : currentState.locale,
           theme:
             payload.theme === "light" || payload.theme === "dark" || payload.theme === "high-contrast"
               ? payload.theme
-              : userPreferenceState.theme,
+              : currentState.theme,
           defaultDashboardLayout: Array.isArray(payload.defaultDashboardLayout)
             ? payload.defaultDashboardLayout.filter((item): item is string => typeof item === "string" && item.length > 0)
-            : userPreferenceState.defaultDashboardLayout,
+            : currentState.defaultDashboardLayout,
         };
+        userPreferenceState.set(buildUserPreferenceStateKey(principal), nextState);
 
-        return buildJsonResponse(ctx.requestId, 200, userPreferenceState);
+        return buildJsonResponse(ctx.requestId, 200, nextState);
       },
     },
     // POST /v1/admin/config - Update configuration
@@ -758,10 +772,10 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     {
       method: "GET",
       pathname: "/v1/admin/governance/division-inventory",
-      handler: (ctx) => {
+      handler: async (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "division inventory governance");
-        return buildJsonResponse(ctx.requestId, 200, readDivisionInventorySnapshot());
+        return buildJsonResponse(ctx.requestId, 200, await readDivisionInventorySnapshot(deps));
       },
     },
     {

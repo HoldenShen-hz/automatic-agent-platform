@@ -236,7 +236,7 @@ test("inspect service query layer lists task workflow and decision summaries for
     db.transaction(() => {
       store.insertWorkflowState({
         taskId: "task-observe-query",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",

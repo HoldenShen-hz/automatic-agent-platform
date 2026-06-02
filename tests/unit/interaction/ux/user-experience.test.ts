@@ -148,7 +148,7 @@ test("UserExperienceBootstrapRequest requires all fields", () => {
 
   const wizard: DomainOnboardingWizard = {
     steps: [],
-    recommendedDomains: ["general_ops"],
+    recommendedDomains: ["general-ops"],
     defaultMode: {
       mode: "solo",
       autoDetected: true,
@@ -215,7 +215,7 @@ test("UserExperienceBootstrapRequest with SSO context", () => {
         description: "Choose your organization type.",
       },
     ],
-    recommendedDomains: ["finance", "hr", "engineering_ops"],
+    recommendedDomains: ["finance", "hr", "engineering-ops"],
     defaultMode: {
       mode: "enterprise",
       autoDetected: true,
@@ -271,7 +271,7 @@ test("UserExperienceBootstrapResult structure", () => {
     },
     wizard: {
       steps: [],
-      recommendedDomains: ["general_ops"],
+      recommendedDomains: ["general-ops"],
       defaultMode: {
         mode: "solo",
         autoDetected: true,
@@ -293,13 +293,13 @@ test("UserExperienceBootstrapResult structure", () => {
       validationFindings: [],
       ownerUserId: "user_result",
     },
-    recommendedDomains: ["engineering_ops", "general_ops"],
+    recommendedDomains: ["engineering-ops", "general-ops"],
     welcomePrompt: "Welcome to the platform!",
   };
 
   assert.equal(result.guidedSession.sessionId, "result_session");
   assert.equal(result.draft.draftId, "result_draft");
-  assert.ok(result.recommendedDomains.includes("engineering_ops"));
+  assert.ok(result.recommendedDomains.includes("engineering-ops"));
   assert.ok(result.welcomePrompt.startsWith("Welcome"));
 });
 
@@ -356,7 +356,7 @@ test("UserExperienceBootstrapResult with team mode", () => {
     },
     wizard: {
       steps: [],
-      recommendedDomains: ["engineering_ops"],
+      recommendedDomains: ["engineering-ops"],
       defaultMode: {
         mode: "team",
         autoDetected: true,
@@ -377,7 +377,7 @@ test("UserExperienceBootstrapResult with team mode", () => {
       validationFindings: [],
       ownerUserId: "user_team",
     },
-    recommendedDomains: ["engineering_ops"],
+    recommendedDomains: ["engineering-ops"],
     welcomePrompt: "Team mode ready.",
   };
 
@@ -450,7 +450,7 @@ test("DomainOnboardingWizard step types", () => {
         description: "Activate your workspace.",
       },
     ],
-    recommendedDomains: ["engineering_ops"],
+    recommendedDomains: ["engineering-ops"],
     defaultMode: {
       mode: "solo",
       autoDetected: true,
@@ -486,7 +486,7 @@ test("DraggableComponent risk levels", () => {
     componentId: "action_generic",
     name: "Generic Action",
     icon: "bolt",
-    domainId: "general_ops",
+    domainId: "general-ops",
     riskLevel: "medium",
     configSchema: { target: { type: "string" } },
     previewDescription: "Generic action component",
@@ -496,7 +496,7 @@ test("DraggableComponent risk levels", () => {
     componentId: "action_deploy",
     name: "Deploy Action",
     icon: "rocket",
-    domainId: "engineering_ops",
+    domainId: "engineering-ops",
     riskLevel: "high",
     configSchema: { environment: { type: "string" } },
     previewDescription: "Deploy to environment",

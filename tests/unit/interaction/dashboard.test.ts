@@ -14,7 +14,7 @@ function makeAttentionItem(overrides: Partial<AttentionItem> = {}): AttentionIte
     description: "Test description",
     actionOptions: ["inspect"],
     createdAt: "2026-04-19T00:00:00.000Z",
-    domainId: "general_ops",
+    domainId: "general-ops",
     ...overrides,
   };
 }

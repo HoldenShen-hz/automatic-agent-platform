@@ -23,6 +23,7 @@
  */
 
 import type { MemoryRecord } from "../../contracts/types/domain.js";
+import { ValidationError } from "../../contracts/errors.js";
 
 /**
  * 6-layer memory hierarchy
@@ -154,7 +155,8 @@ export const LAYER_METADATA: readonly LayerMetadata[] = [
  * Maps memory scope to 6-layer type
  */
 export function mapScopeToSixLayer(scope: string): SixLayerMemoryType {
-  switch (scope) {
+  const normalizedScope = scope.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  switch (normalizedScope) {
     case "task_runtime":
     case "working":
       return "working";
@@ -178,7 +180,14 @@ export function mapScopeToSixLayer(scope: string): SixLayerMemoryType {
     case "meta":
       return "meta";
     default:
-      return "session";
+      throw new ValidationError(
+        "memory.six_layer_unknown_scope",
+        `memory.six_layer_unknown_scope:${scope}`,
+        {
+          retryable: false,
+          details: { scope },
+        },
+      );
   }
 }
 
@@ -268,18 +277,46 @@ export class LayerTransitionService {
   private resolveLayerAgeAnchor(memory: MemoryRecord): Date {
     const createdAt = new Date(memory.createdAt);
     const lastAccessedAt = memory.lastAccessedAt == null ? null : new Date(memory.lastAccessedAt);
-    if (lastAccessedAt != null && Number.isFinite(lastAccessedAt.getTime()) && lastAccessedAt > createdAt) {
+    if (!Number.isFinite(createdAt.getTime())) {
+      throw new ValidationError(
+        "memory.transition_invalid_created_at",
+        `memory.transition_invalid_created_at:${memory.id}`,
+        {
+          retryable: false,
+          details: { memoryId: memory.id, createdAt: memory.createdAt },
+        },
+      );
+    }
+    if (lastAccessedAt != null && Number.isFinite(lastAccessedAt.getTime()) && lastAccessedAt.getTime() >= createdAt.getTime()) {
       return lastAccessedAt;
     }
     return createdAt;
   }
 
+  private shouldDemote(memory: MemoryRecord, currentLayer: SixLayerMemoryType, evaluatedAt: Date): boolean {
+    const previousLayer = getPreviousLayer(currentLayer);
+    const layerMetadata = getLayerMetadata(currentLayer);
+    if (previousLayer == null || layerMetadata == null || !Number.isFinite(layerMetadata.typicalRetentionSeconds)) {
+      return false;
+    }
+    const anchor = this.resolveLayerAgeAnchor(memory);
+    const ageSeconds = Math.max(0, (evaluatedAt.getTime() - anchor.getTime()) / 1000);
+    const lowSignal =
+      memory.hitCount <= 1
+      && (memory.qualityScore ?? 0) < 0.5
+      && (memory.importanceScore ?? 0) < 0.5;
+    return ageSeconds > layerMetadata.typicalRetentionSeconds && lowSignal;
+  }
+
   /**
    * Evaluates whether a memory can transition to the next layer
    */
-  public evaluateTransition(memory: MemoryRecord, evaluatedAt: string = new Date().toISOString()): LayerTransitionEvaluation {
+  public evaluateTransition(memory: MemoryRecord, evaluatedAt: string): LayerTransitionEvaluation {
     const currentLayer = mapScopeToSixLayer(memory.scope);
     const blockers: string[] = [];
+    if (evaluatedAt.trim().length === 0) {
+      throw new ValidationError("memory.transition_missing_evaluated_at", "memory.transition_missing_evaluated_at");
+    }
 
     // Check if already at top layer
     if (currentLayer === "meta") {
@@ -321,6 +358,23 @@ export class LayerTransitionService {
 
     // Check age threshold
     const evaluated = new Date(evaluatedAt);
+    if (!Number.isFinite(evaluated.getTime())) {
+      throw new ValidationError(
+        "memory.transition_invalid_evaluated_at",
+        `memory.transition_invalid_evaluated_at:${evaluatedAt}`,
+        {
+          retryable: false,
+          details: { evaluatedAt },
+        },
+      );
+    }
+    if (memory.lastAccessedAt != null) {
+      const createdAt = new Date(memory.createdAt);
+      const lastAccessedAt = new Date(memory.lastAccessedAt);
+      if (Number.isFinite(createdAt.getTime()) && Number.isFinite(lastAccessedAt.getTime()) && lastAccessedAt.getTime() < createdAt.getTime()) {
+        blockers.push("clock_skew_detected:lastAccessedAt_before_createdAt");
+      }
+    }
     // Fail closed on recent mutations/accesses: when we do not track an explicit
     // "entered current layer at" timestamp, the newest observable timestamp is the
     // safest proxy for time-in-current-layer.
@@ -350,9 +404,9 @@ export class LayerTransitionService {
   /**
    * Gets the transition direction for a memory
    */
-  public getTransitionDirection(memory: MemoryRecord): LayerTransitionDirection {
+  public getTransitionDirection(memory: MemoryRecord, evaluatedAt: string): LayerTransitionDirection {
     const currentLayer = mapScopeToSixLayer(memory.scope);
-    const evaluation = this.evaluateTransition(memory);
+    const evaluation = this.evaluateTransition(memory, evaluatedAt);
 
     if (evaluation.canTransition && evaluation.targetLayer !== null) {
       const currentPriority = getLayerPriority(currentLayer);
@@ -362,6 +416,10 @@ export class LayerTransitionService {
         return "up";
       }
       return "lateral";
+    }
+
+    if (this.shouldDemote(memory, currentLayer, new Date(evaluatedAt))) {
+      return "down";
     }
 
     return "lateral";

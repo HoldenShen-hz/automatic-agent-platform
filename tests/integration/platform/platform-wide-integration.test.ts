@@ -226,7 +226,7 @@ test("platform-wide: metrics service aggregates task, execution, and cost data",
     // Add workflow state
     store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 1,
       status: "completed",

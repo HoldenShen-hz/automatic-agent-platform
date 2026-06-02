@@ -1,35 +1,35 @@
 # Trace And Root Cause Observability Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines trace/span 模型、业务vs技术指标分层，以及故障Root Cause分析辅助能力。
+This contract defines the trace / span model, the layering of business and technical metrics, and the auxiliary capabilities for fault root cause analysis.
 
-相关文档：
+Related documents:
 
 - `observability_contract.md`
 - `debug_inspect_health_backpressure_contract.md`
 - `diagnostics_snapshot_and_repro_bundle_contract.md`
 - `event_registry_and_ops_threshold_contract.md`
 
-## 2. 目标
+## 2. Goals
 
-- 让一iterations `HarnessRun` 从入口到 node、tool、LLM、decision 都能在 trace 上串起来。
-- 把业务 dashboard vs技术 dashboard 分开治理。
-- 让故障后自动生成初步 RCA 线索，而不is只留下分散日志。
+- Let a single `HarnessRun` be linked end-to-end on trace, from the entry point to node, tool, LLM, and decision.
+- Manage the business dashboard and the technical dashboard separately.
+- After a fault, automatically generate preliminary RCA clues, rather than leaving only scattered logs.
 
-## 3. Trace 模型
+## 3. Trace Model
 
-最小层级：
+Minimum levels:
 
-- 一个 `HarnessRun` = 一个 `trace`
-- 一个 `NodeRun` = 一个主执lines `span`
-- 一个 `NodeAttempt` = 一个尝试 `span`
-- 一iterations tool call = 一个 `span`
-- 一iterations LLM call = 一个 `span`
-- 一iterations decision / escalation = 一个 `span`
-- 一iterations `oapeflir.view.*` 阶段解释可以映射为上层 view span，但不得充当 runtime truth
+- One `HarnessRun` = one `trace`
+- One `NodeRun` = one main execution `span`
+- One `NodeAttempt` = one attempt `span`
+- One tool call = one `span`
+- One LLM call = one `span`
+- One decision / escalation = one `span`
+- One `oapeflir.view.*` stage explanation can be mapped to an upper-layer view span, but must not serve as runtime truth
 
-必须传播的关联字段：
+Correlation fields that must be propagated:
 
 - `trace_id`
 - `span_id`
@@ -42,7 +42,7 @@
 - `execution_id?`
 - `session_id`
 
-推荐 baggage：
+Recommended baggage:
 
 - `tenant_id`
 - `workspace_id`
@@ -54,23 +54,23 @@
 - `loop_iteration?`
 - `domain_id?`
 
-## 4. Trace Carrier vs传播规则
+## 4. Trace Carrier and Propagation Rules
 
-推荐 carrier class型：
+Recommended carrier types:
 
 - `http_headers`
 - `message_attributes`
 - `queue_metadata`
 - `worker_runtime_context`
 
-最小要求：
+Minimum requirements:
 
-- gateway ingress 必须能创建或提取 trace context。
-- runtime / worker / gateway / approval / remote bridge 之间必须显式注入vs提取 trace context。
-- trace 传播failed不得中断主任务执lines，但必须record observability warning。
-- trace sink、callback、subscriber 或 exporter 的异常不得反向打断主执lines链；观测面defaults to fail-open，但必须保留 warning / dropped event 证据。
+- The gateway ingress must be able to create or extract trace context.
+- Trace context must be explicitly injected and extracted between runtime / worker / gateway / approval / remote bridge.
+- Trace propagation failure must not interrupt the main task execution, but must record an observability warning.
+- Anomalies in trace sink, callback, subscriber, or exporter must not reversely interrupt the main execution chain; the observability surface defaults to fail-open, but must retain warning / dropped event evidence.
 
-推荐字段：
+Recommended fields:
 
 - `traceparent`
 - `tracestate`
@@ -79,9 +79,9 @@
 
 ## 5. Trace Sampling
 
-推荐规则：
+Recommended rules:
 
-| 条件 | 采样率 |
+| Condition | Sampling Rate |
 | --- | --- |
 | debug / operator takeover | `100%` |
 | error / dead-letter / stale write | `100%` |
@@ -89,39 +89,39 @@
 | normal harness run | `10%` |
 | background / periodic maintenance | `1%` |
 
-## 6. 指标分层
+## 6. Metric Layering
 
-| 层 | 指标示例 |
+| Layer | Metric Example |
 | --- | --- |
-| `oapeflir` | loop 收敛率、feedback 正负比、rollout success率 |
-| `business` | 任务success率、审批率、事业部产出、user升级率 |
-| `platform` | 吞吐、队列积压、恢复success率、租约回收数 |
-| `runtime` | worker 心跳、执lines时长、重试率、背压触发率 |
-| `infra` | DB delay、cache 命中、CPU、内存、事件循环delay |
+| `oapeflir` | Loop convergence rate, feedback positive / negative ratio, rollout success rate |
+| `business` | Task success rate, approval rate, division output, user upgrade rate |
+| `platform` | Throughput, queue backlog, recovery success rate, lease reclaim count |
+| `runtime` | Worker heartbeat, execution duration, retry rate, backpressure trigger rate |
+| `infra` | DB latency, cache hit, CPU, memory, event loop latency |
 
-## 7. Root Cause分析辅助
+## 7. Root Cause Analysis Assistance
 
-故障视图至少应自动聚合：
+The fault view should at least automatically aggregate:
 
-- 最近相关事件
-- 最近相关configure变更
-- 最近相关 prompt / model / policy 变更
-- 最近相关 worker / lease 切换
-- 最近相关成本异常
-- 最近相关 feedback / learning / rollout 动作
+- Recent related events
+- Recent related configuration changes
+- Recent related prompt / model / policy changes
+- Recent related worker / lease switches
+- Recent related cost anomalies
+- Recent related feedback / learning / rollout actions
 
-## 8. 异常模式检测
+## 8. Anomaly Pattern Detection
 
-至少supported识别：
+Must at least support identifying:
 
-- 某角色连续卡在同一 node
-- 某工具近期failed率激增
-- 某租户或事业部成本异常抬升
-- 某 worker 心跳抖动异常
-- 某 loop 长time不收敛
-- 某 rollout 连续受阻或回滚
+- A role continuously stuck on the same node
+- A tool with a recent surge in failure rate
+- A tenant or division with abnormally rising cost
+- A worker with abnormal heartbeat jitter
+- A loop not converging for a long time
+- A rollout continuously blocked or rolled back
 
-## 9. 可视化目标
+## 9. Visualization Goal
 
 ```mermaid
 flowchart TD
@@ -131,21 +131,21 @@ flowchart TD
     D --> E["RCA Summary"]
 ```
 
-## 10. 收口Conclusion
+## 10. Closure Conclusion
 
-工业级可观测性不能停留在“有日志”和“有 healthz”。
+Industrial-grade observability cannot stop at "having logs" and "having healthz".
 
-它必须supported：
+It must support:
 
-- HarnessRun 级 trace 串联
-- 业务vs技术指标分层
-- 故障后自动收束Root Cause线索
+- HarnessRun-level trace linking
+- Separation of business and technical metric layers
+- Automatic collection of root cause clues after a fault
 
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following entries fix the contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If any historical section of this document conflicts with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-39: 本文原先把 `task` 当作 trace 主体，Root cause:  observability 合同继承了旧 task-centric 单机执lines模型，没有随着 `HarnessRun / NodeRun / NodeAttempt` 成为 runtime truth 一起重写追踪主键。修复：正文现明确 `一个 HarnessRun = 一个 trace`，并把 `harness_run_id / node_run_id / attempt_id` 提升为必传关联字段，`task_id / execution_id` 只保留为 legacy / projection 关联键。
+- T-39: This document originally took `task` as the trace subject. The root cause was that the observability contract inherited the old task-centric single-machine execution model, and did not rewrite the tracking primary key as `HarnessRun / NodeRun / NodeAttempt` became the runtime truth. Fix: The main text now makes clear that "one HarnessRun = one trace", and elevates `harness_run_id / node_run_id / attempt_id` to required correlation fields, while `task_id / execution_id` are retained only as legacy / projection correlation keys.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: state transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events may only use `platform.*`; OAPEFLIR may only act as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

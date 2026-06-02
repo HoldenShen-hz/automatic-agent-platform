@@ -34,6 +34,7 @@ const BLOCKED_OUTBOUND_HOSTNAMES = new Set([
   "0.0.0.0",
   "::1",
   "169.254.169.254",
+  "metadata",
   "metadata.google.internal",
 ]);
 
@@ -42,12 +43,18 @@ const BLOCKED_OUTBOUND_HOSTNAMES = new Set([
  * Covers IPv4 private ranges, link-local, and suspicious TLDs.
  */
 const BLOCKED_OUTBOUND_HOSTNAME_PATTERNS = [
+  /^0\.\d+\.\d+\.\d+$/,                     // 0.0.0.0/8
   /^127\.\d+\.\d+\.\d+$/,                   // 127.x.x.x (loopback)
   /^10\.\d+\.\d+\.\d+$/,                    // 10.x.x.x (private)
+  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d+\.\d+$/, // 100.64.0.0/10 (CGNAT)
   /^172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+$/, // 172.16-31.x.x (private)
   /^192\.168\.\d+\.\d+$/,                   // 192.168.x.x (private)
+  /^198\.(1[89])\.\d+\.\d+$/,               // 198.18.0.0/15 (benchmarking)
   /^169\.254\.\d+\.\d+$/,                   // 169.254.x.x (link-local)
   /^::1$/,                                  // IPv6 loopback
+  /^::ffff:(?:127|10|0|169\.254|192\.168)\./i, // IPv4-mapped loopback/private/link-local
+  /^::ffff:100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./i, // IPv4-mapped CGNAT
+  /^::ffff:198\.(1[89])\./i,                // IPv4-mapped benchmarking net
   /^fe80:/i,                                // IPv6 link-local
   /^fc00:/i,                                // IPv6 unique local
   /^fd00:/i,                                // IPv6 unique local
@@ -60,14 +67,19 @@ const BLOCKED_OUTBOUND_HOSTNAME_PATTERNS = [
  */
 const SENSITIVE_QUERY_PARAM_NAMES = new Set([
   "access_token",
+  "access_key",
   "api_key",
+  "apikey",
   "auth",
   "authorization",
+  "bearer",
+  "client_secret",
   "credential",
   "credentials",
   "key",
   "passwd",
   "password",
+  "private_token",
   "secret",
   "sig",
   "signature",
@@ -163,7 +175,7 @@ export function sanitizeUrlForTelemetry(url: string | URL): string {
       .replace(/\/bot[^/]+\//, "/bot***/")
       .replace(/:\/\/[^/@:]+:[^/@]+@/, "://***:***@")
       .replace(
-        /([?&](?:access_token|api_key|auth|authorization|credential|credentials|key|passwd|password|secret|sig|signature|token))=[^&]+/gi,
+        /([?&](?:access_key|access_token|api_key|apikey|auth|authorization|bearer|client_secret|credential|credentials|key|passwd|password|private_token|secret|sig|signature|token))=[^&]+/gi,
         "$1=***",
       );
   }

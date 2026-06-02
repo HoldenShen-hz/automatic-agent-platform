@@ -20,7 +20,7 @@ import {
 function makeTrustProfile(overrides: Partial<AgentTrustProfile> = {}): AgentTrustProfile {
   return {
     agentId: "agent_integ_test",
-    domainId: "engineering_ops",
+    domainId: "engineering-ops",
     overallTrustLevel: "trusted",
     lastEvaluation: new Date().toISOString(),
     capabilityScores: [

@@ -30,12 +30,14 @@ jobs:
         working-directory: ui
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: ui/package-lock.json
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:coverage
@@ -43,6 +45,7 @@ jobs:
       - run: npm run build
       - run: npm run bundle:analyze
       - run: npm run perf:budget
+      - run: npm exec playwright install --with-deps chromium firefox webkit
       - name: Start preview server
         run: |
           mkdir -p test-results
@@ -64,7 +67,6 @@ jobs:
             http://127.0.0.1:4173/
           uploadArtifacts: true
           temporaryPublicStorage: false
-      - run: npm exec playwright install --with-deps chromium firefox webkit
       - run: npm run test:a11y
       - run: npm run test:visual
       - name: Stop preview server

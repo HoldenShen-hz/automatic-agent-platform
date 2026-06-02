@@ -10,10 +10,7 @@ const MIN_DELAY_MS = 50;
 const ALLOWED_FILE_PATTERNS = [
   /\/performance\//,
   /\/timeout\.test\.ts$/,
-  /\/calculate-backoff\.test\.ts$/,
-  /\/runtime\/graceful-shutdown\.test\.ts$/,
   /\/startup\/graceful-shutdown\.test\.ts$/,
-  /\/plugin-executor(?:\.service)?(?:\.extended)?\.test\.ts$/,
   /\/effect-buffer\.test\.ts$/,
   /tests\/helpers\/wait\.ts$/,
 ];
@@ -81,7 +78,7 @@ function isAllowedFile(filePath) {
 }
 
 function hasTimingContract(line) {
-  return line.includes("timing-contract");
+  return false;
 }
 
 function extractDelayMs(line) {

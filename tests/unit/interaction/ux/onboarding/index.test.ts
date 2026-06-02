@@ -247,7 +247,7 @@ test("UserPortalService.buildOnboardingPlan recommends finance for finance keywo
   assert.ok(plan.recommendedDomains.includes("finance"));
 });
 
-test("UserPortalService.buildOnboardingPlan recommends engineering_ops for code keywords", () => {
+test("UserPortalService.buildOnboardingPlan recommends engineering-ops for code keywords", () => {
   const service = createTestPortalService();
 
   const plan = service.buildOnboardingPlan("帮我deploy到production环境", {
@@ -256,10 +256,10 @@ test("UserPortalService.buildOnboardingPlan recommends engineering_ops for code 
     requiresSso: false,
   });
 
-  assert.ok(plan.recommendedDomains.includes("engineering_ops"));
+  assert.ok(plan.recommendedDomains.includes("engineering-ops"));
 });
 
-test("UserPortalService.buildOnboardingPlan defaults to general_ops for unknown domain", () => {
+test("UserPortalService.buildOnboardingPlan defaults to general-ops for unknown domain", () => {
   const service = createTestPortalService();
 
   const plan = service.buildOnboardingPlan("do something generic", {
@@ -268,7 +268,7 @@ test("UserPortalService.buildOnboardingPlan defaults to general_ops for unknown 
     requiresSso: false,
   });
 
-  assert.ok(plan.recommendedDomains.includes("general_ops"));
+  assert.ok(plan.recommendedDomains.includes("general-ops"));
 });
 
 test("UserPortalService.buildDomainOnboardingWizard returns wizard with 4 steps", () => {

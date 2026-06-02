@@ -167,18 +167,15 @@ test("verifySbomRef rejects invalid URL format", async () => {
   assert.ok(result.scanErrors[0].includes("Invalid SBOM reference format"));
 });
 
-test("verifySbomRef accepts http/https/file protocols", async () => {
-  const validRefs = [
-    "https://example.com/sbom.json",
-    "http://example.com/sbom.json",
-    "file:///path/to/sbom.json",
-  ];
-
-  for (const ref of validRefs) {
+test("verifySbomRef rejects remote http/https protocols and only allows local file refs", async () => {
+  for (const ref of ["https://example.com/sbom.json", "http://example.com/sbom.json"]) {
     const result = await verifySbomRef(ref);
-    // These should return valid but may have fetch errors (stub implementation)
-    assert.ok(result.scannedAt.length > 0);
+    assert.equal(result.valid, false);
+    assert.ok(result.scanErrors.some((error) => error.includes("Unsupported SBOM protocol")));
   }
+
+  const fileResult = await verifySbomRef("file:///path/to/sbom.json");
+  assert.ok(fileResult.scannedAt.length > 0);
 });
 
 test("DefaultSbomScanner can be replaced with custom implementation", async () => {

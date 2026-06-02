@@ -81,6 +81,7 @@ import type { MinimalWorkflowDefinition, MinimalWorkflowStep } from "./workflow/
 import { ValidationError } from "../../contracts/errors.js";
 
 import type { OapeflirLoopInput, OapeflirLoopResult } from "./oapeflir-loop-core.js";
+import { deriveFeedbackTrustScore, type FeedbackTrustFactors } from "./types/feedback-signal.js";
 
 type OapeflirPlanBuilder = Pick<PlanBuilder, "build"> & Partial<{
   buildGraphBundle: (input: PlanBuilderInput, options?: BuildPlanOptions) => PlanGraphBundle;
@@ -247,6 +248,23 @@ export abstract class OapeflirLoopSupport {
           },
         });
       });
+    } catch (error) {
+      const reasonCode = error instanceof ValidationError
+        ? error.code
+        : error instanceof Error && typeof (error as { code?: unknown }).code === "string"
+          ? String((error as { code: string }).code)
+          : "oapeflir.budget_reservation_failed";
+      throw new ValidationError(
+        reasonCode,
+        `Budget reservation failed before execution for task ${taskId}`,
+        {
+          details: {
+            taskId,
+            budgetLedgerId: context.budgetLedgerId,
+            cause: error instanceof Error ? error.message : String(error),
+          },
+        },
+      );
     } finally {
       storage.close();
     }
@@ -317,6 +335,12 @@ export abstract class OapeflirLoopSupport {
       const nodeRunId = typeof Reflect.get(output, "nodeRunId") === "string"
         ? String(Reflect.get(output, "nodeRunId"))
         : null;
+      const trustFactors = this.buildFeedbackTrustFactors({
+        source: isLastStep ? "user" : "execution",
+        validationPassed,
+        retryCount: output.systemTelemetry.retryCount,
+        nodeRunId,
+      });
 
       return {
         signalId: `signal_${index + 1}`,
@@ -332,16 +356,33 @@ export abstract class OapeflirLoopSupport {
         stepOutputRefs: [nodeRunId ?? output.stepId],
         ...(nodeRunId != null ? { nodeRunId } : {}),
         timestamp: this.nextFeedbackTimestamp(),
-        feedbackTrustScore: 0.5,
-        trustFactors: {
-          sourceReliability: 0.5,
-          historicalAccuracy: 0.5,
-          authenticatedSource: false,
-          attackSurfaceExposure: 0.5,
-          holdoutOverlap: 0,
-        },
+        feedbackTrustScore: deriveFeedbackTrustScore(trustFactors),
+        trustFactors,
       };
     });
+  }
+
+  private buildFeedbackTrustFactors(input: {
+    readonly source: "execution" | "user";
+    readonly validationPassed: boolean;
+    readonly retryCount: number;
+    readonly nodeRunId: string | null;
+  }): FeedbackTrustFactors {
+    const sourceReliability = input.source === "execution"
+      ? input.validationPassed ? 0.88 : 0.55
+      : input.validationPassed ? 0.45 : 0.25;
+    const historicalAccuracy = input.validationPassed ? 0.82 : 0.4;
+    const attackSurfaceExposure = input.source === "execution"
+      ? Math.min(0.45, 0.12 + input.retryCount * 0.08)
+      : Math.min(0.75, 0.45 + input.retryCount * 0.08);
+
+    return {
+      sourceReliability,
+      historicalAccuracy,
+      authenticatedSource: input.nodeRunId != null && input.source === "execution",
+      attackSurfaceExposure,
+      holdoutOverlap: 0,
+    };
   }
 
   /**
@@ -631,7 +672,7 @@ export abstract class OapeflirLoopSupport {
   protected toLegacyPlan(bundle: PlanGraphBundle, taskId: string): Plan {
     const steps = bundle.graph.nodes.map((node) => ({
       stepId: node.nodeId,
-      action: node.outputSchemaRef,
+      action: this.deriveLegacyAction(node.nodeType),
       title: node.nodeId,
       inputs: {},
       outputs: [node.outputSchemaRef],
@@ -652,6 +693,26 @@ export abstract class OapeflirLoopSupport {
       createdAt: Date.parse(bundle.createdAt) || Date.now(),
       ...(bundle.graphVersion > 1 ? { parentVersion: bundle.graphVersion - 1 } : {}),
     };
+  }
+
+  private deriveLegacyAction(nodeType: PlanNode["nodeType"]): string {
+    switch (nodeType) {
+      case "llm":
+        return "model.generate";
+      case "hitl_wait":
+        return "hitl.wait";
+      case "subgraph":
+        return "subgraph.execute";
+      case "evaluator":
+        return "evaluator.run";
+      case "router":
+        return "router.route";
+      case "compensation":
+        return "compensation.execute";
+      case "tool":
+      default:
+        return "tool.execute";
+    }
   }
 
   /**

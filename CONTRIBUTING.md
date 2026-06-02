@@ -8,7 +8,8 @@ Thank you for your interest in contributing to the Automatic Agent Platform. Thi
 
 - Node.js 22.x (match `.nvmrc` and `package.json#engines`)
 - npm 10+
-- SQLite (for local development)
+- SQLite (default local development path)
+- PostgreSQL 16+ when working on `migrate:sqlite-to-pg`, `test:pg-integration`, or postgres-backed truth-store changes
 
 ### Initial Setup
 
@@ -38,6 +39,7 @@ cp .env.example .env
 
 Key environment variables:
 - `AA_DB_PATH` — SQLite database path. Local default is `data/sqlite/automatic-agent.db`; container and Helm flows mount the same database filename under `/app/data/automatic-agent.db`.
+- `AA_PG_DSN` — PostgreSQL DSN for migration and PG integration flows
 - `AA_API_JWT_SECRET` — JWT signing secret (required for API server)
 - `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` — LLM provider API keys
 
@@ -100,7 +102,7 @@ Key environment variables:
 2. Ensure all CI checks pass
 3. Request review from at least one maintainer
 4. Address all review feedback
-5. Squash commits before merging
+5. Keep commits focused and reviewable; do not rewrite unrelated history unless the maintainer or PR workflow explicitly requires it
 
 ## Commit Message Convention
 
@@ -122,6 +124,15 @@ npm run test:layers:smoke  # Quick layered regression
 npm run doctor         # Health diagnostics
 npm run inspect        # Entity inspection (set AA_INSPECT_KIND, AA_TASK_ID)
 ```
+
+### Layered Test Concurrency
+
+`npm test` delegates raw node-test parallelism to `scripts/run-layered-tests.mjs`. The supported concurrency controls are:
+
+- `AA_TEST_CONCURRENCY` — default for unit / invariants / golden
+- `AA_HEAVY_TEST_CONCURRENCY` — integration / e2e
+- `AA_PERF_TEST_CONCURRENCY` — performance
+- `AA_LEAK_TEST_CONCURRENCY` — leak suites
 
 Common operator commands are summarized in [README.md](./README.md). Source-of-truth and naming constraints are indexed in [docs_zh/governance/repository-guide-index.md](./docs_zh/governance/repository-guide-index.md).
 

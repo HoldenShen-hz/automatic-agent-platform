@@ -30,6 +30,7 @@ function generateCasesByPriority(
         expectedOutput = { status: "ok" };
         break;
       case "llm_judge":
+        config = { judgeEvaluatorId: "llm_judge_default" };
         criterionId = `llm-${criterionId}`;
         break;
     }
@@ -87,6 +88,14 @@ function buildPassingResults(
   });
 }
 
+function createService(): EvalDatasetJudgeService {
+  return new EvalDatasetJudgeService({
+    llm_judge_default: ({ criterion, criterionSignals }) => ({
+      score: criterionSignals[criterion.criterionId] ?? 0,
+    }),
+  });
+}
+
 function createMinimalDataset(service: EvalDatasetJudgeService): EvalDatasetCase[] {
   const cases: EvalDatasetCase[] = [
     ...generateCasesByPriority("critical", 200, "ds1-", "exact_match"),
@@ -132,7 +141,7 @@ function createSmallDataset(service: EvalDatasetJudgeService, datasetId: string)
 }
 
 test("EvalDatasetJudgeService registerDataset throws on duplicate datasetId", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   createSmallDataset(service, "dup-id-test");
 
   assert.throws(
@@ -142,7 +151,7 @@ test("EvalDatasetJudgeService registerDataset throws on duplicate datasetId", ()
 });
 
 test("EvalDatasetJudgeService registerDataset throws on insufficient samples per priority", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   assert.throws(
     () =>
       service.registerDataset({
@@ -151,6 +160,7 @@ test("EvalDatasetJudgeService registerDataset throws on insufficient samples per
         version: "1.0.0",
         stage: "assess",
         createdBy: "quality",
+        sampleRequirements: { critical: 200 },
         cases: generateCasesByPriority("critical", 10, "insuff-", "exact_match"),
       }),
     /requires at least 200 samples/,
@@ -158,7 +168,7 @@ test("EvalDatasetJudgeService registerDataset throws on insufficient samples per
 });
 
 test("EvalDatasetJudgeService registerDataset throws on duplicate caseId", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   assert.throws(
     () =>
       service.registerDataset({
@@ -185,7 +195,7 @@ test("EvalDatasetJudgeService registerDataset throws on duplicate caseId", () =>
 });
 
 test("EvalDatasetJudgeService evaluateDataset throws on inactive dataset", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   service.registerDataset({
     datasetId: "inactive-ds",
     name: "Inactive DS",
@@ -208,7 +218,7 @@ test("EvalDatasetJudgeService evaluateDataset throws on inactive dataset", () =>
 });
 
 test("EvalDatasetJudgeService evaluateDataset succeeds with full dataset", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   const cases = createMinimalDataset(service);
 
   const report = service.evaluateDataset({
@@ -224,7 +234,7 @@ test("EvalDatasetJudgeService evaluateDataset succeeds with full dataset", () =>
 });
 
 test("EvalDatasetJudgeService evaluateDataset exact_match criterion", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   createSmallDataset(service, "exact-test");
 
   const report = service.evaluateDataset({
@@ -239,7 +249,7 @@ test("EvalDatasetJudgeService evaluateDataset exact_match criterion", () => {
 });
 
 test("EvalDatasetJudgeService evaluateDataset exact_match criterion fails", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   createSmallDataset(service, "exact-fail-test");
 
   const report = service.evaluateDataset({
@@ -254,7 +264,7 @@ test("EvalDatasetJudgeService evaluateDataset exact_match criterion fails", () =
 });
 
 test("EvalDatasetJudgeService evaluateDataset contains criterion", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 50, "contains-", "contains");
   service.registerDataset({
     datasetId: "contains-test",
@@ -278,7 +288,7 @@ test("EvalDatasetJudgeService evaluateDataset contains criterion", () => {
 });
 
 test("EvalDatasetJudgeService evaluateDataset contains criterion fails", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 50, "contains-fail-", "contains");
   service.registerDataset({
     datasetId: "contains-fail-test",
@@ -302,7 +312,7 @@ test("EvalDatasetJudgeService evaluateDataset contains criterion fails", () => {
 });
 
 test("EvalDatasetJudgeService evaluateDataset json_schema criterion", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 50, "json-", "json_schema");
   service.registerDataset({
     datasetId: "json-test",
@@ -326,7 +336,7 @@ test("EvalDatasetJudgeService evaluateDataset json_schema criterion", () => {
 });
 
 test("EvalDatasetJudgeService evaluateDataset json_schema criterion fails when key missing", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 50, "json-fail-", "json_schema");
   service.registerDataset({
     datasetId: "json-fail-test",
@@ -350,7 +360,7 @@ test("EvalDatasetJudgeService evaluateDataset json_schema criterion fails when k
 });
 
 test("EvalDatasetJudgeService evaluateDataset adds missing_case_result blocking finding", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   createMinimalDataset(service);
 
   const report = service.evaluateDataset({
@@ -366,7 +376,7 @@ test("EvalDatasetJudgeService evaluateDataset adds missing_case_result blocking 
 });
 
 test("EvalDatasetJudgeService evaluateDataset applies custom gate policy", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   const cases = createSmallDataset(service, "gate-policy-test");
 
   const report = service.evaluateDataset({
@@ -388,7 +398,7 @@ test("EvalDatasetJudgeService evaluateDataset applies custom gate policy", () =>
 });
 
 test("EvalDatasetJudgeService evaluateDataset applies baseline regression checks", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   const cases = createSmallDataset(service, "baseline-test");
 
   const report = service.evaluateDataset({
@@ -415,7 +425,7 @@ test("EvalDatasetJudgeService evaluateDataset applies baseline regression checks
 });
 
 test("EvalDatasetJudgeService listDatasets filters by status", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   createSmallDataset(service, "list-test");
 
   const all = service.listDatasets();
@@ -429,7 +439,7 @@ test("EvalDatasetJudgeService listDatasets filters by status", () => {
 });
 
 test("EvalDatasetJudgeService listReports returns reports for dataset", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   createSmallDataset(service, "reports-test");
 
   service.evaluateDataset({
@@ -448,7 +458,7 @@ test("EvalDatasetJudgeService listReports returns reports for dataset", () => {
 });
 
 test("EvalDatasetJudgeService registerJudge throws on duplicate judgeId", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   service.registerJudge({
     judgeId: "dup-judge",
     provider: "openai",
@@ -471,7 +481,7 @@ test("EvalDatasetJudgeService registerJudge throws on duplicate judgeId", () => 
 });
 
 test("EvalDatasetJudgeService suggestJudges filters by required capability", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   service.registerJudge({
     judgeId: "judge-llm",
     provider: "anthropic",
@@ -502,7 +512,7 @@ test("EvalDatasetJudgeService suggestJudges filters by required capability", () 
 });
 
 test("EvalDatasetJudgeService suggestJudges excludes judges from same provider family", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   service.registerJudge({
     judgeId: "judge-openai",
     provider: "openai",
@@ -530,7 +540,7 @@ test("EvalDatasetJudgeService suggestJudges excludes judges from same provider f
 });
 
 test("EvalDatasetJudgeService suggestJudges excludes non-ready judges", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   service.registerJudge({
     judgeId: "judge-ready",
     provider: "anthropic",
@@ -558,7 +568,7 @@ test("EvalDatasetJudgeService suggestJudges excludes non-ready judges", () => {
 });
 
 test("EvalDatasetJudgeService evaluateDataset with llm_judge criterion uses judge signals", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   const cases: EvalDatasetCase[] = generateCasesByPriority("standard", 50, "llm-", "llm_judge");
   service.registerDataset({
     datasetId: "llm-judge-ds",
@@ -591,17 +601,17 @@ test("EvalDatasetJudgeService evaluateDataset with llm_judge criterion uses judg
 });
 
 test("EvalDatasetJudgeService getDataset returns null for nonexistent", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   assert.equal(service.getDataset("nonexistent"), null);
 });
 
 test("EvalDatasetJudgeService getJudge returns null for nonexistent", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   assert.equal(service.getJudge("nonexistent"), null);
 });
 
 test("EvalDatasetJudgeService activateDataset changes status", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createService();
   service.registerDataset({
     datasetId: "to-activate",
     name: "To Activate",

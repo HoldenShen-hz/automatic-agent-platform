@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aa://roi/division-roi.schema.json",
+  "type": "object",
+  "required": [
+    "$schema",
+    "divisionId",
+    "protocolRef",
+    "method",
+    "sampleWindow",
+    "minimumSampleSize",
+    "metrics",
+    "costDeltaMetrics",
+    "qualityDeltaMetrics",
+    "riskDeltaMetrics",
+    "confidence",
+    "confidenceCalculation"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "roi/schemas/division-roi.schema.json"
+    },
+    "divisionId": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "protocolRef": {
+      "type": "string",
+      "const": "roi/measurement-protocol.md"
+    },
+    "method": {
+      "type": "string",
+      "enum": ["before_after", "ab_test", "assisted_vs_manual", "cohort_comparison"]
+    },
+    "sampleWindow": {
+      "type": "string",
+      "minLength": 1
+    },
+    "minimumSampleSize": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "costDeltaMetrics": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "qualityDeltaMetrics": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "riskDeltaMetrics": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    },
+    "confidenceCalculation": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}

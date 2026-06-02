@@ -66,6 +66,10 @@ export interface SbomScanner {
   scan(sbomRef: string, options?: SbomVerificationOptions): Promise<SbomVerificationResult>;
 }
 
+interface SynchronousSbomScanner extends SbomScanner {
+  scanSync(sbomRef: string, options?: SbomVerificationOptions): SbomVerificationResult;
+}
+
 class PluginSigningKeyRegistry {
   constructor(private readonly keys: Map<string, PluginSigningVerificationKey>) {}
 
@@ -130,7 +134,7 @@ const SEVERITY_ORDER: Record<SbomSeverity, number> = {
   critical: 4,
 };
 
-const KNOWN_VULNERABILITIES: readonly SbomVulnerability[] = [
+const DEFAULT_SBOM_VULNERABILITY_CATALOG: readonly SbomVulnerability[] = [
   {
     id: "CVE-2021-23337",
     severity: "high",
@@ -145,7 +149,51 @@ const KNOWN_VULNERABILITIES: readonly SbomVulnerability[] = [
     packageVersion: "0.21.1",
     description: "SSRF vulnerability in axios proxy handling.",
   },
+  {
+    id: "CVE-2022-25883",
+    severity: "high",
+    packageName: "semver",
+    packageVersion: "7.5.1",
+    description: "Regular expression denial of service vulnerability in semver.",
+  },
+  {
+    id: "CVE-2022-23529",
+    severity: "critical",
+    packageName: "jsonwebtoken",
+    packageVersion: "8.5.1",
+    description: "jsonwebtoken vulnerable to key confusion and signature verification bypass.",
+  },
+  {
+    id: "CVE-2023-26136",
+    severity: "high",
+    packageName: "tough-cookie",
+    packageVersion: "4.1.2",
+    description: "Prototype pollution vulnerability in tough-cookie.",
+  },
+  {
+    id: "CVE-2024-21538",
+    severity: "high",
+    packageName: "cross-spawn",
+    packageVersion: "7.0.3",
+    description: "Command injection vulnerability in cross-spawn argument escaping.",
+  },
+  {
+    id: "CVE-2024-21534",
+    severity: "high",
+    packageName: "jsonpath-plus",
+    packageVersion: "10.1.0",
+    description: "Sandbox breakout vulnerability in jsonpath-plus evaluation.",
+  },
+  {
+    id: "CVE-2024-4068",
+    severity: "high",
+    packageName: "micromatch",
+    packageVersion: "4.0.7",
+    description: "Denial of service vulnerability in micromatch pattern expansion.",
+  },
 ];
+
+let activeSbomVulnerabilityCatalog: readonly SbomVulnerability[] = DEFAULT_SBOM_VULNERABILITY_CATALOG;
 
 const MAX_SBOM_BYTES = 1024 * 1024;
 
@@ -173,32 +221,27 @@ function nodeAlgorithm(algorithm: string): string {
     case "ES512":
       return "SHA512";
     default:
-      return "RSA-SHA256";
+      throw new ValidationError(
+        "plugin_sdk.unsupported_signing_algorithm",
+        `Unsupported plugin signing algorithm: ${algorithm}`,
+      );
   }
 }
 
 function decodeSignature(signature: string): Buffer | null {
   const normalized = signature.trim();
-  if (!/^[A-Za-z0-9+/_=-]+$/.test(normalized)) {
+  if (!/^[A-Za-z0-9_-]+={0,2}$/.test(normalized)) {
     return null;
   }
   try {
     return Buffer.from(normalized, "base64url");
   } catch {
-    try {
-      return Buffer.from(normalized, "base64");
-    } catch {
-      return null;
-    }
+    return null;
   }
 }
 
-function pluginDefinitionPayloadCandidates(definition: PluginDefinition, canonicalPayload?: string): string[] {
-  const candidates = new Set<string>();
-  if (canonicalPayload !== undefined) {
-    candidates.add(canonicalPayload);
-  }
-  candidates.add(JSON.stringify({
+function buildPluginSigningPayload(definition: PluginDefinition): string {
+  return JSON.stringify({
     pluginId: definition.pluginId,
     name: definition.name,
     version: definition.version,
@@ -208,17 +251,7 @@ function pluginDefinitionPayloadCandidates(definition: PluginDefinition, canonic
     dependencies: definition.dependencies,
     spiTypes: definition.spiTypes,
     domainIds: definition.domainIds,
-  }));
-  candidates.add(JSON.stringify({
-    pluginId: definition.pluginId,
-    name: definition.name,
-    version: definition.version,
-    type: definition.type,
-    capabilities: definition.capabilities,
-    spiTypes: definition.spiTypes,
-    domainIds: definition.domainIds,
-  }));
-  return [...candidates];
+  });
 }
 
 function verifySignatureForPayload(
@@ -270,8 +303,8 @@ function verifyPluginSignatureDetailed(
   }
   try {
     const algorithm = nodeAlgorithm(definition.signing.algorithm || key.algorithm);
-    const matched = pluginDefinitionPayloadCandidates(definition, canonicalPayload)
-      .some((payload) => verifySignatureForPayload(key, algorithm, payload, signatureBytes));
+    const payload = canonicalPayload ?? buildPluginSigningPayload(definition);
+    const matched = verifySignatureForPayload(key, algorithm, payload, signatureBytes);
     if (!matched) {
       return {
         valid: false,
@@ -288,6 +321,15 @@ function verifyPluginSignatureDetailed(
       algorithm: definition.signing.algorithm,
     };
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return {
+        valid: false,
+        verifiedAt,
+        error: error.code,
+        keyId: definition.signing.keyId,
+        algorithm: definition.signing.algorithm,
+      };
+    }
     return {
       valid: false,
       verifiedAt,
@@ -332,6 +374,13 @@ export function enforcePluginSignature(definition: PluginDefinition): void {
       "plugin_sdk.unknown_signing_key",
       `Plugin signing keyId "${definition.signing.keyId}" is not registered for signature verification.`,
       { details: { pluginId: definition.pluginId, keyId: definition.signing.keyId } },
+    );
+  }
+  if (result.error === "plugin_sdk.unsupported_signing_algorithm") {
+    throw new ValidationError(
+      "plugin_sdk.unsupported_signing_algorithm",
+      `Unsupported plugin signing algorithm: ${definition.signing.algorithm}`,
+      { details: { pluginId: definition.pluginId, algorithm: definition.signing.algorithm } },
     );
   }
   if (!result.valid) {
@@ -408,13 +457,6 @@ export interface DefinePluginOptions {
   } | null;
 }
 
-type AsyncPluginDefinition = PromiseLike<PluginDefinition> & {
-  catch<TResult = never>(
-    onRejected?: ((reason: unknown) => TResult | PromiseLike<TResult>) | null,
-  ): Promise<PluginDefinition | TResult>;
-  finally(onFinally?: (() => void) | null): Promise<PluginDefinition>;
-};
-
 const DEFAULT_RESOURCE_LIMITS: PluginResourceLimits = {
   maxMemoryMb: 512,
   maxCpuMs: 5000,
@@ -466,14 +508,32 @@ function filterVulnerabilities(
   threshold: SbomSeverity,
 ): SbomVulnerability[] {
   const minimum = SEVERITY_ORDER[threshold];
-  return KNOWN_VULNERABILITIES.filter((vulnerability) => {
+  return activeSbomVulnerabilityCatalog.filter((vulnerability) => {
     return SEVERITY_ORDER[vulnerability.severity] >= minimum
       && packages.some((pkg) => pkg.name === vulnerability.packageName && pkg.version === vulnerability.packageVersion);
   });
 }
 
+export function getSbomVulnerabilityCatalog(): readonly SbomVulnerability[] {
+  return activeSbomVulnerabilityCatalog;
+}
+
+export function setSbomVulnerabilityCatalog(catalog: readonly SbomVulnerability[]): void {
+  activeSbomVulnerabilityCatalog = catalog.map((entry) => ({
+    id: entry.id,
+    severity: entry.severity,
+    packageName: entry.packageName,
+    packageVersion: entry.packageVersion,
+    description: entry.description,
+  }));
+}
+
+export function resetSbomVulnerabilityCatalog(): void {
+  activeSbomVulnerabilityCatalog = DEFAULT_SBOM_VULNERABILITY_CATALOG;
+}
+
 export class DefaultSbomScanner implements SbomScanner {
-  async scan(sbomRef: string, options: SbomVerificationOptions = {}): Promise<SbomVerificationResult> {
+  scanSync(sbomRef: string, options: SbomVerificationOptions = {}): SbomVerificationResult {
     const scannedAt = new Date().toISOString();
     if (typeof sbomRef !== "string" || sbomRef.trim().length === 0) {
       return {
@@ -496,7 +556,7 @@ export class DefaultSbomScanner implements SbomScanner {
       };
     }
 
-    if (!["http:", "https:", "file:"].includes(parsed.protocol)) {
+    if (!["file:"].includes(parsed.protocol)) {
       return {
         valid: false,
         scannedAt,
@@ -506,14 +566,6 @@ export class DefaultSbomScanner implements SbomScanner {
     }
 
     try {
-      if (parsed.protocol !== "file:") {
-        return {
-          valid: false,
-          scannedAt,
-          vulnerabilities: [],
-          scanErrors: ["Remote SBOM scanning requires a supplied SBOM fetcher; heuristic package inference is disabled."],
-        };
-      }
       const sbomPath = fileURLToPath(parsed);
       const fileSize = statSync(sbomPath).size;
       if (!Number.isFinite(fileSize) || fileSize < 0 || fileSize > MAX_SBOM_BYTES) {
@@ -541,6 +593,10 @@ export class DefaultSbomScanner implements SbomScanner {
       };
     }
   }
+
+  async scan(sbomRef: string, options: SbomVerificationOptions = {}): Promise<SbomVerificationResult> {
+    return this.scanSync(sbomRef, options);
+  }
 }
 
 let activeSbomScanner: SbomScanner = new DefaultSbomScanner();
@@ -563,6 +619,27 @@ export async function verifySbomRef(sbomRef: string | null | undefined): Promise
     };
   }
   return activeSbomScanner.scan(sbomRef.trim());
+}
+
+function verifySbomRefSync(sbomRef: string | null | undefined): SbomVerificationResult {
+  if (typeof sbomRef !== "string" || sbomRef.trim().length === 0) {
+    return {
+      valid: true,
+      scannedAt: new Date().toISOString(),
+      vulnerabilities: [],
+      scanErrors: [],
+    };
+  }
+  const scanner = activeSbomScanner as Partial<SynchronousSbomScanner>;
+  if (typeof scanner.scanSync !== "function") {
+    return {
+      valid: false,
+      scannedAt: new Date().toISOString(),
+      vulnerabilities: [],
+      scanErrors: ["Synchronous SBOM verification is required during plugin definition."],
+    };
+  }
+  return scanner.scanSync(sbomRef.trim());
 }
 
 function normalizeResourceLimits(resourceLimits: PluginResourceLimits | undefined): PluginResourceLimits {
@@ -667,46 +744,29 @@ export function definePlugin(options: DefinePluginOptions): PluginDefinition {
     enforcePluginSignature(result);
   }
   if (result.sbomRef) {
-    const verification = verifySbomRef(result.sbomRef).then((sbomResult) => {
-      const blockingFindings = sbomResult.vulnerabilities.filter((vulnerability) => SEVERITY_ORDER[vulnerability.severity] >= SEVERITY_ORDER["high"]);
-      if (blockingFindings.length > 0) {
-        throw new ValidationError(
-          "plugin_sdk.sbom_critical_vulnerabilities",
-          "Plugin SBOM contains high or critical vulnerabilities.",
-          {
-            details: {
-              pluginId: result.pluginId,
-              vulnerabilities: blockingFindings.map((finding) => finding.id),
-            },
+    const sbomResult = verifySbomRefSync(result.sbomRef);
+    const blockingFindings = sbomResult.vulnerabilities.filter((vulnerability) => SEVERITY_ORDER[vulnerability.severity] >= SEVERITY_ORDER["high"]);
+    if (sbomResult.scanErrors.length > 0) {
+      throw new ValidationError(
+        "plugin_sdk.sbom_verification_required",
+        sbomResult.scanErrors.join("; "),
+        { details: { pluginId: result.pluginId } },
+      );
+    }
+    if (blockingFindings.length > 0) {
+      throw new ValidationError(
+        "plugin_sdk.sbom_critical_vulnerabilities",
+        "Plugin SBOM contains high or critical vulnerabilities.",
+        {
+          details: {
+            pluginId: result.pluginId,
+            vulnerabilities: blockingFindings.map((finding) => finding.id),
           },
-        );
-      }
-      return { ...result };
-    });
-    attachAsyncPluginVerification(result, verification);
+        },
+      );
+    }
   }
   return result;
-}
-
-function attachAsyncPluginVerification(result: PluginDefinition, verification: Promise<PluginDefinition>): void {
-  const asyncView = result as PluginDefinition & AsyncPluginDefinition;
-  Object.defineProperties(asyncView, {
-    then: {
-      value: verification.then.bind(verification),
-      enumerable: false,
-      configurable: true,
-    },
-    catch: {
-      value: verification.catch.bind(verification),
-      enumerable: false,
-      configurable: true,
-    },
-    finally: {
-      value: verification.finally.bind(verification),
-      enumerable: false,
-      configurable: true,
-    },
-  });
 }
 
 /**

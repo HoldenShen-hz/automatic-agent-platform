@@ -248,7 +248,14 @@ export class IncidentResolver {
       return false;
     }
 
-    const elapsedSeconds = (Date.now() - Date.parse(startedAt)) / 1000;
+    const effectiveStartedAt = Number.isFinite(Date.parse(resolution.startedAt))
+      ? resolution.startedAt
+      : startedAt;
+    const startedAtMs = Date.parse(effectiveStartedAt);
+    if (!Number.isFinite(startedAtMs)) {
+      return true;
+    }
+    const elapsedSeconds = (Date.now() - startedAtMs) / 1000;
 
     // Escalate if taking too long based on strategy
     const threshold = this.getEscalationThreshold(resolution.strategy);
@@ -315,7 +322,7 @@ export class IncidentResolver {
     estimatedDurationSeconds: number,
   ): ResolutionAction {
     return {
-      actionId: `action_${Date.now()}_${step}`,
+      actionId: newId("action"),
       step,
       description,
       strategy,
@@ -382,6 +389,7 @@ export class IncidentResolver {
     // Generate action items based on resolution strategy
     const actionItems = this.generateActionItems(resolution, lessonsLearned);
 
+    const normalizedTimeline = normalizeTimelineEvents(timeline, detectedAt);
     const report: PostMortemReport = {
       reportId: this.generateReportId(),
       incidentId: incident.incidentId,
@@ -391,7 +399,7 @@ export class IncidentResolver {
       resolvedAt,
       totalDurationMinutes,
       rootCause: resolution.rootCause ?? "Root cause analysis pending",
-      timeline: timeline.map((e) => ({
+      timeline: normalizedTimeline.map((e) => ({
         timestamp: e.timestamp,
         event: e.event,
         authorId: e.authorId ?? null,
@@ -507,4 +515,33 @@ export class IncidentResolver {
 
     return actionItems;
   }
+}
+
+function normalizeTimelineEvents(
+  timeline: readonly { timestamp: string; event: string; authorId?: string; phase: PostMortemTimelineEvent["phase"] }[],
+  detectedAt: string,
+): readonly { timestamp: string; event: string; authorId?: string; phase: PostMortemTimelineEvent["phase"] }[] {
+  const detectedAtMs = Date.parse(detectedAt);
+  const normalized = timeline.map((entry) => {
+    const timestampMs = Date.parse(entry.timestamp);
+    if (!Number.isFinite(timestampMs)) {
+      throw new Error(`Invalid timeline timestamp: ${entry.timestamp}`);
+    }
+    return { ...entry, timestampMs };
+  }).sort((left, right) => {
+    if (left.timestampMs !== right.timestampMs) {
+      return left.timestampMs - right.timestampMs;
+    }
+    return left.event.localeCompare(right.event);
+  });
+
+  let lastTimestampMs = Number.isFinite(detectedAtMs) ? detectedAtMs : -Infinity;
+  for (const entry of normalized) {
+    if (entry.timestampMs < lastTimestampMs) {
+      throw new Error("Incident post-mortem timeline is not monotonic.");
+    }
+    lastTimestampMs = entry.timestampMs;
+  }
+
+  return normalized.map(({ timestampMs: _timestampMs, ...entry }) => entry);
 }

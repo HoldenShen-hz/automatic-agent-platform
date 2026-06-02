@@ -54,7 +54,7 @@ test("E2E Multi-Step: five-step workflow completes all steps in sequence", () =>
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Five-step workflow test",
         status: "in_progress",
         source: "user",
@@ -101,7 +101,7 @@ test("E2E Multi-Step: five-step workflow completes all steps in sequence", () =>
 
       h.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "five_step_pipeline",
         currentStepIndex: 0,
         status: "running",
@@ -169,7 +169,7 @@ test("E2E Multi-Step: workflow pauses at step boundary and resumes", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Pause-resume workflow test",
         status: "in_progress",
         source: "user",
@@ -216,7 +216,7 @@ test("E2E Multi-Step: workflow pauses at step boundary and resumes", () => {
 
       h.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "pausable_workflow",
         currentStepIndex: 1,
         status: "running",
@@ -302,7 +302,7 @@ test("E2E Multi-Step: workflow can be cancelled at any non-terminal stage", () =
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Cancel workflow test",
         status: "in_progress",
         source: "user",
@@ -349,7 +349,7 @@ test("E2E Multi-Step: workflow can be cancelled at any non-terminal stage", () =
 
       h.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "cancellable_workflow",
         currentStepIndex: 2, // At step 2
         status: "running",
@@ -402,7 +402,7 @@ test("E2E Multi-Step: step retry recovers from transient failure", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Step retry workflow test",
         status: "in_progress",
         source: "user",
@@ -449,7 +449,7 @@ test("E2E Multi-Step: step retry recovers from transient failure", () => {
 
       h.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "retry_workflow",
         currentStepIndex: 1,
         status: "running",
@@ -519,7 +519,7 @@ test("E2E Multi-Step: conditional branch selection based on step output", () => 
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Conditional branch workflow test",
         status: "in_progress",
         source: "user",
@@ -566,7 +566,7 @@ test("E2E Multi-Step: conditional branch selection based on step output", () => 
 
       h.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "conditional_workflow",
         currentStepIndex: 0,
         status: "running",
@@ -633,7 +633,7 @@ test("E2E Multi-Step: workflow resumes from correct step after failure", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Resume from step workflow test",
         status: "in_progress",
         source: "user",
@@ -681,7 +681,7 @@ test("E2E Multi-Step: workflow resumes from correct step after failure", () => {
       // Simulate workflow that failed at step 2 but can resume from step 1
       h.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "resumable_workflow",
         currentStepIndex: 2,
         status: "failed",
@@ -743,7 +743,7 @@ test("E2E Multi-Step: large workflow with 20 steps completes correctly", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Large workflow test",
         status: "in_progress",
         source: "user",
@@ -790,7 +790,7 @@ test("E2E Multi-Step: large workflow with 20 steps completes correctly", () => {
 
       h.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "large_workflow",
         currentStepIndex: 0,
         status: "running",

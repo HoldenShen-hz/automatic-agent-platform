@@ -16,7 +16,7 @@ function makeTaskBoardItem(overrides: Partial<TaskBoardItem> = {}): TaskBoardIte
     taskStatus: "done",
     createdAt: "2026-04-19T00:00:00.000Z",
     updatedAt: "2026-04-19T00:00:00.000Z",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     ...overrides,
   };
 }

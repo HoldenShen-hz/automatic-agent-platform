@@ -7,8 +7,8 @@ import { HrRoleGovernanceService, type HrRoleProposal } from "../../../../src/or
 function createRegistry(): DivisionRegistry {
   return {
     divisions: new Map([
-      ["engineering_ops", {
-        id: "engineering_ops",
+      ["engineering-ops", {
+        id: "engineering-ops",
         version: "1",
         name: "Engineering Ops",
         description: "Engineering workflows",
@@ -20,7 +20,7 @@ function createRegistry(): DivisionRegistry {
           {
             id: "engineer",
             name: "Engineer",
-            promptPath: "/tmp/engineering_ops/roles/engineer.prompt.md",
+            promptPath: "/tmp/engineering-ops/roles/engineer.prompt.md",
             promptText: "Implement code changes and verify with bash when needed.",
             model: "coding",
             tools: ["read", "edit", "bash"],
@@ -29,7 +29,7 @@ function createRegistry(): DivisionRegistry {
           {
             id: "reviewer",
             name: "Reviewer",
-            promptPath: "/tmp/engineering_ops/roles/reviewer.prompt.md",
+            promptPath: "/tmp/engineering-ops/roles/reviewer.prompt.md",
             promptText: "Review code changes and inspect results.",
             model: "reasoning",
             tools: ["read"],
@@ -37,7 +37,7 @@ function createRegistry(): DivisionRegistry {
           },
         ],
         workflows: [],
-        rootPath: "/tmp/engineering_ops",
+        rootPath: "/tmp/engineering-ops",
       }],
     ]),
     workflows: new Map(),
@@ -46,7 +46,7 @@ function createRegistry(): DivisionRegistry {
 
 function createProposal(): HrRoleProposal {
   return {
-    divisionId: "engineering_ops",
+    divisionId: "engineering-ops",
     roleId: "release_operator",
     name: "Release Operator",
     promptText: "Prepare release candidate notes for approved engineering changes.",
@@ -97,10 +97,10 @@ test("HrRoleGovernanceService fail-closes proposals that attempt privilege escal
 
   assert.equal(result.valid, false);
   assert.ok(
-    result.errors.includes("hr.tool_outside_division_subset:engineering_ops:unsafe_release_operator:todo_write"),
+    result.errors.includes("hr.tool_outside_division_subset:engineering-ops:unsafe_release_operator:todo_write"),
   );
   assert.ok(
-    result.errors.includes("hr.workflow_auto_apply_denied:engineering_ops:unsafe_release_operator"),
+    result.errors.includes("hr.workflow_auto_apply_denied:engineering-ops:unsafe_release_operator"),
   );
 });
 

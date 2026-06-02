@@ -29,6 +29,25 @@ test("IncidentDetector detects incidents from fail_closed checks as P1", () => {
   assert.equal(incidents[0]!.title, "Critical failure in db");
 });
 
+test("IncidentDetector still applies rule enrichment for fail_closed checks", () => {
+  const detector = new IncidentDetector();
+  const incidents = detector.detectFromChecks([
+    {
+      checkId: "provider_health",
+      status: "fail_closed",
+      summary: "Provider failed hard",
+      findings: ["provider outage"],
+      metrics: {
+        availability: 90,
+        error_rate: 7,
+      },
+    },
+  ]);
+
+  assert.equal(incidents.some((incident) => incident.title === "SEV1 Availability Collapse"), true);
+  assert.equal(incidents.some((incident) => incident.title === "SEV2 Degraded Service"), true);
+});
+
 test("IncidentDetector detects incidents from degraded checks as P2", () => {
   const detector = new IncidentDetector();
 
@@ -216,7 +235,7 @@ test("IncidentDetector options are applied correctly", () => {
   assert.equal(incidents[0]!.severity, "SEV1");
 });
 
-test("IncidentDetector suppresses lower-severity duplicate rules for the same metric episode", () => {
+test("IncidentDetector suppresses only exact-dimension duplicates, not partially overlapping incidents", () => {
   const detector = new IncidentDetector();
   const incidents = detector.detectFromChecks([
     {
@@ -232,9 +251,30 @@ test("IncidentDetector suppresses lower-severity duplicate rules for the same me
     },
   ]);
 
-  assert.equal(incidents.length, 1);
-  assert.equal(incidents[0]!.severity, "SEV1");
-  assert.equal(incidents[0]!.title, "SEV1 Availability Collapse");
+  assert.equal(incidents.length, 2);
+  assert.equal(incidents.some((incident) => incident.title === "SEV1 Availability Collapse"), true);
+  assert.equal(incidents.some((incident) => incident.title === "SEV2 Degraded Service"), true);
+});
+
+test("IncidentDetector keeps distinct incidents when rules only partially overlap on dimensions", () => {
+  const detector = new IncidentDetector();
+  const incidents = detector.detectFromChecks([
+    {
+      checkId: "provider_health",
+      status: "ok",
+      summary: "Provider degraded",
+      findings: ["availability_drop", "latency_spike"],
+      metrics: {
+        availability: 94,
+        error_rate: 2,
+        latency_p99: 1500,
+      },
+    },
+  ]);
+
+  assert.equal(incidents.length, 2);
+  assert.equal(incidents.some((incident) => incident.title === "SEV1 Availability Collapse"), true);
+  assert.equal(incidents.some((incident) => incident.title === "SEV2 Degraded Service"), true);
 });
 
 test("IncidentDetector creates incident with default values", () => {

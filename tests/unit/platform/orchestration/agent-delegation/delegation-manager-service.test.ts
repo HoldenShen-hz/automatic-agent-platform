@@ -121,6 +121,25 @@ test("DelegationManagerService.completeWithEvidence completes with evidence", as
   assert.equal(delegation!.status, "completed");
 });
 
+test("DelegationManagerService.completeWithEvidence propagates completion failures", async () => {
+  const service = new DelegationManagerService();
+  const parent = createTestContext();
+  const spec = createTestSpec();
+  const handle = await service.delegate(parent, spec);
+
+  const serviceWithInternals = service as unknown as {
+    complete: (delegationId: string, outputRef?: string) => Promise<void>;
+  };
+  serviceWithInternals.complete = async () => {
+    throw new Error("forced completion failure");
+  };
+
+  await assert.rejects(
+    () => service.completeWithEvidence(handle.delegationId, ["evidence-1"], "output-ref-1"),
+    /forced completion failure/,
+  );
+});
+
 test("DelegationManagerService.fail marks delegation as failed", async () => {
   const service = new DelegationManagerService();
   const parent = createTestContext();

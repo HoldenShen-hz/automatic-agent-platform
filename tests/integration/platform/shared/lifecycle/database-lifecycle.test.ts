@@ -28,7 +28,7 @@ test("lifecycle: Database can be closed and reopened successfully", () => {
           "task_close_test",
           null,
           "task_close_test",
-          "general_ops",
+          "general-ops",
           "Close test",
           "pending",
           "user",
@@ -81,7 +81,7 @@ test("lifecycle: Database WAL checkpoint occurs on close", () => {
             `task_wal_${i}`,
             null,
             `task_wal_${i}`,
-            "general_ops",
+            "general-ops",
             `WAL test ${i}`,
             "pending",
             "user",
@@ -134,13 +134,13 @@ test("lifecycle: Multiple databases can be opened and closed independently", () 
     db1.transaction(() => {
       db1.connection
         .prepare("INSERT INTO tasks (id, parent_id, root_id, division_id, title, status, source, priority, input_json, normalized_input_json, output_json, estimated_cost_usd, actual_cost_usd, error_code, created_at, updated_at, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-        .run("db1_task", null, "db1_task", "general_ops", "DB1 Task", "pending", "user", "normal", "{}", "{}", null, 0, 0, null, new Date().toISOString(), new Date().toISOString(), null);
+        .run("db1_task", null, "db1_task", "general-ops", "DB1 Task", "pending", "user", "normal", "{}", "{}", null, 0, 0, null, new Date().toISOString(), new Date().toISOString(), null);
     });
 
     db2.transaction(() => {
       db2.connection
         .prepare("INSERT INTO tasks (id, parent_id, root_id, division_id, title, status, source, priority, input_json, normalized_input_json, output_json, estimated_cost_usd, actual_cost_usd, error_code, created_at, updated_at, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-        .run("db2_task", null, "db2_task", "general_ops", "DB2 Task", "pending", "user", "normal", "{}", "{}", null, 0, 0, null, new Date().toISOString(), new Date().toISOString(), null);
+        .run("db2_task", null, "db2_task", "general-ops", "DB2 Task", "pending", "user", "normal", "{}", "{}", null, 0, 0, null, new Date().toISOString(), new Date().toISOString(), null);
     });
 
     // Close one database

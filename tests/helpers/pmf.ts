@@ -8,7 +8,7 @@ export function seedPmfValidationDataset(db: SqliteDatabase, store: Authoritativ
     insertTask(store, {
       id: "task-alpha-1",
       rootId: "root-alpha",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       status: "done",
       actualCostUsd: 1,
       createdAt: "2026-04-02T09:00:00.000Z",
@@ -16,7 +16,7 @@ export function seedPmfValidationDataset(db: SqliteDatabase, store: Authoritativ
     insertTask(store, {
       id: "task-alpha-2",
       rootId: "root-alpha",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       status: "done",
       actualCostUsd: 1.2,
       createdAt: "2026-04-03T09:00:00.000Z",
@@ -24,7 +24,7 @@ export function seedPmfValidationDataset(db: SqliteDatabase, store: Authoritativ
     insertTask(store, {
       id: "task-beta-1",
       rootId: "root-beta",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       status: "done",
       actualCostUsd: 0.8,
       createdAt: "2026-04-04T09:00:00.000Z",
@@ -32,7 +32,7 @@ export function seedPmfValidationDataset(db: SqliteDatabase, store: Authoritativ
     insertTask(store, {
       id: "task-gamma-1",
       rootId: "root-gamma",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       status: "failed",
       actualCostUsd: 0.2,
       createdAt: "2026-04-05T09:00:00.000Z",
@@ -40,7 +40,7 @@ export function seedPmfValidationDataset(db: SqliteDatabase, store: Authoritativ
     insertTask(store, {
       id: "task-delta-1",
       rootId: "root-delta",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       status: "done",
       actualCostUsd: 1.1,
       createdAt: "2026-04-06T09:00:00.000Z",
@@ -56,7 +56,7 @@ export function seedPmfValidationDataset(db: SqliteDatabase, store: Authoritativ
     insertTask(store, {
       id: "task-old-1",
       rootId: "root-old",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       status: "done",
       actualCostUsd: 9.9,
       createdAt: "2026-03-01T09:00:00.000Z",

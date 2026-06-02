@@ -1,16 +1,16 @@
 {
-  "approvalMode": "supervised",
-  "sandboxMode": "read_only",
+  "approvalMode": "guided",
+  "sandboxMode": "workspace_write",
   "allowDestructiveActions": false,
   "remoteWorkerRegistration": {
-    "challengeTtlMs": 300000,
-    "allowedCapabilities": ["mcp"],
+    "challengeTtlMs": 120000,
+    "allowedCapabilities": ["mcp", "local-cli"],
     "mcpPolicy": {
-      "allowNetworkEgress": false,
-      "allowedDomains": [],
-      "maxRequestsPerMinute": 60,
-      "sandboxMode": "read_only",
-      "allowedTransports": ["stdio"]
+      "allowNetworkEgress": true,
+      "allowedDomains": ["127.0.0.1", "localhost"],
+      "maxRequestsPerMinute": 120,
+      "sandboxMode": "workspace_write",
+      "allowedTransports": ["stdio", "http"]
     }
   }
 }

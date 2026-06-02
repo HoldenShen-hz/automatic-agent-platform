@@ -37,6 +37,12 @@
 
 - `<category>.<reason>`
 
+兼容说明：
+
+- `src/platform/contracts/errors.ts` 仍保留 `LegacyErrorCode` / `ColonErrorCode` / `SnakeErrorCode` 作为历史适配器与内部过渡类型。
+- 这些格式不属于本注册表的 canonical 对外编号空间，不能新增到 API / SDK / runtime 对外稳定 contract。
+- 新增稳定错误码时，仍必须使用 dotted 形式并先在本表登记。
+
 示例：
 
 - `validation.invalid_input`
@@ -95,11 +101,13 @@
 | `runtime.context_overflow` | `runtime` | `true` | 上下文超限需裁剪或压缩 |
 | `contract.legacy_surface_used` | `contract` | `false` | 触达仅为兼容保留的 legacy contract surface |
 | `contract.deprecated_surface_used` | `contract` | `false` | 触达已弃用 contract surface，需迁移到 canonical surface |
+| `executable_contract.schema_invalid` | `contract` | `false` | executable contract payload 未通过 schema 校验 |
 | `tenant.not_found` | `tenant` | `false` | 找不到租户或工作区归属 |
 | `tenant.boundary_violation` | `tenant` | `false` | 访问跨租户边界 |
 | `tenant.workspace_mismatch` | `tenant` | `false` | workspace 与 tenant / org 归属不一致 |
 | `external.service_unavailable` | `external` | `true` | 外部系统暂不可用 |
 | `internal.unexpected_error` | `internal` | `false` | 未分类内部错误 |
+| `unknown.unclassified` | `unknown` | `false` | 未识别错误对象回退到通用未知错误码 |
 
 ## 4. 特殊映射规则
 

@@ -26,7 +26,7 @@ function createWorkflowTestHarness() {
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Scheduler contracts integration test",
       status: "in_progress",
       source: "user",
@@ -72,7 +72,7 @@ function createWorkflowTestHarness() {
 
     store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId,
       currentStepIndex: 0,
       status: "running",
@@ -356,7 +356,7 @@ test("LongRunningWorkflowService sweeper expires all eligible suspensions in one
         id: taskId2,
         parentId: null,
         rootId: taskId2,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Second task for sweep test",
         status: "in_progress",
         source: "user",
@@ -374,7 +374,7 @@ test("LongRunningWorkflowService sweeper expires all eligible suspensions in one
 
       h.store.insertWorkflowState({
         taskId: taskId2,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "sweep_workflow",
         currentStepIndex: 0,
         status: "running",

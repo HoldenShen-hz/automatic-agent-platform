@@ -305,7 +305,7 @@ test("integration: config with all intent types loads correctly", () => {
     mkdirSync(dir, { recursive: true });
   }
 
-  const allIntents = [
+  const allIntents: ConversationTemplate["intent"][] = [
     "task_create",
     "task_query",
     "task_modify",
@@ -339,12 +339,10 @@ test("integration: config with all intent types loads correctly", () => {
 
     assert.equal(config.templates.length, 6);
 
-    const registry = new ConversationTemplateRegistry(
-      config.templates as any,
-    );
+    const registry = new ConversationTemplateRegistry(config.templates);
 
     for (const intent of allIntents) {
-      const templates = registry.listByIntent(intent as any);
+      const templates = registry.listByIntent(intent);
       assert.equal(templates.length, 1, `Expected 1 template for ${intent}`);
       assert.equal(
         templates[0]!.intent,
@@ -389,9 +387,7 @@ test("integration: templates loaded from real config file work with executor", (
     return;
   }
 
-  const registry = new ConversationTemplateRegistry(
-    config.templates as any,
-  );
+  const registry = new ConversationTemplateRegistry(config.templates);
   const executor = new ConversationTemplateExecutor(registry);
 
   const firstTemplate = config.templates[0]!;

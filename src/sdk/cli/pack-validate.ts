@@ -7,13 +7,13 @@
  *   npm run pack-validate -- --manifest ./pack.json --contract-version 1.0.0
  */
 
-import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import {
   requirePackCompatibilityMetadata,
   validateBusinessPackManifest,
   type BusinessPackManifest,
 } from "../pack-sdk/pack-manifest.js";
+import { readGuardedJsonFile, summarizeCliError } from "./cli-file-guards.js";
 import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 
 interface PackValidateOptions {
@@ -50,8 +50,11 @@ interface ValidationResult {
 
 function parseMajorVersion(version: string): number {
   const [majorSegment] = version.trim().split(".");
-  const major = Number(majorSegment);
-  return Number.isFinite(major) ? major : 0;
+  if (!/^\d+$/u.test(majorSegment ?? "")) {
+    return -1;
+  }
+  const major = Number.parseInt(majorSegment, 10);
+  return Number.isFinite(major) ? major : -1;
 }
 
 function main(): number {
@@ -64,7 +67,7 @@ function main(): number {
   const result: ValidationResult = { valid: true, errors: [], warnings: [], metadata: {} };
 
   try {
-    const content = readFileSync(opts.manifest, "utf-8");
+    const content = readGuardedJsonFile(opts.manifest, "Pack manifest");
     const manifest: BusinessPackManifest = JSON.parse(content);
 
     // Structural validation
@@ -117,7 +120,7 @@ function main(): number {
 
   } catch (err) {
     result.valid = false;
-    result.errors.push(`validation_failed:${err instanceof Error ? err.message : String(err)}`);
+    result.errors.push(`validation_failed:${summarizeCliError(err, "pack_validate.failed")}`);
   }
 
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

@@ -15,7 +15,7 @@
 import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseCreateWebhookEndpointPayload } from "./schemas.js";
-import { buildJsonResponse, requirePrincipal, validateTaskId } from "./utils.js";
+import { buildJsonResponse, requirePrincipal } from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { WebhookIngressService } from "../../webhook/index.js";
 import type { WebhookOutboxDispatchService } from "../../webhook/webhook-outbox-dispatch-service.js";
@@ -39,6 +39,34 @@ export interface WebhookRouteDeps {
   webhookOutboxDispatchService?: WebhookOutboxDispatchService | null;
 }
 
+const WEBHOOK_ENDPOINT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+
+function validateEndpointId(endpointId: string | undefined): string {
+  if (endpointId == null || !WEBHOOK_ENDPOINT_ID_PATTERN.test(endpointId)) {
+    throw new ApiError(400, "webhook.invalid_endpoint_id", "Webhook endpoint ID is invalid.");
+  }
+  return endpointId;
+}
+
+function assertWebhookEndpointAccess(principalTenantId: string | null, endpointTenantId: string | null): void {
+  if (principalTenantId == null) {
+    return;
+  }
+  if (principalTenantId !== endpointTenantId) {
+    throw new ApiError(404, "webhook.endpoint_not_found", "Webhook endpoint not found.");
+  }
+}
+
+function listScopedEndpoints(
+  deps: WebhookRouteDeps,
+  principal: { tenantId: string | null },
+) {
+  const endpoints = deps.webhookIngressService.listEndpoints();
+  return principal.tenantId == null
+    ? endpoints
+    : endpoints.filter((endpoint) => endpoint.tenantId === principal.tenantId);
+}
+
 export function createWebhookRoutes(deps: WebhookRouteDeps): RouteDefinition[] {
   return [
     // ── Non-v1 (backward-compatible) ──────────────────────────────────────────
@@ -46,8 +74,8 @@ export function createWebhookRoutes(deps: WebhookRouteDeps): RouteDefinition[] {
       method: "GET",
       pathname: "/webhooks",
       handler: (ctx) => {
-        requirePrincipal(ctx.request, deps.authService, "viewer");
-        const endpoints = deps.webhookIngressService.listEndpoints();
+        const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
+        const endpoints = listScopedEndpoints(deps, principal);
         return buildJsonResponse(ctx.requestId, 200, { webhooks: endpoints });
       },
     },
@@ -55,14 +83,14 @@ export function createWebhookRoutes(deps: WebhookRouteDeps): RouteDefinition[] {
       method: "POST",
       pathname: "/webhooks",
       handler: (ctx) => {
-        requirePrincipal(ctx.request, deps.authService, "operator");
+        const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const payload = parseCreateWebhookEndpointPayload(
           readValidatedJsonBody(ctx.request.body, (b) => b),
         );
         const registration = deps.webhookIngressService.registerEndpoint({
           endpointId: payload.endpointId,
           source: payload.source,
-          tenantId: null,
+          tenantId: principal.tenantId ?? null,
           workspaceId: null,
           enabled: payload.enabled ?? true,
           allowedEventTypes: payload.allowedEventTypes ?? [],
@@ -84,9 +112,9 @@ export function createWebhookRoutes(deps: WebhookRouteDeps): RouteDefinition[] {
         if (segments[0] !== "webhooks" || segments[2] !== "receive" || segments.length !== 3) {
           return null;
         }
-        const endpointId = segments[1];
-        if (!endpointId) {
-          throw new ApiError(400, "webhook.invalid_endpoint_id", "Webhook endpoint ID is required.");
+        const endpointId = validateEndpointId(segments[1]);
+        if (deps.webhookIngressService.getEndpoint(endpointId) == null) {
+          throw new ApiError(404, "webhook.endpoint_not_found", "Webhook endpoint not found.");
         }
         if (deps.webhookOutboxDispatchService == null) {
           throw new ApiError(503, "webhook.dispatch_unavailable", "Webhook outbox dispatch service is not configured.");
@@ -109,11 +137,13 @@ export function createWebhookRoutes(deps: WebhookRouteDeps): RouteDefinition[] {
         if (segments[0] !== "webhooks" || segments.length !== 2) {
           return null;
         }
-        requirePrincipal(ctx.request, deps.authService, "admin");
-        const endpointId = segments[1];
-        if (!endpointId) {
-          throw new ApiError(400, "webhook.invalid_endpoint_id", "Webhook endpoint ID is required.");
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        const endpointId = validateEndpointId(segments[1]);
+        const endpoint = deps.webhookIngressService.getEndpoint(endpointId);
+        if (endpoint == null) {
+          throw new ApiError(404, "webhook.endpoint_not_found", "Webhook endpoint not found.");
         }
+        assertWebhookEndpointAccess(principal.tenantId, endpoint.tenantId);
         const deleted = deps.webhookIngressService.deleteEndpoint(endpointId);
         if (!deleted) {
           throw new ApiError(404, "webhook.endpoint_not_found", "Webhook endpoint not found.");
@@ -126,8 +156,8 @@ export function createWebhookRoutes(deps: WebhookRouteDeps): RouteDefinition[] {
       method: "GET",
       pathname: "/v1/webhooks",
       handler: (ctx) => {
-        requirePrincipal(ctx.request, deps.authService, "viewer");
-        const endpoints = deps.webhookIngressService.listEndpoints();
+        const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
+        const endpoints = listScopedEndpoints(deps, principal);
         return buildJsonResponse(ctx.requestId, 200, { webhooks: endpoints });
       },
     },
@@ -135,14 +165,14 @@ export function createWebhookRoutes(deps: WebhookRouteDeps): RouteDefinition[] {
       method: "POST",
       pathname: "/v1/webhooks",
       handler: (ctx) => {
-        requirePrincipal(ctx.request, deps.authService, "operator");
+        const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const payload = parseCreateWebhookEndpointPayload(
           readValidatedJsonBody(ctx.request.body, (b) => b),
         );
         const registration = deps.webhookIngressService.registerEndpoint({
           endpointId: payload.endpointId,
           source: payload.source,
-          tenantId: null,
+          tenantId: principal.tenantId ?? null,
           workspaceId: null,
           enabled: payload.enabled ?? true,
           allowedEventTypes: payload.allowedEventTypes ?? [],
@@ -164,9 +194,9 @@ export function createWebhookRoutes(deps: WebhookRouteDeps): RouteDefinition[] {
         if (segments[0] !== "v1" || segments[1] !== "webhooks" || segments[3] !== "receive" || segments.length !== 4) {
           return null;
         }
-        const endpointId = segments[2];
-        if (!endpointId) {
-          throw new ApiError(400, "webhook.invalid_endpoint_id", "Webhook endpoint ID is required.");
+        const endpointId = validateEndpointId(segments[2]);
+        if (deps.webhookIngressService.getEndpoint(endpointId) == null) {
+          throw new ApiError(404, "webhook.endpoint_not_found", "Webhook endpoint not found.");
         }
         if (deps.webhookOutboxDispatchService == null) {
           throw new ApiError(503, "webhook.dispatch_unavailable", "Webhook outbox dispatch service is not configured.");
@@ -189,11 +219,13 @@ export function createWebhookRoutes(deps: WebhookRouteDeps): RouteDefinition[] {
         if (segments[0] !== "v1" || segments[1] !== "webhooks" || segments.length !== 3) {
           return null;
         }
-        requirePrincipal(ctx.request, deps.authService, "admin");
-        const endpointId = segments[2];
-        if (!endpointId) {
-          throw new ApiError(400, "webhook.invalid_endpoint_id", "Webhook endpoint ID is required.");
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        const endpointId = validateEndpointId(segments[2]);
+        const endpoint = deps.webhookIngressService.getEndpoint(endpointId);
+        if (endpoint == null) {
+          throw new ApiError(404, "webhook.endpoint_not_found", "Webhook endpoint not found.");
         }
+        assertWebhookEndpointAccess(principal.tenantId, endpoint.tenantId);
         const deleted = deps.webhookIngressService.deleteEndpoint(endpointId);
         if (!deleted) {
           throw new ApiError(404, "webhook.endpoint_not_found", "Webhook endpoint not found.");

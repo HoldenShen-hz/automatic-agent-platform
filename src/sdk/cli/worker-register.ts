@@ -8,6 +8,8 @@ import { ConfigGovernanceService } from "../../platform/five-plane-control-plane
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { RemoteWorkerRegistrationService } from "../../platform/five-plane-execution/worker-pool/remote-worker-registration-service.js";
 import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { isCliEntryPoint, runCliMain } from "./cli-exit.js";
+import { summarizeCliError } from "./cli-file-guards.js";
 
 /**
  * Loads the worker registration policy from the config bundle.
@@ -15,8 +17,9 @@ import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-pl
  *
  * @returns Object containing challengeTtlMs and allowedCapabilities
  */
-function loadRegistrationPolicy(): { challengeTtlMs: number; allowedCapabilities: string[] } {
-  const envConfig = loadWorkerRegisterCliEnv();
+function loadRegistrationPolicy(
+  envConfig: ReturnType<typeof loadWorkerRegisterCliEnv>,
+): { challengeTtlMs: number; allowedCapabilities: string[] } {
   const configRoot = envConfig.configRoot ?? undefined;
   const config = new ConfigGovernanceService(
     configRoot ? { configRoot, sandboxPolicy: createWorkspaceWritePolicy(configRoot) } : {},
@@ -47,7 +50,7 @@ function loadRegistrationPolicy(): { challengeTtlMs: number; allowedCapabilities
  */
 function main(): void {
   const envConfig = loadWorkerRegisterCliEnv();
-  const policy = loadRegistrationPolicy();
+  const policy = loadRegistrationPolicy(envConfig);
   const output = withCliStorage((storage) => {
     const registration = new RemoteWorkerRegistrationService(storage.sql, storage.store, policy);
     switch (envConfig.action) {
@@ -59,10 +62,13 @@ function main(): void {
           ...(envConfig.occurredAt ? { occurredAt: envConfig.occurredAt } : {}),
         });
       case "complete":
+        if ((envConfig.challengeToken ?? "").trim().length === 0) {
+          throw new ValidationError("missing_env:AA_CHALLENGE_TOKEN", "missing_env:AA_CHALLENGE_TOKEN");
+        }
         return registration.completeRegistration({
           workerId: envConfig.workerId ?? "",
           challengeId: envConfig.challengeId ?? "",
-          challengeToken: envConfig.challengeToken ?? "",
+          challengeToken: envConfig.challengeToken,
           capabilities: envConfig.capabilities,
           maxConcurrency: envConfig.maxConcurrency ?? 0,
           queueAffinity: envConfig.queueAffinity,
@@ -94,4 +100,10 @@ function main(): void {
   process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
 }
 
-main();
+if (isCliEntryPoint(import.meta.url)) {
+  void runCliMain(main, {
+    onError: (error) => {
+      process.stderr.write(`${summarizeCliError(error, "worker_register.failed")}\n`);
+    },
+  });
+}

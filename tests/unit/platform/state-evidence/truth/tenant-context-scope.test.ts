@@ -23,7 +23,7 @@ test("authoritative task store applies tenant context to task lifecycle queries"
         id: "task-tenant-a",
         parentId: null,
         rootId: "task-tenant-a",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: "tenant-a",
         title: "Tenant A task",
         status: "in_progress",
@@ -43,7 +43,7 @@ test("authoritative task store applies tenant context to task lifecycle queries"
         id: "task-tenant-b",
         parentId: null,
         rootId: "task-tenant-b",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: "tenant-b",
         title: "Tenant B task",
         status: "in_progress",
@@ -115,7 +115,7 @@ test("authoritative task store applies tenant context to task lifecycle queries"
       });
       store.insertWorkflowState({
         taskId: "task-tenant-a",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -128,7 +128,7 @@ test("authoritative task store applies tenant context to task lifecycle queries"
       });
       store.insertWorkflowState({
         taskId: "task-tenant-b",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",

@@ -11,6 +11,6 @@
   "labelingMethod": "policy_team_review",
   "allowedForTraining": false,
   "allowedForReleaseGate": true,
-  "retentionPolicyRef": "training-data-policy/revocation.yaml",
-  "frozenHash": "sha256:tau-style-heldout-v1"
+  "retentionPolicyRef": "training-data-policy/retention.yaml",
+  "frozenHash": "sha256:224a9d9980d96cea19236239af9d5091233c06bd115b73b6c0661852216d533d"
 }

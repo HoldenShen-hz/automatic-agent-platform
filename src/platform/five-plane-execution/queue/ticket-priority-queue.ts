@@ -1,3 +1,4 @@
+import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 export interface Ticket {
@@ -18,19 +19,43 @@ interface QueueEntry {
   ticket: Ticket;
   sequence: number;
   dispatchAfterMs: number | null;
+  expiresAtMs: number;
 }
 
 export class TicketPriorityQueue {
+  private static readonly DEFAULT_MAX_TICKETS = 10_000;
+  private static readonly DEFAULT_TICKET_TTL_MS = 24 * 60 * 60 * 1000;
   private readyTickets: QueueEntry[] = [];
   private deferredTickets: QueueEntry[] = [];
   private sequence = 0;
 
+  constructor(
+    private readonly options: {
+      maxTickets?: number;
+      ticketTtlMs?: number;
+    } = {},
+  ) {
+    if (process.env.NODE_ENV === "production") {
+      throw new ValidationError("ticket_queue.memory_only_forbidden_in_production", "ticket_queue.memory_only_forbidden_in_production", {
+        retryable: false,
+      });
+    }
+  }
+
   get size(): number {
+    this.pruneExpiredTickets(Date.now());
     return this.readyTickets.length + this.deferredTickets.length;
   }
 
   enqueue(input: EnqueueTicketInput): Ticket {
+    this.pruneExpiredTickets(Date.now());
+    if (this.size >= this.maxTickets) {
+      throw new ValidationError("ticket_queue.capacity_exceeded", "ticket_queue.capacity_exceeded", {
+        retryable: false,
+      });
+    }
     const now = nowIso();
+    const nowMs = Date.now();
     const ticket: Ticket = {
       id: newId("ticket").replace(/^ticket_/, "ticket-"),
       priority: input.priority ?? 0,
@@ -42,8 +67,9 @@ export class TicketPriorityQueue {
       ticket,
       sequence: this.sequence++,
       dispatchAfterMs: parseDispatchAfterMs(ticket.dispatchAfter),
+      expiresAtMs: nowMs + this.ticketTtlMs,
     };
-    if (entry.dispatchAfterMs !== null && entry.dispatchAfterMs > Date.now()) {
+    if (entry.dispatchAfterMs !== null && entry.dispatchAfterMs > nowMs) {
       this.pushDeferred(entry);
     } else {
       this.pushReady(entry);
@@ -52,6 +78,7 @@ export class TicketPriorityQueue {
   }
 
   dequeue(): Ticket | null {
+    this.pruneExpiredTickets(Date.now());
     this.promoteDeferredTickets(Date.now());
     const entry = this.popReady();
     if (entry == null) {
@@ -61,6 +88,7 @@ export class TicketPriorityQueue {
   }
 
   peek(): Ticket | null {
+    this.pruneExpiredTickets(Date.now());
     this.promoteDeferredTickets(Date.now());
     return this.readyTickets[0]?.ticket ?? null;
   }
@@ -79,6 +107,25 @@ export class TicketPriorityQueue {
       }
       this.pushReady(entry);
     }
+  }
+
+  private pruneExpiredTickets(nowMs: number): void {
+    this.readyTickets = rebuildHeap(
+      this.readyTickets.filter((entry) => entry.expiresAtMs > nowMs),
+      compareReadyEntries,
+    );
+    this.deferredTickets = rebuildHeap(
+      this.deferredTickets.filter((entry) => entry.expiresAtMs > nowMs),
+      compareDeferredEntries,
+    );
+  }
+
+  private get maxTickets(): number {
+    return this.options.maxTickets ?? TicketPriorityQueue.DEFAULT_MAX_TICKETS;
+  }
+
+  private get ticketTtlMs(): number {
+    return this.options.ticketTtlMs ?? TicketPriorityQueue.DEFAULT_TICKET_TTL_MS;
   }
 
   private pushReady(entry: QueueEntry): void {
@@ -105,7 +152,12 @@ function parseDispatchAfterMs(dispatchAfter: string | null): number | null {
     return null;
   }
   const parsed = Date.parse(dispatchAfter);
-  return Number.isFinite(parsed) ? parsed : null;
+  if (!Number.isFinite(parsed)) {
+    throw new ValidationError("ticket_queue.dispatch_after_invalid", "ticket_queue.dispatch_after_invalid", {
+      retryable: false,
+    });
+  }
+  return parsed;
 }
 
 function compareReadyEntries(left: QueueEntry, right: QueueEntry): number {
@@ -167,4 +219,12 @@ function popHeap<T>(heap: T[], compare: (left: T, right: T) => number): T | null
     siftDown(heap, 0, compare);
   }
   return first;
+}
+
+function rebuildHeap<T>(entries: T[], compare: (left: T, right: T) => number): T[] {
+  const heap = [...entries];
+  for (let index = Math.floor(heap.length / 2) - 1; index >= 0; index -= 1) {
+    siftDown(heap, index, compare);
+  }
+  return heap;
 }

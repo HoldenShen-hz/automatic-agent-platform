@@ -85,6 +85,17 @@ function withAlpha(hexColor: string, alpha: number): string {
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
+function isSameOriginReferrer(referrer: string): boolean {
+  if (typeof window === "undefined" || referrer.trim().length === 0) {
+    return false;
+  }
+  try {
+    return new URL(referrer).origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
 function LoadingFallback(): ReactElement {
   return (
     <div
@@ -109,8 +120,7 @@ function AccessDeniedView({ fallbackPath, reason }: { reason: string | null; fal
         onClick={() => {
           if (
             typeof window !== "undefined"
-            && document.referrer.length > 0
-            && new URL(document.referrer).origin === window.location.origin
+            && isSameOriginReferrer(document.referrer)
           ) {
             navigate(-1);
             return;
@@ -285,18 +295,37 @@ function AppFrame(
   },
 ): ReactElement {
   const systemStatus = useSystemStatus();
-  const isNarrowLayout = typeof window !== "undefined" ? window.matchMedia("(max-width: 960px)").matches : false;
+  const [isNarrowLayout, setIsNarrowLayout] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 960px)").matches : false,
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const mediaQuery = window.matchMedia("(max-width: 960px)");
+    const update = () => {
+      setIsNarrowLayout(mediaQuery.matches);
+    };
+    update();
+    mediaQuery.addEventListener?.("change", update);
+    return () => {
+      mediaQuery.removeEventListener?.("change", update);
+    };
+  }, []);
   const navigationTone = useMemo(() => ({
     activeBackground: withAlpha(designTokens.color.accent, 0.12),
     bannerBackground: withAlpha(designTokens.color.accent, 0.16),
   }), []);
-  const groupedFeatures = Object.entries(
-    features.reduce<Record<string, FeatureModule[]>>((groups, feature) => {
-      const bucket = groups[feature.manifest.group] ?? [];
-      bucket.push(feature);
-      groups[feature.manifest.group] = bucket;
-      return groups;
-    }, {}),
+  const groupedFeatures = useMemo(
+    () => Object.entries(
+      features.reduce<Record<string, FeatureModule[]>>((groups, feature) => {
+        const bucket = groups[feature.manifest.group] ?? [];
+        bucket.push(feature);
+        groups[feature.manifest.group] = bucket;
+        return groups;
+      }, {}),
+    ),
+    [features],
   );
 
   return (

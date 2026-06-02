@@ -141,8 +141,8 @@ test("seedTakeoverEvidenceScenario task has correct initial status [evidence-bun
     if (task?.status !== "in_progress") {
       throw new Error(`Expected task status in_progress, got ${task?.status}`);
     }
-    if (task?.divisionId !== "general_ops") {
-      throw new Error(`Expected division general_ops, got ${task?.divisionId}`);
+    if (task?.divisionId !== "general-ops") {
+      throw new Error(`Expected division general-ops, got ${task?.divisionId}`);
     }
     if (task?.source !== "system") {
       throw new Error(`Expected source system, got ${task?.source}`);

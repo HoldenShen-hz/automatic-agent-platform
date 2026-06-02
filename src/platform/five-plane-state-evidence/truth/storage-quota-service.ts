@@ -78,14 +78,23 @@ export interface StorageQuotaServiceOptions {
   categories?: readonly StorageQuotaCategoryConfig[];
   /** Explicit workspace root for default category resolution */
   workspaceRoot?: string;
+  /** Optional tenant identifier for tenant-scoped default overrides */
+  tenantId?: string | null;
+  /** Override the default category settings without replacing the whole category list */
+  defaultCategoryOverrides?: Partial<Record<StorageQuotaCategoryId, Partial<Omit<StorageQuotaCategoryConfig, "categoryId">>>>;
+  /** Tenant-scoped overrides applied on top of the global default overrides */
+  tenantCategoryOverrides?: Partial<Record<string, Partial<Record<StorageQuotaCategoryId, Partial<Omit<StorageQuotaCategoryConfig, "categoryId">>>>>>;
 }
 
 /**
  * Returns the default storage quota categories.
  * These define artifact storage, debug evidence, and backup storage limits.
  */
-function defaultCategories(workspaceRoot: string): StorageQuotaCategoryConfig[] {
-  return [
+function defaultCategories(
+  workspaceRoot: string,
+  options: Pick<StorageQuotaServiceOptions, "tenantId" | "defaultCategoryOverrides" | "tenantCategoryOverrides"> = {},
+): StorageQuotaCategoryConfig[] {
+  const base: StorageQuotaCategoryConfig[] = [
     {
       categoryId: "artifact",
       roots: [join(workspaceRoot, "data", "artifacts")],
@@ -108,6 +117,18 @@ function defaultCategories(workspaceRoot: string): StorageQuotaCategoryConfig[] 
       pinnedPaths: [],
     },
   ];
+  const tenantOverride = options.tenantId == null ? undefined : options.tenantCategoryOverrides?.[options.tenantId];
+  return base.map((category) => {
+    const override = options.defaultCategoryOverrides?.[category.categoryId];
+    const tenantScopedOverride = tenantOverride?.[category.categoryId];
+    return {
+      ...category,
+      ...override,
+      ...tenantScopedOverride,
+      roots: [...(tenantScopedOverride?.roots ?? override?.roots ?? category.roots)],
+      pinnedPaths: [...(tenantScopedOverride?.pinnedPaths ?? override?.pinnedPaths ?? category.pinnedPaths ?? [])],
+    };
+  });
 }
 
 /**
@@ -126,7 +147,7 @@ export class StorageQuotaService {
     const sandboxPolicy = options.sandboxPolicy ?? createWorkspaceWritePolicy(process.cwd());
     const workspaceRoot = options.workspaceRoot ?? sandboxPolicy.allowedRoots[0] ?? process.cwd();
     this.sandboxPolicy = sandboxPolicy;
-    this.categories = options.categories ?? defaultCategories(workspaceRoot);
+    this.categories = options.categories ?? defaultCategories(workspaceRoot, options);
   }
 
   /**
@@ -156,7 +177,12 @@ export class StorageQuotaService {
     if (category.cleanupEnabled && category.maxBytes != null && totalBytes > category.maxBytes) {
       for (const record of initialRecords
         .filter((item) => !item.pinned)
-        .sort((left, right) => left.modifiedAtMs - right.modifiedAtMs)) {
+        .sort((left, right) => {
+          if (left.modifiedAtMs === right.modifiedAtMs) {
+            return left.path.localeCompare(right.path);
+          }
+          return left.modifiedAtMs - right.modifiedAtMs;
+        })) {
         if (totalBytes <= category.maxBytes) {
           break;
         }
@@ -164,7 +190,9 @@ export class StorageQuotaService {
         if (this.shouldSkipDeletion(record.path, category)) {
           continue;
         }
-        rmSync(record.path, { force: true });
+        if (!this.unlinkFileIfUnchanged(record.path)) {
+          continue;
+        }
         totalBytes -= record.sizeBytes;
         const index = remainingRecords.findIndex((item) => item.path === record.path);
         if (index >= 0) {
@@ -286,6 +314,19 @@ export class StorageQuotaService {
     }
     const check = checkSandboxPath(this.sandboxPolicy, resolvedPath);
     return !check.allowed;
+  }
+
+  private unlinkFileIfUnchanged(path: string): boolean {
+    const expected = lstatSync(path);
+    if (!expected.isFile()) {
+      return false;
+    }
+    const actual = lstatSync(path);
+    if (actual.dev !== expected.dev || actual.ino !== expected.ino) {
+      return false;
+    }
+    rmSync(path);
+    return true;
   }
 
   /**

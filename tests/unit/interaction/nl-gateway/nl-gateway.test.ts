@@ -349,7 +349,7 @@ test("NlEntryService.buildTask marks low confidence requests for clarification",
         confidence: 0.5, // Below threshold
         matchedRules: [],
       },
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
     }),
   };
@@ -588,7 +588,7 @@ test("NlEntryService.parseDetailed handles missing division gracefully", async (
         confidence: 0.6,
         matchedRules: [],
       },
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
     }),
   };
@@ -614,7 +614,7 @@ test("NlEntryService.buildTask returns null requestEnvelope when max clarificati
         confidence: 0.4,
         matchedRules: [],
       },
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
     }),
   };
@@ -712,7 +712,7 @@ test("NlEntryService.parseDetailed sets conversationState to Clarifying when req
         confidence: 0.5,
         matchedRules: [],
       },
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
     }),
   };
@@ -737,7 +737,7 @@ test("NlEntryService.buildTask confirmationReceipt includes reason codes", async
         confidence: 0.5,
         matchedRules: [],
       },
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
     }),
   };
@@ -774,7 +774,7 @@ test("NlEntryService.parseDetailed sets clarificationQuestions when clarificatio
         confidence: 0.5,
         matchedRules: [],
       },
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
     }),
   };

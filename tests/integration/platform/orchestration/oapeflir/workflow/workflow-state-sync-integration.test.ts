@@ -32,7 +32,7 @@ test("workflow state sync: workflow state can be persisted and retrieved", () =>
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Workflow state test",
         status: "in_progress",
         source: "user",
@@ -53,7 +53,7 @@ test("workflow state sync: workflow state can be persisted and retrieved", () =>
     db.transaction(() => {
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -98,7 +98,7 @@ test("workflow state sync: workflow step progression updates state correctly", (
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Workflow progression test",
         status: "in_progress",
         source: "user",
@@ -119,7 +119,7 @@ test("workflow state sync: workflow step progression updates state correctly", (
     db.transaction(() => {
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -178,7 +178,7 @@ test("workflow state sync: workflow can be paused and resumed", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Workflow pause test",
         status: "in_progress",
         source: "user",
@@ -199,7 +199,7 @@ test("workflow state sync: workflow can be paused and resumed", () => {
     db.transaction(() => {
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -253,7 +253,7 @@ test("workflow state sync: workflow completion updates task status", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Workflow completion test",
         status: "in_progress",
         source: "user",
@@ -274,7 +274,7 @@ test("workflow state sync: workflow completion updates task status", () => {
     db.transaction(() => {
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -319,7 +319,7 @@ test("workflow state sync: workflow failure records error and increments retry",
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Workflow failure test",
         status: "in_progress",
         source: "user",
@@ -340,7 +340,7 @@ test("workflow state sync: workflow failure records error and increments retry",
     db.transaction(() => {
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",

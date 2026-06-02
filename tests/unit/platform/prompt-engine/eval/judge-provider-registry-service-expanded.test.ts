@@ -44,8 +44,8 @@ test("JudgeProviderRegistryService.registerDefaults returns 3 default judges", (
   assert.equal(defaults.length, 3);
   const ids = defaults.map((d) => d.providerId);
   assert.ok(ids.includes("judge.openai.gpt-5.4-mini"));
-  assert.ok(ids.includes("judge.anthropic.claude-sonnet"));
-  assert.ok(ids.includes("judge.minimax.m1"));
+  assert.ok(ids.includes("judge.anthropic.claude-sonnet-4-20250514"));
+  assert.ok(ids.includes("judge.minimax.MiniMax-M1"));
 });
 
 test("JudgeProviderRegistryService.listDescriptors filters by status", () => {

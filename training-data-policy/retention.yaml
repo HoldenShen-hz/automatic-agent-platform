@@ -1,0 +1,6 @@
+$schema: training-data-policy/schemas/retention.schema.json
+retentionPolicyId: heldout-eval-retention-v1
+releaseGateHeldoutRetentionDays: 365
+shadowRetentionDays: 90
+trainRetentionDays: 30
+restrictedRetentionHandling: heldout and release datasets remain no-train and require explicit deletion propagation through revocation policy.

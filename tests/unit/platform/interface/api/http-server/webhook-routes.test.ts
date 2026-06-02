@@ -320,6 +320,15 @@ test("POST /webhooks with HMAC algorithm requires signingSecret", async () => {
 
 test("POST /v1/webhooks/:id/receive accepts webhook intake without auth and returns staged outbox metadata", async () => {
   const webhookService = new WebhookIngressService();
+  webhookService.registerEndpoint({
+    endpointId: "public-endpoint",
+    source: "github",
+    tenantId: null,
+    workspaceId: null,
+    enabled: true,
+    allowedEventTypes: ["push"],
+    algorithm: "none",
+  });
   const webhookOutboxDispatchService: Pick<WebhookOutboxDispatchService, "receiveAndStage"> = {
     receiveAndStage: () => ({
       envelope: {
@@ -358,9 +367,19 @@ test("POST /v1/webhooks/:id/receive accepts webhook intake without auth and retu
 });
 
 test("POST /v1/webhooks/:id/receive returns 503 when outbox dispatch service is unavailable", async () => {
+  const webhookService = new WebhookIngressService();
+  webhookService.registerEndpoint({
+    endpointId: "public-endpoint",
+    source: "github",
+    tenantId: null,
+    workspaceId: null,
+    enabled: true,
+    allowedEventTypes: ["push"],
+    algorithm: "none",
+  });
   const routes = createWebhookRoutes({
     authService: createMockAuthServiceNoAuth(),
-    webhookIngressService: new WebhookIngressService(),
+    webhookIngressService: webhookService,
     webhookOutboxDispatchService: null,
   });
   const ctx = createMockContext("/v1/webhooks/public-endpoint/receive", ["v1", "webhooks", "public-endpoint", "receive"], {}, "{\"eventType\":\"push\",\"eventId\":\"evt-1\"}");

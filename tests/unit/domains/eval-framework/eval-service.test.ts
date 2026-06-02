@@ -26,6 +26,12 @@ function createMockDb() {
             if (sql.includes("INSERT INTO eval_suites")) {
               const [id, name, kind, description, cases, createdAt, updatedAt] = args as [string, string, EvalSuiteKind, string, string, string, string];
               tables.eval_suites.push({ id, name, kind, description, cases, created_at: createdAt, updated_at: updatedAt });
+            } else if (sql.includes("UPDATE eval_suites SET cases")) {
+              const [cases, id] = args as [string, string];
+              const suiteIndex = tables.eval_suites.findIndex(r => r.id === id);
+              if (suiteIndex !== -1) {
+                tables.eval_suites[suiteIndex] = { ...tables.eval_suites[suiteIndex], cases };
+              }
             } else if (sql.includes("INSERT INTO eval_runs")) {
               const [id, suiteId, modelId, promptVersion, status, totalCases, passedCases, failedCases, averageScore, verdict, startedAt, completedAt, triggeredBy, metadata] = args as [string, string, string, string, string, number, number, number, number | null, string, string, string | null, string, string | null];
               tables.eval_runs.push({ id, suite_id: suiteId, model_id: modelId, prompt_version: promptVersion, status, total_cases: totalCases, passed_cases: passedCases, failed_cases: failedCases, average_score: averageScore, verdict, started_at: startedAt, completed_at: completedAt, triggered_by: triggeredBy, metadata });
@@ -99,7 +105,10 @@ test("LlmEvalService.defineSuite creates a suite record", () => {
   assert.equal(suite.kind, "golden");
   assert.equal(suite.description, "A test suite");
   assert.ok(suite.id.startsWith("esuite_"));
-  assert.ok(suite.cases.includes("case_1"));
+  const persistedCases = JSON.parse(suite.cases) as { version: string; frozenHash: string; cases: EvalCaseDefinition[] };
+  assert.equal(persistedCases.version.startsWith("suite-cases/v1:"), true);
+  assert.equal(persistedCases.frozenHash.startsWith("sha256:"), true);
+  assert.equal(persistedCases.cases[0]?.id, "case_1");
 });
 
 test("LlmEvalService.defineSuite applies defaults", () => {
@@ -178,7 +187,7 @@ test("LlmEvalService.startRun creates a new run record", () => {
   assert.equal(run.verdict, "inconclusive");
 });
 
-test("LlmEvalService.startRun defaults promptVersion to default", () => {
+test("LlmEvalService.startRun rejects the default promptVersion placeholder", () => {
   const db = createMockDb();
   const service = new LlmEvalService(db as never);
 
@@ -188,9 +197,7 @@ test("LlmEvalService.startRun defaults promptVersion to default", () => {
     cases: [{ id: "c1", input: "a", expectedOutput: "b" }],
   });
 
-  const run = service.startRun(suite.id, "model_x");
-
-  assert.equal(run.promptVersion, "default");
+  assert.throws(() => service.startRun(suite.id, "model_x", "default"), /promptVersion must be explicitly versioned/);
 });
 
 test("LlmEvalService.recordCaseResult stores case result", () => {
@@ -202,7 +209,7 @@ test("LlmEvalService.recordCaseResult stores case result", () => {
     kind: "golden",
     cases: [{ id: "c1", input: "hello", expectedOutput: "world" }],
   });
-  const run = service.startRun(suite.id, "model_v1");
+  const run = service.startRun(suite.id, "model_v1", "v1.0.0");
 
   const result = service.recordCaseResult({
     runId: run.id,
@@ -230,7 +237,7 @@ test("LlmEvalService.recordCaseResult serializes metadata", () => {
     kind: "golden",
     cases: [{ id: "c1", input: "a", expectedOutput: "b" }],
   });
-  const run = service.startRun(suite.id, "model_v1");
+  const run = service.startRun(suite.id, "model_v1", "v1.0.0");
 
   const result = service.recordCaseResult({
     runId: run.id,
@@ -259,7 +266,7 @@ test("LlmEvalService.completeRun computes verdict pass when all pass", () => {
       { id: "c2", input: "c", expectedOutput: "d" },
     ],
   });
-  const run = service.startRun(suite.id, "model_v1");
+  const run = service.startRun(suite.id, "model_v1", "v1.0.0");
 
   service.recordCaseResult({ runId: run.id, caseId: "c1", input: "a", expectedOutput: "b", actualOutput: "b", score: 1, passed: true, latencyMs: 40 });
   service.recordCaseResult({ runId: run.id, caseId: "c2", input: "c", expectedOutput: "d", actualOutput: "d", score: 1, passed: true, latencyMs: 45 });
@@ -287,7 +294,7 @@ test("LlmEvalService.completeRun computes verdict fail when too many fail", () =
       { id: "c3", input: "e", expectedOutput: "f" },
     ],
   });
-  const run = service.startRun(suite.id, "model_v1");
+  const run = service.startRun(suite.id, "model_v1", "v1.0.0");
 
   service.recordCaseResult({ runId: run.id, caseId: "c1", input: "a", expectedOutput: "b", actualOutput: "wrong", score: 0, passed: false, latencyMs: 40 });
   service.recordCaseResult({ runId: run.id, caseId: "c2", input: "c", expectedOutput: "d", actualOutput: "wrong", score: 0, passed: false, latencyMs: 45 });
@@ -315,7 +322,7 @@ test("LlmEvalService.completeRun computes verdict degraded when pass rate >= 80%
       { id: "c5", input: "i", expectedOutput: "j" },
     ],
   });
-  const run = service.startRun(suite.id, "model_v1");
+  const run = service.startRun(suite.id, "model_v1", "v1.0.0");
 
   // 4 pass, 1 fail = 80% pass rate
   service.recordCaseResult({ runId: run.id, caseId: "c1", input: "a", expectedOutput: "b", actualOutput: "b", score: 1, passed: true, latencyMs: 40 });
@@ -340,7 +347,7 @@ test("LlmEvalService.completeRun returns null for empty results", () => {
     kind: "golden",
     cases: [],
   });
-  const run = service.startRun(suite.id, "model_v1");
+  const run = service.startRun(suite.id, "model_v1", "v1.0.0");
 
   const result = service.completeRun(run.id);
   assert.equal(result, null);
@@ -355,7 +362,7 @@ test("LlmEvalService.getRun returns run by ID", () => {
     kind: "golden",
     cases: [{ id: "c1", input: "a", expectedOutput: "b" }],
   });
-  const created = service.startRun(suite.id, "model_v1");
+  const created = service.startRun(suite.id, "model_v1", "v1.0.0");
 
   const found = service.getRun(created.id);
   assert.ok(found !== null);
@@ -369,9 +376,9 @@ test("LlmEvalService.listRuns returns runs optionally filtered by suite", () => 
   const suite1 = service.defineSuite({ name: "Suite 1", kind: "golden", cases: [] });
   const suite2 = service.defineSuite({ name: "Suite 2", kind: "regression", cases: [] });
 
-  service.startRun(suite1.id, "model_a");
-  service.startRun(suite1.id, "model_b");
-  service.startRun(suite2.id, "model_a");
+  service.startRun(suite1.id, "model_a", "v1.0.0");
+  service.startRun(suite1.id, "model_b", "v1.0.0");
+  service.startRun(suite2.id, "model_a", "v1.0.0");
 
   const allRuns = service.listRuns();
   assert.ok(allRuns.length >= 3);
@@ -404,12 +411,13 @@ test("LlmEvalService.runAbTest compares control vs treatment", async () => {
 
   assert.equal(result.controlRunId.length > 0, true);
   assert.equal(result.treatmentRunId.length > 0, true);
-  assert.equal(result.controlAvgScore, 0.745);
-  assert.equal(result.treatmentAvgScore, 0.935);
-  assert.ok(result.improvement > 0);
+  assert.ok(result.controlAvgScore >= 0.35 && result.controlAvgScore <= 0.65);
+  assert.ok(result.treatmentAvgScore >= 0.35 && result.treatmentAvgScore <= 0.65);
+  assert.notEqual(result.controlAvgScore, result.treatmentAvgScore);
+  assert.ok(Math.abs(result.improvement) < 0.3);
 });
 
-test("LlmEvalService.runCiGate evaluates and returns gate result", () => {
+test("LlmEvalService.runCiGate fails closed when no evaluator is configured", () => {
   const db = createMockDb();
   const service = new LlmEvalService(db as never);
 
@@ -424,9 +432,37 @@ test("LlmEvalService.runCiGate evaluates and returns gate result", () => {
 
   const result = service.runCiGate(suite.id, "model_v1", "v2.0.0");
 
-  assert.equal(result.passed, true);
+  assert.equal(result.passed, false);
   assert.equal(result.runId.length > 0, true);
-  assert.ok(result.summary.includes("2/2 cases passed"));
+  assert.equal(result.verdict, "fail");
+  assert.ok(result.summary.includes("0/2 cases passed"));
+});
+
+test("LlmEvalService.runAbTest rejects ambiguous provider-family inference", async () => {
+  const db = createMockDb();
+  const service = new LlmEvalService(db as never);
+
+  const suite = service.defineSuite({
+    name: "Ambiguous Provider Suite",
+    kind: "ab_test",
+    cases: [
+      { id: "c1", input: "hello", expectedOutput: "world" },
+      { id: "c2", input: "foo", expectedOutput: "bar" },
+    ],
+  });
+
+  await assert.rejects(
+    () =>
+      service.runAbTest(suite.id, {
+        controlModelId: "gpt-claude-finetune",
+        treatmentModelId: "claude-sonnet",
+        controlPromptVersion: "v1",
+        treatmentPromptVersion: "v2",
+        minSampleSize: 2,
+        significanceThreshold: 0.05,
+      }),
+    /provider family inference is ambiguous/,
+  );
 });
 
 test("LlmEvalService.runCiGate reports regressions", () => {
@@ -543,6 +579,37 @@ test("LlmEvalService.detectRegression detects score drop", () => {
   assert.ok(result.regressedCases.length > 0);
 });
 
+test("LlmEvalService.runCiGate blocks incompatible suite fingerprints", () => {
+  const db = createMockDb();
+  const service = new LlmEvalService(db as never);
+
+  const suite = service.defineSuite({
+    name: "Fingerprint Suite",
+    kind: "golden",
+    cases: [{ id: "c1", input: "a", expectedOutput: "b" }],
+  });
+
+  const passEvaluator = () => ({ actualOutput: "b", score: 1, passed: true, latencyMs: 5 });
+  const baseline = service.runCiGate(suite.id, "model_fp", "v1.0.0", { evaluator: passEvaluator });
+  assert.equal(baseline.passed, true);
+
+  db.connection
+    .prepare("UPDATE eval_suites SET cases = ? WHERE id = ?")
+    .run(
+      JSON.stringify([{ id: "c1", input: "a", expectedOutput: "changed" }]),
+      suite.id,
+    );
+
+  const result = service.runCiGate(suite.id, "model_fp", "v2.0.0", {
+    baselinePromptVersion: "v1.0.0",
+    evaluator: passEvaluator,
+  });
+
+  assert.equal(result.passed, false);
+  assert.ok(result.regressions.includes("baseline_fingerprint_mismatch"));
+  assert.ok(result.summary.includes("incompatible with current suite fingerprint"));
+});
+
 test("LlmEvalService.detectRegression no regression when score improves", () => {
   const db = createMockDb();
   const service = new LlmEvalService(db as never);
@@ -649,7 +716,7 @@ test("LlmEvalService.runCiGate passes when enforceIndependenceForHighRisk is tru
 
   const result = service.runCiGate(suite.id, "model_v1", "v1.0.0", {
     enforceIndependenceForHighRisk: true,
-    // no independentJudgeId but also no high-priority cases
+    evaluator: () => ({ actualOutput: "ok", score: 1, passed: true, latencyMs: 10 }),
   });
 
   assert.equal(result.passed, true);
@@ -670,7 +737,7 @@ test("LlmEvalService.runCiGate passes when enforceIndependenceForHighRisk is fal
 
   const result = service.runCiGate(suite.id, "model_v1", "v1.0.0", {
     enforceIndependenceForHighRisk: false,
-    // no independentJudgeId - should still pass since enforcement is disabled
+    evaluator: () => ({ actualOutput: "b", score: 1, passed: true, latencyMs: 10 }),
   });
 
   assert.equal(result.passed, true);

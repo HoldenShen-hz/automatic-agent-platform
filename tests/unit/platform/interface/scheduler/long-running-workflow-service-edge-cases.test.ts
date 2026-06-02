@@ -29,7 +29,7 @@ test("LongRunningWorkflowService.parseOutputs handles valid JSON object", () => 
     seedTaskAndExecution(h.db, h.store, { taskId: "task_parse_1", executionId: "exec_parse_1" });
     h.store.insertWorkflowState({
       taskId: "task_parse_1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_parse_1",
       currentStepIndex: 1,
       status: "running",
@@ -67,7 +67,7 @@ test("LongRunningWorkflowService.parseOutputs handles empty JSON object", () => 
     seedTaskAndExecution(h.db, h.store, { taskId: "task_pe2", executionId: "exec_pe2" });
     h.store.insertWorkflowState({
       taskId: "task_pe2",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_pe2",
       currentStepIndex: 1,
       status: "running",
@@ -103,7 +103,7 @@ test("LongRunningWorkflowService.parseOutputs handles malformed JSON", () => {
     seedTaskAndExecution(h.db, h.store, { taskId: "task_pb1", executionId: "exec_pb1" });
     h.store.insertWorkflowState({
       taskId: "task_pb1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_pb1",
       currentStepIndex: 1,
       status: "running",
@@ -139,7 +139,7 @@ test("LongRunningWorkflowService.parseOutputs handles JSON array", () => {
     seedTaskAndExecution(h.db, h.store, { taskId: "task_pa1", executionId: "exec_pa1" });
     h.store.insertWorkflowState({
       taskId: "task_pa1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_pa1",
       currentStepIndex: 1,
       status: "running",
@@ -174,7 +174,7 @@ test("LongRunningWorkflowService.parseOutputs handles null JSON", () => {
     seedTaskAndExecution(h.db, h.store, { taskId: "task_pn1", executionId: "exec_pn1" });
     h.store.insertWorkflowState({
       taskId: "task_pn1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_pn1",
       currentStepIndex: 1,
       status: "running",
@@ -209,7 +209,7 @@ test("LongRunningWorkflowService.isTerminal checks completed status", () => {
     seedTaskAndExecution(h.db, h.store, { taskId: "task_tc1", executionId: "exec_tc1" });
     h.store.insertWorkflowState({
       taskId: "task_tc1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_tc1",
       currentStepIndex: 1,
       status: "completed",
@@ -244,7 +244,7 @@ test("LongRunningWorkflowService.isTerminal checks cancelled status", () => {
     seedTaskAndExecution(h.db, h.store, { taskId: "task_tcan1", executionId: "exec_tcan1" });
     h.store.insertWorkflowState({
       taskId: "task_tcan1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_tcan1",
       currentStepIndex: 1,
       status: "cancelled",
@@ -282,7 +282,7 @@ test("LongRunningWorkflowService.listResumeWindows returns windows for all suspe
 
     h.store.insertWorkflowState({
       taskId: "task_lw1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_lw1",
       currentStepIndex: 1,
       status: "running",
@@ -296,7 +296,7 @@ test("LongRunningWorkflowService.listResumeWindows returns windows for all suspe
 
     h.store.insertWorkflowState({
       taskId: "task_lw2",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_lw2",
       currentStepIndex: 1,
       status: "running",
@@ -342,7 +342,7 @@ test("LongRunningWorkflowService.listResumeWindows handles empty list", () => {
     seedTaskAndExecution(h.db, h.store, { taskId: "task_lwe1", executionId: "exec_lwe1" });
     h.store.insertWorkflowState({
       taskId: "task_lwe1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_lwe1",
       currentStepIndex: 1,
       status: "running",
@@ -371,7 +371,7 @@ test("LongRunningWorkflowService.markDue skips non-active suspensions", () => {
 
     h.store.insertWorkflowState({
       taskId: "task_mds1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_mds1",
       currentStepIndex: 1,
       status: "running",
@@ -415,7 +415,7 @@ test("LongRunningWorkflowService.resume uses correct workflowId in decision", ()
 
     h.store.insertWorkflowState({
       taskId: "task_rwf1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_specific_id",
       currentStepIndex: 1,
       status: "running",
@@ -455,7 +455,7 @@ test("LongRunningWorkflowService.expire sets correct reasonCode for fail_workflo
 
     h.store.insertWorkflowState({
       taskId: "task_er1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_er1",
       currentStepIndex: 1,
       status: "running",
@@ -496,7 +496,7 @@ test("LongRunningWorkflowService.resume with expired suspension returns not allo
 
     h.store.insertWorkflowState({
       taskId: "task_re1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_re1",
       currentStepIndex: 1,
       status: "running",
@@ -540,7 +540,7 @@ test("LongRunningWorkflowService.buildSleepLease returns correct lease structure
 
     h.store.insertWorkflowState({
       taskId: "task_ls1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_ls1",
       currentStepIndex: 1,
       status: "running",
@@ -571,7 +571,7 @@ test("LongRunningWorkflowService.buildSleepLease returns correct lease structure
     assert.equal(lease.taskId, "task_ls1");
     assert.equal(lease.workflowId, "wf_ls1");
     assert.equal(lease.executionId, "exec_ls1");
-    assert.equal(lease.divisionId, "general_ops");
+    assert.equal(lease.divisionId, "general-ops");
     assert.equal(lease.waitKind, "human_input");
     assert.equal(lease.status, "active");
     assert.equal(lease.resumableFromStep, "approval_step");
@@ -592,7 +592,7 @@ test("LongRunningWorkflowService.buildResumeWindow returns correct window struct
 
     h.store.insertWorkflowState({
       taskId: "task_ws1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_ws1",
       currentStepIndex: 1,
       status: "running",
@@ -639,7 +639,7 @@ test("LongRunningWorkflowService.suspend throws for workflow not found", () => {
     seedTaskAndExecution(h.db, h.store, { taskId: "task_wfnf", executionId: "exec_wfnf" });
     h.store.insertWorkflowState({
       taskId: "task_wfnf",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_wfnf",
       currentStepIndex: 1,
       status: "running",
@@ -676,7 +676,7 @@ test("LongRunningWorkflowService.emitWorkflowEvent creates event with correct st
 
     h.store.insertWorkflowState({
       taskId: "task_es1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_es1",
       currentStepIndex: 1,
       status: "running",
@@ -720,7 +720,7 @@ test("LongRunningWorkflowService.emitWorkflowEvent handles null executionId", ()
 
     h.store.insertWorkflowState({
       taskId: "task_en1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_en1",
       currentStepIndex: 1,
       status: "running",
@@ -762,7 +762,7 @@ test("LongRunningWorkflowService.sweepExpired processes multiple expired suspens
 
     h.store.insertWorkflowState({
       taskId: "task_sm1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_sm1",
       currentStepIndex: 1,
       status: "running",
@@ -776,7 +776,7 @@ test("LongRunningWorkflowService.sweepExpired processes multiple expired suspens
 
     h.store.insertWorkflowState({
       taskId: "task_sm2",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_sm2",
       currentStepIndex: 1,
       status: "running",
@@ -827,7 +827,7 @@ test("LongRunningWorkflowService.sweepExpired skips already expired suspensions"
 
     h.store.insertWorkflowState({
       taskId: "task_ss1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_ss1",
       currentStepIndex: 1,
       status: "running",
@@ -871,7 +871,7 @@ test("LongRunningWorkflowService.markDue processes multiple due suspensions", ()
 
     h.store.insertWorkflowState({
       taskId: "task_mm1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_mm1",
       currentStepIndex: 1,
       status: "running",
@@ -885,7 +885,7 @@ test("LongRunningWorkflowService.markDue processes multiple due suspensions", ()
 
     h.store.insertWorkflowState({
       taskId: "task_mm2",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_mm2",
       currentStepIndex: 1,
       status: "running",
@@ -935,7 +935,7 @@ test("LongRunningWorkflowService.writeWorkflowStatus preserves existing outputs"
 
     h.store.insertWorkflowState({
       taskId: "task_wp1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_wp1",
       currentStepIndex: 1,
       status: "running",
@@ -979,7 +979,7 @@ test("LongRunningWorkflowService suspend allows all waitKind variants", () => {
 
     h.store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: `wf_wk_${waitKind}`,
       currentStepIndex: 1,
       status: "running",
@@ -1020,7 +1020,7 @@ test("LongRunningWorkflowService resume handles all timeoutPolicy values", () =>
 
     h.store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: `wf_tp_${timeoutPolicy}`,
       currentStepIndex: 1,
       status: "running",

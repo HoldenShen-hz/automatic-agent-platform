@@ -17,7 +17,7 @@ function makeTask(overrides: Partial<TaskRecord> = {}): TaskRecord {
     id: "task-test-001",
     parentId: null,
     rootId: "task-test-001",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     tenantId: null,
     title: "Test task",
     status: "queued",
@@ -49,7 +49,7 @@ test("integration: TaskRepository.insertTask creates task record", () => {
     assert.equal(retrieved!.id, "task-insert-001");
     assert.equal(retrieved!.title, "Insert test");
     assert.equal(retrieved!.status, "queued");
-    assert.equal(retrieved!.divisionId, "general_ops");
+    assert.equal(retrieved!.divisionId, "general-ops");
     assert.equal(retrieved!.source, "user");
     assert.equal(retrieved!.priority, "normal");
   } finally {

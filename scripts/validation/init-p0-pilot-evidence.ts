@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type {
@@ -23,6 +23,16 @@ export interface InitP0PilotEvidenceOptions {
 
 function resolveDefaultPlatformRoot(): string {
   return dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+}
+
+function resolveInputRootWithinPlatform(platformRoot: string, inputRoot?: string): string {
+  const defaultRoot = join(platformRoot, "data", "pilot-evidence-inputs");
+  const resolved = resolve(inputRoot ?? process.env.AA_PILOT_EVIDENCE_INPUT_ROOT ?? defaultRoot);
+  const allowedRoot = `${resolve(join(platformRoot, "data"))}/`;
+  if (resolved !== resolve(join(platformRoot, "data")) && !resolved.startsWith(allowedRoot)) {
+    throw new Error(`pilot_evidence.invalid_input_root:${resolved}`);
+  }
+  return resolved;
 }
 
 function writeJsonFile(path: string, value: unknown, force: boolean): void {
@@ -258,9 +268,7 @@ export function initP0PilotEvidence(options: InitP0PilotEvidenceOptions = {}): {
   const platformRoot = options.platformRoot
     ?? process.env.AA_PLATFORM_ROOT
     ?? resolveDefaultPlatformRoot();
-  const inputRoot = options.inputRoot
-    ?? process.env.AA_PILOT_EVIDENCE_INPUT_ROOT
-    ?? join(platformRoot, "data", "pilot-evidence-inputs");
+  const inputRoot = resolveInputRootWithinPlatform(platformRoot, options.inputRoot);
   const force = options.force ?? process.argv.includes("--force");
   mkdirSync(inputRoot, { recursive: true });
   for (const divisionId of DIVISIONS) {

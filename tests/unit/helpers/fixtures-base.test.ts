@@ -24,7 +24,7 @@ describe("fixtures/base", () => {
       assert.strictEqual(task.id, "task-test-001");
       assert.strictEqual(task.parentId, null);
       assert.strictEqual(task.rootId, "task-test-001");
-      assert.strictEqual(task.divisionId, "general_ops");
+      assert.strictEqual(task.divisionId, "general-ops");
       assert.strictEqual(task.tenantId, null);
       assert.strictEqual(task.title, "Test task");
       assert.strictEqual(task.status, "queued");
@@ -43,7 +43,7 @@ describe("fixtures/base", () => {
       assert.strictEqual(task.title, "Custom title");
       assert.strictEqual(task.status, "in_progress");
       // Other defaults should still be set
-      assert.strictEqual(task.divisionId, "general_ops");
+      assert.strictEqual(task.divisionId, "general-ops");
     });
 
     it("should preserve non-overridden defaults", () => {

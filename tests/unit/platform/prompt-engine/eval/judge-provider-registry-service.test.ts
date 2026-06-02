@@ -30,6 +30,24 @@ test("JudgeProviderRegistryService registers defaults and selects isolated judge
   assert.ok(sameFamilyAllowed);
 });
 
+test("JudgeProviderRegistryService.selectDescriptor avoids back-to-back selections from the same family when alternatives exist", () => {
+  const service = new JudgeProviderRegistryService();
+  service.registerDefaults();
+
+  const first = service.selectDescriptor({
+    capability: "llm_judge",
+    requireIsolation: false,
+  });
+  const second = service.selectDescriptor({
+    capability: "llm_judge",
+    requireIsolation: false,
+  });
+
+  assert.ok(first);
+  assert.ok(second);
+  assert.notEqual(second?.providerFamily, first?.providerFamily);
+});
+
 test("JudgeProviderRegistryService.registerDescriptor adds descriptor to registry", () => {
   const service = new JudgeProviderRegistryService();
 

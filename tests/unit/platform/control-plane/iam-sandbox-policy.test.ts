@@ -14,15 +14,15 @@ import {
 
 test("sandbox-policy normalizeSandboxMode maps aliases correctly", () => {
   assert.equal(normalizeSandboxMode("process"), "read_only");
-  assert.equal(normalizeSandboxMode("container"), "workspace_write");
+  assert.equal(normalizeSandboxMode("container"), "restricted_exec");
   assert.equal(normalizeSandboxMode("scoped_external_access"), "scoped_external_access");
   assert.equal(normalizeSandboxMode("read_only"), "read_only");
   assert.equal(normalizeSandboxMode("workspace_write"), "workspace_write");
   assert.equal(normalizeSandboxMode("restricted_exec"), "restricted_exec");
   assert.equal(normalizeSandboxMode(null), "read_only");
   assert.equal(normalizeSandboxMode(undefined), "read_only");
-  // Unknown modes fall back to read_only
-  assert.equal(normalizeSandboxMode("none"), "read_only");
+  // Ambiguous legacy aliases fail closed to restricted_exec
+  assert.equal(normalizeSandboxMode("none"), "restricted_exec");
   assert.equal(normalizeSandboxMode("unknown_alias"), "read_only");
 });
 
@@ -33,7 +33,13 @@ test("sandbox-policy createWorkspaceWritePolicy creates valid policy", () => {
   assert.deepEqual(policy.allowedRoots, ["/workspace"]);
   assert.ok(policy.deniedRoots.includes("/etc"));
   assert.ok(policy.deniedRoots.includes("/proc"));
+  assert.ok(policy.deniedRoots.includes("/root"));
   assert.ok(policy.deniedRoots.includes("/sys"));
+  assert.ok(policy.deniedRoots.includes("/var/log"));
+  assert.ok(policy.deniedRoots.includes("/var/run/docker.sock"));
+  assert.ok(policy.deniedRoots.some((root) => root.endsWith("/.aws")));
+  assert.ok(policy.deniedRoots.some((root) => root.endsWith("/.config")));
+  assert.ok(policy.deniedRoots.some((root) => root.endsWith("/.kube")));
   assert.ok(policy.deniedRoots.some((root) => root.endsWith("/.ssh")));
   assert.equal(policy.realpathEnforced, true);
   assert.equal(policy.symlinkPolicy, "deny");

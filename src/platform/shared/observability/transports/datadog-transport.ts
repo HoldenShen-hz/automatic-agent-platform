@@ -16,8 +16,11 @@ export interface DatadogTransportConfig {
   site?: string;  // "datadoghq.com" | "datadoghq.eu"
   service: string;
   source?: string;
+  env?: string;
   batchSize?: number;
   flushIntervalMs?: number;
+  maxBufferedEntries?: number;
+  maxRetryWindowMs?: number;
   agent?: Agent;
   requestFactory?: DatadogRequestFactory;
 }
@@ -38,8 +41,11 @@ export class DatadogTransport implements LogTransport {
   private readonly site: string;
   private readonly service: string;
   private readonly source: string;
+  private readonly env: string;
   private readonly agent: Agent;
   private readonly requestFactory: DatadogRequestFactory;
+  private readonly maxBufferedEntries: number;
+  private readonly maxRetryWindowMs: number;
   private timer: NodeJS.Timeout | null = null;
   private flushInFlight: Promise<void> | null = null;
 
@@ -49,8 +55,11 @@ export class DatadogTransport implements LogTransport {
     this.site = config.site ?? "datadoghq.com";
     this.service = config.service;
     this.source = config.source ?? "automatic-agent";
+    this.env = config.env ?? "unknown";
     this.agent = config.agent ?? DEFAULT_DATADOG_HTTPS_AGENT;
     this.requestFactory = config.requestFactory ?? request;
+    this.maxBufferedEntries = Math.max(this.batchSize, Math.trunc(config.maxBufferedEntries ?? this.batchSize * 10));
+    this.maxRetryWindowMs = Math.max(0, Math.trunc(config.maxRetryWindowMs ?? 2_000));
     this.timer = setInterval(() => {
       void this.requestFlush();
     }, this.flushIntervalMs);
@@ -59,6 +68,7 @@ export class DatadogTransport implements LogTransport {
 
   write(entry: StructuredLogEntry): void {
     this.batch.push(entry);
+    this.trimBufferedEntries();
     if (this.batch.length >= this.batchSize) {
       void this.requestFlush();
     }
@@ -83,21 +93,23 @@ export class DatadogTransport implements LogTransport {
       ...e,
       service: this.service,
       ddsource: this.source,
-      ddtags: `env:${process.env.NODE_ENV ?? "dev"}`,
+      ddtags: `env:${this.env}`,
     })));
 
     const maxRetries = 3;
     const baseDelayMs = 100;
+    const retryDeadlineMs = Date.now() + this.maxRetryWindowMs;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         await this.doRequest(body);
         return;
       } catch (err) {
+        const delay = baseDelayMs * Math.pow(2, attempt - 1);
         const isLastAttempt = attempt === maxRetries;
-        if (isLastAttempt) {
-          // Re-add entries to front of batch for backpressure when all retries exhausted
+        if (isLastAttempt || Date.now() + delay > retryDeadlineMs) {
           this.batch.unshift(...entries);
+          this.trimBufferedEntries();
           datadogTransportLogger.error("datadog_transport.flush_failed", {
             entryCount: entries.length,
             maxRetries,
@@ -105,9 +117,10 @@ export class DatadogTransport implements LogTransport {
           });
           return;
         }
-        // Exponential backoff: 100ms, 200ms, 400ms
-        const delay = baseDelayMs * Math.pow(2, attempt - 1);
-        await new Promise((r) => setTimeout(r, delay));
+        await new Promise((r) => {
+          const retryTimer = setTimeout(r, delay);
+          retryTimer.unref?.();
+        });
       }
     }
   }
@@ -145,5 +158,12 @@ export class DatadogTransport implements LogTransport {
       this.timer = null;
     }
     await this.requestFlush();
+  }
+
+  private trimBufferedEntries(): void {
+    if (this.batch.length <= this.maxBufferedEntries) {
+      return;
+    }
+    this.batch.splice(0, this.batch.length - this.maxBufferedEntries);
   }
 }

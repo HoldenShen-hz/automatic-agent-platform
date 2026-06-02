@@ -113,7 +113,7 @@ test("startup consistency checker fail-closes on active task and workflow owners
       id: "task-missing-workflow",
       parentId: null,
       rootId: "task-missing-workflow",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Missing workflow",
       status: "in_progress",
       source: "user",
@@ -167,7 +167,7 @@ test("startup consistency checker fail-closes on active task and workflow owners
       id: "task-invalid-step",
       parentId: null,
       rootId: "task-invalid-step",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Invalid step index",
       status: "in_progress",
       source: "user",
@@ -185,7 +185,7 @@ test("startup consistency checker fail-closes on active task and workflow owners
 
     store.insertWorkflowState({
       taskId: "task-invalid-step",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 9,
       status: "running",
@@ -246,7 +246,7 @@ test("startup consistency checker produces repair actions for recoverable Week 3
     db.transaction(() => {
       store.insertWorkflowState({
         taskId: "task-stale",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -266,7 +266,7 @@ test("startup consistency checker produces repair actions for recoverable Week 3
         id: "task-orphan-session",
         parentId: null,
         rootId: "task-orphan-session",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Orphan session",
         status: "done",
         source: "user",
@@ -349,7 +349,7 @@ test("startup consistency checker produces repair actions for recoverable Week 3
     });
     store.insertWorkflowState({
       taskId: "task-terminal-ticket",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",
@@ -429,7 +429,7 @@ test("startup consistency checker marks workflow terminal mismatches as repairab
       });
       store.insertWorkflowState({
         taskId: "task-terminal-mismatch",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 1,
         status: "completed",
@@ -654,7 +654,7 @@ test("runtime repair service applies recoverable startup actions and clears the 
     db.transaction(() => {
       store.insertWorkflowState({
         taskId: "task-repair",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -683,7 +683,7 @@ test("runtime repair service applies recoverable startup actions and clears the 
         id: "task-repair-orphan",
         parentId: null,
         rootId: "task-repair-orphan",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Repair orphan session",
         status: "done",
         source: "user",
@@ -807,7 +807,7 @@ test("runtime repair service reconciles task and session terminal state from a c
       });
       store.insertWorkflowState({
         taskId: "task-terminal-repair",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 1,
         status: "completed",
@@ -876,7 +876,7 @@ test("runtime repair service reclaims stale execution ownership and recreates a 
     db.transaction(() => {
       store.insertWorkflowState({
         taskId: "task-ownership-recovery",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -993,7 +993,7 @@ test("runtime repair service replaces terminal sessions instead of reopening the
     db.transaction(() => {
       store.insertWorkflowState({
         taskId: "task-replace-session",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",

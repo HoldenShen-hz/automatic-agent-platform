@@ -42,7 +42,7 @@ function seedTaskWithExecution(
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Retry test task",
       status,
       source: "user",

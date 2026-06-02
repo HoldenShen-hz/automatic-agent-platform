@@ -12,7 +12,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write
   actions: read
 
 concurrency:
@@ -32,6 +31,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -40,7 +41,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Lint
         run: npm run lint
@@ -55,6 +56,7 @@ jobs:
         run: npm run build
 
       - name: Build Docker image for downstream security scan
+        if: github.event_name != 'pull_request'
         run: docker build -t "${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}:${IMAGE_TAG}" .
 
       - name: Changelog Gate
@@ -95,8 +97,10 @@ jobs:
           {
             find test-results coverage -type f -print0 2>/dev/null | xargs -0 shasum -a 256
           } > test-results/artifact-sha256.txt || true
-          docker save "${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}:${IMAGE_TAG}" -o test-results/container-image.tar
-          shasum -a 256 test-results/container-image.tar >> test-results/artifact-sha256.txt
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            docker save "${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}:${IMAGE_TAG}" -o test-results/container-image.tar
+            shasum -a 256 test-results/container-image.tar >> test-results/artifact-sha256.txt
+          fi
 
       - name: Upload test results
         if: always()
@@ -122,6 +126,8 @@ jobs:
         working-directory: deploy/terraform
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.8
@@ -150,11 +156,13 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm run test:pg-integration
         env:
           AA_TEST_PG_DSN: postgresql://test:test@127.0.0.1:5433/aa_test
@@ -168,11 +176,13 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm run stryker
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
@@ -189,6 +199,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@fee9466b8957867761f2d78f922ab084e3e2dd17
@@ -207,11 +219,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Run npm audit
         run: |
           npm audit --audit-level=high --omit=dev --json > npm-audit.json || true
@@ -236,6 +250,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    if: github.event_name != 'pull_request'
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 20

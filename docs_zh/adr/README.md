@@ -78,11 +78,14 @@
 | [067](./067-capacity-planning-and-cost-prediction.md) | 容量规划与成本预测引擎 | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | 多模态能力架构 | Accepted | 2026-04-20 |
 | [069](./069-platform-self-operating-agent.md) | 平台自运维 Agent 架构 | Partially Superseded by v4.3 control-plane and runtime authority ADRs | 2026-04-20 |
-| [070](./070-conclusion.md) | 结论 | Withdrawn / Index | 2026-04-20 |
+| [070](./070-conclusion.md) | 结论 | Withdrawn | 2026-04-20 |
 | [071](./071-plugin-spi-framework.md) | Plugin SPI 接口体系与生命周期 | Accepted | 2026-04-17 |
 | [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR 测试策略与新模块测试矩阵 | Partially Superseded by current layered test matrix and runtime contract tests | 2026-04-17 |
-| [073](./073-unified-resource-model.md) | ADR-073: Unified Agent Resource Model | Accepted | 2026-04-13 |
+| [073](./073-unified-resource-model.md) | Unified Agent Resource Model | Accepted | 2026-04-13 |
+| [074](./074-reserved-slot.md) | 预留号段 | Withdrawn | 2026-04-20 |
 | [075](./075-controlled-rollout-release.md) | 六级受控发布与 Rollout 状态机 | Accepted | 2026-04-17 |
+| [076](./076-reserved-slot.md) | 预留号段 | Withdrawn | 2026-04-20 |
+| [077](./077-reserved-slot.md) | 预留号段 | Withdrawn | 2026-04-20 |
 | [078](./078-knowledge-plane-architecture.md) | Knowledge Plane 架构与信任模型 | Partially Superseded by current knowledge-plane contract baseline | 2026-04-17 |
 | [079](./079-feedback-hub-signals.md) | Feedback Hub 与七类信号预处理 | Accepted | 2026-04-17 |
 | [080](./080-learn-hub-pattern-detection.md) | Learn Hub 与四模式检测器 | Accepted | 2026-04-17 |
@@ -93,9 +96,9 @@
 | [085](./085-organization-governance-and-knowledge-boundary.md) | Organization Governance And Knowledge Boundary | Accepted | 2026-04-20 |
 | [086](./086-scale-ecosystem-and-cross-region-runtime.md) | Scale Ecosystem And Cross Region Runtime | Accepted | 2026-04-20 |
 | [087](./087-ops-maturity-runtime.md) | Ops Maturity Runtime | Accepted | 2026-04-20 |
-| [088](./088-platform-surface-communication-and-extensibility.md) | ADR 088: Platform Surface, Communication, and Extensibility | Accepted | 2026-04-20 |
-| [089](./089-ai-operations-governance-and-quality.md) | ADR 089: AI Operations Governance and Quality | Accepted | 2026-04-20 |
-| [090](./090-runtime-data-reliability-and-operations.md) | ADR 090: Runtime, Data Reliability, and Operations | Accepted | 2026-04-20 |
+| [088](./088-platform-surface-communication-and-extensibility.md) | Platform Surface、Communication、Extensibility | Accepted | 2026-04-20 |
+| [089](./089-ai-operations-governance-and-quality.md) | AI Operations Governance And Quality | Accepted | 2026-04-20 |
+| [090](./090-runtime-data-reliability-and-operations.md) | Runtime、Data Reliability、Operations | Accepted | 2026-04-20 |
 | [091](./091-harness-eight-pillar-model.md) | Harness Eight Pillar Model | Accepted | 2026-04-23 |
 | [092](./092-harness-loop-controller.md) | Harness Loop Controller | Accepted | 2026-04-23 |
 | [093](./093-harness-constraint-engine.md) | Harness Constraint Engine | Accepted | 2026-04-23 |
@@ -136,12 +139,15 @@
 - **Accepted**: 已接受并实施
 - **Superseded**: 已被新的 ADR 取代
 - **Deprecated**: 已废弃
+- **Withdrawn**: 号段保留或索引占位，不再作为实现依据
+- **Historical Context**: 仅保留历史背景，不作为当前实现依据
+- **Partially Superseded by ...**: 仍保留背景价值，但当前执行依据已被后续 ADR 或 contract 部分接管
 
 ## 备注
 
 - 历史目录同时保留 `003-memory-six-layers.md` 与 `003-memory-seven-layers.md`；其中 `seven-layers` 仅保留为历史别名 / 跳转页，规范内容以 `003-memory-six-layers.md` 为准。
 - Plugin SPI ADR 已统一收敛到 `071-plugin-spi-framework.md`；旧的 `066-plugin-spi-framework.md` 重复副本已移除，所有引用统一改到 ADR-071。
-- `045`、`074`、`076`、`077` 目前保留为 reserved / withdrawn 号段，不再回填历史内容。
+- `045`、`074`、`076`、`077` 目前保留为 reserved / withdrawn 号段，不再回填历史内容，并要求保留显式占位文件。
 - 新增的 `091-108` 用于承接 Harness 八支柱与领域治理补齐项。
 - 新增的 `109-122` 是 v4.3 Contract Freeze 与后续实现澄清入口：冻结 12 个 canonical contract、状态机唯一权威、`platform.*` 与 `oapeflir.view.*` 事件分层、MVP / Hardening / Enterprise 三环边界，以及 tenant scope / auth precedence / self-healing boundary / interface rate-limit / WAL recovery / panic allowlist / pack-domain lifecycle / client transport / timeout hierarchy / evidence boundary 的权威说明。
 - `109-122` 通过 freeze / authority / event namespace / ring boundary / tenant scope / auth precedence / recovery boundary 等规则约束旧 `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase 命名、tenant 解析与跨层边界语义；历史 ADR 正文保留，不直接改写。

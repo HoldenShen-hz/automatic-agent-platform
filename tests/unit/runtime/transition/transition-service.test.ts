@@ -26,7 +26,7 @@ function createTerminalFixture() {
       id: "task-terminal",
       parentId: null,
       rootId: "task-terminal",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Terminal Task",
       status: "in_progress",
       source: "user",
@@ -43,7 +43,7 @@ function createTerminalFixture() {
     });
     store.insertWorkflowState({
       taskId: "task-terminal",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 1,
       status: "running",

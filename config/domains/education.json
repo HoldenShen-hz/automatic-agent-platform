@@ -1,7 +1,7 @@
 {
   "domainId": "education",
   "phase": "9e",
-  "divisionId": "general_ops",
+  "divisionId": "general-ops",
   "latencyTier": "business_day",
   "workflowProfile": {
     "workflowId": "education.primary",

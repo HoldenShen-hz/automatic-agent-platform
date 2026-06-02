@@ -31,7 +31,7 @@ const intakeRouter = {
       confidence: 0.95,
       matchedRules: [],
     },
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "single_agent_minimal",
   }),
 };

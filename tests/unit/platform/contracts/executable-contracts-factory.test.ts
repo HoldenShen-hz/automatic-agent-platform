@@ -178,7 +178,7 @@ test("executable-contracts: normalizeDomainBindingId resolves legacy aliases", (
   // Engineering aliases
   assert.equal(normalizeDomainBindingId("engineering"), "coding");
   assert.equal(normalizeDomainBindingId("platform_engineering"), "coding");
-  assert.equal(normalizeDomainBindingId("engineering_ops"), "coding");
+  assert.equal(normalizeDomainBindingId("engineering-ops"), "coding");
 
   // Content aliases
   assert.equal(normalizeDomainBindingId("content"), "creative-production");

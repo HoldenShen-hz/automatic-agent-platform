@@ -1,5 +1,4 @@
 import { newId } from "../../contracts/types/ids.js";
-import type { Plan } from "../../five-plane-orchestration/oapeflir/types/index.js";
 import type { FeedbackBatch } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 export interface ExecutionDeviation {
@@ -11,8 +10,12 @@ export interface ExecutionDeviation {
   detectedAt: number;
 }
 
+export interface ExecutionDeviationPlanRef {
+  taskId: string;
+}
+
 export class ExecutionDeviationDetector {
-  public detect(plan: Plan, feedback: FeedbackBatch): ExecutionDeviation[] {
+  public detect(plan: ExecutionDeviationPlanRef, feedback: FeedbackBatch): ExecutionDeviation[] {
     const deviations: ExecutionDeviation[] = [];
     if (feedback.outcome === "repairable" || feedback.outcome === "failed" || feedback.outcome === "escalated") {
       deviations.push({

@@ -116,9 +116,9 @@ export class ReplayRepairControlService {
   }
 
   public assertCanOpenForTraffic(report: StartupConsistencyReport): void {
-    if (report.status === "fail_closed") {
-      throw new ValidationError("replay_repair.fail_closed", "Startup consistency report contains P0 findings.", {
-        details: { reportId: report.reportId, counts: report.counts },
+    if (report.status === "fail_closed" || report.status === "repair_required") {
+      throw new ValidationError("replay_repair.fail_closed", "Startup consistency report is not ready to open for traffic.", {
+        details: { reportId: report.reportId, counts: report.counts, status: report.status },
       });
     }
   }
@@ -136,7 +136,7 @@ export class ReplayRepairControlService {
     const assertions = [
       {
         assertion: "terminal success is never inferred from recovery findings",
-        passed: true,
+        passed: candidates.every((candidate) => candidate.disposition !== "resume" || candidate.severity === "info"),
       },
       {
         assertion: "non-recoverable P0 findings require manual handoff",
@@ -171,6 +171,9 @@ function countFindings(findings: StartupConsistencyFinding[]): Record<Consistenc
 
 function inferDisposition(finding: StartupConsistencyFinding): RecoveryDisposition {
   if (!finding.recoverable || finding.suggestedRepairAction === "manual_intervention_required") {
+    return "manual_handoff";
+  }
+  if (finding.severity === "p0" || finding.severity === "p1") {
     return "manual_handoff";
   }
   if (finding.suggestedRepairAction === "requeue_execution") {

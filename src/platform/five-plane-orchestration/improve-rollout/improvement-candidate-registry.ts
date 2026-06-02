@@ -65,10 +65,16 @@ export class ImprovementCandidateRegistry {
     this.now = normalizedOptions?.now ?? Date.now;
     // R23-45 fix: Load persisted candidates on startup
     if (this.persistenceStore) {
-      for (const candidate of this.persistenceStore.loadCandidates()) {
-        this.candidates.set(candidate.candidateId, candidate);
-        this.accessOrder.add(candidate.candidateId);
-        this.createdAt.set(candidate.candidateId, toEpochMs(candidate.createdAt));
+      try {
+        for (const candidate of this.persistenceStore.loadCandidates()) {
+          this.candidates.set(candidate.candidateId, candidate);
+          this.accessOrder.add(candidate.candidateId);
+          this.createdAt.set(candidate.candidateId, toEpochMs(candidate.createdAt));
+        }
+      } catch (error) {
+        improvementCandidateRegistryLogger.error("improvement_candidate.load_failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
   }
@@ -171,6 +177,7 @@ export class ImprovementCandidateRegistry {
    * R23-45 fix: Remove a candidate and clean up metadata.
    */
   private removeCandidate(candidateId: string): void {
+    const removedCandidate = this.candidates.get(candidateId) ?? null;
     this.candidates.delete(candidateId);
     this.createdAt.delete(candidateId);
     this.accessOrder.delete(candidateId);
@@ -178,6 +185,9 @@ export class ImprovementCandidateRegistry {
     try {
       this.persistenceStore?.deleteCandidate(candidateId);
     } catch (error) {
+      if (removedCandidate) {
+        this.persistExpiredTombstone(removedCandidate);
+      }
       improvementCandidateRegistryLogger.error("improvement_candidate.delete_failed", {
         candidateId,
         error: error instanceof Error ? error.message : String(error),
@@ -193,6 +203,26 @@ export class ImprovementCandidateRegistry {
       this.persistenceStore?.saveCandidate(candidate);
     } catch (error) {
       improvementCandidateRegistryLogger.error("improvement_candidate.persist_failed", {
+        candidateId: candidate.candidateId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  private persistExpiredTombstone(candidate: ImprovementCandidate): void {
+    if (!this.persistenceStore) {
+      return;
+    }
+    try {
+      this.persistenceStore.saveCandidate({
+        ...candidate,
+        status: "rejected",
+        rolloutLevel: "L0_off",
+        updatedAt: nowIso(),
+        createdAt: new Date(0).toISOString(),
+      });
+    } catch (error) {
+      improvementCandidateRegistryLogger.error("improvement_candidate.tombstone_persist_failed", {
         candidateId: candidate.candidateId,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -263,9 +293,7 @@ export class ImprovementCandidateRegistry {
     while (this.accessOrder.size > this.maxSize) {
       const oldest = this.accessOrder.keys().next().value as string | undefined;
       if (oldest != null) {
-        this.candidates.delete(oldest);
-        this.createdAt.delete(oldest);
-        this.accessOrder.delete(oldest);
+        this.removeCandidate(oldest);
       }
     }
   }

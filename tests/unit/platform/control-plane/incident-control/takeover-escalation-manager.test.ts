@@ -176,7 +176,7 @@ test("acknowledgeSession caps escalation history retention", () => {
   }).escalationPolicies.get("session-1");
   assert.ok(policy);
   assert.equal(policy!.escalationHistory.length, 16);
-  assert.equal(policy!.escalationHistory[0]!.target, "operator-4");
+  assert.equal(policy!.escalationHistory[0]!.target, "operator-0");
   assert.equal(policy!.escalationHistory.at(-1)!.target, "operator-19");
 });
 
@@ -236,6 +236,20 @@ test("extendAcknowledgment preserves the tracked taskId for later renewal handli
   manager.extendAcknowledgment("session-1", 1000);
 
   assert.equal((manager as any).sessionTaskIds.get("session-1"), "task-1");
+});
+
+test("extendAcknowledgment reschedules escalation tracking for the new deadline", () => {
+  const manager = createManager();
+
+  manager.startSessionTracking("session-1", "task-1");
+  manager.acknowledgeSession("session-1", "operator-1", "task-1");
+  const previousTimer = (manager as any).escalationTimers.get("session-1");
+
+  manager.extendAcknowledgment("session-1", 1000);
+
+  const nextTimer = (manager as any).escalationTimers.get("session-1");
+  assert.ok(nextTimer);
+  assert.notEqual(previousTimer, nextTimer);
 });
 
 test("extendAcknowledgment throws for unknown session", () => {
@@ -311,6 +325,33 @@ test("evictExpiredSessionEntries cleans up old entries", () => {
     // Should not throw
     manager.evictExpiredSessionEntries();
   });
+});
+
+test("evictExpiredSessionEntries clears timers for removed sessions", () => {
+  const manager = createManager() as TakeoverEscalationManager & {
+    ackStatuses: Map<string, TakeoverAckStatus>;
+    activeTimeouts: Map<string, NodeJS.Timeout>;
+    escalationTimers: Map<string, NodeJS.Timeout>;
+    lastEvictionTime: number;
+    readonly EVICTION_INTERVAL_MS: number;
+  };
+
+  manager.startSessionTracking("session-1", "task-1");
+  manager.acknowledgeSession("session-1", "operator-1", "task-1");
+  manager.ackStatuses.set("session-1", {
+    sessionId: "session-1",
+    acknowledgedAt: new Date(Date.now() - (31 * 60 * 1000)).toISOString(),
+    expiresAt: null,
+    status: "expired",
+    acknowledgedBy: "operator-1",
+  });
+  manager.lastEvictionTime = Date.now() - manager.EVICTION_INTERVAL_MS - 1;
+
+  manager.evictExpiredSessionEntries();
+
+  assert.equal(manager.ackStatuses.has("session-1"), false);
+  assert.equal(manager.activeTimeouts.has("session-1"), false);
+  assert.equal(manager.escalationTimers.has("session-1"), false);
 });
 
 });

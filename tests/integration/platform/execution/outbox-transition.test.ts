@@ -31,7 +31,7 @@ function seedTask(
       id: input.taskId,
       parentId: null,
       rootId: input.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       tenantId: null,
       title: "Outbox integration test task",
       status: input.taskStatus,

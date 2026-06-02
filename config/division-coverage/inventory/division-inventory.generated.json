@@ -1,10 +1,29 @@
 {
   "diff": {
     "added": [],
-    "changed": [],
+    "changed": [
+      {
+        "changes": [
+          "roi:=>roi/divisions/coding.yaml"
+        ],
+        "divisionId": "coding"
+      },
+      {
+        "changes": [
+          "roi:=>roi/divisions/customer-service.yaml"
+        ],
+        "divisionId": "customer-service"
+      },
+      {
+        "changes": [
+          "roi:=>roi/divisions/knowledge-base.yaml"
+        ],
+        "divisionId": "knowledge-base"
+      }
+    ],
     "removed": []
   },
-  "generatedAt": "2026-06-01T01:00:44.902Z",
+  "generatedAt": "2026-06-01T19:15:16.543Z",
   "orphans": {
     "sourceModules": [
       "agriculture",
@@ -48,6 +67,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "research",
@@ -55,6 +75,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -78,6 +99,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "growth",
@@ -85,6 +107,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "high",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -109,6 +132,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -116,6 +140,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -138,6 +163,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "analytics",
@@ -145,6 +171,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -183,6 +210,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -190,6 +218,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -221,6 +250,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -228,6 +258,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -245,6 +276,12 @@
       "coverageCardPath": "config/division-coverage/divisions/coding.yaml",
       "divisionId": "coding",
       "docRefs": [
+        "docs_en/divisions/coding/leadership-evidence/eval-report.md",
+        "docs_en/divisions/coding/leadership-evidence/redteam-report.md",
+        "docs_en/divisions/coding/leadership-evidence/release-readiness.md",
+        "docs_en/divisions/coding/leadership-evidence/risk-report.md",
+        "docs_en/divisions/coding/leadership-evidence/roi-report.md",
+        "docs_en/divisions/coding/leadership-evidence/scenario-index.md",
         "docs_en/domains/coding/domain-spec.md",
         "docs_zh/divisions/coding/leadership-evidence/coverage-card.yaml",
         "docs_zh/divisions/coding/leadership-evidence/eval-report.md",
@@ -264,6 +301,7 @@
       "hasEval": true,
       "hasOwner": true,
       "hasRedTeam": true,
+      "hasRoiBaseline": true,
       "hasScenarioCard": true,
       "hasTrainingPolicy": true,
       "legacyFamily": "engineering",
@@ -276,6 +314,9 @@
         "redteam/divisions/coding/redteam-suite.yaml"
       ],
       "riskLevel": "high",
+      "roiRefs": [
+        "roi/divisions/coding.yaml"
+      ],
       "scenarioRefs": [
         "config/division-coverage/scenarios/ci-failure-analysis.yaml",
         "config/division-coverage/scenarios/issue-to-patch.yaml"
@@ -296,6 +337,7 @@
       "coverageCardPath": "config/division-coverage/divisions/content.yaml",
       "divisionId": "content",
       "docRefs": [
+        "docs_en/divisions/family-expansion/gtm-content-expansion.md",
         "docs_en/domains/content-moderation/domain-spec.md",
         "docs_zh/divisions/family-expansion/gtm-content-expansion.md",
         "docs_zh/domains/content-moderation/domain-spec.md"
@@ -307,6 +349,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "content",
@@ -314,6 +357,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -337,6 +381,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "safety",
@@ -344,6 +389,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "high",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -361,6 +407,7 @@
       "coverageCardPath": "config/division-coverage/divisions/creative-production.yaml",
       "divisionId": "creative-production",
       "docRefs": [
+        "docs_en/divisions/family-expansion/creative-production-expansion.md",
         "docs_en/domains/creative-production/domain-spec.md",
         "docs_zh/divisions/family-expansion/creative-production-expansion.md",
         "docs_zh/domains/creative-production/domain-spec.md"
@@ -372,6 +419,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -379,6 +427,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -392,7 +441,14 @@
       "coverageCardPath": "config/division-coverage/divisions/customer-service.yaml",
       "divisionId": "customer-service",
       "docRefs": [
+        "docs_en/divisions/customer-service/leadership-evidence/eval-report.md",
+        "docs_en/divisions/customer-service/leadership-evidence/redteam-report.md",
+        "docs_en/divisions/customer-service/leadership-evidence/release-readiness.md",
+        "docs_en/divisions/customer-service/leadership-evidence/risk-report.md",
+        "docs_en/divisions/customer-service/leadership-evidence/roi-report.md",
+        "docs_en/divisions/customer-service/leadership-evidence/scenario-index.md",
         "docs_en/domains/customer-service/domain-spec.md",
+        "docs_en/pilots/customer-service-pilot.md",
         "docs_zh/divisions/customer-service/leadership-evidence/coverage-card.yaml",
         "docs_zh/divisions/customer-service/leadership-evidence/eval-report.md",
         "docs_zh/divisions/customer-service/leadership-evidence/redteam-report.md",
@@ -412,6 +468,7 @@
       "hasEval": true,
       "hasOwner": true,
       "hasRedTeam": true,
+      "hasRoiBaseline": true,
       "hasScenarioCard": true,
       "hasTrainingPolicy": true,
       "legacyFamily": "customer-ops",
@@ -421,6 +478,9 @@
         "redteam/divisions/customer-service/redteam-suite.yaml"
       ],
       "riskLevel": "medium",
+      "roiRefs": [
+        "roi/divisions/customer-service.yaml"
+      ],
       "scenarioRefs": [
         "config/division-coverage/scenarios/customer-refund-policy.yaml"
       ],
@@ -449,6 +509,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "data",
@@ -456,6 +517,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -485,6 +547,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -492,6 +555,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [],
@@ -527,6 +591,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "product",
@@ -534,6 +599,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -556,6 +622,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "operations",
@@ -563,6 +630,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [],
@@ -584,6 +652,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "commerce",
@@ -591,6 +660,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "high",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -618,6 +688,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -625,6 +696,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -637,8 +709,8 @@
       "blockers": [
         "missing_source_module"
       ],
-      "coverageCardPath": "config/division-coverage/divisions/engineering_ops.yaml",
-      "divisionId": "engineering_ops",
+      "coverageCardPath": "config/division-coverage/divisions/engineering-ops.yaml",
+      "divisionId": "engineering-ops",
       "docRefs": [],
       "evalRefs": [],
       "familyId": "engineering",
@@ -647,6 +719,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "operations",
@@ -654,6 +727,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "high",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [],
@@ -676,6 +750,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -683,6 +758,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -716,6 +792,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -723,6 +800,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -747,6 +825,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -754,6 +833,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -779,6 +859,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "finance",
@@ -786,6 +867,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "high",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -811,6 +893,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "finance",
@@ -818,6 +901,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "critical",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -846,6 +930,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -856,6 +941,7 @@
       ],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -883,6 +969,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -890,6 +977,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -902,8 +990,8 @@
       "blockers": [
         "missing_source_module"
       ],
-      "coverageCardPath": "config/division-coverage/divisions/general_ops.yaml",
-      "divisionId": "general_ops",
+      "coverageCardPath": "config/division-coverage/divisions/general-ops.yaml",
+      "divisionId": "general-ops",
       "docRefs": [],
       "evalRefs": [],
       "familyId": "enterprise-ops",
@@ -912,6 +1000,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "operations",
@@ -919,6 +1008,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [],
@@ -945,6 +1035,7 @@
         "docs_en/contracts/prompt_model_policy_governance_contract.md",
         "docs_en/governance/autonomy_boundary_policy.md",
         "docs_en/governance/change_control.md",
+        "docs_en/governance/division-coverage-sot.md",
         "docs_en/governance/glossary_and_terminology.md",
         "docs_en/governance/naming_and_directory_conventions.md",
         "docs_en/governance/README.md",
@@ -954,6 +1045,7 @@
         "docs_en/governance/source_of_truth.md",
         "docs_en/governance/terminology-bilingual.md",
         "docs_en/quality/code-governance.md",
+        "docs_en/ui/admin-console-division-governance.md",
         "docs_zh/adr/051-tiered-governance-delegation.md",
         "docs_zh/adr/085-organization-governance-and-knowledge-boundary.md",
         "docs_zh/adr/089-ai-operations-governance-and-quality.md",
@@ -984,6 +1076,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -991,6 +1084,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -1055,6 +1149,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "healthcare",
@@ -1062,6 +1157,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "critical",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -1085,6 +1181,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "people",
@@ -1092,6 +1189,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "high",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -1115,6 +1213,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "research",
@@ -1122,6 +1221,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -1146,6 +1246,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -1153,6 +1254,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -1176,6 +1278,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "operations",
@@ -1183,6 +1286,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "high",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -1196,6 +1300,12 @@
       "coverageCardPath": "config/division-coverage/divisions/knowledge-base.yaml",
       "divisionId": "knowledge-base",
       "docRefs": [
+        "docs_en/divisions/knowledge-base/leadership-evidence/eval-report.md",
+        "docs_en/divisions/knowledge-base/leadership-evidence/redteam-report.md",
+        "docs_en/divisions/knowledge-base/leadership-evidence/release-readiness.md",
+        "docs_en/divisions/knowledge-base/leadership-evidence/risk-report.md",
+        "docs_en/divisions/knowledge-base/leadership-evidence/roi-report.md",
+        "docs_en/divisions/knowledge-base/leadership-evidence/scenario-index.md",
         "docs_en/domains/knowledge-base/domain-spec.md",
         "docs_zh/divisions/knowledge-base/leadership-evidence/coverage-card.yaml",
         "docs_zh/divisions/knowledge-base/leadership-evidence/eval-report.md",
@@ -1215,6 +1325,7 @@
       "hasEval": true,
       "hasOwner": true,
       "hasRedTeam": true,
+      "hasRoiBaseline": true,
       "hasScenarioCard": true,
       "hasTrainingPolicy": true,
       "legacyFamily": "knowledge",
@@ -1224,6 +1335,9 @@
         "redteam/divisions/knowledge-base/redteam-suite.yaml"
       ],
       "riskLevel": "medium",
+      "roiRefs": [
+        "roi/divisions/knowledge-base.yaml"
+      ],
       "scenarioRefs": [
         "config/division-coverage/scenarios/knowledge-citation-answer.yaml"
       ],
@@ -1253,6 +1367,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -1260,6 +1375,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -1287,6 +1403,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "legal",
@@ -1294,6 +1411,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "critical",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -1317,6 +1435,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "media",
@@ -1324,6 +1443,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "high",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -1348,6 +1468,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -1355,6 +1476,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -1382,6 +1504,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -1389,6 +1512,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -1474,6 +1598,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "operations",
@@ -1485,6 +1610,7 @@
       ],
       "redTeamRefs": [],
       "riskLevel": "high",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -1508,6 +1634,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "product",
@@ -1515,6 +1642,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -1535,6 +1663,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "delivery",
@@ -1542,6 +1671,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -1566,6 +1696,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -1573,6 +1704,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -1598,6 +1730,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "quality",
@@ -1605,6 +1738,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [],
@@ -1623,6 +1757,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "quality",
@@ -1630,6 +1765,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "high",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -1655,6 +1791,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "finance",
@@ -1662,6 +1799,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "critical",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -1686,6 +1824,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -1693,6 +1832,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -1732,6 +1872,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -1741,6 +1882,7 @@
       ],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -1808,6 +1950,7 @@
       "divisionId": "research",
       "docRefs": [
         "docs_en/architecture/v3.0-domain-research.md",
+        "docs_en/divisions/family-expansion/knowledge-research-expansion.md",
         "docs_en/domains/academic-research/domain-spec.md",
         "docs_en/domains/industry-research/domain-spec.md",
         "docs_zh/architecture/v3.0-domain-research.md",
@@ -1824,6 +1967,7 @@
       "hasEval": true,
       "hasOwner": true,
       "hasRedTeam": true,
+      "hasRoiBaseline": false,
       "hasScenarioCard": true,
       "hasTrainingPolicy": true,
       "legacyFamily": "research",
@@ -1833,6 +1977,7 @@
         "redteam/divisions/research/redteam-suite.yaml"
       ],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [
         "config/division-coverage/scenarios/research-conclusion-to-experiment.yaml"
       ],
@@ -1862,6 +2007,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -1869,6 +2015,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -1899,6 +2046,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -1906,6 +2054,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -1963,6 +2112,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -1970,6 +2120,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -2016,6 +2167,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "security",
@@ -2023,6 +2175,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "critical",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [],
@@ -2054,6 +2207,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -2061,6 +2215,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -2085,6 +2240,7 @@
       "hasEval": true,
       "hasOwner": true,
       "hasRedTeam": true,
+      "hasRoiBaseline": false,
       "hasScenarioCard": true,
       "hasTrainingPolicy": true,
       "legacyFamily": "customer-ops",
@@ -2094,6 +2250,7 @@
         "redteam/divisions/support/redteam-suite.yaml"
       ],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [
         "config/division-coverage/scenarios/customer-complaint-escalation.yaml"
       ],
@@ -2124,6 +2281,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": "customer-ops",
@@ -2131,6 +2289,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "coverage_draft",
       "testRefs": [
@@ -2158,6 +2317,7 @@
       "hasEval": false,
       "hasOwner": true,
       "hasRedTeam": false,
+      "hasRoiBaseline": false,
       "hasScenarioCard": false,
       "hasTrainingPolicy": false,
       "legacyFamily": null,
@@ -2165,6 +2325,7 @@
       "pluginRefs": [],
       "redTeamRefs": [],
       "riskLevel": "medium",
+      "roiRefs": [],
       "scenarioRefs": [],
       "status": "untracked",
       "testRefs": [
@@ -2178,6 +2339,7 @@
     "blockedDivisions": 35,
     "orphanSourceModules": 23,
     "p0Divisions": 5,
+    "roiTrackedDivisions": 3,
     "totalDivisions": 56
   }
 }

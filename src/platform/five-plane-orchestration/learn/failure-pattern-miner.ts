@@ -65,12 +65,12 @@ export class FailurePatternMiner {
         sourceSignalIds: pattern.sourceSignalIds,
         recommendation: pattern.recommendation,
       },
-      confidence: 0.8,
+      confidence: computeMinedFailureConfidence(pattern.evidenceRefs.length, pattern.sourceSignalIds.length),
       evidenceRefs: pattern.evidenceRefs,
       sourceSignalIds: pattern.sourceSignalIds,
       recommendation: pattern.recommendation,
       validatedBy: "none",
-      promotionStatus: "quarantine",
+      promotionStatus: "quarantined",
       status: "rejected",
       createdAt: String(pattern.detectedAt),
     };
@@ -99,9 +99,15 @@ export class FailurePatternMiner {
       sourceSignalIds: signal.sourceSignalIds,
       recommendation: "Prefer replanning with narrower scope and stronger validation.",
       validatedBy: "none",
-      promotionStatus: "quarantine",
+      promotionStatus: "quarantined",
       status: "rejected",
       createdAt: String(signal.generatedAt),
     };
   }
+}
+
+function computeMinedFailureConfidence(evidenceRefCount: number, sourceSignalCount: number): number {
+  const boundedEvidence = Math.min(Math.max(evidenceRefCount, 0), 4);
+  const boundedSignals = Math.min(Math.max(sourceSignalCount, 0), 4);
+  return Number(Math.min(0.78, 0.5 + boundedEvidence * 0.06 + boundedSignals * 0.04).toFixed(2));
 }

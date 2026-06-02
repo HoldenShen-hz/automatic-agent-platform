@@ -169,9 +169,7 @@ export class SideEffectManager {
     toStatus: SideEffectStatus,
     context: SideEffectManagerContext & { readonly reasonCode: string },
   ): RuntimeTransitionResult<SideEffectRecord> {
-    if (toStatus !== "proposed") {
-      this.preCommitValidator?.validate({ sideEffect, targetStatus: toStatus, context });
-    }
+    this.preCommitValidator?.validate({ sideEffect, targetStatus: toStatus, context });
     const occurredAt = context.occurredAt ?? new Date().toISOString();
     const aggregate: SideEffectRecord = {
       ...sideEffect,
@@ -182,7 +180,7 @@ export class SideEffectManager {
       fromStatus: sideEffect.status,
       toStatus,
       reasonCode: context.reasonCode,
-      auditRef: `audit://side-effects/${sideEffect.sideEffectId}/${context.reasonCode}`,
+      auditRef: buildSideEffectAuditRef(sideEffect.sideEffectId, context.reasonCode),
       sideEffectSafety: {
         idempotencyKey: sideEffect.idempotencyKey,
         preCommitPolicyProofRef: sideEffect.preCommitPolicyProofRef.uri,
@@ -227,10 +225,14 @@ export class SideEffectManager {
         preCommitPolicyProofRef: sideEffect.preCommitPolicyProofRef.uri,
         ...(sideEffect.approvalRef != null ? { humanApprovalRef: sideEffect.approvalRef } : {}),
       },
-      auditRef: `audit://side-effects/${sideEffect.sideEffectId}/${context.reasonCode}`,
+      auditRef: buildSideEffectAuditRef(sideEffect.sideEffectId, context.reasonCode),
       ...(context.occurredAt != null ? { occurredAt: context.occurredAt } : {}),
     });
   }
+}
+
+function buildSideEffectAuditRef(sideEffectId: string, reasonCode: string): string {
+  return `audit://side-effects/${encodeURIComponent(sideEffectId)}/${encodeURIComponent(reasonCode)}`;
 }
 
 function targetStatusForReconciliation(sideEffect: SideEffectRecord, reconciliation: ReconciliationRecord): SideEffectStatus {

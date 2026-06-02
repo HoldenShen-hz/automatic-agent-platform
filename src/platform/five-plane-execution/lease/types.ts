@@ -23,6 +23,7 @@ export interface RenewExecutionLeaseInput {
 export interface ReleaseExecutionLeaseInput {
   leaseId: string;
   workerId: string;
+  fencingToken?: number;
   reasonCode?: string | null;
   occurredAt?: string;
 }

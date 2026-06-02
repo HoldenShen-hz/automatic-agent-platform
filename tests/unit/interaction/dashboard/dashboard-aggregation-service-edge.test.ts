@@ -8,7 +8,7 @@ import { DashboardAggregationService } from "../../../../src/interaction/dashboa
 import type { TaskBoardItem } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { SystemSituation } from "../../../../src/platform/shared/observability/system-situation-model.js";
 
-function makeTask(taskId: string, taskStatus: TaskBoardItem["taskStatus"], divisionId = "general_ops"): TaskBoardItem {
+function makeTask(taskId: string, taskStatus: TaskBoardItem["taskStatus"], divisionId = "general-ops"): TaskBoardItem {
   return {
     taskId,
     title: `Task ${taskId}`,
@@ -76,7 +76,7 @@ test("buildFleetDashboard healthScore does not go below 20", () => {
   assert.equal(ops!.healthScore, 20);
 });
 
-test("buildFleetDashboard agentCount uses general_ops when all tasks have same divisionId", () => {
+test("buildFleetDashboard agentCount uses general-ops when all tasks have same divisionId", () => {
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
@@ -97,7 +97,7 @@ test("buildFleetDashboard agentCount uses general_ops when all tasks have same d
   assert.equal(finance!.agentCount, 1);
 });
 
-test("buildFleetDashboard with tasks having undefined divisionId uses general_ops", () => {
+test("buildFleetDashboard with tasks having undefined divisionId uses general-ops", () => {
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
@@ -112,8 +112,8 @@ test("buildFleetDashboard with tasks having undefined divisionId uses general_op
 
   const dashboard = service.buildFleetDashboard();
 
-  // Tasks with undefined divisionId should be grouped under "general_ops"
-  const generalOps = dashboard.departmentOverview.find((d) => d.departmentId === "general_ops");
+  // Tasks with undefined divisionId should be grouped under "general-ops"
+  const generalOps = dashboard.departmentOverview.find((d) => d.departmentId === "general-ops");
   assert.ok(generalOps);
   assert.equal(generalOps!.agentCount, 1);
 });

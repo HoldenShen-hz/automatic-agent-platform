@@ -71,10 +71,7 @@ test("TenantBoundaryRegistryService assertSameTenant throws on null targetTenant
 
 test("TenantBoundaryRegistryService assertSameTenant throws on both null", () => {
   const service = new TenantBoundaryRegistryService();
-  assert.throws(
-    () => service.assertSameTenant({ sourceTenantId: null, targetTenantId: null }),
-    (error: unknown) => error instanceof Error && error.message.includes("Cross-tenant access is denied"),
-  );
+  assert.doesNotThrow(() => service.assertSameTenant({ sourceTenantId: null, targetTenantId: null }));
 });
 
 test("TenantBoundaryRegistryService assertSameTenant throws on undefined sourceTenantId", () => {
@@ -102,6 +99,24 @@ test("TenantBoundaryRegistryService assertSameTenant uses custom reasonCode", ()
       reasonCode: "custom.denial",
     }),
     (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "custom.denial",
+  );
+});
+
+test("TenantBoundaryRegistryService rejects colon and dot in canonical identifiers", () => {
+  const service = new TenantBoundaryRegistryService();
+
+  assert.throws(
+    () => service.registerUser({
+      userId: "user:1",
+      displayName: "Invalid User",
+      status: "active",
+      identityProvider: "idp_1",
+    }),
+    (error: unknown) => error instanceof Error && (error as { code?: string }).code === "tenant.invalid_user_id",
+  );
+  assert.throws(
+    () => service.registerOrganization(makeOrg("org.1")),
+    (error: unknown) => error instanceof Error && (error as { code?: string }).code === "tenant.invalid_organization_id",
   );
 });
 

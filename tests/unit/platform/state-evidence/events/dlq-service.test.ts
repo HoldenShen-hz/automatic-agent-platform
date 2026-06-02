@@ -8,6 +8,7 @@ test("DlqService enqueue creates a pending record", () => {
   const service = new DlqService();
   const record = service.enqueue({
     sourceEventId: "evt_1",
+    eventType: "platform.test",
     consumerId: "test-consumer",
     errorCode: "delivery.timeout",
     payloadJson: '{"step":1}',
@@ -22,6 +23,7 @@ test("DlqService enqueue creates a pending record", () => {
   assert.equal(record.maxRetries, 5);
   assert.equal(record.nextRetryAt, null);
   assert.equal(record.retryExhaustedAt, null);
+  assert.equal(record.failureCategory, "unknown");
   assert.deepEqual(record.operatorActionLog, []);
 });
 
@@ -30,6 +32,7 @@ test("DlqService enqueue accepts optional fields", () => {
   const originalTs = "2026-04-19T10:00:00.000Z";
   const record = service.enqueue({
     sourceEventId: "evt_2",
+    eventType: "platform.test",
     consumerId: "test-consumer",
     errorCode: "delivery.failed",
     payloadJson: '{"step":2}',
@@ -45,8 +48,8 @@ test("DlqService enqueue accepts optional fields", () => {
 
 test("DlqService listAll returns all records sorted by createdAt", () => {
   const service = new DlqService();
-  service.enqueue({ sourceEventId: "evt_a", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
-  service.enqueue({ sourceEventId: "evt_b", consumerId: "c2", errorCode: "e2", payloadJson: "{}" });
+  service.enqueue({ sourceEventId: "evt_a", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  service.enqueue({ sourceEventId: "evt_b", eventType: "platform.test", consumerId: "c2", errorCode: "e2", payloadJson: "{}" });
 
   const all = service.listAll();
   assert.equal(all.length, 2);
@@ -55,9 +58,9 @@ test("DlqService listAll returns all records sorted by createdAt", () => {
 
 test("DlqService listByConsumer filters correctly", () => {
   const service = new DlqService();
-  service.enqueue({ sourceEventId: "evt_1", consumerId: "consumer-a", errorCode: "e1", payloadJson: "{}" });
-  service.enqueue({ sourceEventId: "evt_2", consumerId: "consumer-b", errorCode: "e2", payloadJson: "{}" });
-  service.enqueue({ sourceEventId: "evt_3", consumerId: "consumer-a", errorCode: "e3", payloadJson: "{}" });
+  service.enqueue({ sourceEventId: "evt_1", eventType: "platform.test", consumerId: "consumer-a", errorCode: "e1", payloadJson: "{}" });
+  service.enqueue({ sourceEventId: "evt_2", eventType: "platform.test", consumerId: "consumer-b", errorCode: "e2", payloadJson: "{}" });
+  service.enqueue({ sourceEventId: "evt_3", eventType: "platform.test", consumerId: "consumer-a", errorCode: "e3", payloadJson: "{}" });
 
   const byConsumer = service.listByConsumer("consumer-a");
   assert.equal(byConsumer.length, 2);
@@ -66,8 +69,8 @@ test("DlqService listByConsumer filters correctly", () => {
 
 test("DlqService listByStatus filters correctly", () => {
   const service = new DlqService();
-  const pending = service.enqueue({ sourceEventId: "evt_1", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
-  const retrying = service.enqueue({ sourceEventId: "evt_2", consumerId: "c1", errorCode: "e2", payloadJson: "{}" });
+  const pending = service.enqueue({ sourceEventId: "evt_1", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  const retrying = service.enqueue({ sourceEventId: "evt_2", eventType: "platform.test", consumerId: "c1", errorCode: "e2", payloadJson: "{}" });
   service.scheduleRetry(retrying.deadLetterId, 30_000);
 
   assert.equal(service.listByStatus("pending").length, 1);
@@ -77,7 +80,7 @@ test("DlqService listByStatus filters correctly", () => {
 
 test("DlqService get returns record or undefined", () => {
   const service = new DlqService();
-  const record = service.enqueue({ sourceEventId: "evt_1", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  const record = service.enqueue({ sourceEventId: "evt_1", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
 
   assert.equal(service.get(record.deadLetterId)?.deadLetterId, record.deadLetterId);
   assert.equal(service.get("unknown_dlq"), undefined);
@@ -87,7 +90,7 @@ test("DlqService get returns record or undefined", () => {
 
 test("DlqService markResolved transitions status and clears nextRetryAt", () => {
   const service = new DlqService();
-  const record = service.enqueue({ sourceEventId: "evt_1", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  const record = service.enqueue({ sourceEventId: "evt_1", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
   service.scheduleRetry(record.deadLetterId, 30_000);
 
   const resolved = service.markResolved(record.deadLetterId, "operator_1");
@@ -103,19 +106,20 @@ test("DlqService markResolved transitions status and clears nextRetryAt", () => 
 
 test("DlqService discard transitions status and records reason", () => {
   const service = new DlqService();
-  const record = service.enqueue({ sourceEventId: "evt_1", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  const record = service.enqueue({ sourceEventId: "evt_1", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
 
   const discarded = service.discard(record.deadLetterId, "poison_message", "operator_2");
 
   assert.equal(discarded.status, "discarded");
-  assert.equal(discarded.errorCode, "poison_message");
+  assert.equal(discarded.errorCode, "e1");
+  assert.equal(discarded.reason, "poison_message");
   assert.equal(discarded.operatorActionLog[0]!.action, "manual_discard");
   assert.deepEqual(discarded.operatorActionLog[0]!.details, { discardReason: "poison_message" });
 });
 
 test("DlqService markRetryExhausted sets retryExhaustedAt and transitions to discarded", () => {
   const service = new DlqService();
-  const record = service.enqueue({ sourceEventId: "evt_1", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  const record = service.enqueue({ sourceEventId: "evt_1", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
   service.scheduleRetry(record.deadLetterId, 30_000);
 
   const exhausted = service.markRetryExhausted(record.deadLetterId, "operator_3");
@@ -131,7 +135,7 @@ test("DlqService markRetryExhausted sets retryExhaustedAt and transitions to dis
 
 test("DlqService scheduleRetry increments retryCount and sets nextRetryAt with exponential backoff", () => {
   const service = new DlqService();
-  const record = service.enqueue({ sourceEventId: "evt_1", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  const record = service.enqueue({ sourceEventId: "evt_1", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
 
   const first = service.scheduleRetry(record.deadLetterId);
   assert.equal(first.retryCount, 1);
@@ -147,7 +151,7 @@ test("DlqService scheduleRetry increments retryCount and sets nextRetryAt with e
 
 test("DlqService scheduleRetry accepts explicit delayMs", () => {
   const service = new DlqService();
-  const record = service.enqueue({ sourceEventId: "evt_1", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  const record = service.enqueue({ sourceEventId: "evt_1", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
 
   const retrying = service.scheduleRetry(record.deadLetterId, 60_000);
 
@@ -157,16 +161,37 @@ test("DlqService scheduleRetry accepts explicit delayMs", () => {
 
 test("DlqService scheduleRetry throws for invalid delayMs", () => {
   const service = new DlqService();
-  const record = service.enqueue({ sourceEventId: "evt_1", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  const record = service.enqueue({ sourceEventId: "evt_1", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
 
   assert.throws(() => service.scheduleRetry(record.deadLetterId, -1), /non-negative finite/);
   assert.throws(() => service.scheduleRetry(record.deadLetterId, NaN), /non-negative finite/);
   assert.throws(() => service.scheduleRetry(record.deadLetterId, Infinity), /non-negative finite/);
 });
 
+test("DlqService scheduleRetry caps exponential backoff to a bounded delay", () => {
+  const service = new DlqService();
+  const record = service.enqueue({
+    sourceEventId: "evt_cap",
+    eventType: "platform.test",
+    consumerId: "c1",
+    errorCode: "e1",
+    payloadJson: "{}",
+  });
+  const mutable = service.get(record.deadLetterId)!;
+  mutable.retryCount = 40;
+  mutable.maxRetries = 100;
+
+  const startedAt = Date.now();
+  const retried = service.scheduleRetry(record.deadLetterId);
+  const delayMs = Date.parse(retried.nextRetryAt!) - startedAt;
+
+  assert.ok(delayMs <= 6 * 60 * 60 * 1000 + 5_000);
+  assert.ok(delayMs >= 6 * 60 * 60 * 1000 - 5_000);
+});
+
 test("DlqService cancelRetry clears nextRetryAt and returns to pending", () => {
   const service = new DlqService();
-  const record = service.enqueue({ sourceEventId: "evt_1", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  const record = service.enqueue({ sourceEventId: "evt_1", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
   service.scheduleRetry(record.deadLetterId, 30_000);
 
   const cancelled = service.cancelRetry(record.deadLetterId, "operator_cancel");
@@ -183,6 +208,7 @@ test("DlqService after 3 retries and markRetryExhausted the record is discarded 
   const service = new DlqService();
   const record = service.enqueue({
     sourceEventId: "evt_retry_chain",
+    eventType: "platform.test",
     consumerId: "dlq-consumer",
     errorCode: "delivery.timeout",
     payloadJson: '{"important":true}',
@@ -207,7 +233,7 @@ test("DlqService after 3 retries and markRetryExhausted the record is discarded 
 
 test("DlqService retry count reaches maxRetries (5) after 5 scheduleRetry calls", () => {
   const service = new DlqService();
-  const record = service.enqueue({ sourceEventId: "evt_max", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  const record = service.enqueue({ sourceEventId: "evt_max", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
 
   for (let i = 1; i <= 5; i++) {
     const result = service.scheduleRetry(record.deadLetterId, 1_000);
@@ -221,7 +247,7 @@ test("DlqService retry count reaches maxRetries (5) after 5 scheduleRetry calls"
 
 test("DlqService after exhausting retries can be resolved or discarded", () => {
   const service = new DlqService();
-  const record = service.enqueue({ sourceEventId: "evt_exhaust", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  const record = service.enqueue({ sourceEventId: "evt_exhaust", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
 
   for (let i = 0; i < 3; i++) {
     service.scheduleRetry(record.deadLetterId, 1_000);
@@ -237,7 +263,7 @@ test("DlqService after exhausting retries can be resolved or discarded", () => {
 
 test("DlqService setFailureCategory updates failureCategory", () => {
   const service = new DlqService();
-  const record = service.enqueue({ sourceEventId: "evt_cat", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  const record = service.enqueue({ sourceEventId: "evt_cat", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
 
   const updated = service.setFailureCategory(record.deadLetterId, "permanent", "cat_operator");
 
@@ -255,7 +281,7 @@ test("DlqService setFailureCategory throws for unknown id", () => {
 
 test("DlqService setReason updates reason field", () => {
   const service = new DlqService();
-  const record = service.enqueue({ sourceEventId: "evt_reason", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  const record = service.enqueue({ sourceEventId: "evt_reason", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
 
   const updated = service.setReason(record.deadLetterId, "downstream service returned 503");
 
@@ -266,7 +292,7 @@ test("DlqService setReason updates reason field", () => {
 
 test("DlqService logOperatorAction appends to operatorActionLog", () => {
   const service = new DlqService();
-  const record = service.enqueue({ sourceEventId: "evt_log", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  const record = service.enqueue({ sourceEventId: "evt_log", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
 
   service.logOperatorAction(record.deadLetterId, "investigation_started", "inv_operator", { note: "checking logs" });
   service.logOperatorAction(record.deadLetterId, "mitigation_applied", "mit_operator");
@@ -284,9 +310,9 @@ test("DlqService logOperatorAction appends to operatorActionLog", () => {
 
 test("DlqService summarize returns correct counts and pendingConsumers", () => {
   const service = new DlqService();
-  service.enqueue({ sourceEventId: "evt_1", consumerId: "consumer-x", errorCode: "e1", payloadJson: "{}" });
-  service.enqueue({ sourceEventId: "evt_2", consumerId: "consumer-y", errorCode: "e2", payloadJson: "{}" });
-  service.enqueue({ sourceEventId: "evt_3", consumerId: "consumer-x", errorCode: "e3", payloadJson: "{}" });
+  service.enqueue({ sourceEventId: "evt_1", eventType: "platform.test", consumerId: "consumer-x", errorCode: "e1", payloadJson: "{}" });
+  service.enqueue({ sourceEventId: "evt_2", eventType: "platform.test", consumerId: "consumer-y", errorCode: "e2", payloadJson: "{}" });
+  service.enqueue({ sourceEventId: "evt_3", eventType: "platform.test", consumerId: "consumer-x", errorCode: "e3", payloadJson: "{}" });
 
   const summary = service.summarize();
 
@@ -301,8 +327,8 @@ test("DlqService summarize returns correct counts and pendingConsumers", () => {
 
 test("DlqService summarize tracks oldestPendingAt and maxRetryCount", () => {
   const service = new DlqService();
-  const first = service.enqueue({ sourceEventId: "evt_old", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
-  service.enqueue({ sourceEventId: "evt_new", consumerId: "c1", errorCode: "e2", payloadJson: "{}" });
+  const first = service.enqueue({ sourceEventId: "evt_old", eventType: "platform.test", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+  service.enqueue({ sourceEventId: "evt_new", eventType: "platform.test", consumerId: "c1", errorCode: "e2", payloadJson: "{}" });
   service.scheduleRetry(first.deadLetterId, 30_000);
   service.scheduleRetry(first.deadLetterId, 30_000);
 
@@ -320,6 +346,7 @@ test("DlqService payloadJson hash chain integrity is verifiable via SHA-256", ()
 
   const record = service.enqueue({
     sourceEventId: "evt_chain",
+    eventType: "platform.test",
     consumerId: "hash-chain-consumer",
     errorCode: "delivery.timeout",
     payloadJson: payload,
@@ -340,6 +367,7 @@ test("DlqService operatorActionLog entries have verifiable hash chain", () => {
   const service = new DlqService();
   const record = service.enqueue({
     sourceEventId: "evt_audit",
+    eventType: "platform.test",
     consumerId: "audit-consumer",
     errorCode: "e1",
     payloadJson: "{}",
@@ -377,6 +405,7 @@ test("DlqService retry transitions maintain hash chain for retryCount", () => {
   const service = new DlqService();
   const record = service.enqueue({
     sourceEventId: "evt_retry_hash",
+    eventType: "platform.test",
     consumerId: "c1",
     errorCode: "e1",
     payloadJson: '{"retry":true}',
@@ -441,4 +470,29 @@ test("DlqService throws ValidationError for unknown deadLetterId on logOperatorA
     () => service.logOperatorAction("unknown_id", "investigation_started", "op_1"),
     /not found/,
   );
+});
+test("DlqService deduplicates unresolved entries by sourceEventId and consumerId", () => {
+  const service = new DlqService();
+  const first = service.enqueue({
+    sourceEventId: "evt_dedupe",
+    eventType: "platform.test",
+    consumerId: "consumer-a",
+    errorCode: "delivery.timeout",
+    payloadJson: "{}",
+  });
+  const second = service.enqueue({
+    sourceEventId: "evt_dedupe",
+    eventType: "platform.test",
+    consumerId: "consumer-a",
+    errorCode: "delivery.retry",
+    errorMessage: "retry failed",
+    payloadJson: "{}",
+    reason: "downstream still unavailable",
+  });
+
+  assert.equal(second.deadLetterId, first.deadLetterId);
+  assert.equal(second.errorCode, "delivery.retry");
+  assert.equal(second.errorMessage, "retry failed");
+  assert.equal(second.reason, "downstream still unavailable");
+  assert.equal(service.listAll().length, 1);
 });

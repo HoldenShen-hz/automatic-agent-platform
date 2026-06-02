@@ -1,6 +1,6 @@
 {
-  "configVersion": "v4.3",
-  "configSchemaVersion": "v4.3",
+  "configVersion": "bundle-derived",
+  "configSchemaVersion": "bundle-derived",
   "maxConcurrentTasks": 4,
   "defaultTaskTimeoutMs": 300000,
   "defaultStepTimeoutMs": 120000,

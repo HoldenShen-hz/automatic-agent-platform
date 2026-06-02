@@ -24,7 +24,7 @@ function createSchedulerTestHarness(ctx: ReturnType<typeof createIntegrationCont
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       tenantId: null,
       title: "Scheduler integration test task",
       status: "in_progress",
@@ -71,7 +71,7 @@ function createSchedulerTestHarness(ctx: ReturnType<typeof createIntegrationCont
 
     ctx.store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId,
       currentStepIndex: 0,
       status: "running",
@@ -454,7 +454,7 @@ test("LongRunningWorkflowService sweeper handles multiple suspensions with mixed
         id: taskId2,
         parentId: null,
         rootId: taskId2,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Second task for sweep test",
         status: "in_progress",
@@ -473,7 +473,7 @@ test("LongRunningWorkflowService sweeper handles multiple suspensions with mixed
 
       ctx.store.insertWorkflowState({
         taskId: taskId2,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "sweep_workflow",
         currentStepIndex: 0,
         status: "running",

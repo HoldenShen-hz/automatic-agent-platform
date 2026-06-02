@@ -97,6 +97,7 @@ export interface ReplaySandboxPolicy {
 
 export interface ReplayAccessContext {
   readonly actorId: string;
+  readonly tenantId?: string;
   readonly environment: "prod" | "staging" | "dev";
   readonly mfaVerified: boolean;
   readonly sessionExpiresAt: string | null;
@@ -121,6 +122,7 @@ function readVariableValue(value: unknown): unknown {
 function defaultReplayAccessContext(): ReplayAccessContext {
   return {
     actorId: "local_debugger",
+    tenantId: "local",
     environment: "dev",
     mfaVerified: false,
     sessionExpiresAt: null,
@@ -142,9 +144,10 @@ export class TimeTravelDebugService {
   private readonly maxSessions: number;
   private readonly maxEventsPerExecution: number;
   private readonly maxSnapshotsPerSession: number;
-  private readonly sessions = new Map<string, TimeTravelDebugSession>();
-  private readonly eventStore = new Map<string, ReadonlyArray<TimeTravelDebugEvent>>();
-  private readonly snapshots = new Map<string, DebugSnapshot[]>();
+  private readonly sessionsByTenant = new Map<string, Map<string, TimeTravelDebugSession>>();
+  private readonly eventStoreByTenant = new Map<string, Map<string, ReadonlyArray<TimeTravelDebugEvent>>>();
+  private readonly snapshotsByTenant = new Map<string, Map<string, DebugSnapshot[]>>();
+  private readonly archivedSessions = new Map<string, TimeTravelDebugSession>();
 
   public constructor(options: TimeTravelDebugServiceOptions = {}) {
     this.maxSessions = options.maxSessions ?? 100;
@@ -160,8 +163,11 @@ export class TimeTravelDebugService {
   ): TimeTravelDebugSession {
     this.assertReplayAccess(accessContext);
     this.evictOldestSessionIfNeeded();
-    if (!this.eventStore.has(executionId)) {
-      this.eventStore.set(executionId, []);
+    const tenantId = resolveTenantId(accessContext);
+    const tenantSessions = getOrCreateTenantBucket(this.sessionsByTenant, tenantId);
+    const tenantEventStore = getOrCreateTenantBucket(this.eventStoreByTenant, tenantId);
+    if (!tenantEventStore.has(executionId)) {
+      tenantEventStore.set(executionId, []);
     }
     const session: TimeTravelDebugSession = {
       sessionId: newId("ttdebug"),
@@ -176,32 +182,40 @@ export class TimeTravelDebugService {
       startedAt: nowIso(),
       endedAt: null,
     };
-    this.sessions.set(session.sessionId, session);
+    tenantSessions.set(session.sessionId, session);
     return session;
   }
 
   public setBreakpoints(sessionId: string, stepIds: readonly string[]): void {
-    const session = this.sessions.get(sessionId);
+    const sessionRecord = this.findSessionRecord(sessionId);
+    const session = sessionRecord?.session;
     if (!session) return;
-    this.sessions.set(sessionId, {
+    sessionRecord.tenantSessions.set(sessionId, {
       ...session,
       breakpoints: [...stepIds],
     });
   }
 
-  public loadEventStore(executionId: string, events: readonly TimeTravelDebugEvent[]): void {
-    const previousEvents = this.eventStore.get(executionId) ?? [];
+  public loadEventStore(
+    executionId: string,
+    events: readonly TimeTravelDebugEvent[],
+    accessContext: ReplayAccessContext = defaultReplayAccessContext(),
+  ): void {
+    this.assertReplayAccess(accessContext);
+    const tenantId = resolveTenantId(accessContext);
+    const tenantEventStore = getOrCreateTenantBucket(this.eventStoreByTenant, tenantId);
+    const previousEvents = tenantEventStore.get(executionId) ?? [];
     const boundedEvents = events.length > this.maxEventsPerExecution
       ? events.slice(events.length - this.maxEventsPerExecution)
       : [...events];
-    this.eventStore.set(executionId, boundedEvents);
+    tenantEventStore.set(executionId, boundedEvents);
     const truncatedCount = Math.max(0, previousEvents.length - boundedEvents.length);
     if (truncatedCount > 0) {
-      for (const [sessionId, session] of this.sessions.entries()) {
+      for (const [sessionId, session] of getOrCreateTenantBucket(this.sessionsByTenant, tenantId).entries()) {
         if (session.executionId !== executionId) {
           continue;
         }
-        this.sessions.set(sessionId, {
+        getOrCreateTenantBucket(this.sessionsByTenant, tenantId).set(sessionId, {
           ...session,
           currentEventIndex: Math.max(0, session.currentEventIndex - truncatedCount),
         });
@@ -210,11 +224,12 @@ export class TimeTravelDebugService {
   }
 
   public replayToCursor(sessionId: string, toEventIndex: number): ReplayState | null {
-    const session = this.sessions.get(sessionId);
+    const sessionRecord = this.findSessionRecord(sessionId);
+    const session = sessionRecord?.session;
     if (!session) return null;
     this.assertReplayAccess(session.accessContext);
 
-    const events = this.eventStore.get(session.executionId) ?? [];
+    const events = sessionRecord.tenantEventStore.get(session.executionId) ?? [];
     const currentIndex = session.currentEventIndex;
 
     if (toEventIndex === currentIndex) {
@@ -239,11 +254,12 @@ export class TimeTravelDebugService {
   }
 
   public replayStep(sessionId: string): ReplayState | null {
-    const session = this.sessions.get(sessionId);
+    const sessionRecord = this.findSessionRecord(sessionId);
+    const session = sessionRecord?.session;
     if (!session) return null;
     this.assertReplayAccess(session.accessContext);
 
-    const events = this.eventStore.get(session.executionId) ?? [];
+    const events = sessionRecord.tenantEventStore.get(session.executionId) ?? [];
     if (session.currentEventIndex >= events.length) {
       return this.buildReplayState(session, session.currentEventIndex, session.currentEventIndex, false);
     }
@@ -263,11 +279,12 @@ export class TimeTravelDebugService {
   }
 
   public jumpToStep(sessionId: string, stepId: string): ReplayState | null {
-    const session = this.sessions.get(sessionId);
+    const sessionRecord = this.findSessionRecord(sessionId);
+    const session = sessionRecord?.session;
     if (!session) return null;
     this.assertReplayAccess(session.accessContext);
 
-    const events = this.eventStore.get(session.executionId) ?? [];
+    const events = sessionRecord.tenantEventStore.get(session.executionId) ?? [];
     const targetIndex = events.findIndex((e) => readEventStepId(e) === stepId);
     if (targetIndex === -1) return null;
     this.assertReplayEventAllowed(session, events[targetIndex]!);
@@ -278,15 +295,23 @@ export class TimeTravelDebugService {
   }
 
   public getSnapshot(sessionId: string, stepId: string): DebugSnapshot | null {
-    const sessionSnapshots = this.snapshots.get(sessionId) ?? [];
+    const sessionRecord = this.findSessionRecord(sessionId);
+    const session = sessionRecord?.session;
+    if (session == null) {
+      return null;
+    }
+    this.assertReplayAccess(session.accessContext);
+    const sessionSnapshots = sessionRecord.tenantSnapshots.get(sessionId) ?? [];
     return sessionSnapshots.find((s) => s.stepId === stepId) ?? null;
   }
 
   public getVariableState(sessionId: string, atEventIndex: number): readonly VariableState[] {
-    const session = this.sessions.get(sessionId);
+    const sessionRecord = this.findSessionRecord(sessionId);
+    const session = sessionRecord?.session;
     if (!session) return [];
+    this.assertReplayAccess(session.accessContext);
 
-    const events = this.eventStore.get(session.executionId) ?? [];
+    const events = sessionRecord.tenantEventStore.get(session.executionId) ?? [];
     // R21-19 fix: Use map to deduplicate, keeping only the latest value per variable name
     const variableMap = new Map<string, VariableState>();
 
@@ -313,12 +338,15 @@ export class TimeTravelDebugService {
   }
 
   public endSession(sessionId: string): void {
-    const session = this.sessions.get(sessionId);
+    const sessionRecord = this.findSessionRecord(sessionId);
+    const session = sessionRecord?.session;
     if (!session) return;
-    this.sessions.set(sessionId, {
+    const endedSession = {
       ...session,
       endedAt: nowIso(),
-    });
+    };
+    sessionRecord.tenantSessions.set(sessionId, endedSession);
+    this.archivedSessions.set(sessionId, endedSession);
   }
 
   private captureSnapshot(session: TimeTravelDebugSession, event: TimeTravelDebugEvent, eventIndex: number): void {
@@ -336,9 +364,10 @@ export class TimeTravelDebugService {
       eventIndex,
     };
 
-    const existing = this.snapshots.get(session.sessionId) ?? [];
+    const tenantSnapshots = getOrCreateTenantBucket(this.snapshotsByTenant, resolveTenantId(session.accessContext));
+    const existing = tenantSnapshots.get(session.sessionId) ?? [];
     const nextSnapshots = [...existing, snapshot];
-    this.snapshots.set(
+    tenantSnapshots.set(
       session.sessionId,
       nextSnapshots.length > this.maxSnapshotsPerSession
         ? nextSnapshots.slice(nextSnapshots.length - this.maxSnapshotsPerSession)
@@ -352,7 +381,7 @@ export class TimeTravelDebugService {
     toEventIndex: number,
     reachedBreakpoint: boolean,
   ): ReplayState {
-    const events = this.eventStore.get(session.executionId) ?? [];
+    const events = getOrCreateTenantBucket(this.eventStoreByTenant, resolveTenantId(session.accessContext)).get(session.executionId) ?? [];
     const normalizedToEventIndex = toEventIndex <= fromEventIndex ? fromEventIndex + 1 : toEventIndex;
     const variables = this.getVariableState(session.sessionId, normalizedToEventIndex);
 
@@ -371,24 +400,32 @@ export class TimeTravelDebugService {
   }
 
   private evictOldestSessionIfNeeded(): void {
-    if (this.sessions.size < this.maxSessions) {
+    const activeSessions = [...this.sessionsByTenant.values()].flatMap((tenantSessions) => [...tenantSessions.values()]);
+    if (activeSessions.length < this.maxSessions) {
       return;
     }
-    const oldest = [...this.sessions.values()]
+    const oldest = activeSessions
       .sort((left, right) => left.startedAt.localeCompare(right.startedAt))[0];
     if (!oldest) {
       return;
     }
+    const tenantId = resolveTenantId(oldest.accessContext);
+    const tenantSessions = getOrCreateTenantBucket(this.sessionsByTenant, tenantId);
+    const tenantSnapshots = getOrCreateTenantBucket(this.snapshotsByTenant, tenantId);
+    const tenantEventStore = getOrCreateTenantBucket(this.eventStoreByTenant, tenantId);
     const executionIdToEvict = oldest.executionId;
-    // Check if any OTHER session still references this executionId BEFORE deleting
-    const stillUsed = [...this.sessions.values()].some(
-      (s) => s !== oldest && s.executionId === executionIdToEvict,
+    const stillUsed = [...tenantSessions.values()].some(
+      (s) => s.sessionId !== oldest.sessionId && s.executionId === executionIdToEvict,
     );
-    this.sessions.delete(oldest.sessionId);
-    this.snapshots.delete(oldest.sessionId);
-    // Clean up eventStore only if no other session references this executionId
+    const archivedSession = {
+      ...oldest,
+      endedAt: nowIso(),
+    };
+    this.archivedSessions.set(oldest.sessionId, archivedSession);
+    tenantSessions.delete(oldest.sessionId);
+    tenantSnapshots.delete(oldest.sessionId);
     if (!stillUsed) {
-      this.eventStore.delete(executionIdToEvict);
+      tenantEventStore.delete(executionIdToEvict);
     }
   }
 
@@ -399,7 +436,7 @@ export class TimeTravelDebugService {
     if (!accessContext.permissions.includes("time_travel:replay")) {
       throw new Error(`time_travel_debug.permission_denied:${accessContext.actorId}`);
     }
-    if (accessContext.sessionExpiresAt != null && accessContext.sessionExpiresAt <= nowIso()) {
+    if (accessContext.sessionExpiresAt != null && Date.parse(accessContext.sessionExpiresAt) <= Date.now()) {
       throw new Error(`time_travel_debug.session_expired:${accessContext.actorId}`);
     }
     if (accessContext.environment === "prod") {
@@ -437,6 +474,27 @@ export class TimeTravelDebugService {
     }
     throw new Error(`time_travel_debug.replay_side_effect_blocked:${effectType}`);
   }
+
+  private findSessionRecord(sessionId: string): {
+    readonly session: TimeTravelDebugSession;
+    readonly tenantSessions: Map<string, TimeTravelDebugSession>;
+    readonly tenantEventStore: Map<string, ReadonlyArray<TimeTravelDebugEvent>>;
+    readonly tenantSnapshots: Map<string, DebugSnapshot[]>;
+  } | null {
+    for (const [tenantId, tenantSessions] of this.sessionsByTenant.entries()) {
+      const session = tenantSessions.get(sessionId);
+      if (session == null) {
+        continue;
+      }
+      return {
+        session,
+        tenantSessions,
+        tenantEventStore: getOrCreateTenantBucket(this.eventStoreByTenant, tenantId),
+        tenantSnapshots: getOrCreateTenantBucket(this.snapshotsByTenant, tenantId),
+      };
+    }
+    return null;
+  }
 }
 
 function describeVariableType(value: unknown): string {
@@ -447,4 +505,18 @@ function describeVariableType(value: unknown): string {
     return "array";
   }
   return typeof value;
+}
+
+function getOrCreateTenantBucket<TValue>(store: Map<string, Map<string, TValue>>, tenantId: string): Map<string, TValue> {
+  const normalizedTenantId = tenantId.trim();
+  let bucket = store.get(normalizedTenantId);
+  if (bucket == null) {
+    bucket = new Map<string, TValue>();
+    store.set(normalizedTenantId, bucket);
+  }
+  return bucket;
+}
+
+function resolveTenantId(accessContext: ReplayAccessContext): string {
+  return accessContext.tenantId?.trim().length ? accessContext.tenantId.trim() : "local";
 }

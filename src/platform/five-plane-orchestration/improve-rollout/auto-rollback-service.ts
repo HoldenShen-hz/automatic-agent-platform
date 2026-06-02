@@ -73,6 +73,24 @@ export class AutoRollbackService {
    * @returns AutoRollbackDecision with rollback flag and reason codes
    */
   public evaluate(rollout: RolloutRecord, metrics: RolloutMetrics): AutoRollbackDecision {
+    const decision = this.buildDecision(metrics);
+    if (!decision.evaluable || !decision.rollback) {
+      return decision;
+    }
+    this.executeRollbackSync(rollout, decision.reasonCodes);
+    return decision;
+  }
+
+  public async evaluateAsync(rollout: RolloutRecord, metrics: RolloutMetrics): Promise<AutoRollbackDecision> {
+    const decision = this.buildDecision(metrics);
+    if (!decision.evaluable || !decision.rollback) {
+      return decision;
+    }
+    await this.executeRollbackAsync(rollout, decision.reasonCodes);
+    return decision;
+  }
+
+  private buildDecision(metrics: RolloutMetrics): AutoRollbackDecision {
     const reasonCodes: string[] = [];
     if (metrics.requestCount < this.config.minimumRequestCount) {
       return {
@@ -95,15 +113,32 @@ export class AutoRollbackService {
     if ((metrics.p99LatencyMs / baselineLatency) > this.config.maxLatencyMultiplier) {
       reasonCodes.push("rollout.latency_multiplier_exceeded");
     }
-    const shouldRollback = reasonCodes.length > 0;
-    // R23-44 fix: If rollbackHandler is provided and rollback is indicated, execute rollback
-    if (shouldRollback && this.rollbackHandler) {
-      this.rollbackHandler(rollout, reasonCodes);
-    }
     return {
       evaluable: true,
-      rollback: shouldRollback,
+      rollback: reasonCodes.length > 0,
       reasonCodes,
     };
   }
+
+  private executeRollbackSync(rollout: RolloutRecord, reasonCodes: string[]): void {
+    if (!this.rollbackHandler) {
+      return;
+    }
+    const result = this.rollbackHandler(rollout, reasonCodes);
+    if (isPromiseLike(result)) {
+      void result.catch(() => undefined);
+      throw new Error("auto_rollback.async_handler_requires_evaluate_async");
+    }
+  }
+
+  private async executeRollbackAsync(rollout: RolloutRecord, reasonCodes: string[]): Promise<void> {
+    if (!this.rollbackHandler) {
+      return;
+    }
+    await this.rollbackHandler(rollout, reasonCodes);
+  }
+}
+
+function isPromiseLike(value: Promise<void> | void): value is Promise<void> {
+  return value instanceof Promise;
 }

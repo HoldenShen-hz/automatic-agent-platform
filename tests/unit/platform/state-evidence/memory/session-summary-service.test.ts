@@ -143,3 +143,17 @@ test("SessionSummaryService.createSummary stores in mock store", () => {
   assert.ok(stored !== null);
   assert.equal(stored?.id, result.id);
 });
+
+test("SessionSummaryService.createSummary rejects oversized list payloads", () => {
+  const store = createMockStore();
+  const service = new SessionSummaryService(store);
+
+  assert.throws(
+    () => service.createSummary({
+      sessionId: "session_limit",
+      summaryText: "Summary",
+      keyDecisions: Array.from({ length: 51 }, (_, index) => `decision_${index}`),
+    }),
+    /session_summary\.list_limit_exceeded/,
+  );
+});

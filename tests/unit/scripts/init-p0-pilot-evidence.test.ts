@@ -36,3 +36,19 @@ test("initP0PilotEvidence scaffolds all three P0 division template directories",
     rmSync(workspace, { recursive: true, force: true });
   }
 });
+
+test("initP0PilotEvidence rejects input roots outside the platform data directory", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-p0-init-invalid-root-"));
+  try {
+    assert.throws(
+      () => initModule.initP0PilotEvidence({
+        platformRoot: workspace,
+        inputRoot: join(tmpdir(), "outside-pilot-evidence"),
+        force: true,
+      }),
+      /pilot_evidence\.invalid_input_root/,
+    );
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});

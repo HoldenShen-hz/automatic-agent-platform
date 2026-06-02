@@ -254,7 +254,7 @@ export function scopeToArchitectureLayer(scope: string): string {
     case "evolution":
       return "meta";
     default:
-      return "semantic";
+      throw new Error(`memory.scope_unknown:${scope}`);
   }
 }
 
@@ -276,7 +276,7 @@ export function scopeToCanonicalMemoryLayer(scope: string): CanonicalMemoryArchi
     case "evolution":
       return "EvolutionMemory";
     default:
-      return "SemanticMemory";
+      throw new Error(`memory.scope_unknown:${scope}`);
   }
 }
 
@@ -307,10 +307,8 @@ export function getLayerTtlConfigByArchitectureLayer(architectureLayer: string):
 export function isMemoryStale(memory: MemoryRecord, nowMs = Date.now()): boolean {
   const config = getLayerTtlConfig(memory.scope as HierarchicalMemoryLayer);
 
-  // If no config found, use a default of 7 days
   if (!config) {
-    const createdAtMs = new Date(memory.createdAt).getTime();
-    return nowMs - createdAtMs > 7 * 24 * 3_600_000;
+    throw new Error(`memory.layer_ttl_config_missing:${memory.scope}`);
   }
 
   // If explicit expiresAt is set, use it
@@ -350,8 +348,8 @@ export function getEvictionPriority(memory: MemoryRecord): number {
       const trustWeights: Record<string, number> = {
         private_unverified: 0.2,
         team_reviewed: 0.5,
-        trusted: 1.0,
-        official: 0.75,
+        trusted: 0.8,
+        official: 0.9,
         authoritative: 1.0,
       };
       const trust = trustWeights[memory.sourceTrustLevel] ?? 0.5;
@@ -384,10 +382,9 @@ export function createContextTruncationReport(
   layer: HierarchicalMemoryLayer,
   evictedMemories: MemoryRecord[],
   reason: "lru_eviction" | "stale_expired" | "size_limit_exceeded" | "manual_truncation",
+  retainedMemoriesCount = 0,
 ): ContextTruncationReport {
-  // Estimate size: each memory record is roughly 1-2KB for content + metadata
-  const estimatedBytesPerMemory = 1500;
-  const evictedSizeBytes = evictedMemories.length * estimatedBytesPerMemory;
+  const evictedSizeBytes = evictedMemories.reduce((total, memory) => total + estimateMemoryRecordBytes(memory), 0);
 
   return {
     layer,
@@ -407,7 +404,7 @@ export function createContextTruncationReport(
       importanceScore: m.importanceScore,
     })),
     evictedSizeBytes,
-    retainedMemories: 0, // Not tracked in this simplified version
+    retainedMemories: Math.max(0, retainedMemoriesCount),
     totalEvicted: evictedMemories.length,
     truncationTimestamp: new Date().toISOString(),
   };
@@ -450,6 +447,10 @@ export interface EvictionOptions {
    * Per §29.2, compression requires loss report.
    */
   onTruncation?: (report: ContextTruncationReport) => void;
+}
+
+function estimateMemoryRecordBytes(memory: MemoryRecord): number {
+  return Buffer.byteLength(JSON.stringify(memory), "utf8");
 }
 
 /**

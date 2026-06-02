@@ -796,7 +796,9 @@ export class HarnessRuntimeService {
       }
 
       loop.recordIteration(estimateIterationCost(plannerOutput, generatorOutput, evaluatorOutput));
-      if (decision.action === "replan") {
+      if (decision.action === "retry_same_plan") {
+        loop.recordRetry();
+      } else if (decision.action === "replan") {
         loop.recordReplan();
       }
       const loopState = loop.getState();

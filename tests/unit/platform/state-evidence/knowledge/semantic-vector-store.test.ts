@@ -40,6 +40,49 @@ test("LocalHashSemanticVectorStore upserts and queries semantic candidates", asy
   assert.ok(candidates.some((candidate) => candidate.knowledgeRef === "knowledge:chunk_build"));
 });
 
+test("LocalHashSemanticVectorStore exposes unsupported-embedding telemetry and evicts oldest records", async () => {
+  const store = new LocalHashSemanticVectorStore({ maxRecords: 1 });
+  await store.upsertChunks([
+    {
+      knowledgeRef: "knowledge:bad",
+      chunkId: "bad",
+      documentId: "document_bad",
+      namespace: "shared/common",
+      embeddingId: null,
+      embedding: null,
+      updatedAt: "2026-04-15T00:00:00.000Z",
+    },
+    {
+      knowledgeRef: "knowledge:old",
+      chunkId: "old",
+      documentId: "document_old",
+      namespace: "shared/common",
+      embeddingId: "ok",
+      embedding: buildEmbedding(1),
+      updatedAt: "2026-04-15T00:00:00.000Z",
+    },
+    {
+      knowledgeRef: "knowledge:new",
+      chunkId: "new",
+      documentId: "document_new",
+      namespace: "shared/common",
+      embeddingId: "ok",
+      embedding: buildEmbedding(2),
+      updatedAt: "2026-04-16T00:00:00.000Z",
+    },
+  ]);
+
+  const candidates = await store.querySimilar({
+    query: "build retry",
+    namespace: "shared/common",
+    minSimilarity: 0,
+  });
+
+  assert.equal(store.inspect().details.skippedUnsupportedEmbeddings, 1);
+  assert.equal(candidates.some((candidate) => candidate.knowledgeRef === "knowledge:old"), false);
+  assert.equal(candidates.some((candidate) => candidate.knowledgeRef === "knowledge:new"), true);
+});
+
 test("PgvectorSemanticVectorStore upserts records and executes vector similarity query", async () => {
   const executed: Array<{ sql: string; params: unknown[] }> = [];
   const queried: Array<{ sql: string; params: unknown[] }> = [];

@@ -1,72 +1,72 @@
 # Workflow IO Compatibility Precheck Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines workflow step 在实际运lines前的输入输出兼容预检规则。
+This contract defines the input / output compatibility precheck rules for workflow steps before actual execution.
 
-相关文档：
+Related documents:
 
 - `task_and_workflow_contract.md`
 - `idempotency_and_recovery_matrix_contract.md`
 - `tool_and_provider_execution_contract.md`
 
-## 2. 目标
+## 2. Goals
 
-Phase 1a / 1b 的最小预检目标is：
+The minimum precheck goals for Phase 1a / 1b are:
 
-- 尽早发现 step 间 key 缺失或命名inconsistent。
-- 在真正执lines前阻断明显的 schema 不兼容。
-- 把当前 deterministic rule-only 能力vs未来 semantic precondition 分开。
+- Discover missing keys or naming inconsistencies between steps as early as possible.
+- Block obvious schema incompatibilities before actual execution.
+- Separate the current deterministic rule-only capability from future semantic preconditions.
 
 ## 3. `WorkflowIoPrecheckResult`
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `workflow_id` | `string` | workflow ID |
-| `step_id` | `string` | 当前步骤 |
-| `stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | 当前闭环阶段 |
-| `compatible` | `boolean` | isno兼容 |
-| `missing_keys` | `string[]` | 缺失关键输入 |
-| `unexpected_keys` | `string[]` | 多余关键字段 |
-| `schema_version` | `string?` | 参vs比较的 schema 版本 |
-| `reason_code` | `string?` | 不兼容原因码 |
-| `checked_at` | `timestamp` | 检查time |
+| Field | Type | Description |
+| --- | --- | --- |
+| `workflow_id` | `string` | Workflow ID |
+| `step_id` | `string` | Current step |
+| `stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | Current loop stage |
+| `compatible` | `boolean` | Whether compatible |
+| `missing_keys` | `string[]` | Missing key inputs |
+| `unexpected_keys` | `string[]` | Extra key fields |
+| `schema_version` | `string?` | Schema version participating in comparison |
+| `reason_code` | `string?` | Incompatibility reason code |
+| `checked_at` | `timestamp` | Check time |
 
-## 4. 预检内容
+## 4. Precheck Content
 
-当前阶段最少检查：
+At least check at the current phase:
 
-- required key isno存在
-- 字段class型isnobelongs to允许集合
-- 上一步输出 schema version isnovs下一步声明兼容
-- references用的 tool / role isno可用
-- OAPEFLIR stage 转换isno合法
-- 若声明 `knowledge_namespace`，其 namespace isno存在且允许访问
-- 若声明 plugin / domain tool bundle references用，isno已注册且vs domain 匹配
+- whether required keys exist
+- whether field types belong to the allowed set
+- whether the previous step's output schema version is compatible with the next step's declaration
+- whether the referenced tool / role is available
+- whether the OAPEFLIR stage transition is legal
+- if `knowledge_namespace` is declared, whether the namespace exists and access is allowed
+- if a plugin / domain tool bundle reference is declared, whether it is registered and matches the domain
 
-当前不要求：
+Currently not required:
 
-- 自然语言语义isno真正“理解一致”
-- 复杂跨步业务规则推理
+- whether the natural language semantics truly "understand consistently"
+- complex cross-step business rule reasoning
 
-## 5. 执lines时机
+## 5. Execution Timing
 
-- workflow 创建后可做一iterations静态预检
-- step 真正执lines前必须再做一iterationsbased on当前上下文的dynamically预检
-- 恢复执lines时，若输入快照已变化，必须重新预检
+- After workflow creation, a static precheck can be performed once
+- A dynamic precheck based on the current context must be performed again before the step is actually executed
+- When resuming execution, if the input snapshot has changed, the precheck must be re-performed
 
-## 6. failed语义
+## 6. Failure Semantics
 
-- 不兼容应返回 `validation.schema_mismatch`
-- 缺少required key 应返回 `validation.invalid_input`
-- 预检failed不得as执lines阶段错误
-- stage 非法转换应返回稳定 reason code，例如 `validation.invalid_stage_transition`
+- Incompatibility should return `validation.schema_mismatch`
+- Missing required keys should return `validation.invalid_input`
+- Precheck failure must not be disguised as an execution-stage error
+- Illegal stage transition should return a stable reason code, e.g., `validation.invalid_stage_transition`
 
-## 7. vs precondition 的边界
+## 7. Boundary with Precondition
 
-- 本 contract 只覆盖 deterministic rule-only 检查
-- semantic precondition belongs to后续增强能力，不得在 Phase 1a / 1b 假装已可用
+- This contract only covers deterministic rule-only checks
+- Semantic precondition belongs to subsequent enhancement capabilities, and must not be pretended to be available in Phase 1a / 1b
 
-## 8. 收口Conclusion
+## 8. Closure Conclusion
 
-workflow IO 预检的目标不is做到“完全聪明”，而is把最常见、最便宜可判定的兼容Issue拦在运lines前。
+The goal of workflow IO precheck is not to be "completely smart", but to block the most common and cheapest-to-determine compatibility issues before execution.

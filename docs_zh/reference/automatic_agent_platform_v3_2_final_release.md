@@ -57,9 +57,9 @@
 
 | 本文治理分组 | 当前 canonical family / division 对照 | 说明 |
 |---|---|---|
-| Engineering | `engineering`、`data`、`operations` 中与交付相关的 `coding`、`data-engineering`、`devops`、`engineering_ops`、`quality-assurance` | 这里只是治理协同面，不改变各 division 在 catalog 中的 canonical family |
+| Engineering | `engineering`、`data`、`operations` 中与交付相关的 `coding`、`data-engineering`、`devops`、`engineering-ops`、`quality-assurance` | 这里只是治理协同面，不改变各 division 在 catalog 中的 canonical family |
 | Knowledge / Research | `knowledge`、`research`、`analytics` 下的 `knowledge-base`、`academic-research`、`industry-research`、`research`、`analytics` | `Knowledge` 与 `Research` 在运行时仍是分开的 catalog family |
-| Enterprise Ops | `customer-ops`、`operations`、`delivery`、`people` 下的 `customer-service`、`support`、`user-operations`、`project-management`、部分 `operations` division | 只能按场景聚合，不能把 `engineering_ops` / `general_ops` / `operations` / `it-operations` 合并成一个 machine family |
+| Enterprise Ops | `customer-ops`、`operations`、`delivery`、`people` 下的 `customer-service`、`support`、`user-operations`、`project-management`、部分 `operations` division | 只能按场景聚合，不能把 `engineering-ops` / `general-ops` / `operations` / `it-operations` 合并成一个 machine family |
 | GTM / Content | `growth`、`content`、`commerce` 下的 `advertising`、`content`、`ecommerce` | 仅表示业务治理联动面 |
 | Creative / Production | `product`、`media`、部分 `content` 下的 `design`、`live-streaming` 等 | 不新增或替换现有 product/media family 定义 |
 | Regulated | `legal`、`finance`、`healthcare`、`security` | 表示高治理强约束集合，不是单一 runtime family |

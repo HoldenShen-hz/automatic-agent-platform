@@ -39,6 +39,7 @@ test("StrategyLearningService.learnSync processes mixed signal types", () => {
         taskId: "task-sls-mixed",
         learningType: "failure_pattern",
         evidence: { finishReason: "length", maxTokens: 1000, tokensUsed: 1000 },
+        evidenceRefs: ["evidence-failure-pattern"],
       }),
       makeSignal({
         learningSignalId: "sig-sls-mixed-2",
@@ -46,12 +47,14 @@ test("StrategyLearningService.learnSync processes mixed signal types", () => {
         learningType: "user_correction",
         valueSummary: "User corrected the approach",
         confidence: 0.95,
+        evidenceRefs: ["evidence-user-correction"],
       }),
       makeSignal({
         learningSignalId: "sig-sls-mixed-3",
         taskId: "task-sls-mixed",
         learningType: "recovery_playbook",
         valueSummary: "Recovery was successful",
+        evidenceRefs: ["evidence-recovery"],
       }),
     ];
 
@@ -152,6 +155,7 @@ test("StrategyLearningService.learnSync filters out failure_pattern signals from
         taskId: "task-sls-filter",
         learningType: "failure_pattern",
         evidence: { finishReason: "length", maxTokens: 1000, tokensUsed: 1000 },
+        evidenceRefs: ["evidence-filter"],
       }),
     ];
 
@@ -171,14 +175,15 @@ test("StrategyLearningService.learnSync processes large batch of signals", () =>
 
     const signals: LearningSignal[] = [];
     for (let i = 0; i < 20; i++) {
-      signals.push(
-        makeSignal({
-          learningSignalId: `sig-sls-large-${i}`,
-          taskId: "task-sls-large",
-          learningType: i % 2 === 0 ? "failure_pattern" : "user_correction",
-          evidence: i % 2 === 0 ? { finishReason: "length", maxTokens: 1000, tokensUsed: 1000 } : {},
-        }),
-      );
+        signals.push(
+          makeSignal({
+            learningSignalId: `sig-sls-large-${i}`,
+            taskId: "task-sls-large",
+            learningType: i % 2 === 0 ? "failure_pattern" : "user_correction",
+            evidence: i % 2 === 0 ? { finishReason: "length", maxTokens: 1000, tokensUsed: 1000 } : {},
+            evidenceRefs: [`evidence-large-${i}`],
+          }),
+        );
     }
 
     const results = service.learnSync(signals);
@@ -208,6 +213,28 @@ test("StrategyLearningService.learnSync assigns correct validatedBy field", () =
     for (const obj of results) {
       assert.ok(["evidence", "human_review"].includes(obj.validatedBy));
     }
+  } finally {
+    ctx.cleanup();
+  }
+});
+
+test("StrategyLearningService.learnSync does not treat sourceFeedbackId as evidence", () => {
+  const ctx = createSeededIntegrationContext("aa-sls-proof-");
+  try {
+    const service = new StrategyLearningService();
+
+    const results = service.learnSync([
+      makeSignal({
+        learningSignalId: "sig-sls-proof",
+        taskId: "task-sls-proof",
+        learningType: "user_correction",
+        valueSummary: "Needs explicit evidence refs",
+        evidenceRefs: [],
+        sourceSignalIds: [],
+      }),
+    ]);
+
+    assert.equal(results.length, 0);
   } finally {
     ctx.cleanup();
   }

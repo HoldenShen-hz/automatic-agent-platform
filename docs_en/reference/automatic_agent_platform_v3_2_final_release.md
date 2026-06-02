@@ -57,9 +57,9 @@ To avoid dual SOT, this document adopts the following bridging relationships:
 
 | This Document's Governance Grouping | Current Canonical Family / Division Reference | Note |
 |---|---|---|
-| Engineering | `engineering`, `data`, `operations` related `coding`, `data-engineering`, `devops`, `engineering_ops`, `quality-assurance` under delivery | This is only a governance coordination surface and does not change each division's canonical family in the catalog |
+| Engineering | `engineering`, `data`, `operations` related `coding`, `data-engineering`, `devops`, `engineering-ops`, `quality-assurance` under delivery | This is only a governance coordination surface and does not change each division's canonical family in the catalog |
 | Knowledge / Research | `knowledge`, `research`, `analytics` under `knowledge-base`, `academic-research`, `industry-research`, `research`, `analytics` | `Knowledge` and `Research` are still separate catalog families at runtime |
-| Enterprise Ops | `customer-ops`, `operations`, `delivery`, `people` under `customer-service`, `support`, `user-operations`, `project-management`, partial `operations` division | Can only aggregate by scenario; cannot merge `engineering_ops` / `general_ops` / `operations` / `it-operations` into one machine family |
+| Enterprise Ops | `customer-ops`, `operations`, `delivery`, `people` under `customer-service`, `support`, `user-operations`, `project-management`, partial `operations` division | Can only aggregate by scenario; cannot merge `engineering-ops` / `general-ops` / `operations` / `it-operations` into one machine family |
 | GTM / Content | `growth`, `content`, `commerce` under `advertising`, `content`, `ecommerce` | Only represents business governance coordination surface |
 | Creative / Production | `product`, `media`, partial `content` under `design`, `live-streaming`, etc. | Does not add or replace existing product/media family definitions |
 | Regulated | `legal`, `finance`, `healthcare`, `security` | Represents a high-governance constraint set, not a single runtime family |

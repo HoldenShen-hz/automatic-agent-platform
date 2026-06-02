@@ -210,7 +210,7 @@ export class MissionResolver {
     }
 
     const candidates = this.repository.listMissions(request.tenantId)
-      .filter((mission) => mission.status === "active" || mission.status === "paused" || mission.status === "draft")
+      .filter((mission) => mission.status === "active" || mission.status === "paused")
       .filter((mission) => request.domainId == null || mission.domainId == null || mission.domainId === request.domainId);
     const hinted = candidates.find((mission) =>
       mission.missionId === request.missionHint
@@ -229,10 +229,12 @@ export class MissionResolver {
       };
     }
 
-    if (request.createIfMissing === true || request.missionRef?.mode === "auto_resolve" && request.missionRef.allowAdHoc) {
+    const shouldCreateAdHoc = request.createIfMissing === true
+      || (request.missionRef?.mode === "auto_resolve" && request.missionRef.allowAdHoc === true);
+    if (shouldCreateAdHoc) {
       const mission = this.repository.createMission({
         tenantId: request.tenantId,
-        orgId: request.tenantId,
+        orgId: null,
         type: "ad_hoc",
         priority: request.riskClass === "low" ? "normal" : "high",
         title: `Ad hoc mission for ${request.confirmedTaskSpecId}`,
@@ -1300,7 +1302,7 @@ function isTenantTargetedByRollout(playbook: MissionPlaybook, tenantId: string):
   if (playbook.rollout.percentage <= 0) {
     return false;
   }
-  return stableBucket(`${playbook.playbookId}:${playbook.version}:${tenantId}`) < playbook.rollout.percentage;
+  return stableBucket(`${playbook.playbookId}:${playbook.version}:${tenantId}`) < normalizeRolloutPercentage(playbook.rollout.percentage);
 }
 
 function isPlaybookResolvable(
@@ -1376,6 +1378,16 @@ function stableBucket(input: string): number {
     value = (value * 31 + char.charCodeAt(0)) % 100;
   }
   return value;
+}
+
+function normalizeRolloutPercentage(percentage: number): number {
+  if (!Number.isFinite(percentage)) {
+    return 0;
+  }
+  if (percentage > 0 && percentage <= 1) {
+    return Math.min(100, Math.max(0, percentage * 100));
+  }
+  return Math.min(100, Math.max(0, percentage));
 }
 
 function resolutionAuditRef(

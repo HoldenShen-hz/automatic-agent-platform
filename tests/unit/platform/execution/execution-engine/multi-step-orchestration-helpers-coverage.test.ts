@@ -397,7 +397,7 @@ test("buildOapeflirPlannedWorkflow sets divisionId correctly [multi-step-orchest
   try {
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
-    assert.equal(result.plannedWorkflow.workflow.divisionId, "general_ops");
+    assert.equal(result.plannedWorkflow.workflow.divisionId, "general-ops");
   } finally {
     cleanupDb(dbPath);
   }
@@ -444,7 +444,7 @@ test("buildOapeflirPlannedWorkflow sets a default outputSchemaPath [multi-step-o
   try {
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
-    assert.ok(result.plannedWorkflow.executionSteps[0]!.outputSchemaPath?.endsWith("/divisions/general_ops/schemas/minimal-output.json"));
+    assert.ok(result.plannedWorkflow.executionSteps[0]!.outputSchemaPath?.endsWith("/divisions/general-ops/schemas/minimal-output.json"));
   } finally {
     cleanupDb(dbPath);
   }

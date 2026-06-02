@@ -29,11 +29,9 @@
  * @see Tier 1 audit contract: docs_zh/contracts/audit_event_integrity_contract.md
  */
 
-import { createHash, createHmac } from "node:crypto";
+import { createHmac } from "node:crypto";
 
 import type { EventRecord } from "../../contracts/types/domain.js";
-
-const DEVELOPMENT_AUDIT_INTEGRITY_HMAC_KEY = "audit-integrity-secret-key-32-bytes!";
 
 export interface AuditIntegrityConfig {
   hmacKey?: string | null;
@@ -42,14 +40,26 @@ export interface AuditIntegrityConfig {
 
 let auditIntegrityConfig: Required<AuditIntegrityConfig> = {
   hmacKey: null,
-  isProduction: false,
+  isProduction: true,
 };
+let auditIntegrityConfigLocked = false;
 
 export function configureAuditIntegrity(config: AuditIntegrityConfig): void {
-  auditIntegrityConfig = {
+  const nextConfig: Required<AuditIntegrityConfig> = {
     hmacKey: config.hmacKey?.trim() || null,
     isProduction: config.isProduction === true,
   };
+  if (
+    auditIntegrityConfigLocked
+    && (
+      auditIntegrityConfig.hmacKey !== nextConfig.hmacKey
+      || auditIntegrityConfig.isProduction !== nextConfig.isProduction
+    )
+  ) {
+    throw new Error("audit_integrity.config_locked");
+  }
+  auditIntegrityConfig = nextConfig;
+  auditIntegrityConfigLocked = true;
 }
 
 export function loadAuditIntegrityConfigFromEnv(env: NodeJS.ProcessEnv): AuditIntegrityConfig {
@@ -64,10 +74,19 @@ function resolveAuditIntegrityHmacKey(): string {
   if (configured != null && configured.length >= 32) {
     return configured;
   }
-  if (auditIntegrityConfig.isProduction) {
-    throw new Error("audit_integrity.hmac_key_required");
+  const envConfig = loadAuditIntegrityConfigFromEnv(process.env);
+  if (envConfig.hmacKey != null && envConfig.hmacKey.trim().length >= 32) {
+    auditIntegrityConfig = {
+      hmacKey: envConfig.hmacKey.trim(),
+      isProduction: envConfig.isProduction === true,
+    };
+    return auditIntegrityConfig.hmacKey;
   }
-  return DEVELOPMENT_AUDIT_INTEGRITY_HMAC_KEY;
+  throw new Error(
+    auditIntegrityConfig.isProduction
+      ? "audit_integrity.hmac_key_required"
+      : "audit_integrity.hmac_key_required_for_non_production",
+  );
 }
 
 /**
@@ -317,6 +336,10 @@ function hmacSha256(value: string): string {
  * @param value - String to hash
  * @returns Hex-encoded SHA-256 hash string
  */
-function sha256(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
+export function __dangerousResetAuditIntegrityConfigForTests(): void {
+  auditIntegrityConfig = {
+    hmacKey: null,
+    isProduction: true,
+  };
+  auditIntegrityConfigLocked = false;
 }

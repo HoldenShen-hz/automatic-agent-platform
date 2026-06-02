@@ -58,10 +58,11 @@ export class RiskEvaluationEngine {
    * Evaluate risk for a given request per §10.2 and §10.3
    */
   public evaluate(request: RiskEvaluationRequest): RiskEvaluationResult {
-    if (this.isLegacyRequest(request)) {
+    const schemaKind = this.detectSchemaKind(request);
+    if (schemaKind === "legacy") {
       return this.evaluateLegacy(request);
     }
-    if (this.isSixFactorRequest(request)) {
+    if (schemaKind === "six_factor") {
       return this.evaluateSixFactor(request);
     }
     const { factors } = request;
@@ -114,7 +115,8 @@ export class RiskEvaluationEngine {
     ];
     const totalWeightedScore = factorBreakdown.reduce((sum, factor) => sum + factor.weightedValue, 0);
     const riskScore = Math.min(1, Math.max(0, totalWeightedScore / MAX_POSSIBLE_SCORE));
-    const riskLevel = this.mapScoreToLevel(riskScore);
+    const baseRiskLevel = this.mapScoreToLevel(riskScore);
+    const riskLevel = this.applyDomainOverride(baseRiskLevel, request.domainId);
     const actionConfig = this.config.riskLevelActions[riskLevel];
     const baseResult = {
       taskId: request.taskId,
@@ -176,12 +178,14 @@ export class RiskEvaluationEngine {
     ];
 
     const totalWeightedScore = factorBreakdown.reduce((sum, factor) => sum + factor.weightedValue, 0);
-    const maxPossibleScore = (factorWeights.stepTypeRisk ?? 0) * 5
-      + (factorWeights.targetSystemRisk ?? 0) * 5
-      + (factorWeights.dataClassRisk ?? 0) * 5
-      + (factorWeights.blastRadius ?? 0) * 5
-      + (factorWeights.priorFailureRate ?? 0) * 5
-      + (factorWeights.confidence ?? 0) * 5;
+    const maxPossibleScore = (factorWeights.stepTypeRisk ?? 0) * this.maxConfiguredRiskValue(this.config.stepTypeRiskValues)
+      + (factorWeights.targetSystemRisk ?? 0) * this.maxConfiguredRiskValue(this.config.targetSystemRiskValues)
+      + (factorWeights.dataClassRisk ?? 0) * this.maxConfiguredRiskValue(this.config.dataClassRiskValues)
+      + (factorWeights.blastRadius ?? 0) * this.maxConfiguredRiskValue(this.config.blastRadiusValues)
+      + (factorWeights.priorFailureRate ?? 0) * this.maxThresholdValue(
+        this.config.priorFailureRateThresholds ?? this.config.historicalFailureRateThresholds,
+      )
+      + (factorWeights.confidence ?? 0) * this.maxConfiguredRiskValue(this.config.confidenceValues);
     const denominator = maxPossibleScore > 0 ? maxPossibleScore : MAX_POSSIBLE_SCORE;
     const riskScore = Math.min(1, Math.max(0, totalWeightedScore / denominator));
     const baseRiskLevel = this.mapScoreToLevel(riskScore);
@@ -297,7 +301,7 @@ export class RiskEvaluationEngine {
   private computeHistoricalFailureValue(percent: number): number {
     const historicalFailureRateThresholds = this.config.historicalFailureRateThresholds ?? this.config.priorFailureRateThresholds;
     if (historicalFailureRateThresholds == null) {
-      return 1;
+      return 5;
     }
     if (percent <= historicalFailureRateThresholds.low.maxPercent) return historicalFailureRateThresholds.low.value;
     if (percent <= historicalFailureRateThresholds.medium.maxPercent) return historicalFailureRateThresholds.medium.value;
@@ -372,28 +376,47 @@ export class RiskEvaluationEngine {
       historicalFailureRate: number;
       evidenceConfidence: "high" | "medium" | "low";
     }>;
-    return canonicalFactors.impact === 5
-      && canonicalFactors.irreversibility === 5
-      && canonicalFactors.dataSensitivity === 5
-      && canonicalFactors.autonomyModeRisk === 5
-      && canonicalFactors.tenantImpact === 5
-      && canonicalFactors.blastRadius === 5
-      && (canonicalFactors.historicalFailureRate ?? 0) >= 50
-      && canonicalFactors.evidenceConfidence === "low";
+    const maxedSignals = [
+      canonicalFactors.impact === 5,
+      canonicalFactors.irreversibility === 5,
+      canonicalFactors.dataSensitivity === 5,
+      canonicalFactors.autonomyModeRisk === 5,
+      canonicalFactors.tenantImpact === 5,
+      canonicalFactors.blastRadius === 5,
+      this.computeHistoricalFailureValue(canonicalFactors.historicalFailureRate ?? 0) === 5,
+      canonicalFactors.evidenceConfidence === "low",
+    ].filter(Boolean).length;
+    return maxedSignals >= 7;
   }
 
-  private isLegacyRequest(request: RiskEvaluationRequest): boolean {
+  private detectSchemaKind(request: RiskEvaluationRequest): "canonical" | "six_factor" | "legacy" {
     const factors = request.factors as Record<string, unknown>;
-    return "operationRisk" in factors || "targetResourceCriticality" in factors;
-  }
-
-  private isSixFactorRequest(request: RiskEvaluationRequest): boolean {
-    const factors = request.factors as Record<string, unknown>;
-    return "stepTypeRisk" in factors
+    const hasLegacyExclusive = "operationRisk" in factors || "targetResourceCriticality" in factors;
+    const hasSixFactorExclusive = "stepTypeRisk" in factors
       || "targetSystemRisk" in factors
       || "dataClassRisk" in factors
       || "priorFailureRatePercent" in factors
       || "confidence" in factors;
+    const hasCanonicalExclusive = "impact" in factors
+      || "irreversibility" in factors;
+    const presentKinds = [hasCanonicalExclusive, hasSixFactorExclusive, hasLegacyExclusive].filter(Boolean).length;
+    if (presentKinds > 1) {
+      throw new RiskEvaluationError(
+        "Mixed risk evaluation schemas are not supported.",
+        "risk.schema_mixed",
+        { factors },
+      );
+    }
+    if (hasCanonicalExclusive) {
+      return "canonical";
+    }
+    if (hasSixFactorExclusive) {
+      return "six_factor";
+    }
+    if (hasLegacyExclusive) {
+      return "legacy";
+    }
+    return "canonical";
   }
 
   private makeLegacyFactor(factor: string, value: number, weight: number) {
@@ -416,7 +439,7 @@ export class RiskEvaluationEngine {
   private computeLegacyPriorFailureRateValue(percent: number): number {
     const thresholds = this.config.priorFailureRateThresholds ?? this.config.historicalFailureRateThresholds;
     if (thresholds == null) {
-      return 1;
+      return 5;
     }
     if (percent <= thresholds.low.maxPercent) return thresholds.low.value;
     if (percent <= thresholds.medium.maxPercent) return thresholds.medium.value;
@@ -529,6 +552,28 @@ export class RiskEvaluationEngine {
       default:
         return 1;
     }
+  }
+
+  private maxConfiguredRiskValue(values: Readonly<Record<string, number>> | undefined): number {
+    if (values == null) {
+      return 5;
+    }
+    const numericValues = Object.values(values).filter((value) => Number.isFinite(value));
+    return numericValues.length > 0 ? Math.max(...numericValues) : 5;
+  }
+
+  private maxThresholdValue(
+    thresholds: RiskConfig["historicalFailureRateThresholds"] | RiskConfig["priorFailureRateThresholds"] | undefined,
+  ): number {
+    if (thresholds == null) {
+      return 5;
+    }
+    return Math.max(
+      thresholds.low.value,
+      thresholds.medium.value,
+      thresholds.high.value,
+      thresholds.critical.value,
+    );
   }
 }
 

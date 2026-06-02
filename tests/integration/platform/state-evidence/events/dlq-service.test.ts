@@ -116,7 +116,8 @@ test("integration: DLQ service discard updates status and records reason", () =>
     const discarded = dlq.discard(record.deadLetterId, discardReason, "op-discard-1");
 
     assert.equal(discarded.status, "discarded");
-    assert.equal(discarded.errorCode, discardReason);
+    assert.equal(discarded.errorCode, "non_recoverable");
+    assert.equal(discarded.reason, discardReason);
     assert.equal(discarded.operatorActionLog[0]!.action, "manual_discard");
     assert.deepEqual(discarded.operatorActionLog[0]!.details, { discardReason });
   } finally {

@@ -43,6 +43,22 @@ function createMockStore(overrides: {
   artifacts?: Array<{ id: string; taskId: string; artifactId: string; artifactType: string }>;
   recoveryView?: { candidates: RuntimeRecoveryCandidate[]; requestedApprovals: Array<{ id: string; taskId: string; status: string }>; deadLetters: Array<{ id: string; executionId: string; taskId: string; finalReasonCode: string; retryCount: number; lastErrorMessage: string; movedAt: string }>; latestCheckpoint: null; recentRecoveryEvents: Array<{ eventId: string; eventType: string; createdAt: string; traceId: string | null; repairAction: string | null; decisionAction: string | null; targetId: string | null; deadLetterId: string | null }> };
   execution?: {
+    updateExecutionStatusCas?: (
+      executionId: string,
+      expectedStatus: string,
+      status: string,
+      updatedAt: string,
+      startedAt: string | null,
+      finishedAt: string | null,
+      lastErrorCode: string | null,
+    ) => number;
+    updateExecutionFailureDetails?: (input: {
+      executionId: string;
+      updatedAt: string;
+      finishedAt: string | null;
+      lastErrorCode: string | null;
+      lastErrorMessage: string | null;
+    }) => void;
     updateExecutionFailure?: (input: {
       executionId: string;
       status: string;
@@ -52,6 +68,15 @@ function createMockStore(overrides: {
       lastErrorMessage: string | null;
     }) => void;
     insertDeadLetter?: () => void;
+    getDeadLetterByExecutionId?: (executionId: string) => {
+      id: string;
+      executionId: string;
+      taskId: string;
+      finalReasonCode: string;
+      retryCount: number;
+      lastErrorMessage: string;
+      movedAt: string;
+    } | null;
     getExecutionPrecheck?: () => null;
   };
   approval?: {
@@ -98,8 +123,11 @@ function createMockStore(overrides: {
       listEventsForTask: overrides.event?.listEventsForTask ?? (() => []),
     },
     execution: {
+      updateExecutionStatusCas: overrides.execution?.updateExecutionStatusCas ?? (() => 1),
+      updateExecutionFailureDetails: overrides.execution?.updateExecutionFailureDetails ?? (() => {}),
       updateExecutionFailure: overrides.execution?.updateExecutionFailure ?? (() => {}),
       insertDeadLetter: overrides.execution?.insertDeadLetter ?? (() => {}),
+      getDeadLetterByExecutionId: overrides.execution?.getDeadLetterByExecutionId ?? (() => null),
       getExecutionPrecheck: overrides.execution?.getExecutionPrecheck ?? (() => null),
     },
     approval: {
@@ -287,7 +315,7 @@ test("RuntimeRecoveryDecisionService.apply handles cancel action [runtime-recove
       buildRuntimeRecoveryView: () => [candidate],
     },
     execution: {
-      updateExecutionFailure: () => { failureUpdated = true; },
+      updateExecutionFailureDetails: () => { failureUpdated = true; },
       insertDeadLetter: () => {},
       getExecutionPrecheck: () => null,
     },
@@ -332,7 +360,7 @@ test("RuntimeRecoveryDecisionService.apply handles cancel action with precheck_d
       buildRuntimeRecoveryView: () => [candidate],
     },
     execution: {
-      updateExecutionFailure: () => { failureUpdated = true; },
+      updateExecutionFailureDetails: () => { failureUpdated = true; },
       insertDeadLetter: () => {},
       getExecutionPrecheck: () => null,
     },
@@ -623,7 +651,7 @@ test("RuntimeRecoveryDecisionService handles move_dead_letter with execution_err
       buildRuntimeRecoveryView: () => [candidate],
     },
     execution: {
-      updateExecutionFailure: (input: { executionId: string; status: string; updatedAt: string; finishedAt: string | null; lastErrorCode: string | null; lastErrorMessage: string | null; }) => {
+      updateExecutionFailureDetails: (input: { executionId: string; updatedAt: string; finishedAt: string | null; lastErrorCode: string | null; lastErrorMessage: string | null; }) => {
         failureUpdated = true;
         lastErrorCode = input.lastErrorCode ?? "";
         lastErrorMessage = input.lastErrorMessage ?? "";
@@ -706,7 +734,7 @@ test("RuntimeRecoveryDecisionService handles precheck denial reason as cancel [r
       buildRuntimeRecoveryView: () => [candidate],
     },
     execution: {
-      updateExecutionFailure: (input: { executionId: string; status: string; updatedAt: string; finishedAt: string | null; lastErrorCode: string | null; lastErrorMessage: string | null; }) => {
+      updateExecutionFailureDetails: (input: { executionId: string; updatedAt: string; finishedAt: string | null; lastErrorCode: string | null; lastErrorMessage: string | null; }) => {
         failureUpdated = true;
         lastErrorMessage = input.lastErrorMessage ?? "";
       },
@@ -943,7 +971,7 @@ test("RuntimeRecoveryDecisionService handles cancel action with existing lastErr
       buildRuntimeRecoveryView: () => [candidate],
     },
     execution: {
-      updateExecutionFailure: (input: { executionId: string; status: string; updatedAt: string; finishedAt: string | null; lastErrorCode: string | null; lastErrorMessage: string | null; }) => {
+      updateExecutionFailureDetails: (input: { executionId: string; updatedAt: string; finishedAt: string | null; lastErrorCode: string | null; lastErrorMessage: string | null; }) => {
         capturedErrorCode = input.lastErrorCode;
       },
       insertDeadLetter: () => {},
@@ -1246,15 +1274,37 @@ test("RuntimeRecoveryDecisionService.apply handles resume_same_worker (no-op act
   assert.equal(insertDeadLetterCalled, false);
 });
 
-test("RuntimeRecoveryDecisionService.apply reads execution inside transaction to avoid TOCTOU [runtime-recovery-decision-service]", async () => {
-  // This test verifies that execution is read inside the transaction,
-  // preventing Time-of-Check-Time-of-Use bugs where data could change between read and write
-  const executionOutsideTx = { id: "exec-toctou", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E_TOCTOU", lastErrorMessage: "TOCTOU error", attempt: 1, agentId: "agent-1" };
-  const executionInsideTx = { id: "exec-toctou", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E_TOCTOU_UPDATED", lastErrorMessage: "Updated error", attempt: 3, agentId: "agent-1" };
-
-  const db = createMockDb();
+test("RuntimeRecoveryDecisionService.apply reads execution only inside the transaction [runtime-recovery-decision-service]", async () => {
+  let insideTransaction = false;
+  let readCount = 0;
+  const executionInsideTx = {
+    id: "exec-toctou",
+    taskId: "task-1",
+    status: "executing",
+    traceId: "trace-1",
+    lastErrorCode: "E_TOCTOU_UPDATED",
+    lastErrorMessage: "Updated error",
+    attempt: 3,
+    agentId: "agent-1",
+  };
+  const db = {
+    transaction: (fn: () => void | Promise<void>) => {
+      insideTransaction = true;
+      try {
+        const result = fn();
+        if (result instanceof Promise) {
+          return result.finally(() => {
+            insideTransaction = false;
+          });
+        }
+        return result;
+      } finally {
+        insideTransaction = false;
+      }
+    },
+  } as unknown as AuthoritativeSqlDatabase;
   const store = createMockStore({
-    executions: [executionOutsideTx],
+    executions: [executionInsideTx],
     tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
     operations: {
       buildRuntimeRecoveryView: () => [createMockCandidate({
@@ -1277,25 +1327,18 @@ test("RuntimeRecoveryDecisionService.apply reads execution inside transaction to
     },
   });
 
-  // Override getExecution to return different values based on call order
-  // First call returns old data (simulating stale read before transaction)
-  // Second call (inside transaction) returns new data
-  let getExecutionCallCount = 0;
   store.dispatch.getExecution = (id: string) => {
-    getExecutionCallCount++;
-    // Second call returns the updated execution
-    if (getExecutionCallCount > 1) {
-      return executionInsideTx;
-    }
-    return executionOutsideTx;
+    readCount += 1;
+    assert.equal(insideTransaction, true);
+    return executionInsideTx;
   };
 
   const service = new RuntimeRecoveryDecisionService(db, store);
   const result = await service.apply("exec-toctou");
 
-  // The decision should use the execution data read inside transaction
   assert.equal(result.applied, true);
-  assert.equal(result.deadLetter?.retryCount, 3); // Should use executionInsideTx.attempt
+  assert.equal(result.deadLetter?.retryCount, 3);
+  assert.equal(readCount, 1);
 });
 
 test("RuntimeRecoveryDecisionService.apply uses in-transaction execution data for decision [runtime-recovery-decision-service]", async () => {
@@ -1338,4 +1381,155 @@ test("RuntimeRecoveryDecisionService.apply uses in-transaction execution data fo
   // buildRuntimeRecoveryView should be called inside the transaction (once)
   assert.equal(result.applied, true);
   assert.equal(result.deadLetter?.retryCount, 3);
+});
+
+test("RuntimeRecoveryDecisionService.apply uses CAS status transition before cancelling [runtime-recovery-decision-service]", async () => {
+  const db = createMockDb();
+  let casCalls = 0;
+  let detailUpdates = 0;
+  const candidate = createMockCandidate({
+    executionId: "exec-cancel-cas",
+    suggestedAction: "cancel",
+    reason: "precheck_denied:budget_exceeded",
+    latestPrecheck: {
+      allowed: false,
+      reasonCode: "budget_exceeded",
+      resolvedBudgetUsd: 100,
+      resolvedTimeoutMs: 60000,
+      resolvedSandboxMode: "workspace",
+      resolvedTools: [],
+      resolvedPaths: [],
+      checkedAt: new Date().toISOString(),
+    },
+  });
+  const store = createMockStore({
+    executions: [{ id: "exec-cancel-cas", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: null, lastErrorMessage: null, attempt: 1, agentId: "agent-1" }],
+    tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
+    operations: {
+      buildRuntimeRecoveryView: () => [candidate],
+    },
+    execution: {
+      updateExecutionStatusCas: () => {
+        casCalls += 1;
+        return 1;
+      },
+      updateExecutionFailureDetails: () => {
+        detailUpdates += 1;
+      },
+      updateExecutionFailure: () => {
+        throw new Error("fallback should not be used");
+      },
+      insertDeadLetter: () => {},
+      getExecutionPrecheck: () => null,
+    },
+    event: {
+      insertEvent: () => {},
+      listEventsForTask: () => [],
+    },
+  });
+  const service = new RuntimeRecoveryDecisionService(db, store);
+
+  const result = await service.apply("exec-cancel-cas");
+
+  assert.equal(result.applied, true);
+  assert.equal(result.decision.action, "cancel");
+  assert.equal(casCalls, 1);
+  assert.equal(detailUpdates, 1);
+});
+
+test("RuntimeRecoveryDecisionService.apply reuses existing dead letter instead of inserting duplicates [runtime-recovery-decision-service]", async () => {
+  const db = createMockDb();
+  let insertDeadLetterCalls = 0;
+  const existingDeadLetter = {
+    id: "dlq-existing",
+    executionId: "exec-existing-dlq",
+    taskId: "task-1",
+    finalReasonCode: "E_EXISTING",
+    retryCount: 2,
+    lastErrorMessage: "already recorded",
+    movedAt: "2026-01-01T00:00:00.000Z",
+  };
+  const candidate = createMockCandidate({
+    executionId: "exec-existing-dlq",
+    latestErrorCode: "E_EXISTING",
+    attempt: 3,
+  });
+  const store = createMockStore({
+    executions: [{ id: "exec-existing-dlq", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E_EXISTING", lastErrorMessage: "already recorded", attempt: 3, agentId: "agent-1" }],
+    tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
+    operations: {
+      buildRuntimeRecoveryView: () => [candidate],
+    },
+    execution: {
+      getDeadLetterByExecutionId: () => existingDeadLetter,
+      insertDeadLetter: () => {
+        insertDeadLetterCalls += 1;
+      },
+      updateExecutionFailure: () => {},
+      getExecutionPrecheck: () => null,
+    },
+    event: {
+      insertEvent: () => {},
+      listEventsForTask: () => [],
+    },
+  });
+  const service = new RuntimeRecoveryDecisionService(db, store);
+
+  const result = await service.apply("exec-existing-dlq");
+
+  assert.equal(result.applied, true);
+  assert.equal(result.deadLetter?.id, "dlq-existing");
+  assert.equal(insertDeadLetterCalls, 0);
+});
+
+test("RuntimeRecoveryDecisionService.apply records failure memory after the transaction commits [runtime-recovery-decision-service]", async () => {
+  let insideTransaction = false;
+  let memoryRecordedOutsideTx = false;
+  const db = {
+    transaction: (fn: () => void | Promise<void>) => {
+      insideTransaction = true;
+      try {
+        const result = fn();
+        if (result instanceof Promise) {
+          return result.finally(() => {
+            insideTransaction = false;
+          });
+        }
+        return result;
+      } finally {
+        insideTransaction = false;
+      }
+    },
+  } as unknown as AuthoritativeSqlDatabase;
+  const candidate = createMockCandidate({
+    executionId: "exec-memory-after-commit",
+    latestErrorCode: "E_AFTER_COMMIT",
+  });
+  const store = createMockStore({
+    executions: [{ id: "exec-memory-after-commit", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E_AFTER_COMMIT", lastErrorMessage: "after commit", attempt: 1, agentId: "agent-1" }],
+    tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
+    operations: {
+      buildRuntimeRecoveryView: () => [candidate],
+    },
+    execution: {
+      updateExecutionFailure: () => {},
+      insertDeadLetter: () => {},
+      getExecutionPrecheck: () => null,
+    },
+    event: {
+      insertEvent: () => {},
+      listEventsForTask: () => [],
+    },
+    memory: {
+      insertMemory: () => {
+        memoryRecordedOutsideTx = !insideTransaction;
+      },
+    },
+  });
+  const service = new RuntimeRecoveryDecisionService(db, store);
+
+  const result = await service.apply("exec-memory-after-commit");
+
+  assert.equal(result.applied, true);
+  assert.equal(memoryRecordedOutsideTx, true);
 });

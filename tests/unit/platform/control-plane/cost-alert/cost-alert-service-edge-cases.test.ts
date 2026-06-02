@@ -254,6 +254,85 @@ test("CostAlertService computes remaining budget with projected cost", () => {
   assert.equal(result.thresholdRatio, 0.7);
 });
 
+test("CostAlertService re-evaluates the same reservation without double counting pending usage", () => {
+  const policy = createPolicy("tenant", "tenant-1", 100);
+  const config: Partial<CostAlertConfig> = {
+    enabled: true,
+    tenantBudgetPolicies: { "tenant-1": policy },
+  };
+  const service = new CostAlertService(mockDb, mockStore, config);
+
+  const first = service.evaluateCost({
+    scope: "tenant",
+    scopeId: "tenant-1",
+    tenantId: "tenant-1",
+    taskId: "task-1",
+    executionId: "exec-1",
+    stepId: "step-1",
+    projectedCostUsd: 30,
+  });
+  const second = service.evaluateCost({
+    scope: "tenant",
+    scopeId: "tenant-1",
+    tenantId: "tenant-1",
+    taskId: "task-1",
+    executionId: "exec-1",
+    stepId: "step-1",
+    projectedCostUsd: 30,
+  });
+
+  assert.equal(first.projectedCostUsd, 30);
+  assert.equal(second.projectedCostUsd, 30);
+  assert.equal(service.getAccumulator("tenant", "tenant-1")!.pendingProjectedCostUsd, 30);
+});
+
+test("CostAlertService recordCost releases the full reserved projection before settling actual spend", () => {
+  const policy = createPolicy("tenant", "tenant-1", 100);
+  const config: Partial<CostAlertConfig> = {
+    enabled: true,
+    tenantBudgetPolicies: { "tenant-1": policy },
+  };
+  const service = new CostAlertService(mockDb, mockStore, config);
+
+  service.evaluateCost({
+    scope: "tenant",
+    scopeId: "tenant-1",
+    tenantId: "tenant-1",
+    taskId: "task-1",
+    executionId: "exec-1",
+    stepId: "step-1",
+    projectedCostUsd: 40,
+  });
+  service.recordCost({
+    scope: "tenant",
+    scopeId: "tenant-1",
+    tenantId: "tenant-1",
+    taskId: "task-1",
+    executionId: "exec-1",
+    stepId: "step-1",
+    actualCostUsd: 10,
+  });
+
+  const accumulator = service.getAccumulator("tenant", "tenant-1")!;
+  assert.equal(accumulator.pendingProjectedCostUsd, 0);
+  assert.equal(accumulator.accumulatedCostUsd, 10);
+});
+
+test("CostAlertService dedupes open alerts by exact subject token instead of substring", () => {
+  const policy = createPolicy("tenant", "tenant-1", 10);
+  const db = createMockDb([{ title: "Alert for task-12", detail: "" }]);
+  const config: Partial<CostAlertConfig> = {
+    enabled: true,
+    tenantBudgetPolicies: { "tenant-1": policy },
+  };
+  const service = new CostAlertService(db, mockStore, config) as CostAlertService & {
+    hasOpenAlertForSubject(executionId: string | null, taskId: string | null, stepId: string | null): boolean;
+  };
+
+  assert.equal(service.hasOpenAlertForSubject(null, "task-1", null), false);
+  assert.equal(service.hasOpenAlertForSubject(null, "task-12", null), true);
+});
+
 test("CostAlertService handles infinity limit", () => {
   const policy: BudgetPolicy = {
     scope: "tenant",

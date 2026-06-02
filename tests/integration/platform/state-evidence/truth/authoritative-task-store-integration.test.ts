@@ -21,7 +21,7 @@ function createTestTaskInput(overrides: Partial<{
     id: overrides.id ?? `task-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     parentId: null,
     rootId: overrides.id ?? `task-${Date.now()}`,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     tenantId: overrides.tenantId ?? null,
     title: "Integration Test Task",
     status: overrides.status ?? "queued",
@@ -174,7 +174,7 @@ test("workflow state persists and updates correctly", () => {
       ctx.store.insertTask(createTestTaskInput({ id: taskId }));
       const workflow: WorkflowStateRecord = {
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId,
         status: "running",
         currentStepIndex: 0,
@@ -270,7 +270,7 @@ test("concurrent workflow updates with CAS version check", () => {
       ctx.store.insertTask(createTestTaskInput({ id: taskId }));
       const workflow: WorkflowStateRecord = {
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "wf-cas-001",
         status: "running",
         currentStepIndex: 0,

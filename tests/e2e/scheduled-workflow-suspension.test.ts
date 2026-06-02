@@ -43,7 +43,7 @@ function seedWorkflowWithTask(
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "E2E scheduled workflow test",
       status: "in_progress",
       source: "user",
@@ -90,7 +90,7 @@ function seedWorkflowWithTask(
 
     store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId,
       currentStepIndex,
       status: "running",

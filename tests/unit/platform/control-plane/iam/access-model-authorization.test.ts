@@ -55,10 +55,36 @@ test("evaluateAuthorizationContext allows when tenant scope is provided", () => 
     principalType: "user",
     roles: ["platform_admin"],
     action: "org_change",
+    principalTenantId: "tenant-123",
     context: { requiresTenantScope: true, tenantId: "tenant-123" },
   });
 
   assert.equal(result.allowed, true);
+});
+
+test("evaluateAuthorizationContext requires principal tenant when target tenant is present", () => {
+  const result = evaluateAuthorizationContext({
+    principalType: "user",
+    roles: ["platform_admin"],
+    action: "org_change",
+    context: { tenantId: "tenant-123" },
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "policy.context_principal_tenant_required");
+});
+
+test("evaluateAuthorizationContext denies when target tenant mismatches implicit principal tenant scope", () => {
+  const result = evaluateAuthorizationContext({
+    principalType: "user",
+    roles: ["platform_admin"],
+    action: "org_change",
+    principalTenantId: "tenant-a",
+    context: { tenantId: "tenant-b" },
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "policy.context_tenant_mismatch");
 });
 
 test("evaluateAuthorizationContext rejects production exec_command without operator role", () => {
@@ -125,6 +151,18 @@ test("evaluateAuthorizationContext rejects production install_extension without 
     principalType: "plugin",
     roles: ["plugin_runtime"],
     action: "install_extension",
+    context: { environment: "production" },
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "policy.context_production_operator_required");
+});
+
+test("evaluateAuthorizationContext rejects production dispatch_execution without operator role", () => {
+  const result = evaluateAuthorizationContext({
+    principalType: "system",
+    roles: ["system_runtime"],
+    action: "dispatch_execution",
     context: { environment: "production" },
   });
 
@@ -234,13 +272,43 @@ test("evaluateAuthorizationContext records manual takeover and allows without ap
     principalType: "user",
     roles: ["human_operator"],
     action: "exec_command",
-    context: { manualTakeoverActive: true },
+    principalTenantId: "tenant-123",
+    context: {
+      manualTakeoverActive: true,
+      tenantId: "tenant-123",
+      originalPrincipal: {
+        type: "user",
+        roles: ["viewer"],
+        tenantId: "tenant-123",
+      },
+    },
   });
 
   assert.equal(result.allowed, true);
   assert.equal(result.requiresApproval, false);
   assert.equal(result.reasonCode, null);
   assert.deepEqual(result.matchedRuleRefs, ["context.manual_takeover_active"]);
+});
+
+test("evaluateAuthorizationContext rejects manual takeover when original principal tenant mismatches", () => {
+  const result = evaluateAuthorizationContext({
+    principalType: "user",
+    roles: ["human_operator"],
+    action: "exec_command",
+    principalTenantId: "tenant-123",
+    context: {
+      manualTakeoverActive: true,
+      tenantId: "tenant-123",
+      originalPrincipal: {
+        type: "user",
+        roles: ["viewer"],
+        tenantId: "tenant-999",
+      },
+    },
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "policy.context_tenant_mismatch");
 });
 
 test("evaluateAuthorizationContext returns default deny for actions without granted capability", () => {
@@ -262,7 +330,17 @@ test("evaluateAuthorizationContext records manualTakeoverActive for non-producti
     principalType: "user",
     roles: ["human_operator"],
     action: "invoke_model",
-    context: { environment: "production", manualTakeoverActive: true },
+    principalTenantId: "tenant-123",
+    context: {
+      environment: "production",
+      manualTakeoverActive: true,
+      tenantId: "tenant-123",
+      originalPrincipal: {
+        type: "user",
+        roles: ["viewer"],
+        tenantId: "tenant-123",
+      },
+    },
   });
 
   assert.equal(result.allowed, true);

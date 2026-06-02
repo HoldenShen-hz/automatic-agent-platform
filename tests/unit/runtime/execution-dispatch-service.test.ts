@@ -56,7 +56,7 @@ function seedTaskAndExecution(
       id: input.taskId,
       parentId: null,
       rootId: input.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Test task",
       status: input.status ?? "in_progress",
       source: "user",
@@ -103,7 +103,7 @@ function seedTaskAndExecution(
     });
     store.insertWorkflowState({
       taskId: input.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",
@@ -1604,6 +1604,59 @@ test("dispatchNext records ticket_created event when ticket is created [executio
     const events = harness.store.listEventsForTask(taskId);
     const ticketCreatedEvents = events.filter((e) => e.eventType === "dispatch:ticket_created");
     assert.ok(ticketCreatedEvents.length >= 1);
+  } finally {
+    harness.close();
+  }
+});
+
+test("createTicket persists the ticket even if tier-2 audit event insertion fails [execution-dispatch-service]", () => {
+  const harness = createDispatchServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId });
+
+    const originalInsertEvent = harness.store.event.insertEvent.bind(harness.store.event);
+    harness.store.event.insertEvent = ((event) => {
+      if (event.eventType === "dispatch:ticket_created") {
+        throw new Error("simulated event sink failure");
+      }
+      return originalInsertEvent(event);
+    }) as typeof harness.store.event.insertEvent;
+
+    const decision = harness.service.createTicket({ executionId });
+    const persisted = harness.store.worker.getActiveExecutionTicket(executionId, 1);
+
+    assert.equal(decision.outcome, "created");
+    assert.equal(persisted?.id, decision.ticket.id);
+  } finally {
+    harness.close();
+  }
+});
+
+test("dispatchNext keeps the claimed ticket when tier-2 claim audit event insertion fails [execution-dispatch-service]", () => {
+  const harness = createDispatchServiceHarness();
+  try {
+    const taskId = newId("task");
+    const executionId = newId("exec");
+    seedTaskAndExecution(harness.store, harness.db, { taskId, executionId });
+    registerWorker(harness.workerRegistry, { workerId: "worker-1" });
+    harness.service.createTicket({ executionId });
+
+    const originalInsertEvent = harness.store.event.insertEvent.bind(harness.store.event);
+    harness.store.event.insertEvent = ((event) => {
+      if (event.eventType === "dispatch:ticket_claimed") {
+        throw new Error("simulated event sink failure");
+      }
+      return originalInsertEvent(event);
+    }) as typeof harness.store.event.insertEvent;
+
+    const decision = harness.service.dispatchNext({ leaseTtlMs: 30_000 });
+    const persisted = harness.store.worker.getExecutionTicket(decision.ticket!.id);
+
+    assert.equal(decision.outcome, "dispatched");
+    assert.equal(persisted?.status, "claimed");
+    assert.equal(persisted?.assignedWorkerId, "worker-1");
   } finally {
     harness.close();
   }

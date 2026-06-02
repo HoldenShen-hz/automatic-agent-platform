@@ -8,8 +8,8 @@ test("integration: agent rollout, rollback, retirement, and binding gate follow 
   service.registerAgent({
     agentId: "agent_release_1",
     name: "Release Agent",
-    domainId: "engineering_ops",
-    owner: { path: "eng_lead", orgNodeId: "engineering_ops" },
+    domainId: "engineering-ops",
+    owner: { path: "eng_lead", orgNodeId: "engineering-ops" },
     components: {
       pack: { packId: "pack_ops", version: "1.0.0" },
       connectorBindings: [],

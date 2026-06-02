@@ -51,6 +51,16 @@ const EVENT_COLS_PREFIXED = `e.id,
 export class EventRepository {
   public constructor(private readonly conn: SqliteConnection) {}
 
+  public getLatestEventCursor(): { readonly createdAt: string; readonly id: string } | null {
+    return queryOne<{ readonly createdAt: string; readonly id: string }>(
+      this.conn,
+      `SELECT id, created_at AS createdAt
+       FROM events
+       ORDER BY created_at DESC, id DESC
+       LIMIT 1`,
+    ) ?? null;
+  }
+
   public insertCostEvent(costEvent: {
     id: string;
     taskId: string;
@@ -242,10 +252,37 @@ export class EventRepository {
       this.conn,
       `SELECT ${EVENT_COLS}
        FROM events
-       ORDER BY created_at ASC
+       ORDER BY created_at ASC, id ASC
        LIMIT ? OFFSET ?`,
       limit,
       offset,
+    );
+  }
+
+  public listEventsUpToCursor(
+    limit: number = 1000,
+    after: { readonly createdAt: string; readonly id: string } | null = null,
+    upperBound: { readonly createdAt: string; readonly id: string } | null = null,
+  ): EventRecord[] {
+    const predicates: string[] = [];
+    const params: Array<string | number> = [];
+    if (after != null) {
+      predicates.push(`(created_at > ? OR (created_at = ? AND id > ?))`);
+      params.push(after.createdAt, after.createdAt, after.id);
+    }
+    if (upperBound != null) {
+      predicates.push(`(created_at < ? OR (created_at = ? AND id <= ?))`);
+      params.push(upperBound.createdAt, upperBound.createdAt, upperBound.id);
+    }
+    const whereClause = predicates.length > 0 ? ` WHERE ${predicates.join(" AND ")}` : "";
+    return queryAll<EventRecord>(
+      this.conn,
+      `SELECT ${EVENT_COLS}
+       FROM events${whereClause}
+       ORDER BY created_at ASC, id ASC
+       LIMIT ?`,
+      ...params,
+      limit,
     );
   }
 

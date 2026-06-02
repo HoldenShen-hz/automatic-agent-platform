@@ -11,6 +11,6 @@
   "labelingMethod": "analyst_double_review",
   "allowedForTraining": false,
   "allowedForReleaseGate": true,
-  "retentionPolicyRef": "training-data-policy/revocation.yaml",
-  "frozenHash": "sha256:citation-source-heldout-v1"
+  "retentionPolicyRef": "training-data-policy/retention.yaml",
+  "frozenHash": "sha256:c53dba1e1364c11d566058d1e829a616ce7226614de4ae47f584863b7c573c72"
 }

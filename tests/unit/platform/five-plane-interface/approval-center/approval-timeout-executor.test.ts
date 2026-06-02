@@ -34,7 +34,7 @@ function createTestTask(store: AuthoritativeTaskStore, taskId: string, now: stri
     id: taskId,
     parentId: null,
     rootId: taskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     tenantId: null,
     title: "Test task",
     status: "in_progress",

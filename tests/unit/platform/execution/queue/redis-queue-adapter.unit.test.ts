@@ -25,19 +25,14 @@ test("RedisQueueAdapter backendKind is redis [redis-queue-adapter.unit]", () => 
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("RedisQueueAdapter enqueue returns a job record without throwing [redis-queue-adapter.unit]", () => {
+test("RedisQueueAdapter sync enqueue is not supported [redis-queue-adapter.unit]", () => {
   const adapter = createMemoryAdapter();
-  const job = adapter.enqueue({ queueName: "test-queue", payload: { taskId: "t1" } });
-
-  assert.ok(job.id.startsWith("qjob_"));
-  assert.equal(job.queueName, "test-queue");
-  assert.equal(job.status, "waiting");
-  assert.equal(job.attempts, 0);
+  assert.throws(() => adapter.enqueue({ queueName: "test-queue", payload: { taskId: "t1" } }), /sync_enqueue_not_supported/);
 });
 
-test("RedisQueueAdapter enqueue accepts all input options [redis-queue-adapter.unit]", () => {
+test("RedisQueueAdapter enqueueAsync accepts all input options [redis-queue-adapter.unit]", async () => {
   const adapter = createMemoryAdapter();
-  const job = adapter.enqueue({
+  const job = await adapter.enqueueAsync({
     queueName: "priority-queue",
     payload: { data: "test" },
     priority: 10,
@@ -49,12 +44,13 @@ test("RedisQueueAdapter enqueue accepts all input options [redis-queue-adapter.u
   assert.equal(job.priority, 10);
   assert.equal(job.maxAttempts, 5);
   assert.equal(job.idempotencyKey, "key-123");
+  await adapter.close();
 });
 
-test("RedisQueueAdapter enqueue handles delayed jobs [redis-queue-adapter.unit]", () => {
+test("RedisQueueAdapter enqueueAsync handles delayed jobs [redis-queue-adapter.unit]", async () => {
   const adapter = createMemoryAdapter();
   const futureDate = new Date(Date.now() + 3600000).toISOString();
-  const job = adapter.enqueue({
+  const job = await adapter.enqueueAsync({
     queueName: "delayed-queue",
     payload: { deferred: true },
     delayUntil: futureDate,
@@ -62,21 +58,24 @@ test("RedisQueueAdapter enqueue handles delayed jobs [redis-queue-adapter.unit]"
 
   assert.equal(job.status, "delayed");
   assert.ok(job.delayUntil != null);
+  await adapter.close();
 });
 
-test("RedisQueueAdapter enqueue job structure is complete [redis-queue-adapter.unit]", () => {
+test("RedisQueueAdapter enqueueAsync job structure is complete [redis-queue-adapter.unit]", async () => {
   const adapter = createMemoryAdapter();
-  const job = adapter.enqueue({ queueName: "q", payload: { test: true } });
+  const job = await adapter.enqueueAsync({ queueName: "q", payload: { test: true } });
 
   assert.ok(job.id);
   assert.ok(job.createdAt);
   assert.ok(job.updatedAt);
   assert.equal(job.lastError, null);
   assert.equal(job.completedAt, null);
+  await adapter.close();
 });
 
 test("RedisQueueAdapter sync dequeue throws not-supported error [redis-queue-adapter.unit]", () => {
   const adapter = createMemoryAdapter();
+  assert.throws(() => adapter.enqueue({ queueName: "q", payload: "x" }), /sync_enqueue_not_supported/);
   assert.throws(() => adapter.dequeue("q"), /sync_dequeue_not_supported/);
 });
 
@@ -138,7 +137,7 @@ test("RedisQueueAdapter concurrent enqueues maintain data integrity [redis-queue
   const adapter = createMemoryAdapter();
 
   const result = await runConcurrentInvariant(async (workerId: number) => {
-    return adapter.enqueue({
+    return adapter.enqueueAsync({
       queueName: "concurrent-queue",
       payload: { workerId },
     });
@@ -146,6 +145,7 @@ test("RedisQueueAdapter concurrent enqueues maintain data integrity [redis-queue
 
   assert.equal(result.errors.length, 0, "No errors during concurrent enqueue");
   assert.equal(result.values.length, 10, "All 10 enqueues completed");
+  await adapter.close();
 });
 
 test("RedisQueueAdapter concurrent enqueue idempotency check [redis-queue-adapter.unit]", async () => {
@@ -342,6 +342,36 @@ test("RedisQueueAdapter async dequeue nack dead-letters when retry budget is exh
 
   const dlqJob = await adapter.getJobAsync(job.id);
   assert.equal(dlqJob?.status, "dead_letter");
+
+  await adapter.close();
+});
+
+test("RedisQueueAdapter async dequeue dead-letters exhausted waiting jobs during claim [redis-queue-adapter.unit]", async () => {
+  const adapter = createMemoryAdapter();
+
+  const job = await adapter.enqueueAsync({ queueName: "claim-budget-test", payload: {}, maxAttempts: 1 });
+  const internalClient = adapter as unknown as {
+    client: {
+      hmset: (key: string, data: Record<string, string>) => Promise<void>;
+      zadd: (key: string, score: number, member: string) => Promise<number>;
+    };
+    waitingKey: (queueName: string) => string;
+    jobKey: (jobId: string) => string;
+  };
+  await internalClient.client.hmset(internalClient.jobKey(job.id), {
+    status: "waiting",
+    attempts: "1",
+    max_attempts: "1",
+    updated_at: new Date().toISOString(),
+  });
+  await internalClient.client.zadd(internalClient.waitingKey("claim-budget-test"), Date.now(), job.id);
+
+  const result = await adapter.dequeueAsync("claim-budget-test");
+  assert.equal(result, null);
+
+  const deadLettered = await adapter.getJobAsync(job.id);
+  assert.equal(deadLettered?.status, "dead_letter");
+  assert.equal(deadLettered?.attempts, 1);
 
   await adapter.close();
 });

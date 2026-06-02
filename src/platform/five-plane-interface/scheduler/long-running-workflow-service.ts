@@ -78,6 +78,7 @@ export class LongRunningWorkflowService {
   public constructor(private readonly store: AuthoritativeTaskStore) {}
 
   public suspend(request: WorkflowSuspensionRequest): WorkflowSuspensionRecord {
+    this.pruneTerminalSuspensions();
     const workflow = this.requireWorkflow(request.taskId);
     if (isTerminal(workflow.status)) {
       throw new Error(`workflow_sleep.terminal_workflow:${request.taskId}`);
@@ -111,6 +112,7 @@ export class LongRunningWorkflowService {
   }
 
   public markDue(now: string = nowIso()): WorkflowSuspensionRecord[] {
+    this.pruneTerminalSuspensions();
     const due: WorkflowSuspensionRecord[] = [];
     const nowMs = Date.parse(now);
     for (const record of this.suspensions.values()) {
@@ -129,11 +131,12 @@ export class LongRunningWorkflowService {
   }
 
   public resume(suspensionId: string, now: string = nowIso()): WorkflowResumeDecision {
+    this.pruneTerminalSuspensions();
     const record = this.requireSuspension(suspensionId);
-    if (record.expiresAt != null && record.expiresAt <= now) {
+    if (record.expiresAt != null && compareIsoInstant(record.expiresAt, now) <= 0) {
       return this.expire(record, now);
     }
-    if (record.resumeAfter != null && record.resumeAfter > now) {
+    if (record.resumeAfter != null && compareIsoInstant(record.resumeAfter, now) > 0) {
       return {
         suspensionId,
         taskId: record.taskId,
@@ -168,9 +171,10 @@ export class LongRunningWorkflowService {
   }
 
   public sweepExpired(now: string = nowIso()): WorkflowResumeDecision[] {
+    this.pruneTerminalSuspensions();
     const decisions: WorkflowResumeDecision[] = [];
     for (const record of this.suspensions.values()) {
-      if (record.status === "active" && record.expiresAt != null && record.expiresAt <= now) {
+      if (record.status === "active" && record.expiresAt != null && compareIsoInstant(record.expiresAt, now) <= 0) {
         decisions.push(this.expire(record, now));
       }
     }
@@ -178,10 +182,12 @@ export class LongRunningWorkflowService {
   }
 
   public getSuspension(suspensionId: string): WorkflowSuspensionRecord | null {
+    this.pruneTerminalSuspensions();
     return this.suspensions.get(suspensionId) ?? null;
   }
 
   public listSuspensions(): WorkflowSuspensionRecord[] {
+    this.pruneTerminalSuspensions();
     return [...this.suspensions.values()];
   }
 
@@ -210,6 +216,7 @@ export class LongRunningWorkflowService {
           reasonCode: record.reasonCode,
         },
       }, now);
+      this.suspensions.delete(record.suspensionId);
     }
     this.emitWorkflowEvent("workflow:suspension_expired", record.taskId, record.executionId, expired);
     return {
@@ -277,5 +284,14 @@ export class LongRunningWorkflowService {
       traceId: null,
       createdAt: nowIso(),
     });
+  }
+
+  private pruneTerminalSuspensions(): void {
+    for (const [suspensionId, record] of this.suspensions.entries()) {
+      const workflow = this.store.workflow.getWorkflowState(record.taskId);
+      if (workflow == null || isTerminal(workflow.status)) {
+        this.suspensions.delete(suspensionId);
+      }
+    }
   }
 }

@@ -1,7 +1,7 @@
 {
   "domainId": "product-management",
   "phase": "9c",
-  "divisionId": "general_ops",
+  "divisionId": "general-ops",
   "latencyTier": "business_day",
   "workflowProfile": {
     "workflowId": "product-management.primary",

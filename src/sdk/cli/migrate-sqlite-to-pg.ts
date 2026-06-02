@@ -158,18 +158,31 @@ export function parseMigrateSqliteToPgArgs(argv: string[]): MigrateSqliteToPgOpt
   let dryRun = false;
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index] ?? "";
-    if (arg === "--sqlite" || arg === "--sqlite-path") {
-      sqlitePath = argv[index + 1] ?? "";
-      index += 1;
-      continue;
-    }
-    if (arg === "--pg-dsn") {
-      pgDsn = argv[index + 1] ?? "";
-      index += 1;
-      continue;
-    }
-    if (arg === "--dry-run") {
-      dryRun = true;
+    switch (arg) {
+      case "--sqlite":
+      case "--sqlite-path": {
+        const value = argv[index + 1];
+        if (value == null || value.startsWith("--")) {
+          throw new ValidationError("migrate_sqlite_to_pg.usage", buildMigrateSqliteToPgUsage());
+        }
+        sqlitePath = value;
+        index += 1;
+        break;
+      }
+      case "--pg-dsn": {
+        const value = argv[index + 1];
+        if (value == null || value.startsWith("--")) {
+          throw new ValidationError("migrate_sqlite_to_pg.usage", buildMigrateSqliteToPgUsage());
+        }
+        pgDsn = value;
+        index += 1;
+        break;
+      }
+      case "--dry-run":
+        dryRun = true;
+        break;
+      default:
+        throw new ValidationError("migrate_sqlite_to_pg.usage", buildMigrateSqliteToPgUsage());
     }
   }
   if (!sqlitePath || !pgDsn) {
@@ -230,6 +243,38 @@ function readTableBatch(
   return sqlite.connection.prepare(`SELECT * FROM ${table} LIMIT ? OFFSET ?`).all(batchSize, offset) as Array<Record<string, unknown>>;
 }
 
+function loadTableColumns(sqlite: SqliteDatabase, table: string): string[] {
+  const rows = sqlite.connection.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name?: string }>;
+  const columns = rows
+    .map((row) => row.name ?? "")
+    .filter((column) => column.length > 0)
+    .map((column) => validateSqlIdentifier(column, "column"));
+  if (columns.length === 0) {
+    throw new ValidationError(
+      "migrate_sqlite_to_pg.invalid_table_schema",
+      `Could not resolve columns for table ${table}`,
+    );
+  }
+  return columns;
+}
+
+function buildInsertSql(table: string, columns: readonly string[], rowCount: number): string {
+  const valuesClauses: string[] = [];
+  for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+    const placeholders = columns.map((_, columnIndex) => `$${rowIndex * columns.length + columnIndex + 1}`).join(", ");
+    valuesClauses.push(`(${placeholders})`);
+  }
+  return `INSERT INTO ${table} (${columns.join(", ")}) VALUES ${valuesClauses.join(", ")} ON CONFLICT DO NOTHING`;
+}
+
+function flattenBatchValues(rows: readonly Record<string, unknown>[], columns: readonly string[]): unknown[] {
+  return rows.flatMap((row) => columns.map((column) => row[column]));
+}
+
+function redactRuntimeError(message: string, dsn: string): string {
+  return message.replaceAll(dsn, redactDsnCredentials(dsn));
+}
+
 export async function migrateSqliteToPg(options: MigrateSqliteToPgOptions): Promise<Array<{ table: string; migrated: number }>> {
   const sqlite = new SqliteDatabase(options.sqlitePath);
   const plan = planSqliteToPgMigration(sqlite);
@@ -239,41 +284,43 @@ export async function migrateSqliteToPg(options: MigrateSqliteToPgOptions): Prom
   }
 
   const pg = await PgDatabase.open({ dsn: options.pgDsn });
+  let interrupted = false;
+  const onSigint = () => {
+    interrupted = true;
+  };
+  process.once("SIGINT", onSigint);
   try {
     await pg.migrate();
     const migrated: Array<{ table: string; migrated: number }> = [];
     for (const { table, rowCount } of plan) {
+      if (interrupted) {
+        throw new ValidationError("migrate_sqlite_to_pg.interrupted", "migrate_sqlite_to_pg.interrupted");
+      }
       validateTableName(table);
       if (rowCount === 0) {
         migrated.push({ table, migrated: 0 });
         continue;
       }
-      const firstBatch = readTableBatch(sqlite, table, SQLITE_MIGRATION_BATCH_SIZE, 0);
-      if (firstBatch.length === 0) {
-        migrated.push({ table, migrated: 0 });
-        continue;
-      }
-      const columns = [...new Set(firstBatch.flatMap((row) => Object.keys(row)))]
-        .map((column) => validateSqlIdentifier(column, "column"))
-        .sort();
-      const placeholders = columns.map((_, index) => `$${index + 1}`).join(", ");
-      const sql = `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`;
+      const columns = loadTableColumns(sqlite, table);
       let count = 0;
       await pg.transaction(async (conn) => {
         for (let offset = 0; offset < rowCount; offset += SQLITE_MIGRATION_BATCH_SIZE) {
-          const rows = offset === 0
-            ? firstBatch
-            : readTableBatch(sqlite, table, SQLITE_MIGRATION_BATCH_SIZE, offset);
-          for (const row of rows) {
-            await conn.execute(sql, ...columns.map((column) => row[column]));
-            count += 1;
+          if (interrupted) {
+            throw new ValidationError("migrate_sqlite_to_pg.interrupted", "migrate_sqlite_to_pg.interrupted");
           }
+          const rows = readTableBatch(sqlite, table, SQLITE_MIGRATION_BATCH_SIZE, offset);
+          if (rows.length === 0) {
+            continue;
+          }
+          await conn.execute(buildInsertSql(table, columns, rows.length), ...flattenBatchValues(rows, columns));
+          count += rows.length;
         }
       });
       migrated.push({ table, migrated: count });
     }
     return migrated;
   } finally {
+    process.removeListener("SIGINT", onSigint);
     sqlite.close();
     await pg.close();
   }
@@ -281,15 +328,19 @@ export async function migrateSqliteToPg(options: MigrateSqliteToPgOptions): Prom
 
 async function main(): Promise<void> {
   const options = parseMigrateSqliteToPgArgs(process.argv.slice(2));
-  const result = await migrateSqliteToPg(options);
-  // R31-33 FIX: Mask PG DSN in output to prevent credential leakage
-  const maskedDsn = redactDsnCredentials(options.pgDsn);
-  process.stdout.write(`${JSON.stringify({
-    sqlite: basename(options.sqlitePath),
-    pgDsn: maskedDsn,
-    dryRun: options.dryRun,
-    tables: result,
-  }, null, 2)}\n`);
+  try {
+    const result = await migrateSqliteToPg(options);
+    const maskedDsn = redactDsnCredentials(options.pgDsn);
+    process.stdout.write(`${JSON.stringify({
+      sqlite: basename(options.sqlitePath),
+      pgDsn: maskedDsn,
+      dryRun: options.dryRun,
+      tables: result,
+    }, null, 2)}\n`);
+  } catch (error) {
+    const message = error instanceof Error ? redactRuntimeError(error.message, options.pgDsn) : "migrate_sqlite_to_pg.failed";
+    throw new ValidationError("migrate_sqlite_to_pg.failed", message);
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

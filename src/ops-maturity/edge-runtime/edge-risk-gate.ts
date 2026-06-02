@@ -52,7 +52,8 @@ export class EdgeRiskGate {
         riskScore: Number.NaN,
       };
     }
-    if (request.taskType == null || request.taskType.trim().length === 0) {
+    const normalizedTaskType = normalizeTaskType(request.taskType);
+    if (normalizedTaskType == null) {
       return {
         allowed: false,
         reason: "edge_runtime.task_type_required:offline_execution_requires_explicit_taskType",
@@ -71,10 +72,10 @@ export class EdgeRiskGate {
     }
 
     // Check high-risk taskType
-    if (HIGH_RISK_TASK_TYPES.has(request.taskType)) {
+    if (HIGH_RISK_TASK_TYPES.has(normalizedTaskType)) {
       return {
         allowed: false,
-        reason: `edge_runtime.high_risk_task_type_blocked:offline_execution_denied_for_${request.taskType}`,
+        reason: `edge_runtime.high_risk_task_type_blocked:offline_execution_denied_for_${normalizedTaskType}`,
         riskScore,
       };
     }
@@ -84,4 +85,9 @@ export class EdgeRiskGate {
       riskScore,
     };
   }
+}
+
+function normalizeTaskType(value: string | undefined): string | null {
+  const normalized = value?.trim().toLowerCase().replace(/[\s-]+/gu, "_");
+  return normalized != null && normalized.length > 0 ? normalized : null;
 }

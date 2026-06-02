@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { buildGovernanceAuditRecord, type GovernanceAuditRecord } from "../compliance-engine/audit-enforcer/index.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { type ApprovalDelegation, resolveDelegatedApprover } from "./delegation/index.js";
@@ -83,10 +84,12 @@ export class ApprovalRoutingService {
     this.fxRatesToCny = options.fxRatesToCny ?? {
       USD: {
         rate: 7.2,
+        asOf: "1970-01-01T00:00:00.000Z",
         source: "approval-routing.default-usd-cny",
       },
       CNY: {
         rate: 1,
+        asOf: "1970-01-01T00:00:00.000Z",
         source: "approval-routing.identity-cny",
       },
     };
@@ -183,9 +186,11 @@ export class ApprovalRoutingService {
   }
 
   private buildApprovalRouteAuditRecordId(requesterId: string, orgNodeId: string, nowIsoValue: string): string {
-    const normalizedRequesterId = requesterId.trim().replace(/[^A-Za-z0-9._:-]+/g, "-");
-    const normalizedOrgNodeId = orgNodeId.trim().replace(/[^A-Za-z0-9._:-]+/g, "-");
-    return `approval_route_audit_${normalizedRequesterId}_${normalizedOrgNodeId}_${Date.parse(nowIsoValue)}_${newId("route")}`;
+    const digest = createHash("sha256")
+      .update(`${requesterId}\u0000${orgNodeId}\u0000${nowIsoValue}`)
+      .digest("hex")
+      .slice(0, 24);
+    return `approval_route_audit_${digest}_${newId("route")}`;
   }
 
   public getAmountThresholdMatrix(): readonly AmountThresholdRule[] {
@@ -281,7 +286,7 @@ export class ApprovalRoutingService {
     return {
       originalValue,
       originalCurrency: normalizedCurrency,
-      amountCny: Number((originalValue * fxEntry.rate).toFixed(2)),
+      amountCny: roundCurrencyForCurrency(originalValue * fxEntry.rate, "CNY"),
       fxSnapshot: {
         baseCurrency: normalizedCurrency,
         quoteCurrency: "CNY",
@@ -309,9 +314,17 @@ export class ApprovalRoutingService {
       }))
       .filter((item) => item.decision.shouldEscalate)
       .sort((left, right) =>
-        right.rule.triggerAfterMinutes - left.rule.triggerAfterMinutes ||
+        left.rule.triggerAfterMinutes - right.rule.triggerAfterMinutes ||
         (left.rule.maxEscalationDepth ?? 1) - (right.rule.maxEscalationDepth ?? 1),
       )[0];
+
+    if (matchedRule != null && context.conflictedApproverIds?.includes(matchedRule.rule.escalateToApproverId)) {
+      return {
+        escalatedTo: null,
+        escalationRuleId: matchedRule.rule.ruleId,
+        slaBreachNotificationTargetIds: matchedRule.decision.notificationTargetIds ?? [],
+      };
+    }
 
     return {
       escalatedTo: matchedRule?.rule.escalateToApproverId ?? null,
@@ -333,4 +346,10 @@ function isAllowedInternalConditionalApprover(approverId: string): boolean {
     return false;
   }
   return /^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/i.test(normalized);
+}
+
+function roundCurrencyForCurrency(value: number, currency: string): number {
+  const precision = currency === "JPY" ? 0 : currency === "BTC" || currency === "ETH" ? 8 : 2;
+  const factor = 10 ** precision;
+  return Math.round(value * factor) / factor;
 }

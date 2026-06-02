@@ -49,6 +49,7 @@ function createMockRedisClient(overrides: Partial<{
   smembers: (key: string) => Promise<string[]>;
   sadd: (key: string, member: string) => Promise<number>;
   srem: (key: string, member: string) => Promise<number>;
+  eval: (script: string, numberOfKeys: number, ...args: Array<string | number>) => Promise<unknown>;
   ping: () => Promise<string>;
   quit: () => Promise<unknown>;
   disconnect: () => void;
@@ -73,6 +74,7 @@ function createMockRedisClient(overrides: Partial<{
     smembers: async () => [],
     sadd: async () => 1,
     srem: async () => 1,
+    eval: async () => null,
     ping: async () => "PONG",
     quit: async () => {},
     disconnect: () => {},
@@ -94,6 +96,18 @@ test("RedisQueueAdapter dequeueAsync returns null when no jobs available [redis-
   const result = await adapter.dequeueAsync("test-queue");
 
   assert.equal(result, null);
+});
+
+test("RedisQueueAdapter dequeueAsync rejects when Redis EVAL is unavailable [redis-queue-adapter-async-methods]", async () => {
+  const mockRedis = createMockRedisClient({
+    eval: undefined as unknown as (script: string, numberOfKeys: number, ...args: Array<string | number>) => Promise<unknown>,
+  });
+  const adapter = createAdapterWithMockRedis(mockRedis);
+
+  await assert.rejects(
+    () => adapter.dequeueAsync("test-queue"),
+    /queue\.redis_eval_unavailable/,
+  );
 });
 
 test("RedisQueueAdapter dequeueAsync returns null when only delayed jobs exist [redis-queue-adapter-async-methods]", async () => {
@@ -161,6 +175,21 @@ test("RedisQueueAdapter dequeueAsync returns job with ack/nack functions [redis-
     srem: async () => 1,
     zrem: async () => 1,
     expire: async () => 1,
+    eval: async () => JSON.stringify({
+      id: "job-dequeue-1",
+      queue_name: "test-queue",
+      payload: '{"data":"test"}',
+      status: "active",
+      priority: "5",
+      attempts: "1",
+      max_attempts: "3",
+      last_error: "",
+      delay_until: "",
+      idempotency_key: "",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: "",
+    }),
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
@@ -215,6 +244,24 @@ test("RedisQueueAdapter dequeueAsync increments attempts counter [redis-queue-ad
     srem: async () => 1,
     zrem: async () => 1,
     expire: async () => 1,
+    eval: async () => {
+      attemptsIncremented = true;
+      return JSON.stringify({
+        id: "job-attempts-1",
+        queue_name: "test-queue",
+        payload: "{}",
+        status: "active",
+        priority: "0",
+        attempts: "1",
+        max_attempts: "5",
+        last_error: "",
+        delay_until: "",
+        idempotency_key: "",
+        created_at: jobRecord.created_at,
+        updated_at: new Date().toISOString(),
+        completed_at: "",
+      });
+    },
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
@@ -495,7 +542,7 @@ test("RedisQueueAdapter retryJobAsync returns null when job not found [redis-que
   assert.equal(result, null);
 });
 
-test("RedisQueueAdapter retryJobAsync returns null when job status is not failed or dead_letter [redis-queue-adapter-async-methods]", async () => {
+test("RedisQueueAdapter retryJobAsync returns null when job status is not retryable [redis-queue-adapter-async-methods]", async () => {
   const mockRedis = createMockRedisClient({
     hgetall: async () => ({
       id: "active-job",
@@ -520,14 +567,14 @@ test("RedisQueueAdapter retryJobAsync returns null when job status is not failed
   assert.equal(result, null);
 });
 
-test("RedisQueueAdapter retryJobAsync resets failed job to waiting [redis-queue-adapter-async-methods]", async () => {
+test("RedisQueueAdapter retryJobAsync resets dead-letter job to waiting [redis-queue-adapter-async-methods]", async () => {
   let hmsetCalled = false;
   let hmsetData: Record<string, string> = {};
   const jobRecord: Record<string, string> = {
     id: "retry-job-1",
     queue_name: "retry-queue",
     payload: "{}",
-    status: "failed",
+    status: "dead_letter",
     priority: "5",
     attempts: "2",
     max_attempts: "3",
@@ -743,7 +790,6 @@ test("RedisQueueAdapter statsAsync returns correct queue statistics [redis-queue
   assert.equal(result.active, 3);
   assert.equal(result.completed, 50);
   assert.equal(result.deadLetter, 2);
-  assert.equal(result.failed, 0);
 });
 
 test("RedisQueueAdapter statsAsync handles empty queue [redis-queue-adapter-async-methods]", async () => {
@@ -761,7 +807,6 @@ test("RedisQueueAdapter statsAsync handles empty queue [redis-queue-adapter-asyn
   assert.equal(result.delayed, 0);
   assert.equal(result.active, 0);
   assert.equal(result.completed, 0);
-  assert.equal(result.failed, 0);
   assert.equal(result.deadLetter, 0);
 });
 

@@ -40,6 +40,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -48,7 +50,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Create data directories
         run: |
@@ -62,22 +64,31 @@ jobs:
         run: |
           # Seed a non-trivial dataset so restore validation proves more than
           # a single placeholder row.
-          if ! command -v sqlite3 >/dev/null 2>&1; then
-            echo "sqlite3 is required for DR validation"
-            exit 1
-          fi
-          sqlite3 data/events.db "CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, eventType TEXT, taskId TEXT, payloadJson TEXT, createdAt TEXT);"
-          sqlite3 data/truth.db "CREATE TABLE IF NOT EXISTS tasks (taskId TEXT PRIMARY KEY, status TEXT, createdAt TEXT);"
-          sqlite3 data/events.db "DELETE FROM events;"
-          sqlite3 data/truth.db "DELETE FROM tasks;"
-          sqlite3 data/events.db "INSERT INTO events VALUES
-            ('evt_test_1', 'task:created', 'task_1', '{\"stage\":\"created\"}', '$(date -Iseconds)'),
-            ('evt_test_2', 'task:queued', 'task_1', '{\"stage\":\"queued\"}', '$(date -Iseconds)'),
-            ('evt_test_3', 'task:completed', 'task_2', '{\"stage\":\"completed\"}', '$(date -Iseconds)');"
-          sqlite3 data/truth.db "INSERT INTO tasks VALUES
-            ('task_1', 'queued', '$(date -Iseconds)'),
-            ('task_2', 'completed', '$(date -Iseconds)'),
-            ('task_3', 'running', '$(date -Iseconds)');"
+          node --input-type=module <<'EOF'
+          import { DatabaseSync } from "node:sqlite";
+
+          const now = new Date().toISOString();
+          const eventsDb = new DatabaseSync("data/events.db");
+          const truthDb = new DatabaseSync("data/truth.db");
+
+          eventsDb.exec("CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, eventType TEXT, taskId TEXT, payloadJson TEXT, createdAt TEXT);");
+          truthDb.exec("CREATE TABLE IF NOT EXISTS tasks (taskId TEXT PRIMARY KEY, status TEXT, createdAt TEXT);");
+          eventsDb.exec("DELETE FROM events;");
+          truthDb.exec("DELETE FROM tasks;");
+
+          const insertEvent = eventsDb.prepare("INSERT INTO events VALUES (?, ?, ?, ?, ?)");
+          insertEvent.run("evt_test_1", "task:created", "task_1", "{\"stage\":\"created\"}", now);
+          insertEvent.run("evt_test_2", "task:queued", "task_1", "{\"stage\":\"queued\"}", now);
+          insertEvent.run("evt_test_3", "task:completed", "task_2", "{\"stage\":\"completed\"}", now);
+
+          const insertTask = truthDb.prepare("INSERT INTO tasks VALUES (?, ?, ?)");
+          insertTask.run("task_1", "queued", now);
+          insertTask.run("task_2", "completed", now);
+          insertTask.run("task_3", "running", now);
+
+          eventsDb.close();
+          truthDb.close();
+          EOF
           printf '{"taskId":"task_1","status":"queued"}\n' > data/projections/task-1.json
           printf '{"taskId":"task_2","status":"completed"}\n' > data/projections/task-2.json
 
@@ -98,8 +109,8 @@ jobs:
       - name: Verify restored dataset shape
         run: |
           RESTORE_ROOT="${{ steps.drill.outputs.output_dir }}/restore/data"
-          EVENT_COUNT=$(sqlite3 "${RESTORE_ROOT}/events.db" "SELECT COUNT(*) FROM events;")
-          TASK_COUNT=$(sqlite3 "${RESTORE_ROOT}/truth.db" "SELECT COUNT(*) FROM tasks;")
+          EVENT_COUNT=$(node --input-type=module -e 'import { DatabaseSync } from "node:sqlite"; const db = new DatabaseSync(process.argv[1]); const row = db.prepare("SELECT COUNT(*) AS count FROM events").get(); db.close(); process.stdout.write(String(row.count));' "${RESTORE_ROOT}/events.db")
+          TASK_COUNT=$(node --input-type=module -e 'import { DatabaseSync } from "node:sqlite"; const db = new DatabaseSync(process.argv[1]); const row = db.prepare("SELECT COUNT(*) AS count FROM tasks").get(); db.close(); process.stdout.write(String(row.count));' "${RESTORE_ROOT}/truth.db")
           PROJECTION_COUNT=$(find "${RESTORE_ROOT}/projections" -type f | wc -l | tr -d ' ')
           [ "$EVENT_COUNT" -ge 3 ] || { echo "Expected >=3 restored events, got $EVENT_COUNT"; exit 1; }
           [ "$TASK_COUNT" -ge 3 ] || { echo "Expected >=3 restored tasks, got $TASK_COUNT"; exit 1; }

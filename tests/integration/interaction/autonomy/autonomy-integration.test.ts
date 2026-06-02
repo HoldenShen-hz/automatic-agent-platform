@@ -31,7 +31,7 @@ function makeScore(overrides: Partial<CapabilityTrustScore> = {}): CapabilityTru
 function makeProfile(overrides: Partial<AgentTrustProfile> = {}): AgentTrustProfile {
   return {
     agentId: "agent_integration_test",
-    domainId: "engineering_ops",
+    domainId: "engineering-ops",
     overallTrustLevel: "probation",
     lastEvaluation: new Date().toISOString(),
     capabilityScores: [],

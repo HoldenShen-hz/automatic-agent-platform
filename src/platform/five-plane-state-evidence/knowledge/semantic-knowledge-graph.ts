@@ -113,14 +113,33 @@ export class SemanticKnowledgeGraph {
   private readonly chunkToKeywordIds = new Map<string, Set<string>>();
 
   public replace(records: readonly ArchivedKnowledgeRecord[]): void {
+    const next = new SemanticKnowledgeGraph();
+    for (const record of records) {
+      next.upsertRecord(record);
+    }
     this.nodes.clear();
     this.edges.clear();
     this.adjacencyByNodeId.clear();
     this.chunkByKnowledgeRef.clear();
     this.keywordToChunkIds.clear();
     this.chunkToKeywordIds.clear();
-    for (const record of records) {
-      this.upsertRecord(record);
+    for (const [nodeId, node] of next.nodes.entries()) {
+      this.nodes.set(nodeId, node);
+    }
+    for (const [edgeId, edge] of next.edges.entries()) {
+      this.edges.set(edgeId, edge);
+    }
+    for (const [nodeId, edges] of next.adjacencyByNodeId.entries()) {
+      this.adjacencyByNodeId.set(nodeId, [...edges]);
+    }
+    for (const [knowledgeRef, chunkNodeId] of next.chunkByKnowledgeRef.entries()) {
+      this.chunkByKnowledgeRef.set(knowledgeRef, chunkNodeId);
+    }
+    for (const [keyword, chunkIds] of next.keywordToChunkIds.entries()) {
+      this.keywordToChunkIds.set(keyword, new Set(chunkIds));
+    }
+    for (const [chunkNodeId, keywordIds] of next.chunkToKeywordIds.entries()) {
+      this.chunkToKeywordIds.set(chunkNodeId, new Set(keywordIds));
     }
   }
 
@@ -191,8 +210,10 @@ export class SemanticKnowledgeGraph {
       this.chunkToKeywordIds.set(chunkNodeId, keywordIds);
     }
 
-    for (let index = 1; index < chunkNodeIds.length; index++) {
-      this.addUndirectedEdge(chunkNodeIds[index - 1]!, chunkNodeIds[index]!, "same_document", 1);
+    for (let left = 0; left < chunkNodeIds.length; left += 1) {
+      for (let right = left + 1; right < chunkNodeIds.length; right += 1) {
+        this.addUndirectedEdge(chunkNodeIds[left]!, chunkNodeIds[right]!, "same_document", 1);
+      }
     }
   }
 
@@ -268,23 +289,25 @@ export class SemanticKnowledgeGraph {
 
     const normalizedDecay = Math.max(0, Math.min(1, decayFactor));
     const queue = seedNodeIds.map((nodeId) => ({ nodeId, score: 1 }));
-    const visited = new Set<string>();
     const scores = new Map<string, number>();
 
     while (queue.length > 0) {
       const current = queue.shift()!;
-      if (visited.has(current.nodeId)) {
+      const bestKnownScore = scores.get(current.nodeId) ?? -1;
+      if (bestKnownScore >= current.score) {
         continue;
       }
-      visited.add(current.nodeId);
       scores.set(current.nodeId, current.score);
 
       for (const edge of this.adjacencyByNodeId.get(current.nodeId) ?? []) {
         if (edge.relation !== "trust_boost" && edge.relation !== "trusts") {
           continue;
         }
-        const nextScore = Number((current.score * Math.max(0, edge.weight) * (1 - normalizedDecay)).toFixed(4));
+        const nextScore = current.score * Math.max(0, edge.weight) * (1 - normalizedDecay);
         if (nextScore <= 0) {
+          continue;
+        }
+        if ((scores.get(edge.toNodeId) ?? -1) >= nextScore) {
           continue;
         }
         queue.push({ nodeId: edge.toNodeId, score: nextScore });
@@ -293,7 +316,9 @@ export class SemanticKnowledgeGraph {
 
     return {
       propagatedNodeIds: [...scores.keys()],
-      trustScoreChanges: Object.fromEntries(scores.entries()),
+      trustScoreChanges: Object.fromEntries(
+        [...scores.entries()].map(([nodeId, score]) => [nodeId, Number(score.toFixed(6))]),
+      ),
     };
   }
 
@@ -407,8 +432,8 @@ export class SemanticKnowledgeGraph {
   }
 
   private addUndirectedEdge(fromNodeId: string, toNodeId: string, relation: KnowledgeGraphEdgeType, weight: number): void {
-    this.addEdge(fromNodeId, toNodeId, relation, weight);
-    this.addEdge(toNodeId, fromNodeId, relation, weight);
+    const [canonicalFrom, canonicalTo] = [fromNodeId, toNodeId].sort((left, right) => left.localeCompare(right));
+    this.addEdge(canonicalFrom, canonicalTo, relation, weight);
   }
 
   private ensureEntityNode(entityId: string, trustLevel: TrustLevel): string {

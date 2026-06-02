@@ -320,9 +320,9 @@ test("E2E Division Bootstrap: configured division registry loads validated fixtu
 
   try {
     createFile(
-      join(divisionsRoot, "general_ops/division.yaml"),
+      join(divisionsRoot, "general-ops/division.yaml"),
       [
-        "id: general_ops",
+        "id: general-ops",
         "version: 1",
         "name: General Operations",
         "default_workflow: single_agent_minimal",
@@ -335,9 +335,9 @@ test("E2E Division Bootstrap: configured division registry loads validated fixtu
         "    tools: [read, bash]",
       ].join("\n"),
     );
-    createFile(join(divisionsRoot, "general_ops/roles/general_executor.prompt.md"), "# general executor\n");
+    createFile(join(divisionsRoot, "general-ops/roles/general_executor.prompt.md"), "# general executor\n");
     createFile(
-      join(divisionsRoot, "general_ops/schemas/minimal-output.json"),
+      join(divisionsRoot, "general-ops/schemas/minimal-output.json"),
       JSON.stringify(
         {
           type: "object",
@@ -353,10 +353,10 @@ test("E2E Division Bootstrap: configured division registry loads validated fixtu
       ),
     );
     createFile(
-      join(divisionsRoot, "general_ops/workflows/minimal.yaml"),
+      join(divisionsRoot, "general-ops/workflows/minimal.yaml"),
       [
         "id: single_agent_minimal",
-        "division_id: general_ops",
+        "division_id: general-ops",
         "steps:",
         "  - step_id: analyze_request",
         "    role_id: general_executor",
@@ -385,7 +385,7 @@ test("E2E Division Bootstrap: configured division registry loads validated fixtu
       sandboxPolicy: createWorkspaceWritePolicy(workspace),
     });
 
-    const division = registry.divisions.get("general_ops");
+    const division = registry.divisions.get("general-ops");
     const workflow = registry.workflows.get("single_agent_minimal");
 
     assert.ok(division, "Division should be loaded");

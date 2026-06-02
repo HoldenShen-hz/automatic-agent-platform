@@ -87,6 +87,20 @@ test("LearningObjectValidator quarantines secret and PII content", () => {
   assert.equal(pii.reasonCode, "learning.pii_detected");
 });
 
+test("LearningObjectValidator scans content and evidence fields for secrets and modern email domains", () => {
+  const validator = new LearningObjectValidator();
+
+  const secretInEvidence = validator.validate(makeLearningObject({
+    evidenceRefs: ["https://example.test/download?token=secret-token"],
+  }));
+  const piiInContent = validator.validate(makeLearningObject({
+    summary: "Escalate to analyst@company.dev for approval",
+  }));
+
+  assert.equal(secretInEvidence.reasonCode, "learning.secret_detected");
+  assert.equal(piiInContent.reasonCode, "learning.pii_detected");
+});
+
 test("LearningObjectValidator validateMany filters invalid objects and preserves valid ones", () => {
   const validator = new LearningObjectValidator();
 
@@ -104,4 +118,34 @@ test("LearningObjectValidator validateMany filters invalid objects and preserves
 
   assert.deepEqual(results.map((entry) => entry.learningObjectId), ["valid-1", "valid-2"]);
   assert.ok(results.every((entry) => entry.promotionStatus === "validated"));
+});
+
+test("LearningObjectValidator caps retained history between validateMany batches", () => {
+  const validator = new LearningObjectValidator({ maxKnownObjects: 1 });
+
+  validator.validateMany([
+    makeLearningObject({
+      learningObjectId: "alpha",
+      objectId: "alpha",
+      title: "Alpha title",
+      summary: "Alpha summary",
+    }),
+  ]);
+  validator.validateMany([
+    makeLearningObject({
+      learningObjectId: "beta",
+      objectId: "beta",
+      title: "Beta title",
+      summary: "Beta summary",
+    }),
+  ]);
+
+  const result = validator.validate(makeLearningObject({
+    learningObjectId: "alpha-2",
+    objectId: "alpha-2",
+    title: "Alpha title",
+    summary: "Alpha summary",
+  }));
+
+  assert.equal(result.valid, true);
 });

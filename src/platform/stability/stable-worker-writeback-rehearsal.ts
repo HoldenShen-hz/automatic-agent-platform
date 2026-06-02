@@ -101,7 +101,7 @@ function seedTaskExecutionWorkflowAndSession(
       id: input.taskId,
       parentId: null,
       rootId: input.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Stable worker writeback rehearsal task",
       status: "in_progress",
       source: "user",
@@ -148,7 +148,7 @@ function seedTaskExecutionWorkflowAndSession(
     });
     store.workflow.insertWorkflowState({
       taskId: input.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",

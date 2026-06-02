@@ -99,6 +99,8 @@ function resolveCompensationNodeRunId(step: CompensationStep): string {
  */
 export class CompensationManager {
   private readonly adapters: CompensationExecutionAdapters;
+  private readonly activeCompensationIds = new Set<string>();
+  private readonly completedCompensationIds = new Set<string>();
 
   public constructor(adapters: Partial<CompensationExecutionAdapters> = {}) {
     this.adapters = {
@@ -245,50 +247,68 @@ export class CompensationManager {
     plan: CompensationPlan,
     context: CompensationContext,
   ): CompensationResult {
+    if (this.completedCompensationIds.has(plan.compensationId) || this.activeCompensationIds.has(plan.compensationId)) {
+      return {
+        success: false,
+        compensationId: plan.compensationId,
+        finalStatus: "failed",
+        evidenceRefs: [{
+          artifactId: plan.compensationId,
+          uri: `compensation://${plan.compensationId}/rejected?reason=${encodeURIComponent("duplicate_execution")}`,
+          kind: "compensation_error",
+        }],
+      };
+    }
+    this.activeCompensationIds.add(plan.compensationId);
     const evidenceRefs: ArtifactRef[] = [];
     let finalStatus: CompensationStatus = "succeeded";
-
-    for (const step of plan.steps) {
-      try {
-        // Execute the compensation action based on step type
-        const success = this.executeCompensationStep(step, context);
-        if (!success) {
+    try {
+      for (const step of plan.steps) {
+        try {
+          // Execute the compensation action based on step type
+          const success = this.executeCompensationStep(step, context);
+          if (!success) {
+            finalStatus = "failed";
+            const nodeRunId = resolveCompensationNodeRunId(step);
+            evidenceRefs.push({
+              artifactId: nodeRunId,
+              uri: `compensation://${plan.compensationId}/${nodeRunId}/failed?stepType=${encodeURIComponent(step.stepType)}&targetRef=${encodeURIComponent(step.targetRef)}`,
+              kind: "compensation_error",
+            });
+            break;
+          }
+          const nodeRunId = resolveCompensationNodeRunId(step);
+          // Record evidence reference for each executed step
+          evidenceRefs.push({
+            artifactId: nodeRunId,
+            uri: `compensation://${plan.compensationId}/${nodeRunId}`,
+            kind: "compensation_step",
+          });
+        } catch (error) {
           finalStatus = "failed";
           const nodeRunId = resolveCompensationNodeRunId(step);
           evidenceRefs.push({
             artifactId: nodeRunId,
-            uri: `compensation://${plan.compensationId}/${nodeRunId}/failed?stepType=${encodeURIComponent(step.stepType)}&targetRef=${encodeURIComponent(step.targetRef)}`,
+            uri: `compensation://${plan.compensationId}/${nodeRunId}/error`,
             kind: "compensation_error",
           });
           break;
         }
-        const nodeRunId = resolveCompensationNodeRunId(step);
-        // Record evidence reference for each executed step
-        evidenceRefs.push({
-          artifactId: nodeRunId,
-          uri: `compensation://${plan.compensationId}/${nodeRunId}`,
-          kind: "compensation_step",
-        });
-      } catch (error) {
-        finalStatus = "failed";
-        const nodeRunId = resolveCompensationNodeRunId(step);
-        evidenceRefs.push({
-          artifactId: nodeRunId,
-          uri: `compensation://${plan.compensationId}/${nodeRunId}/error`,
-          kind: "compensation_error",
-        });
-        break;
       }
+      const result: CompensationResult = {
+        success: finalStatus === "succeeded",
+        compensationId: plan.compensationId,
+        finalStatus,
+        evidenceRefs,
+        ...(finalStatus === "succeeded" ? { completedAt: new Date().toISOString() } : {}),
+      };
+      if (result.success) {
+        this.completedCompensationIds.add(plan.compensationId);
+      }
+      return result;
+    } finally {
+      this.activeCompensationIds.delete(plan.compensationId);
     }
-
-    const result: CompensationResult = {
-      success: finalStatus === "succeeded",
-      compensationId: plan.compensationId,
-      finalStatus,
-      evidenceRefs,
-      ...(finalStatus === "succeeded" ? { completedAt: new Date().toISOString() } : {}),
-    };
-    return result;
   }
 
   /**

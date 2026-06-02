@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -9,11 +9,12 @@ const SCRIPT_PATH = join(process.cwd(), "scripts", "clean-dist.mjs");
 
 test("clean-dist prunes stale compiled tests even when dist is preserved", () => {
   const workspace = mkdtempSync(join(tmpdir(), "aa-clean-dist-"));
+  const workspaceScriptPath = join(workspace, "scripts", "clean-dist.mjs");
 
   try {
     mkdirSync(join(workspace, "scripts"), { recursive: true });
     mkdirSync(join(workspace, "dist", "tests", "integration", "platform", "control-plane"), { recursive: true });
-    writeFileSync(join(workspace, "scripts", "clean-dist.mjs"), "");
+    copyFileSync(SCRIPT_PATH, workspaceScriptPath);
 
     const staleJs = join(
       workspace,
@@ -64,7 +65,7 @@ test("clean-dist prunes stale compiled tests even when dist is preserved", () =>
       }),
     );
 
-    execFileSync("node", [SCRIPT_PATH], {
+    execFileSync("node", [workspaceScriptPath], {
       cwd: workspace,
       env: {
         ...process.env,
@@ -86,17 +87,45 @@ test("clean-dist prunes stale compiled tests even when dist is preserved", () =>
 
 test("clean-dist honors AA_PRESERVE_DIST=0 even while AA_RUNNING_TESTS=1", () => {
   const workspace = mkdtempSync(join(tmpdir(), "aa-clean-dist-force-delete-"));
+  const workspaceScriptPath = join(workspace, "scripts", "clean-dist.mjs");
 
   try {
+    mkdirSync(join(workspace, "scripts"), { recursive: true });
     mkdirSync(join(workspace, "dist"), { recursive: true });
+    copyFileSync(SCRIPT_PATH, workspaceScriptPath);
     writeFileSync(join(workspace, "dist", "marker.txt"), "marker\n");
 
-    execFileSync("node", [SCRIPT_PATH], {
+    execFileSync("node", [workspaceScriptPath], {
       cwd: workspace,
       env: {
         ...process.env,
         AA_RUNNING_TESTS: "1",
         AA_PRESERVE_DIST: "0",
+      },
+      stdio: "pipe",
+    });
+
+    assert.equal(existsSync(join(workspace, "dist")), false);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("clean-dist no longer preserves dist implicitly from AA_RUNNING_TESTS without AA_PRESERVE_DIST=1", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-clean-dist-explicit-policy-"));
+  const workspaceScriptPath = join(workspace, "scripts", "clean-dist.mjs");
+
+  try {
+    mkdirSync(join(workspace, "scripts"), { recursive: true });
+    mkdirSync(join(workspace, "dist"), { recursive: true });
+    copyFileSync(SCRIPT_PATH, workspaceScriptPath);
+    writeFileSync(join(workspace, "dist", "marker.txt"), "marker\n");
+
+    execFileSync("node", [workspaceScriptPath], {
+      cwd: workspace,
+      env: {
+        ...process.env,
+        AA_RUNNING_TESTS: "1",
       },
       stdio: "pipe",
     });

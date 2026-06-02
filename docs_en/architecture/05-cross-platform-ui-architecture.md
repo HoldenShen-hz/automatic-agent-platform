@@ -1,6 +1,6 @@
 # 12. 跨平台 UI 统一架构 (改进版) 
 
-automatic_agent/automatic-agent-platform-main/docs_zh/architecture/12-cross-platform-ui-architecture-v2.md
+Source baseline: `docs_en/architecture/05-cross-platform-ui-architecture.md`
 
 > **文档版本**: v4.4
 > **文档state**: Accepted

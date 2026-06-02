@@ -182,6 +182,54 @@ test("validateExecutableContract rejects malformed RequestEnvelope directives", 
   );
 });
 
+test("validateExecutableContract rejects unknown top-level executable contract fields", () => {
+  const envelope = {
+    requestId: "req-1",
+    confirmedTaskSpecId: "task-1",
+    tenantId: "tenant-1",
+    principal,
+    domainId: "coding",
+    traceId: "trace-1",
+    idempotencyKey: "idem-1",
+    priority: 1,
+    requestHash: "hash-1",
+    constraintPackRef: "constraint://default",
+    budgetIntent,
+    policyContext: {},
+    artifactRefs: [],
+    submittedAt: "2026-05-19T00:00:00.000Z",
+    unexpectedField: "should-fail",
+  };
+
+  assert.throws(
+    () => validateExecutableContract("RequestEnvelope", envelope),
+    ValidationError,
+  );
+});
+
+test("validateExecutableContract enforces RFC3339 occurredAt for EventEnvelope", () => {
+  const envelope = {
+    eventId: "evt-1",
+    runId: "run-1",
+    eventType: "platform.harness_run.created",
+    schemaVersion: 1,
+    aggregateType: "HarnessRun",
+    aggregateId: "hrun-1",
+    aggregateSeq: 1,
+    tenantId: "tenant-1",
+    traceId: "trace-1",
+    payloadHash: "hash-1",
+    payload: {},
+    replayBehavior: "replay_as_fact",
+    occurredAt: "not-a-timestamp",
+  };
+
+  assert.throws(
+    () => validateExecutableContract("EventEnvelope", envelope),
+    ValidationError,
+  );
+});
+
 test("createNodeAttemptReceipt creates successful tool receipt", () => {
   const receipt = createNodeAttemptReceipt({
     nodeAttemptId: "nattempt-1",

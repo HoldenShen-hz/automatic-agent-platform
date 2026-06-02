@@ -98,6 +98,7 @@ export class HumanTakeoverService {
       this.store.event.insertEvent({
         id: newId("evt"),
         taskId: input.taskId,
+        sessionId: takeoverSessionId,
         executionId: snapshot.execution?.id ?? null,
         eventType: "takeover:session_opened",
         eventTier: "tier_2",

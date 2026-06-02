@@ -68,10 +68,10 @@ function seedProtectedGovernanceTree(workspace: string): {
     },
   }));
   createFile(join(configRoot, "workflows/default.json"), JSON.stringify({ defaultWorkflowId: "single_agent_minimal", allowCrossDivisionDag: false }));
-  createFile(join(divisionsRoot, "general_ops/division.yaml"), "id: general_ops\nversion: 1\ndefault_workflow: single_agent_minimal\nroles:\n  - id: general_executor\n    prompt: roles/general_executor.prompt.md\n    model: balanced\n    tools: [read]\n");
-  createFile(join(divisionsRoot, "general_ops/roles/general_executor.prompt.md"), "# prompt\n");
-  createFile(join(divisionsRoot, "general_ops/schemas/minimal-output.json"), JSON.stringify({ type: "object", required: ["summary", "result"], properties: { summary: { type: "string", minLength: 1 }, result: { type: "string", minLength: 1 } }, additionalProperties: false }));
-  createFile(join(divisionsRoot, "general_ops/workflows/minimal.yaml"), "id: single_agent_minimal\ndivision_id: general_ops\nsteps:\n  - step_id: analyze_request\n    role_id: general_executor\n    output_key: analysis\n    output_schema: schemas/minimal-output.json\n    timeout_ms: 120000\n    max_attempts: 1\n");
+  createFile(join(divisionsRoot, "general-ops/division.yaml"), "id: general-ops\nversion: 1\ndefault_workflow: single_agent_minimal\nroles:\n  - id: general_executor\n    prompt: roles/general_executor.prompt.md\n    model: balanced\n    tools: [read]\n");
+  createFile(join(divisionsRoot, "general-ops/roles/general_executor.prompt.md"), "# prompt\n");
+  createFile(join(divisionsRoot, "general-ops/schemas/minimal-output.json"), JSON.stringify({ type: "object", required: ["summary", "result"], properties: { summary: { type: "string", minLength: 1 }, result: { type: "string", minLength: 1 } }, additionalProperties: false }));
+  createFile(join(divisionsRoot, "general-ops/workflows/minimal.yaml"), "id: single_agent_minimal\ndivision_id: general-ops\nsteps:\n  - step_id: analyze_request\n    role_id: general_executor\n    output_key: analysis\n    output_schema: schemas/minimal-output.json\n    timeout_ms: 120000\n    max_attempts: 1\n");
   createFile(agentsPath, "# Repository Guidelines\n");
 
   return { configRoot, divisionsRoot, agentsPath };
@@ -302,7 +302,7 @@ test("doctor service groups expired locks and tier1 backlog into unified self-ch
     });
     store.insertWorkflowState({
       taskId: "task-self-check",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",
@@ -462,7 +462,7 @@ test("doctor service degrades when a running execution becomes stalled", () => {
     db.transaction(() => {
       store.insertWorkflowState({
         taskId: "task-stalled",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -556,7 +556,7 @@ test("doctor service degrades when workflow terminal state is not reconciled int
     db.transaction(() => {
       store.insertWorkflowState({
         taskId: "task-doctor-terminal-mismatch",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 1,
         status: "completed",
@@ -626,7 +626,7 @@ test("doctor service degrades when an active execution exceeds a resource ceilin
     );
     store.insertWorkflowState({
       taskId: "task-resource-limit",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",

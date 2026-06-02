@@ -39,6 +39,7 @@ export const RiskClassSchema = z.enum(["low", "medium", "high", "critical"]);
 export const TaskInputSourceSchema = z.enum(["nl", "webhook", "ui", "cli", "scheduler", "external_event"]);
 export const AmbiguityPolicySchema = z.enum(["safe_default", "require_confirmation", "reject"]);
 export const BudgetResourceKindSchema = z.enum(["token", "tool", "api", "compute", "human", "side_effect", "other"]);
+const IsoTimestampSchema = z.string().datetime({ offset: true });
 
 export const JsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
   z.union([
@@ -674,7 +675,7 @@ export const EventEnvelopeSchema = z.object({
   sourceOfTruth: z.enum(["platform", "projection"]).optional(),
   schemaOwner: z.string().optional(),
   consumerContractTests: z.array(z.string()).optional(),
-  occurredAt: z.string().min(1),
+  occurredAt: IsoTimestampSchema,
 });
 
 export const PlatformFactEventSchema = EventEnvelopeSchema.extend({
@@ -809,6 +810,12 @@ export function validateExecutableContract<T extends CanonicalContractName>(
   name: T,
   value: unknown,
 ): z.infer<typeof CONTRACT_ZOD_SCHEMAS[T]> {
+  const unknownTopLevelKeys = findUnknownTopLevelKeys(CONTRACT_ZOD_SCHEMAS[name], value);
+  if (unknownTopLevelKeys.length > 0) {
+    throw new ValidationError("executable_contract.schema_invalid", `Invalid v4.3 contract payload: ${name}`, {
+      details: { unknownTopLevelKeys },
+    });
+  }
   const result = CONTRACT_ZOD_SCHEMAS[name].safeParse(value);
   if (!result.success) {
     throw new ValidationError("executable_contract.schema_invalid", `Invalid v4.3 contract payload: ${name}`, {
@@ -816,6 +823,17 @@ export function validateExecutableContract<T extends CanonicalContractName>(
     });
   }
   return result.data as z.infer<typeof CONTRACT_ZOD_SCHEMAS[T]>;
+}
+
+function findUnknownTopLevelKeys(schema: z.ZodTypeAny, value: unknown): readonly string[] {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return [];
+  }
+  if (!(schema instanceof z.ZodObject)) {
+    return [];
+  }
+  const allowedKeys = new Set(Object.keys(schema.shape));
+  return Object.keys(value).filter((key) => !allowedKeys.has(key));
 }
 
 function replayBehaviorFor(name: CanonicalContractName): ContractReplayBehavior {

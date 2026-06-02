@@ -7,7 +7,7 @@ families:
     targetClaimLevel: local_leader
     owner: engineering-platform-owner
     canonicalFamilies: [engineering, data, operations, quality]
-    canonicalDivisions: [coding, data-engineering, devops, engineering_ops, quality-assurance]
+    canonicalDivisions: [coding, data-engineering, devops, engineering-ops, quality-assurance]
     benchmarkRefs: [swe-bench-verified, bfcl-v4, aidev-github]
     minimumEvidenceRef: engineering-core
     notes: "最快形成 issue-to-patch、CI failure、patch correctness 闭环。"

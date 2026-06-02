@@ -32,6 +32,12 @@ import {
   type CreateTestInput,
 } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/prompt-bundle-repository.js";
 
+const defaultDelegationPermissions = {
+  resources: ["workspace"],
+  actions: ["tool:invoke"],
+  constraints: {},
+} as const;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tenant Repository Tests
 // ─────────────────────────────────────────────────────────────────────────────
@@ -299,6 +305,8 @@ test("InMemoryDelegationRepository.create creates delegation record", async () =
     parentAgentId: "agent-parent",
     childAgentId: "agent-child",
     delegationChain: ["agent-1", "agent-2", "agent-3"],
+    permissions: defaultDelegationPermissions,
+    grantedPermissions: defaultDelegationPermissions,
     depth: 2,
     expiresAt: "2024-12-31T23:59:59Z",
   };
@@ -319,6 +327,8 @@ test("InMemoryDelegationRepository.findById returns delegation", async () => {
     parentAgentId: "parent",
     childAgentId: "child",
     delegationChain: ["parent"],
+    permissions: defaultDelegationPermissions,
+    grantedPermissions: defaultDelegationPermissions,
     depth: 1,
   });
 
@@ -330,9 +340,9 @@ test("InMemoryDelegationRepository.findById returns delegation", async () => {
 
 test("InMemoryDelegationRepository.findByParentAgentId filters correctly", async () => {
   const repo = new InMemoryDelegationRepository();
-  await repo.create({ parentAgentId: "agent-a", childAgentId: "child-1", delegationChain: [], depth: 1 });
-  await repo.create({ parentAgentId: "agent-a", childAgentId: "child-2", delegationChain: [], depth: 1 });
-  await repo.create({ parentAgentId: "agent-b", childAgentId: "child-3", delegationChain: [], depth: 1 });
+  await repo.create({ parentAgentId: "agent-a", childAgentId: "child-1", delegationChain: [], permissions: defaultDelegationPermissions, grantedPermissions: defaultDelegationPermissions, depth: 1 });
+  await repo.create({ parentAgentId: "agent-a", childAgentId: "child-2", delegationChain: [], permissions: defaultDelegationPermissions, grantedPermissions: defaultDelegationPermissions, depth: 1 });
+  await repo.create({ parentAgentId: "agent-b", childAgentId: "child-3", delegationChain: [], permissions: defaultDelegationPermissions, grantedPermissions: defaultDelegationPermissions, depth: 1 });
 
   const found = await repo.findByParentAgentId("agent-a");
 
@@ -342,8 +352,8 @@ test("InMemoryDelegationRepository.findByParentAgentId filters correctly", async
 
 test("InMemoryDelegationRepository.findByStatus filters by status", async () => {
   const repo = new InMemoryDelegationRepository();
-  const d1 = await repo.create({ parentAgentId: "p", childAgentId: "c1", delegationChain: [], depth: 1 });
-  const d2 = await repo.create({ parentAgentId: "p", childAgentId: "c2", delegationChain: [], depth: 1 });
+  const d1 = await repo.create({ parentAgentId: "p", childAgentId: "c1", delegationChain: [], permissions: defaultDelegationPermissions, grantedPermissions: defaultDelegationPermissions, depth: 1 });
+  const d2 = await repo.create({ parentAgentId: "p", childAgentId: "c2", delegationChain: [], permissions: defaultDelegationPermissions, grantedPermissions: defaultDelegationPermissions, depth: 1 });
 
   await repo.updateStatus(d1.delegationId, "active");
   await repo.updateStatus(d2.delegationId, "completed");
@@ -357,8 +367,8 @@ test("InMemoryDelegationRepository.findExpired returns expired delegations", asy
   const past = new Date(Date.now() - 86400000).toISOString(); // yesterday
   const future = new Date(Date.now() + 86400000).toISOString(); // tomorrow
 
-  await repo.create({ parentAgentId: "p", childAgentId: "c1", delegationChain: [], depth: 1, expiresAt: past });
-  await repo.create({ parentAgentId: "p", childAgentId: "c2", delegationChain: [], depth: 1, expiresAt: future });
+  await repo.create({ parentAgentId: "p", childAgentId: "c1", delegationChain: [], permissions: defaultDelegationPermissions, grantedPermissions: defaultDelegationPermissions, depth: 1, expiresAt: past });
+  await repo.create({ parentAgentId: "p", childAgentId: "c2", delegationChain: [], permissions: defaultDelegationPermissions, grantedPermissions: defaultDelegationPermissions, depth: 1, expiresAt: future });
 
   const expired = await repo.findExpired(new Date().toISOString());
 
@@ -367,7 +377,7 @@ test("InMemoryDelegationRepository.findExpired returns expired delegations", asy
 
 test("InMemoryDelegationRepository.complete marks delegation completed", async () => {
   const repo = new InMemoryDelegationRepository();
-  const created = await repo.create({ parentAgentId: "p", childAgentId: "c", delegationChain: [], depth: 1 });
+  const created = await repo.create({ parentAgentId: "p", childAgentId: "c", delegationChain: [], permissions: defaultDelegationPermissions, grantedPermissions: defaultDelegationPermissions, depth: 1 });
 
   await repo.complete(created.delegationId, "result-ref-123");
 
@@ -378,7 +388,7 @@ test("InMemoryDelegationRepository.complete marks delegation completed", async (
 
 test("InMemoryDelegationRepository.fail marks delegation failed", async () => {
   const repo = new InMemoryDelegationRepository();
-  const created = await repo.create({ parentAgentId: "p", childAgentId: "c", delegationChain: [], depth: 1 });
+  const created = await repo.create({ parentAgentId: "p", childAgentId: "c", delegationChain: [], permissions: defaultDelegationPermissions, grantedPermissions: defaultDelegationPermissions, depth: 1 });
 
   await repo.fail(created.delegationId, "error message");
 
@@ -393,7 +403,7 @@ test("InMemoryDelegationRepository.fail marks delegation failed", async () => {
 test("InMemoryDelegationEventRepository.create adds event", async () => {
   const delegationRepo = new InMemoryDelegationRepository();
   const eventRepo = new InMemoryDelegationEventRepository();
-  const delegation = await delegationRepo.create({ parentAgentId: "p", childAgentId: "c", delegationChain: [], depth: 1 });
+  const delegation = await delegationRepo.create({ parentAgentId: "p", childAgentId: "c", delegationChain: [], permissions: defaultDelegationPermissions, grantedPermissions: defaultDelegationPermissions, depth: 1 });
   const input: CreateEventInput = {
     delegationId: delegation.delegationId,
     eventType: "delegation.started",
@@ -409,7 +419,7 @@ test("InMemoryDelegationEventRepository.create adds event", async () => {
 test("InMemoryDelegationEventRepository.findByDelegationId returns events", async () => {
   const delegationRepo = new InMemoryDelegationRepository();
   const eventRepo = new InMemoryDelegationEventRepository();
-  const delegation = await delegationRepo.create({ parentAgentId: "p", childAgentId: "c", delegationChain: [], depth: 1 });
+  const delegation = await delegationRepo.create({ parentAgentId: "p", childAgentId: "c", delegationChain: [], permissions: defaultDelegationPermissions, grantedPermissions: defaultDelegationPermissions, depth: 1 });
 
   await eventRepo.create({
     delegationId: delegation.delegationId,

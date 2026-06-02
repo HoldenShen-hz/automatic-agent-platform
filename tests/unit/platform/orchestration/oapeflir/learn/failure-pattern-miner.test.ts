@@ -135,7 +135,7 @@ test("FailurePatternMiner.mine generates valid learning objects", () => {
   assert.ok(result[0]!.learningObjectId.startsWith("learning_"));
   assert.equal(result[0]!.learningType, "failure_pattern");
   assert.ok(result[0]!.confidence > 0);
-  assert.equal(result[0]!.promotionStatus, "quarantine");
+  assert.equal(result[0]!.promotionStatus, "quarantined");
   assert.equal(result[0]!.validatedBy, "none");
 });
 

@@ -24,19 +24,28 @@ export interface HappyPathInput {
   crashInjection?: WorkflowCrashInjection;
   stepOutputOverride?: Record<string, unknown>;
   logger?: Pick<StructuredLogger, "log">;
+  idFactory?: (prefix: string) => string;
+  now?: () => string;
 }
 
 export function createContext(
   traceContext: ReturnType<typeof createRootTraceContext>,
   reasonCode: string,
+  options: {
+    now?: () => string;
+    idFactory?: (prefix: string) => string;
+  } = {},
 ): TransitionAuditContext {
-  const span = createChildTraceContext(traceContext);
+  const span = createChildTraceContext(
+    traceContext,
+    options.idFactory == null ? {} : { spanId: options.idFactory("span") },
+  );
   const context: TransitionAuditContext = {
     reasonCode,
     traceId: span.traceId,
     parentSpanId: span.parentSpanId,
     actorType: "system",
-    occurredAt: nowIso(),
+    occurredAt: (options.now ?? nowIso)(),
   };
   if (span.spanId != null) {
     context.spanId = span.spanId;

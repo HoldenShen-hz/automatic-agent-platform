@@ -154,7 +154,7 @@ test("definePlugin applies custom security config", () => {
     },
   });
 
-  assert.equal(result.security.sandboxTier, "workspace_write");
+  assert.equal(result.security.sandboxTier, "restricted_exec");
   assert.deepEqual(result.security.egressDomains, ["api.example.com"]);
 });
 
@@ -613,7 +613,7 @@ test("definePlugin accepts valid signed plugin", () => {
 
   const sign = createSign("RSA-SHA256");
   sign.update(payload);
-  const signature = sign.sign(privateKey, "base64");
+  const signature = sign.sign(privateKey, "base64url");
 
   // This should NOT throw because the signature is valid
   const result = definePlugin({

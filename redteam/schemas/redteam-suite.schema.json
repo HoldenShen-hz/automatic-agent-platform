@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aa://redteam/redteam-suite.schema.json",
+  "type": "object",
+  "required": [
+    "$schema",
+    "divisionId",
+    "caseCount",
+    "reportRef",
+    "lastRefreshedAt",
+    "cases"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "redteam/schemas/redteam-suite.schema.json"
+    },
+    "divisionId": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "caseCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "reportRef": {
+      "type": "string",
+      "pattern": "^docs_zh/divisions/[a-z0-9-]+/leadership-evidence/redteam-report\\.md$"
+    },
+    "lastRefreshedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "aa://redteam/severity.schema.json"
+      }
+    }
+  },
+  "additionalProperties": false
+}

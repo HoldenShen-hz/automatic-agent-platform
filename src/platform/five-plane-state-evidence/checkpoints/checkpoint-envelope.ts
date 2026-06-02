@@ -101,6 +101,8 @@ export interface CheckpointEnvelope {
 export interface CreateCheckpointEnvelopeOptions {
   /** Maximum allowed checkpoint size in bytes */
   maxSizeBytes?: number;
+  /** Explicit creation timestamp for deterministic replay/builds */
+  createdAt?: string;
   /** Custom payload schema version (defaults to envelope version) */
   payloadSchemaVersion?: string;
   /** Optional domain ownership for domain-scoped checkpoints */
@@ -225,7 +227,7 @@ export async function createCheckpointEnvelope<T = unknown>(
       originalSizeBytes,
       compressedSizeBytes,
       checksum,
-      createdAt: new Date().toISOString(),
+      createdAt: normalizeCreatedAt(options.createdAt),
       algorithm: "gzip",
       payloadSchemaVersion,
       ...(options.domainId != null && options.domainId.trim().length > 0 ? { domainId: options.domainId.trim() } : {}),
@@ -248,6 +250,17 @@ function resolveCheckpointMaxSizeBytes(domainId?: string): number {
   }
 }
 
+function normalizeCreatedAt(value: string | undefined): string {
+  if (value == null || value.trim().length === 0) {
+    return new Date().toISOString();
+  }
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) {
+    throw new CheckpointEnvelopeInvalidError("Checkpoint envelope createdAt must be a valid ISO 8601 timestamp");
+  }
+  return new Date(parsed).toISOString();
+}
+
 /**
  * Unpacks a checkpoint envelope, decompressing and validating the payload.
  *
@@ -260,7 +273,7 @@ export async function unpackCheckpointEnvelope<T = unknown>(
   envelope: CheckpointEnvelope,
   options: { maxSizeBytes?: number } = {},
 ): Promise<UnpackedCheckpointEnvelope<T>> {
-  const maxSizeBytes = options.maxSizeBytes ?? DEFAULT_MAX_CHECKPOINT_SIZE_BYTES;
+  const maxSizeBytes = options.maxSizeBytes ?? resolveCheckpointMaxSizeBytes(envelope?.metadata?.domainId);
 
   // Validate envelope structure
   if (!isValidCheckpointEnvelope(envelope)) {

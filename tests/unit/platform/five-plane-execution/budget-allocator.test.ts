@@ -166,6 +166,28 @@ test("release converts an unused reservation into released budget", async () => 
   assert.equal(allocator.getActiveReservations().length, 0);
 });
 
+test("settle rejects stale in-memory ledger snapshots after a prior settlement", async () => {
+  const allocator = new BudgetAllocator();
+  const { reserved } = reserveOnce(allocator, 100);
+
+  await Promise.resolve(allocator.settle({
+    ledger: reserved.ledger,
+    reservation: reserved.reservation,
+    actualAmount: 60,
+    context: createContext(),
+  }));
+
+  assert.throws(
+    () => allocator.settle({
+      ledger: reserved.ledger,
+      reservation: reserved.reservation,
+      actualAmount: 55,
+      context: createContext(),
+    }),
+    (error: unknown) => error instanceof ValidationError && error.code === "budget_ledger.version_cas_failed",
+  );
+});
+
 test("sweepExpiredReservations releases orphaned reserved entries", () => {
   const allocator = new BudgetAllocator({
     sweeperConfig: { enabled: true, clockSkewSafetyMarginMs: 0 },
@@ -188,4 +210,79 @@ test("sweepExpiredReservations releases orphaned reserved entries", () => {
   assert.deepEqual(result.releasedReservationIds, [reserved.reservation.budgetReservationId]);
   assert.equal(result.orphanedCount, 1);
   assert.equal(allocator.getActiveReservations().length, 0);
+});
+
+test("reserve rolls back in-memory version tracking when a later hierarchy persist fails", () => {
+  const allocator = new BudgetAllocator();
+  const primaryLedger = createLedger({ budgetLedgerId: newId("bledger-primary") });
+  const hierarchyLedger = createLedger({ budgetLedgerId: newId("bledger-hierarchy") });
+  const expiresAt = new Date(Date.now() + 60_000).toISOString();
+  const originalPersistLedger = (allocator as any).persistLedger.bind(allocator) as (
+    before: unknown,
+    after: unknown,
+    expectedVersion: number,
+  ) => void;
+  let persistCalls = 0;
+
+  (allocator as any).persistLedger = (before: unknown, after: unknown, expectedVersion: number) => {
+    originalPersistLedger(before, after, expectedVersion);
+    persistCalls += 1;
+    if (persistCalls === 2) {
+      throw new Error("forced persist failure");
+    }
+  };
+
+  assert.throws(
+    () => allocator.reserve({
+      ledger: primaryLedger,
+      amount: 50,
+      resourceKind: "token",
+      expiresAt,
+      expectedVersion: 0,
+      context: createContext(),
+      hierarchyLedgers: [
+        {
+          ledger: hierarchyLedger,
+          expectedVersion: 0,
+        },
+      ],
+    }),
+    (error: unknown) => error instanceof Error && error.message === "forced persist failure",
+  );
+
+  const retried = allocator.reserve({
+    ledger: primaryLedger,
+    amount: 50,
+    resourceKind: "token",
+    expiresAt,
+    expectedVersion: 0,
+    context: createContext(),
+  });
+
+  assert.equal(retried.ledger.reservedAmount, 50);
+  assert.equal(allocator.getActiveReservations().length, 1);
+});
+
+test("sweepExpiredReservations rejects invalid dbTime instead of expiring reservations", () => {
+  const allocator = new BudgetAllocator({
+    sweeperConfig: { enabled: true, clockSkewSafetyMarginMs: 0 },
+  });
+
+  allocator.reserve({
+    ledger: createLedger({ budgetLedgerId: newId("bledger-sweep") }),
+    amount: 25,
+    resourceKind: "token",
+    expiresAt: new Date(Date.now() - 60_000).toISOString(),
+    expectedVersion: 0,
+    context: createContext(),
+  });
+
+  assert.throws(
+    () => allocator.sweepExpiredReservations({
+      activeRunIds: new Set<string>(),
+      dbTime: "not-a-timestamp",
+    }),
+    (error: unknown) => error instanceof ValidationError && error.code === "budget_reservation.invalid_db_time",
+  );
+  assert.equal(allocator.getActiveReservations().length, 1);
 });

@@ -150,6 +150,50 @@ test("RiskEvaluationEngine priorFailureRate thresholds work correctly", () => {
   });
 });
 
+test("RiskEvaluationEngine fails closed when historical failure thresholds are missing", () => {
+  const config = createTestConfig();
+  delete (config as Partial<RiskConfig>).historicalFailureRateThresholds;
+  delete (config as Partial<RiskConfig>).priorFailureRateThresholds;
+  const engine = new RiskEvaluationEngine({ config });
+
+  const result = engine.evaluate({
+    taskId: "task-missing-thresholds",
+    factors: {
+      impact: 1,
+      irreversibility: 1,
+      dataSensitivity: 1,
+      autonomyModeRisk: 1,
+      tenantImpact: 1,
+      blastRadius: 1,
+      historicalFailureRate: 0,
+      evidenceConfidence: "high",
+    },
+  });
+
+  const failureFactor = result.factorBreakdown.find((factor) => factor.factor === "historicalFailureRate");
+  assert.equal(failureFactor?.value, 5);
+});
+
+test("RiskEvaluationEngine promotes seven-of-eight max canonical factors to critical", () => {
+  const engine = new RiskEvaluationEngine({ config: createTestConfig() });
+
+  const result = engine.evaluate({
+    taskId: "task-seven-of-eight",
+    factors: {
+      impact: 5,
+      irreversibility: 5,
+      dataSensitivity: 5,
+      autonomyModeRisk: 5,
+      tenantImpact: 5,
+      blastRadius: 5,
+      historicalFailureRate: 70,
+      evidenceConfidence: "medium",
+    },
+  });
+
+  assert.equal(result.riskLevel, "critical");
+});
+
 test("RiskEvaluationEngine boundary score for LOW risk level", () => {
   const engine = new RiskEvaluationEngine({ config: createTestConfig() });
   const request: RiskEvaluationRequest = {

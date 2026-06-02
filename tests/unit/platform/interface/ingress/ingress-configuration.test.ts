@@ -9,9 +9,17 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 import { DistributedRateLimiter } from "../../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
 import { RedisRateLimiter } from "../../../../../src/platform/five-plane-interface/ingress/redis-rate-limiter.js";
+
+test.afterEach(() => {
+  try {
+    mock.timers.reset();
+  } catch {
+    // Only some tests enable mocked timers.
+  }
+});
 
 test.describe("Ingress configuration - DistributedRateLimiter defaults", () => {
   test("defaults maxCalls to 100 when not specified", async () => {
@@ -49,6 +57,7 @@ test.describe("Ingress configuration - DistributedRateLimiter defaults", () => {
   });
 
   test("accepts custom windowMs configuration", async () => {
+    mock.timers.enable({ apis: ["setTimeout", "Date"] });
     const limiter = new DistributedRateLimiter({
       maxCalls: 1,
       windowMs: 500,
@@ -59,11 +68,11 @@ test.describe("Ingress configuration - DistributedRateLimiter defaults", () => {
     assert.equal(blocked.allowed, false);
 
     // Wait 300ms - less than window
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    mock.timers.tick(300);
     assert.equal((await limiter.checkAndConsume("custom_window")).allowed, false);
 
     // Wait remaining time
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    mock.timers.tick(250);
     assert.equal((await limiter.checkAndConsume("custom_window")).allowed, true);
   });
 

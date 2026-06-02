@@ -175,6 +175,7 @@ test("IncidentResolver builds correct actions for manual strategy", () => {
   assert.ok(actions.some((a: ResolutionAction) => a.description.includes("Page on-call engineer")));
   assert.ok(actions.some((a: ResolutionAction) => a.description.includes("Establish incident commander")));
   assert.ok(actions.some((a: ResolutionAction) => a.description.includes("Develop resolution plan")));
+  assert.equal(new Set(actions.map((action) => action.actionId)).size, actions.length);
 });
 
 test("IncidentResolver shouldEscalate returns false for completed resolutions", () => {
@@ -215,6 +216,27 @@ test("IncidentResolver shouldEscalate returns true when threshold exceeded", () 
   };
 
   assert.equal(resolver.shouldEscalate(resolution, resolution.startedAt), true);
+});
+
+test("IncidentResolver shouldEscalate uses resolution.startedAt over caller-provided startedAt", () => {
+  const resolver = new IncidentResolver({
+    escalationThresholdSeconds: 60,
+  });
+
+  const resolution: IncidentResolution = {
+    resolutionId: "res_started_at_authority",
+    incidentId: "incident_123",
+    status: "in_progress",
+    strategy: "assisted",
+    startedAt: new Date(Date.now() - 120 * 1000).toISOString(),
+    completedAt: null,
+    rootCause: null,
+    actions: [],
+    resolutionNotes: "",
+    resolvedBy: "system",
+  };
+
+  assert.equal(resolver.shouldEscalate(resolution, new Date().toISOString()), true);
 });
 
 test("IncidentResolver shouldEscalate returns false when within threshold", () => {
@@ -360,4 +382,43 @@ test("IncidentResolver creates resolution with correct strategy for P2 availabil
 
   assert.equal(resolution.strategy, "automated");
   assert.ok(resolution.actions.length > 0);
+});
+
+test("IncidentResolver generatePostMortem sorts timeline chronologically", () => {
+  const resolver = new IncidentResolver();
+  const incident = createMockIncident({
+    detectedAt: "2026-06-01T00:00:00.000Z",
+  });
+  const resolution = resolver.completeResolution(
+    resolver.createResolution(incident),
+    "Root cause",
+    "Resolved",
+    "operator",
+  );
+
+  const report = resolver.generatePostMortem(incident, resolution, [
+    { timestamp: "2026-06-01T00:10:00.000Z", event: "mitigated", phase: "mitigation" },
+    { timestamp: "2026-06-01T00:05:00.000Z", event: "triaged", phase: "triage" },
+  ]);
+
+  assert.deepEqual(report.timeline.map((event) => event.event), ["triaged", "mitigated"]);
+});
+
+test("IncidentResolver generatePostMortem rejects invalid timeline timestamps", () => {
+  const resolver = new IncidentResolver();
+  const incident = createMockIncident({
+    detectedAt: "2026-06-01T00:00:00.000Z",
+  });
+  const resolution = resolver.completeResolution(
+    resolver.createResolution(incident),
+    "Root cause",
+    "Resolved",
+    "operator",
+  );
+
+  assert.throws(() =>
+    resolver.generatePostMortem(incident, resolution, [
+      { timestamp: "not-a-timestamp", event: "triaged", phase: "triage" },
+    ]),
+  );
 });

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aa://training-data-policy/revocation.schema.json",
+  "type": "object",
+  "required": [
+    "$schema",
+    "version",
+    "affectedStores",
+    "requiresModelDataTombstone",
+    "customerDeletionPropagation",
+    "sourceInvalidationPropagation"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "training-data-policy/schemas/revocation.schema.json"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+$"
+    },
+    "affectedStores": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "memory",
+          "eval",
+          "training_export",
+          "analytics",
+          "evidence_projection",
+          "dashboard_cache",
+          "state-evidence"
+        ]
+      }
+    },
+    "requiresModelDataTombstone": {
+      "type": "boolean"
+    },
+    "customerDeletionPropagation": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "memory",
+          "eval",
+          "training_export",
+          "analytics",
+          "evidence_projection",
+          "dashboard_cache",
+          "state-evidence"
+        ]
+      }
+    },
+    "sourceInvalidationPropagation": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "memory",
+          "eval",
+          "training_export",
+          "analytics",
+          "evidence_projection",
+          "dashboard_cache",
+          "state-evidence"
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

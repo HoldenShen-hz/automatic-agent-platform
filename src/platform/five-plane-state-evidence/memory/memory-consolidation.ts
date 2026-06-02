@@ -44,6 +44,15 @@ export interface MemoryConsolidationSummary {
   lossReport: ConsolidationLossReport;
 }
 
+export interface MemoryConsolidationOptions {
+  maxSnippets?: number;
+  maxFacts?: number;
+  truncationTimestamp?: string;
+}
+
+const DEFAULT_MAX_CONSOLIDATION_SNIPPETS = 8;
+const DEFAULT_MAX_CONSOLIDATION_FACTS = 12;
+
 export function extractMemorySnippet(record: Pick<MemoryRecord, "contentJson">): string {
   const snippets = extractStructuredMemoryText(parseStructuredMemoryContent(record.contentJson));
   return snippets[0] ?? record.contentJson;
@@ -66,7 +75,10 @@ export function hasExplicitMemoryBoundary(
 export function buildMemoryConsolidationSummary(
   records: MemoryRecord[],
   targetLayer: Exclude<MemoryLayer, "layer_3">,
+  options: MemoryConsolidationOptions = {},
 ): MemoryConsolidationSummary {
+  const maxSnippets = Math.max(1, options.maxSnippets ?? DEFAULT_MAX_CONSOLIDATION_SNIPPETS);
+  const maxFacts = Math.max(1, options.maxFacts ?? DEFAULT_MAX_CONSOLIDATION_FACTS);
   const ordered = [...records].sort((left, right) => {
     if (left.createdAt === right.createdAt) {
       return left.id.localeCompare(right.id);
@@ -77,8 +89,8 @@ export function buildMemoryConsolidationSummary(
   const snippets = ordered
     .map((record) => ({ record, snippet: extractMemorySnippet(record) }))
     .filter(({ snippet }) => snippet.trim().length > 0);
-  const droppedSnippets = snippets.slice(8);
-  const limitedSnippets = snippets.slice(0, 8);
+  const droppedSnippets = snippets.slice(maxSnippets);
+  const limitedSnippets = snippets.slice(0, maxSnippets);
   const classifications = Array.from(new Set(ordered.map((record) => record.classification))).sort();
   const qualityScores = ordered
     .map((record) => record.qualityScore)
@@ -93,8 +105,8 @@ export function buildMemoryConsolidationSummary(
       provenance,
     }));
   });
-  const retainedFacts = factEntries.slice(0, 12);
-  const droppedFacts = factEntries.slice(12);
+  const retainedFacts = factEntries.slice(0, maxFacts);
+  const droppedFacts = factEntries.slice(maxFacts);
 
   const summaryText = [
     `Consolidated ${ordered.length} memories into ${targetLayer}.`,
@@ -140,15 +152,15 @@ export function buildMemoryConsolidationSummary(
       ...droppedSnippets.map(({ record, snippet }) => ({
         memoryId: record.id,
         snippetPreview: snippet.length > 50 ? snippet.slice(0, 50) + "..." : snippet,
-        reason: "exceeded_max_snippets_limit:8",
+        reason: `exceeded_max_snippets_limit:${maxSnippets}`,
       })),
       ...droppedFacts.map(({ record, fact }) => ({
         memoryId: record.id,
         snippetPreview: fact.content.length > 50 ? fact.content.slice(0, 50) + "..." : fact.content,
-        reason: "exceeded_max_facts_limit:12",
+        reason: `exceeded_max_facts_limit:${maxFacts}`,
       })),
     ],
-    truncationTimestamp: new Date().toISOString(),
+    truncationTimestamp: options.truncationTimestamp ?? new Date().toISOString(),
   };
 
   return {

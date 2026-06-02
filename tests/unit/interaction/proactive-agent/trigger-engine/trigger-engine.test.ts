@@ -82,7 +82,7 @@ test("ProactiveAgentService records full trigger cycle in incident before disabl
 
   await service.registerTrigger({
     triggerId: "trigger-a",
-    domainId: "general_ops",
+    domainId: "general-ops",
     name: "A",
     type: "event",
     config: { eventSource: "source", eventPattern: "a", filter: {} },
@@ -95,7 +95,7 @@ test("ProactiveAgentService records full trigger cycle in incident before disabl
   });
   await service.registerTrigger({
     triggerId: "trigger-b",
-    domainId: "general_ops",
+    domainId: "general-ops",
     name: "B",
     type: "event",
     config: { eventSource: "source", eventPattern: "b", filter: {} },

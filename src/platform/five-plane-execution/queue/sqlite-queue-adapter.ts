@@ -15,21 +15,12 @@ import {
 
 export class SqliteQueueAdapter implements QueueAdapter {
   readonly backendKind: QueueBackendKind = "sqlite";
+  private static readonly ACTIVE_VISIBILITY_TIMEOUT_MS = 5 * 60_000;
 
   constructor(private readonly db: AuthoritativeSqlDatabase) {}
 
   enqueue(input: EnqueueInput): QueueJobRecord {
     const now = nowIso();
-
-    if (input.idempotencyKey) {
-      const existing = this.db.connection
-        .prepare(`SELECT * FROM queue_jobs WHERE queue_name = ? AND idempotency_key = ?`)
-        .get(input.queueName, input.idempotencyKey) as RawRow | undefined;
-      if (existing) {
-        return this.mapRow(existing);
-      }
-    }
-
     const isDelayed = input.delayUntil != null && input.delayUntil > now;
     const status: QueueJobStatus = isDelayed ? "delayed" : "waiting";
 
@@ -49,16 +40,27 @@ export class SqliteQueueAdapter implements QueueAdapter {
       completedAt: null,
     };
 
-    this.db.connection
+    const insertResult = this.db.connection
       .prepare(
         `INSERT INTO queue_jobs (id, queue_name, payload, status, priority, attempts, max_attempts, last_error, delay_until, idempotency_key, created_at, updated_at, completed_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT DO NOTHING`,
       )
       .run(
         job.id, job.queueName, job.payload, job.status, job.priority,
         job.attempts, job.maxAttempts, job.lastError, job.delayUntil,
         job.idempotencyKey, job.createdAt, job.updatedAt, job.completedAt,
       );
+
+    if (input.idempotencyKey && Number(insertResult.changes ?? 0) === 0) {
+      const existing = this.db.connection
+        .prepare(`SELECT * FROM queue_jobs WHERE queue_name = ? AND idempotency_key = ?`)
+        .get(input.queueName, input.idempotencyKey) as RawRow | undefined;
+      if (existing) {
+        return this.mapRow(existing);
+      }
+      throw new Error("queue.enqueue_idempotency_conflict_without_existing_row");
+    }
 
     return job;
   }
@@ -68,6 +70,22 @@ export class SqliteQueueAdapter implements QueueAdapter {
     this.db.connection
       .prepare(`UPDATE queue_jobs SET status = 'waiting', updated_at = ? WHERE queue_name = ? AND status = 'delayed' AND delay_until <= ?`)
       .run(now, queueName, now);
+    this.db.connection
+      .prepare(
+        `UPDATE queue_jobs
+         SET status = CASE WHEN attempts >= max_attempts THEN 'dead_letter' ELSE 'waiting' END,
+             last_error = CASE
+               WHEN last_error IS NULL OR last_error = '' THEN 'visibility_timeout_expired'
+               ELSE last_error
+             END,
+             delay_until = NULL,
+             updated_at = ?
+         WHERE queue_name = ?
+           AND status = 'active'
+           AND delay_until IS NOT NULL
+           AND delay_until <= ?`,
+      )
+      .run(now, queueName, now);
 
     const row = this.db.connection
       .prepare(`SELECT * FROM queue_jobs WHERE queue_name = ? AND status = 'waiting' ORDER BY priority DESC, created_at ASC LIMIT 1`)
@@ -75,11 +93,13 @@ export class SqliteQueueAdapter implements QueueAdapter {
     if (!row) return null;
 
     const job = this.mapRow(row);
+    const visibilityExpiresAt = new Date(Date.now() + SqliteQueueAdapter.ACTIVE_VISIBILITY_TIMEOUT_MS).toISOString();
     this.db.connection
-      .prepare(`UPDATE queue_jobs SET status = 'active', attempts = attempts + 1, updated_at = ? WHERE id = ? AND status = 'waiting'`)
-      .run(now, job.id);
+      .prepare(`UPDATE queue_jobs SET status = 'active', attempts = attempts + 1, delay_until = ?, updated_at = ? WHERE id = ? AND status = 'waiting'`)
+      .run(visibilityExpiresAt, now, job.id);
     job.status = "active";
     job.attempts += 1;
+    job.delayUntil = visibilityExpiresAt;
     job.updatedAt = now;
 
     const jobId = job.id;
@@ -88,7 +108,7 @@ export class SqliteQueueAdapter implements QueueAdapter {
       ack: () => {
         const ts = nowIso();
         this.db.connection
-          .prepare(`UPDATE queue_jobs SET status = 'completed', completed_at = ?, updated_at = ? WHERE id = ?`)
+          .prepare(`UPDATE queue_jobs SET status = 'completed', completed_at = ?, delay_until = NULL, updated_at = ? WHERE id = ?`)
           .run(ts, ts, jobId);
       },
       nack: (error?: string) => {
@@ -98,12 +118,17 @@ export class SqliteQueueAdapter implements QueueAdapter {
           .get(jobId) as RawRow | undefined;
         if (current && Number(current.attempts) >= Number(current.max_attempts)) {
           this.db.connection
-            .prepare(`UPDATE queue_jobs SET status = 'dead_letter', last_error = ?, updated_at = ? WHERE id = ?`)
+            .prepare(`UPDATE queue_jobs SET status = 'dead_letter', last_error = ?, delay_until = NULL, updated_at = ? WHERE id = ?`)
             .run(error ?? "max_attempts_exceeded", ts, jobId);
         } else {
+          const attempts = Number(current?.attempts ?? job.attempts);
+          const backoffMs = Math.round(
+            DEFAULT_RETRY_POLICY.backoffMs * (DEFAULT_RETRY_POLICY.backoffMultiplier ** Math.max(0, attempts - 1)),
+          );
+          const delayUntil = new Date(Date.now() + backoffMs).toISOString();
           this.db.connection
-            .prepare(`UPDATE queue_jobs SET status = 'waiting', last_error = ?, updated_at = ? WHERE id = ?`)
-            .run(error ?? null, ts, jobId);
+            .prepare(`UPDATE queue_jobs SET status = 'delayed', last_error = ?, delay_until = ?, updated_at = ? WHERE id = ?`)
+            .run(error ?? null, delayUntil, ts, jobId);
         }
       },
     };
@@ -135,7 +160,7 @@ export class SqliteQueueAdapter implements QueueAdapter {
   retryJob(jobId: string): QueueJobRecord | null {
     const now = nowIso();
     const result = this.db.connection
-      .prepare(`UPDATE queue_jobs SET status = 'waiting', last_error = NULL, updated_at = ? WHERE id = ? AND status IN ('failed', 'dead_letter')`)
+      .prepare(`UPDATE queue_jobs SET status = 'waiting', last_error = NULL, delay_until = NULL, updated_at = ? WHERE id = ? AND status IN ('delayed', 'dead_letter')`)
       .run(now, jobId);
     if (Number(result.changes ?? 0) === 0) {
       return this.getJob(jobId);
@@ -144,14 +169,16 @@ export class SqliteQueueAdapter implements QueueAdapter {
   }
 
   purge(queueName: string, olderThan: string): number {
-    const before = this.db.connection
-      .prepare(`SELECT id FROM queue_jobs WHERE queue_name = ? AND status IN ('completed', 'dead_letter') AND COALESCE(completed_at, updated_at) < ?`)
+    const purgedRows = this.db.connection
+      .prepare(
+        `DELETE FROM queue_jobs
+         WHERE queue_name = ?
+           AND status IN ('completed', 'dead_letter')
+           AND COALESCE(completed_at, updated_at) < ?
+         RETURNING id`,
+      )
       .all(queueName, olderThan) as RawRow[];
-    if (before.length === 0) return 0;
-    this.db.connection
-      .prepare(`DELETE FROM queue_jobs WHERE queue_name = ? AND status IN ('completed', 'dead_letter') AND COALESCE(completed_at, updated_at) < ?`)
-      .run(queueName, olderThan);
-    return before.length;
+    return purgedRows.length;
   }
 
   stats(queueName: string): QueueStats {
@@ -166,7 +193,6 @@ export class SqliteQueueAdapter implements QueueAdapter {
       delayed: counts["delayed"] ?? 0,
       active: counts["active"] ?? 0,
       completed: counts["completed"] ?? 0,
-      failed: counts["failed"] ?? 0,
       deadLetter: counts["dead_letter"] ?? 0,
     };
   }

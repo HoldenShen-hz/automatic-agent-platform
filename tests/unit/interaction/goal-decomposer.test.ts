@@ -35,7 +35,7 @@ const succeedingLlmPlanGenerator: LlmPlanGenerator = {
       tasks: [
         {
           taskId: `${goal.goalId}:analysis`,
-          domainId: "general_ops",
+          domainId: "general-ops",
           description: "分析目标并制定执行计划",
           inputs: {},
           expectedOutputs: ["plan"],

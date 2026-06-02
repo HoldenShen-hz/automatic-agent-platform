@@ -114,6 +114,7 @@ function normalizeLocalFilePath(path: string): string | null {
     || trimmed.includes("..")
     || /[\r\n]/.test(trimmed)
     || !/^[/A-Za-z0-9._-]+$/.test(trimmed)
+    || !trimmed.startsWith("/drafts/")
   ) {
     return null;
   }

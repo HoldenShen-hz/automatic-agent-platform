@@ -84,7 +84,7 @@ test("workflow orchestration: workflow state transitions follow valid path", () 
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Orchestration transition test",
         status: "queued",
         source: "user",
@@ -102,7 +102,7 @@ test("workflow orchestration: workflow state transitions follow valid path", () 
 
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "wf_ops_standard",
         currentStepIndex: 0,
         status: "running",
@@ -184,7 +184,7 @@ test("workflow orchestration: invalid workflow transition throws", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Invalid transition test",
         status: "in_progress",
         source: "user",
@@ -202,7 +202,7 @@ test("workflow orchestration: invalid workflow transition throws", () => {
 
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "wf_ops_standard",
         currentStepIndex: 0,
         status: "completed",
@@ -257,7 +257,7 @@ test("workflow orchestration: workflow completes with output accumulation", () =
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Complete workflow test",
         status: "in_progress",
         source: "user",
@@ -275,7 +275,7 @@ test("workflow orchestration: workflow completes with output accumulation", () =
 
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "wf_ops_standard",
         currentStepIndex: 2,
         status: "running",
@@ -385,7 +385,7 @@ test("workflow orchestration: workflow fails and records error", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Fail workflow test",
         status: "in_progress",
         source: "user",
@@ -403,7 +403,7 @@ test("workflow orchestration: workflow fails and records error", () => {
 
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "wf_ops_standard",
         currentStepIndex: 1,
         status: "running",
@@ -507,7 +507,7 @@ test("workflow orchestration: events emitted for workflow lifecycle", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Event emission test",
         status: "in_progress",
         source: "user",
@@ -525,7 +525,7 @@ test("workflow orchestration: events emitted for workflow lifecycle", () => {
 
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "wf_ops_standard",
         currentStepIndex: 0,
         status: "running",

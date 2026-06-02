@@ -17,13 +17,13 @@ import type {
 } from "./contract-models.js";
 
 const LEGACY_DOMAIN_BINDING_ALIASES = {
-  general_ops: "project-management",
+  "general-ops": "project-management",
   platform_engineering: "coding",
   engineering: "coding",
   content_production: "creative-production",
   content: "creative-production",
   design: "creative-production",
-  engineering_ops: "coding",
+  "engineering-ops": "coding",
   operations: "it-operations",
   data_analysis: "data-engineering",
   data: "data-engineering",

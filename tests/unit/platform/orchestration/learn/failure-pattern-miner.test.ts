@@ -201,7 +201,7 @@ test("FailurePatternMiner assigns correct sourceSignalIds", () => {
   assert.ok(results[0]!.sourceSignalIds.includes("sig-source-1"));
 });
 
-test("FailurePatternMiner assigns confidence 0.8 to detected patterns", () => {
+test("FailurePatternMiner derives confidence from mined pattern evidence and signal lineage", () => {
   const signal = makeSignal({
     learningSignalId: "sig-conf-1",
     taskId: "task-conf",
@@ -210,10 +210,10 @@ test("FailurePatternMiner assigns confidence 0.8 to detected patterns", () => {
   });
 
   const results = new FailurePatternMiner().mine([signal]);
-  assert.equal(results[0]!.confidence, 0.8);
+  assert.equal(results[0]!.confidence, 0.54);
 });
 
-test("FailurePatternMiner sets promotionStatus to quarantine", () => {
+test("FailurePatternMiner keeps mined failures quarantined and rejected", () => {
   const signal = makeSignal({
     learningSignalId: "sig-draft-1",
     taskId: "task-draft",
@@ -222,7 +222,8 @@ test("FailurePatternMiner sets promotionStatus to quarantine", () => {
   });
 
   const results = new FailurePatternMiner().mine([signal]);
-  assert.equal(results[0]!.promotionStatus, "quarantine");
+  assert.equal(results[0]!.promotionStatus, "quarantined");
+  assert.equal(results[0]!.status, "rejected");
 });
 
 test("FailurePatternMiner handles signals with stepId in evidence", () => {

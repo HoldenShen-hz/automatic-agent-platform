@@ -210,6 +210,15 @@ function createCompatDb(): AuthoritativeSqlDatabase {
   };
 }
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildPathMatcher(pattern: string): (value: string) => boolean {
+  const parts = pattern.split("*").map((segment) => escapeRegex(segment));
+  return (value: string) => new RegExp(`^${parts.join(".*")}$`).test(value);
+}
+
 // ── Service ────────────────────────────────────────────────────────────
 
 /**
@@ -226,6 +235,9 @@ export class TrafficRoutingService {
     private readonly db: AuthoritativeSqlDatabase = createCompatDb(),
     directiveSink: ControlPlaneDirectiveSink = createNoOpDirectiveSink(),
   ) {
+    if (db == null) {
+      throw new ValidationError("traffic_routing.db_required", "Traffic routing service requires a persistent database.");
+    }
     this.directiveSink = directiveSink;
     this.ensureTrafficShiftVersionColumns();
   }
@@ -266,7 +278,7 @@ export class TrafficRoutingService {
         || Object.entries(rule.matchCriteria.header).every(([key, value]) => request.headers?.[key] === value);
       const pathMatches = rule.matchCriteria.path == null
         || request.path == null
-        || request.path.startsWith(rule.matchCriteria.path.replace("*", ""));
+        || buildPathMatcher(rule.matchCriteria.path)(request.path);
       if (headerMatches && pathMatches) {
         return route.targets.find((target) => target.targetId === rule.targetId) ?? {
           targetId: rule.targetId,
@@ -548,7 +560,7 @@ export class TrafficRoutingService {
       reason,
       executedAt: now,
       completedAt: nowIso(),
-      success: true,
+      success: shift != null,
     };
 
     this.db.connection

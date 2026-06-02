@@ -31,7 +31,7 @@ test("smoke: task can be created via direct store insertion", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Smoke test task creation",
         status: "pending",
         source: "user",
@@ -84,7 +84,7 @@ test("smoke: task with different priority levels can be created", () => {
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           title: `Priority ${priority} task`,
           status: "pending",
           source: "user",
@@ -137,7 +137,7 @@ test("smoke: task with various sources can be created", () => {
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           title: `Source ${source} task`,
           status: "pending",
           source,
@@ -178,7 +178,7 @@ test("smoke: task can be retrieved by ID", () => {
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
 
-    const divisions = ["general_ops", "platform_team", "data_team"];
+    const divisions = ["general-ops", "platform_team", "data_team"];
     const taskIds: string[] = [];
     const now = nowIso();
 
@@ -247,7 +247,7 @@ test("smoke: task input and output JSON are preserved", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "JSON preservation test",
         status: "done",
         source: "user",

@@ -274,7 +274,7 @@ test("recovery: RuntimeRecoveryService lists recoverable executions", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Recoverable execution test",
         status: "in_progress",
         source: "user",
@@ -361,7 +361,7 @@ test("recovery: task snapshot preserves workflow state for recovery", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Workflow recovery test",
         status: "in_progress",
         source: "user",
@@ -380,7 +380,7 @@ test("recovery: task snapshot preserves workflow state for recovery", () => {
       // Insert workflow_state directly using raw SQL
       db.connection.exec(`
         INSERT INTO workflow_state (task_id, division_id, workflow_id, current_step_index, status, outputs_json, last_error_code, retry_count, resumable_from_step, started_at, updated_at)
-        VALUES ('${taskId}', 'general_ops', '${workflowId}', 2, 'running', '{}', NULL, 0, 2, '${now}', '${now}')
+        VALUES ('${taskId}', 'general-ops', '${workflowId}', 2, 'running', '{}', NULL, 0, 2, '${now}', '${now}')
       `);
     });
 
@@ -414,7 +414,7 @@ test("recovery: execution can be requeued after failure", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Requeue test",
         status: "failed",
         source: "user",
@@ -502,7 +502,7 @@ test("recovery: blocked execution awaiting approval can be detected", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Blocked approval test",
         status: "awaiting_decision",
         source: "user",
@@ -605,7 +605,7 @@ test("recovery: stale execution detection works correctly", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Stale execution test",
         status: "in_progress",
         source: "user",
@@ -679,7 +679,7 @@ test("recovery: RuntimeRepairService.apply handles requeue_execution action", as
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Repair requeue test",
         status: "failed",
         source: "user",
@@ -769,7 +769,7 @@ test("recovery: checkpoint creation and restoration workflow", () => {
   const executor = new DefaultCompensationExecutor();
   return executor.restoreCheckpoint("checkpoint-1", {
     traceId: "trace-1",
-    tenantId: "general_ops",
+    tenantId: "general-ops",
     emittedBy: "test",
     principal: "operator:test",
   }).then((restored) => {

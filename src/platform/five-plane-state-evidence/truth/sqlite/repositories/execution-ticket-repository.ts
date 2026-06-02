@@ -367,6 +367,33 @@ export class ExecutionTicketRepository {
     );
   }
 
+  public insertExecutionLeaseAllocatingFencingToken(lease: Omit<ExecutionLeaseRecord, "fencingToken">): number {
+    execute(
+      this.conn,
+      `INSERT INTO execution_leases (
+        id, execution_id, worker_id, attempt, fencing_token, queue_name, status,
+        leased_at, expires_at, last_heartbeat_at, released_at, reason_code
+      ) VALUES (
+        ?, ?, ?, ?,
+        (SELECT COALESCE(MAX(fencing_token), 0) + 1 FROM execution_leases WHERE execution_id = ?),
+        ?, ?, ?, ?, ?, ?, ?
+      )`,
+      lease.id,
+      lease.executionId,
+      lease.workerId,
+      lease.attempt,
+      lease.executionId,
+      lease.queueName,
+      lease.status,
+      lease.leasedAt,
+      lease.expiresAt,
+      lease.lastHeartbeatAt,
+      lease.releasedAt,
+      lease.reasonCode,
+    );
+    return this.getExecutionLease(lease.id)?.fencingToken ?? 0;
+  }
+
   public renewExecutionLease(leaseId: string, expiresAt: string, lastHeartbeatAt?: string): void {
     execute(
       this.conn,
@@ -378,6 +405,33 @@ export class ExecutionTicketRepository {
       lastHeartbeatAt ?? null,
       leaseId,
     );
+  }
+
+  public renewExecutionLeaseCas(input: {
+    leaseId: string;
+    workerId: string;
+    fencingToken: number;
+    expectedStatus: ExecutionLeaseRecord["status"];
+    expiresAt: string;
+    lastHeartbeatAt: string;
+  }): boolean {
+    const changes = execute(
+      this.conn,
+      `UPDATE execution_leases
+       SET expires_at = ?,
+           last_heartbeat_at = ?
+       WHERE id = ?
+         AND worker_id = ?
+         AND fencing_token = ?
+         AND status = ?`,
+      input.expiresAt,
+      input.lastHeartbeatAt,
+      input.leaseId,
+      input.workerId,
+      input.fencingToken,
+      input.expectedStatus,
+    );
+    return changes > 0;
   }
 
   public closeExecutionLease(leaseId: string, releasedAt: string): void;
@@ -419,6 +473,36 @@ export class ExecutionTicketRepository {
       input.reasonCode,
       input.leaseId,
     );
+  }
+
+  public closeExecutionLeaseCas(input: {
+    leaseId: string;
+    workerId: string;
+    fencingToken: number;
+    expectedStatus: ExecutionLeaseRecord["status"];
+    status: ExecutionLeaseRecord["status"];
+    releasedAt: string;
+    reasonCode: string | null;
+  }): boolean {
+    const changes = execute(
+      this.conn,
+      `UPDATE execution_leases
+       SET status = ?,
+           released_at = ?,
+           reason_code = ?
+       WHERE id = ?
+         AND worker_id = ?
+         AND fencing_token = ?
+         AND status = ?`,
+      input.status,
+      input.releasedAt,
+      input.reasonCode,
+      input.leaseId,
+      input.workerId,
+      input.fencingToken,
+      input.expectedStatus,
+    );
+    return changes > 0;
   }
 
   public insertLeaseAudit(audit: LeaseAuditRecord): void {

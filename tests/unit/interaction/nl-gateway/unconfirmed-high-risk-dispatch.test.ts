@@ -128,7 +128,7 @@ test("R23-01: low-risk not_required state still materializes canonical dispatch 
         confidence: 0.85,
         matchedRules: [],
       },
-      divisionId: "engineering_ops",
+      divisionId: "engineering-ops",
       workflowId: "simple_query",
     }),
   };

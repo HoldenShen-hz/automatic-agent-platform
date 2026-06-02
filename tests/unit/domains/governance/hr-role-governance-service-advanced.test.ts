@@ -11,10 +11,12 @@ import test from "node:test";
 import {
   HrRoleGovernanceService,
   type HrGapAnalysisRequest,
+  type HrProposalApprovalStatus,
   type HrRoleProposal,
   type SubmitHrRoleProposalRequest,
 } from "../../../../src/domains/governance/hr-role-governance-service.js";
 import type { DivisionRegistry } from "../../../../src/domains/governance/division-loader.js";
+import type { ApprovalService } from "../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 
 /** Minimal DivisionRegistry for testing */
 function makeMockDivision(
@@ -107,7 +109,7 @@ test("HrRoleGovernanceService submitProposal creates approval request when valid
     },
   };
 
-  const service = new HrRoleGovernanceService(registry, mockApprovalService as any);
+  const service = new HrRoleGovernanceService(registry, mockApprovalService as Pick<ApprovalService, "createRequest">);
 
   const result = service.submitProposal({
     gapAnalysisRequest: makeGapAnalysisRequest(),
@@ -127,7 +129,7 @@ test("HrRoleGovernanceService submitProposal does not create approval request wh
     },
   };
 
-  const service = new HrRoleGovernanceService(registry, mockApprovalService as any);
+  const service = new HrRoleGovernanceService(registry, mockApprovalService as Pick<ApprovalService, "createRequest">);
 
   const result = service.submitProposal({
     gapAnalysisRequest: makeGapAnalysisRequest(),
@@ -167,7 +169,7 @@ test("HrRoleGovernanceService registerApprovedRole throws when approval status i
     () =>
       service.registerApprovedRole({
         proposal: makeMinimalProposal(),
-        approvalStatus: "rejected" as any,
+        approvalStatus: "rejected" as unknown as HrProposalApprovalStatus,
       }),
     /hr.role_registration_requires_approval/,
   );

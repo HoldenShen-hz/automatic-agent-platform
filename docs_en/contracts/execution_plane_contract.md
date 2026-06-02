@@ -1,47 +1,47 @@
 # Execution Plane Contract
 
-> **v4.3 兼容Description**：本文件保留为历史 execution plane Description。v4.3 P3 -> P4 执lines交接以 [plan-graph-patch-contract.md](./plan-graph-patch-contract.md) 为准，P4 Status推进以 [ADR-110](../adr/110-runtime-state-machine-authority.md) 为准；线性 execution / workflow 语义只能作为 legacy projection。
+> **v4.3 Compatibility Note**: This file is retained as a historical execution plane description. For v4.3 P3 -> P4 execution handoff, see [plan-graph-patch-contract.md](./plan-graph-patch-contract.md); for P4 state advancement, see [ADR-110](../adr/110-runtime-state-machine-authority.md); linear execution / workflow semantics may only be used as legacy projection.
 
-> **OAPEFLIR 相关**：本 contract defines OAPEFLIR Execute Hub 的执lines平面，对应 ADR-016 Execute 阶段和 ADR-079 Feedback Hub。
-> **更新日期**：2026-04-17
+> **OAPEFLIR Related**: This contract defines the execution plane of the OAPEFLIR Execute Hub, corresponding to ADR-016 Execute stage and ADR-079 Feedback Hub.
+> **Update Date**: 2026-04-17
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines平台从单机 runtime 演进到多执lines平面的目标Architecture，includes调度、派发、租约、worker 存活、接管、恢复和执lines权治理。
+This contract defines the platform's target architecture for evolving from a single-machine runtime to a multi-execution plane, including scheduling, dispatch, lease, worker liveness, takeover, recovery, and execution authority governance.
 
-它is `runtime_execution_contract.md` 的上位扩展，used for回答”当 execution 不再只在单进程里跑时，平台如何保持可控、可恢复、可审计”。
+It is an upper-layer extension of `runtime_execution_contract.md`, used to answer "when execution no longer runs in a single process, how does the platform remain controllable, recoverable, and auditable".
 
-## 2. 目标
+## 2. Goals
 
-- 把 `control plane` vs `execution plane` 正式分层。
-- 让 execution 可以跨 worker 调度、恢复和接管。
-- 保证 stale run、failover、handover 和 takeover 有统一语义。
-- 保证多 worker 环境下仍然只有一个 authoritative 执lines权持有者。
+- Formally separate the `control plane` from the `execution plane`.
+- Allow execution to be scheduled, recovered, and taken over across workers.
+- Ensure that stale run, failover, handover, and takeover have unified semantics.
+- Ensure that even in multi-worker environments there is only one authoritative execution authority holder.
 
-## 3. 非目标
+## 3. Non-Goals
 
-- Phase 1a 不要求上完整分布式队列集群。
-- 本 contract 不规定具体队列后端产品选型。
-- 本 contract 不替代单iterations run 的Status机vs执lines语义defines。
+- Phase 1a does not require a complete distributed queue cluster.
+- This contract does not prescribe a specific queue backend product selection.
+- This contract does not replace the state machine and execution semantics definitions for a single run.
 
-## 4. Architecture分层
+## 4. Architecture Layers
 
 `Task / Workflow Layer`
-: 负责任务生成、workflow 编排、审批等待vs结果写回。
+: Responsible for task creation, workflow orchestration, approval wait, and result writeback.
 
 `Execution Control Plane`
-: 负责 dispatch、lease、route、capacity awareness、recovery decision。
+: Responsible for dispatch, lease, route, capacity awareness, and recovery decision.
 
 `Execution Worker Plane`
-: 负责真正消费 execution ticket、执lines run、上报 heartbeat 和结果。
+: Responsible for actually consuming execution tickets, executing runs, reporting heartbeats, and results.
 
 `Recovery And Governance Hooks`
-: 负责 stale detection、takeover proposal、kill / freeze / retry Decision联动。
+: Responsible for stale detection, takeover proposal, and kill / freeze / retry decision linkage.
 
-`Plan / Feedback Boundary（OAPEFLIR）`
-: P3 只允许下发 `PlanGraphBundle` / `GraphPatch`；execution plane 执lines后先写回 `NodeAttemptReceipt`，`FeedbackSignal` vsuser摘要只能作为based on回执的派生 view（对应 ADR-079）。
+`Plan / Feedback Boundary (OAPEFLIR)`
+: P3 is only allowed to issue `PlanGraphBundle` / `GraphPatch`; the execution plane writes back `NodeAttemptReceipt` first, and `FeedbackSignal` and user summaries can only be used as derived views based on the receipt (corresponding to ADR-079).
 
-## 5. 关键组件
+## 5. Key Components
 
 - `ExecutionControlPlane`
 - `DispatchQueue`
@@ -51,9 +51,9 @@
 - `WorkerRegistry`
 - `WorkerHeartbeat`
 - `TakeoverManager`
-- `PlanGraphBundle`（P3 -> P4 唯一执lines计划合约）
-- `NodeAttemptReceipt`（P4 -> 其他平面的唯一执lines回执）
-- `FeedbackSignal`（based on `NodeAttemptReceipt` 派生的认知/学习输入）
+- `PlanGraphBundle` (the only execution plan contract from P3 to P4)
+- `NodeAttemptReceipt` (the only execution receipt from P4 to other planes)
+- `FeedbackSignal` (cognitive / learning input derived from `NodeAttemptReceipt`)
 
 ## 6. Target Architecture
 
@@ -73,14 +73,14 @@ flowchart LR
     J --> C
 ```
 
-补充Description：
+Additional explanation:
 
-- `ExecutionControlPlane` 负责决定“谁该执lines”。
-- `ExecutionWorker` 负责执lines“已via被authorization执lines的 run”。
-- `LeaseCoordinator` 负责保证同一 execution 同时只被一个 worker 持有。
-- `RecoveryCoordinator` 负责扫描陈旧 execution 并决定恢复、重试、接管或死信。
+- `ExecutionControlPlane` is responsible for deciding "who should execute".
+- `ExecutionWorker` is responsible for executing the run that "has already been authorized".
+- `LeaseCoordinator` is responsible for ensuring that the same execution is held by only one worker at a time.
+- `RecoveryCoordinator` is responsible for scanning stale executions and deciding recovery, retry, takeover, or dead-letter.
 
-## 6.1 执lines平面分层图
+## 6.1 Execution Plane Layered Diagram
 
 ```mermaid
 flowchart TD
@@ -115,7 +115,7 @@ flowchart TD
     L4 --> L2
 ```
 
-## 7. 关键对象
+## 7. Key Objects
 
 - `ExecutionTicket`
 - `DispatchDecision`
@@ -125,75 +125,75 @@ flowchart TD
 - `TakeoverProposal`
 - `WorkerCapabilitySet`
 
-## 8. `ExecutionTicket` 最小字段
+## 8. `ExecutionTicket` Minimum Fields
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `ticket_id` | `string` | 派发票据 ID |
-| `harness_run_id` | `string` | 目标 HarnessRun |
-| `node_run_id` | `string` | 目标 NodeRun |
-| `attempt_id` | `string` | 当前 NodeAttempt |
-| `task_id` | `string?` | 兼容查询入口；非 truth 主键 |
-| `plan_graph_bundle_id` | `string` | 关联执lines图 bundle |
-| `graph_version` | `number` | 对应 graph 版本 |
-| `stage_view_ref` | `string?` | 关联 OAPEFLIR 阶段 view；onlyused for解释/展示，不驱动执lines |
-| `priority` | `low \| normal \| high \| urgent` | 调度优先级 |
-| `queue_name` | `string` | 目标队列 |
-| `required_capabilities` | `string[]` | worker required能力 |
-| `dispatch_target` | `any \| local_only \| prefer_remote \| require_remote` | 调度目标策略 |
-| `required_isolation_level` | `read_only \| workspace_write \| scoped_external_access \| restricted_exec` | 最低隔离等级要求 |
-| `required_repo_version?` | `string` | 要求 worker code版本匹配 |
-| `dispatch_after` | `timestamp?` | 最早派发time |
-| `attempt_no` | `integer` | 该票据关联的尝试iterations数 |
-| `created_at` | `timestamp` | 创建time |
+| Field | Type | Description |
+| --- | --- | --- |
+| `ticket_id` | `string` | Dispatch ticket ID |
+| `harness_run_id` | `string` | Target HarnessRun |
+| `node_run_id` | `string` | Target NodeRun |
+| `attempt_id` | `string` | Current NodeAttempt |
+| `task_id` | `string?` | Compatible query entry; not a truth primary key |
+| `plan_graph_bundle_id` | `string` | Associated execution graph bundle |
+| `graph_version` | `number` | Corresponding graph version |
+| `stage_view_ref` | `string?` | Associated OAPEFLIR stage view; for explanation / display only, does not drive execution |
+| `priority` | `low \| normal \| high \| urgent` | Scheduling priority |
+| `queue_name` | `string` | Target queue |
+| `required_capabilities` | `string[]` | Worker required capabilities |
+| `dispatch_target` | `any \| local_only \| prefer_remote \| require_remote` | Dispatch target policy |
+| `required_isolation_level` | `read_only \| workspace_write \| scoped_external_access \| restricted_exec` | Minimum isolation level requirement |
+| `required_repo_version?` | `string` | Requires worker code version match |
+| `dispatch_after` | `timestamp?` | Earliest dispatch time |
+| `attempt_no` | `integer` | Attempt count associated with this ticket |
+| `created_at` | `timestamp` | Creation time |
 
-### 8.1 Dispatch Target 语义
+### 8.1 Dispatch Target Semantics
 
-| 策略 | 含义 |
+| Policy | Meaning |
 | --- | --- |
-| `any` | 对 worker 部署位置no偏好，本地和远程均可 |
-| `local_only` | 只允许本地 worker 执lines，远程 worker 被排除 |
-| `prefer_remote` | 优先远程 worker；若no可用远程 worker，降级到本地 |
-| `require_remote` | 必须远程 worker；no可用远程 worker 时 fail-closed（不降级） |
+| `any` | No preference for worker deployment location; both local and remote are acceptable |
+| `local_only` | Only local workers allowed; remote workers are excluded |
+| `prefer_remote` | Prefer remote workers; fall back to local if no remote workers are available |
+| `require_remote` | Must use a remote worker; fail-closed (no degradation) when no remote workers are available |
 
-规则：
+Rules:
 
-- `require_remote` 且远程 worker 部分可用时，dispatch 应返回 `remote.partial_available` 并拒绝派发，而不is降级到本地。
-- dispatch target 由 ticket 创建者（orchestrator / operator）决定，不得由 worker 自lines修改。
+- When `require_remote` and remote workers are only partially available, dispatch should return `remote.partial_available` and refuse the dispatch, rather than degrading to local.
+- The dispatch target is decided by the ticket creator (orchestrator / operator) and must not be modified by the worker itself.
 
-### 8.2 Isolation Level 语义
+### 8.2 Isolation Level Semantics
 
-Worker 隔离等级有序排列：`read_only (0) < workspace_write (1) < scoped_external_access (2) < restricted_exec (3)`。
+Worker isolation levels are ordered: `read_only (0) < workspace_write (1) < scoped_external_access (2) < restricted_exec (3)`.
 
-| 等级 | 含义 |
+| Level | Meaning |
 | --- | --- |
-| `read_only` | 只读沙箱，nowritespermission |
-| `workspace_write` | 标准沙箱，允许writes工作空间 |
-| `scoped_external_access` | 加固沙箱，限权外部访问 |
-| `restricted_exec` | 严格隔离，最小permission执lines |
+| `read_only` | Read-only sandbox, no write permission |
+| `workspace_write` | Standard sandbox, workspace write allowed |
+| `scoped_external_access` | Hardened sandbox, limited external access |
+| `restricted_exec` | Strict isolation, minimum-privilege execution |
 
-规则：
+Rules:
 
-- 高风险 execution 可声明 `required_isolation_level`，worker 的实际隔离等级必须 >= 要求等级才允许accepts。
-- 隔离等级不满足时，dispatch 应在 decision trace 中record拒绝原因。
+- High-risk execution can declare `required_isolation_level`; the worker's actual isolation level must be >= the required level to accept.
+- When the isolation level is not met, dispatch should record the rejection reason in the decision trace.
 
 ### 8.3 Repo Version Consistency
 
-- execution ticket 可声明 `required_repo_version`。
-- worker heartbeat 上报 `repoVersion`。
-- 若版本不匹配，dispatch defaults to fail-closed 并record拒绝。
+- Execution tickets can declare `required_repo_version`.
+- Worker heartbeat reports `repoVersion`.
+- If versions do not match, dispatch defaults to fail-closed and records the rejection.
 
-### 8.4 一般规则
+### 8.4 General Rules
 
-- 一个 `node_run_id` 在同一 `attempt_id` 下应只对应一个 active ticket。
-- ticket 失效后不得再iterations被 worker 消费。
-- execute plane 接到的 authoritative 输入必须来自 `PlanGraphBundle`，而不is `PlanDTO` 或非结构化 prompt 拼接。
+- A single `node_run_id` under the same `attempt_id` should correspond to only one active ticket.
+- Once a ticket is invalidated, it must not be consumed by a worker again.
+- The authoritative input received by the execute plane must come from `PlanGraphBundle`, not from `PlanDTO` or unstructured prompt stitching.
 
-## 8A. OAPEFLIR Plan → Execute → Feedback 边界
+## 8A. OAPEFLIR Plan → Execute → Feedback Boundary
 
-### 8A.1 Plan Hub → Execute（对应 ADR-060）
+### 8A.1 Plan Hub → Execute (corresponds to ADR-060)
 
-`PlanGraphBundle` 进入 execution plane 时最少应提供：
+When `PlanGraphBundle` enters the execution plane, it should at least provide:
 
 - `planGraphBundleId`
 - `harnessRunId`
@@ -205,14 +205,14 @@ Worker 隔离等级有序排列：`read_only (0) < workspace_write (1) < scoped_
 - `budget`
 - `riskProfile`
 
-**P3 -> P4 约束**：
-- Execute 层只能接收 `PlanGraphBundle` / `GraphPatch`，不允许旁路 raw task 或线性 `PlanDTO` directly执lines。
-- graph 版本链必须保持稳定 lineage，不得被新 worker 静默改写。
-- 已生成 `NodeAttemptReceipt` 的节点语义不得via新 worker 原地重写。
+**P3 -> P4 Constraints**:
+- The Execute layer can only receive `PlanGraphBundle` / `GraphPatch`; bypassing raw tasks or linear `PlanDTO` for direct execution is not allowed.
+- The graph version chain must maintain a stable lineage and must not be silently rewritten by new workers.
+- Node semantics that have already produced `NodeAttemptReceipt` must not be rewritten in place by new workers.
 
-### 8A.2 Execute → Feedback Hub（对应 ADR-079）
+### 8A.2 Execute → Feedback Hub (corresponds to ADR-079)
 
-execution plane 完成单iterations attempt 后，truth 输出必须先落 `NodeAttemptReceipt`：
+After the execution plane completes a single attempt, the truth output must first land in `NodeAttemptReceipt`:
 
 - `receiptId`
 - `nodeAttemptId`
@@ -223,42 +223,42 @@ execution plane 完成单iterations attempt 后，truth 输出必须先落 `Node
 - `budgetSettlementRefs[]`
 - `evidenceRefs[]`
 
-在此基础上，其他平面或读模型可以派生：
+On top of that, other planes or read models can derive:
 
 - `FeedbackSignal[]`
 - `artifact_refs[]`
 - `policy_decision_ref?`
 - `release_evidence_ref?`
-- `DualChannelStepOutput`（user展示投影）
+- `DualChannelStepOutput` (user display projection)
 
-**规则**：
+**Rules**:
 
-- `NodeAttemptReceipt` is Execute → 其他平面的正式 truth 输出，不得只via日志侧带。
-- `FeedbackSignal` 必须显式关联 `receiptId`、`planGraphBundleId` vs `graphVersion`，作为派生认知输入，而不is替代回执。
-- 若某iterations attempt 没有产生 feedback，也应显式record `feedback_count=0` 或等价 evidence，避免后续 Learn / Improve 误判链路缺失。
-- `DualChannelStepOutput` 只允许作为user展示投影，不得成为 recovery、budget settlement 或 side-effect confirmation 的唯一依据。
+- `NodeAttemptReceipt` is the official truth output from Execute to other planes, and must not be delivered only through the log side-channel.
+- `FeedbackSignal` must explicitly reference `receiptId`, `planGraphBundleId`, and `graphVersion`, as a derived cognitive input rather than a replacement for the receipt.
+- If an attempt produces no feedback, `feedback_count=0` or equivalent evidence should be explicitly recorded, to avoid subsequent Learn / Improve misjudging a missing link.
+- `DualChannelStepOutput` is only allowed as a user display projection and must not be the sole basis for recovery, budget settlement, or side-effect confirmation.
 
-## 9. `LeaseRecord` 最小字段
+## 9. `LeaseRecord` Minimum Fields
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `lease_id` | `string` | 租约 ID |
-| `harness_run_id` | `string` | 所属 HarnessRun |
-| `node_run_id` | `string` | 目标 NodeRun |
-| `attempt_id` | `string?` | 关联 NodeAttempt |
-| `worker_id` | `string` | 当前持有者 |
-| `acquired_at` | `timestamp` | 获取time |
-| `expires_at` | `timestamp` | 到期time |
-| `last_heartbeat_at` | `timestamp?` | 最近续约time |
-| `status` | `active \| expired \| released \| reclaimed \| handed_over` | 租约Status（对齐 `task_lease_and_fencing_contract.md` §5） |
+| Field | Type | Description |
+| --- | --- | --- |
+| `lease_id` | `string` | Lease ID |
+| `harness_run_id` | `string` | Owning HarnessRun |
+| `node_run_id` | `string` | Target NodeRun |
+| `attempt_id` | `string?` | Associated NodeAttempt |
+| `worker_id` | `string` | Current holder |
+| `acquired_at` | `timestamp` | Acquisition time |
+| `expires_at` | `timestamp` | Expiration time |
+| `last_heartbeat_at` | `timestamp?` | Most recent renewal time |
+| `status` | `active \| expired \| released \| reclaimed \| handed_over` | Lease status (aligned with `task_lease_and_fencing_contract.md` §5) |
 
-规则：
+Rules:
 
-- 同一时刻同一 `node_run_id` 只能有一个 `active` lease。
-- worker 不得在未获得 active lease 时执lines副作用步骤。
-- lease 过期后，原 worker 视为失去执lines权，即使本地进程仍活着。
+- At the same moment, the same `node_run_id` can only have one `active` lease.
+- A worker must not execute side-effect steps without obtaining an active lease.
+- After a lease expires, the original worker is considered to have lost execution authority, even if its local process is still alive.
 
-## 10. `WorkerSnapshot` 最小字段
+## 10. `WorkerSnapshot` Minimum Fields
 
 - `worker_id`
 - `status` (`idle | busy | draining | degraded | unavailable | quarantined | offline`)
@@ -268,48 +268,48 @@ execution plane 完成单iterations attempt 后，truth 输出必须先落 `Node
 - `max_concurrency`
 - `queue_affinity?`
 - `isolation_level` (`read_only | workspace_write | scoped_external_access | restricted_exec`)
-- `saturation`（负载饱和度）
+- `saturation` (load saturation)
 - `repo_version?`
-- `remote_session_status?`（`connecting | connected | reconnecting | degraded | failed | viewer_only`）
+- `remote_session_status?` (`connecting | connected | reconnecting | degraded | failed | viewer_only`)
 - `last_acknowledged_stream_offset?`
 - `resume_ready?`
 - `credential_expiry_at?`
-- `consistency_check_status?`（`passed | failed | pending`）
+- `consistency_check_status?` (`passed | failed | pending`)
 - `runtime_instance_id?`
-- `restart_generation?`（重启代数）
+- `restart_generation?` (restart generation count)
 - `parent_runtime_instance_id?`
 
-### 10.1 Worker Status语义
+### 10.1 Worker Status Semantics
 
-| status | 含义 | 可accepts新 dispatch |
-|---|-------|--------|
-| `idle` | 空闲，no正在执lines的任务 | is |
-| `busy` | 正在执lines任务，未达饱和 | is（受 max_concurrency 约束） |
-| `draining` | 维护中，可完成手头任务，不接新任务 | no |
-| `degraded` | 能力部分退化（如 provider timeout、内存压力） | 视情况 |
-| `unavailable` | 当前不可服务（如network分区、relies on失效） | no |
-| `quarantined` | 因异常被隔离（如连续failed、security事件） | no |
-| `offline` | 心跳timeout或主动下线 | no |
+| status | Meaning | Accepts new dispatch |
+| --- | --- | --- |
+| `idle` | Idle, no task in progress | Yes |
+| `busy` | Executing task, not yet saturated | Yes (subject to max_concurrency) |
+| `draining` | Under maintenance, can finish in-hand task, does not accept new tasks | No |
+| `degraded` | Partial capability degradation (e.g., provider timeout, memory pressure) | Conditional |
+| `unavailable` | Currently unserviceable (e.g., network partition, dependency failure) | No |
+| `quarantined` | Quarantined due to anomaly (e.g., consecutive failures, security incident) | No |
+| `offline` | Heartbeat timeout or actively offline | No |
 
-### 10.2 Worker 调度投影
+### 10.2 Worker Scheduling Projection
 
-调度层将 7 种 worker Status投影为简化调度视图：
+The scheduling layer projects the 7 worker states into a simplified scheduling view:
 
-| 调度Status | 对应 worker status |
+| Scheduling Status | Corresponding worker status |
 | --- | --- |
-| `healthy` | `idle`、`busy`（以及其他未显式映射的Status） |
+| `healthy` | `idle`, `busy` (and other states not explicitly mapped) |
 | `degraded` | `degraded` |
 | `draining` | `draining` |
 | `quarantined` | `quarantined` |
 | `offline` | `offline` |
 | `unavailable` | `unavailable` |
 
-规则：
+Rules:
 
-- 调度层只消费投影后的调度Status，不directly读取 worker 内部Status。
-- `healthy` is唯一允许accepts新 dispatch 的调度Status（受容量和能力约束）。
+- The scheduling layer only consumes the projected scheduling status and does not directly read the worker's internal state.
+- `healthy` is the only scheduling status allowed to accept new dispatches (subject to capacity and capability constraints).
 
-## 11. `RecoveryDecision` 最小字段
+## 11. `RecoveryDecision` Minimum Fields
 
 - `decision_id`
 - `harness_run_id`
@@ -320,25 +320,25 @@ execution plane 完成单iterations attempt 后，truth 输出必须先落 `Node
 - `decided_at`
 - `decided_by`
 
-规则：
+Rules:
 
-- Recovery decision 必须可审计。
-- recovery Decision不得bypassing approval、budget 和 policy 边界。
+- Recovery decisions must be auditable.
+- Recovery decisions must not bypass approval, budget, and policy boundaries.
 
-## 12. 执lines生命cycle
+## 12. Execution Lifecycle
 
-多执lines平面的标准生命cycle：
+The standard lifecycle of a multi-execution plane:
 
-1. `HarnessRun` / `NodeRun` 由 control plane 注册。
-2. control plane 生成 `ExecutionTicket`。
-3. ticket 进入目标 `DispatchQueue`。
-4. worker 申请 lease 并消费 ticket。
-5. worker 获得 lease 后进入实际执lines。
-6. worker cycle性发送 heartbeat / lease renew。
-7. attempt 结束后写回 `NodeAttemptReceipt` 并释放 lease。
-8. 若 lease 过期、worker 消失或 attempt 卡死，则进入 recovery scan。
+1. `HarnessRun` / `NodeRun` is registered by the control plane.
+2. The control plane generates an `ExecutionTicket`.
+3. The ticket enters the target `DispatchQueue`.
+4. A worker applies for a lease and consumes the ticket.
+5. The worker enters actual execution after acquiring the lease.
+6. The worker periodically sends heartbeat / lease renewal.
+7. After the attempt ends, write back `NodeAttemptReceipt` and release the lease.
+8. If the lease expires, the worker disappears, or the attempt stalls, enter the recovery scan.
 
-### 12.1 生命cycle流程图
+### 12.1 Lifecycle Flow Diagram
 
 ```mermaid
 flowchart TD
@@ -359,77 +359,77 @@ flowchart TD
     L --> M["Resume / Retry / Takeover / Dead Letter"]
 ```
 
-## 13. Dispatch 规则
+## 13. Dispatch Rules
 
-- queue 选择至少考虑：优先级、能力、隔离级别、队列拥塞度，以及 `graphVersion` / `required_repo_version` 兼容性。
-- `required_capabilities` 不满足的 worker 不得领取 ticket。
-- 高风险 execution 可要求进入特定 queue 或特定 worker class。
-- `dispatch_after` 未到前不得消费 ticket。
+- Queue selection must at least consider: priority, capability, isolation level, queue congestion, and `graphVersion` / `required_repo_version` compatibility.
+- Workers that do not meet `required_capabilities` must not claim the ticket.
+- High-risk execution may require entering a specific queue or specific worker class.
+- Tickets must not be consumed before `dispatch_after`.
 
-## 14. Lease vs Heartbeat 规则
+## 14. Lease and Heartbeat Rules
 
-- lease defaults to短 TTL，依靠 heartbeat 续期。
-- heartbeat 丢失不directly等于执linesfailed，而is触发 recovery candidate。
-- stale 判定应结合 `lease.expires_at` vs worker heartbeat。
-- worker 心跳和 node attempt 心跳is不同层级：
-  - worker heartbeat used forDescription worker 存活vs容量。
-  - node attempt heartbeat used forDescription某个 `NodeAttempt` 的进度和存活。
+- Leases default to short TTL and rely on heartbeat renewal.
+- A lost heartbeat does not directly equal execution failure, but triggers a recovery candidate.
+- Stale judgement should combine `lease.expires_at` with worker heartbeat.
+- Worker heartbeat and node attempt heartbeat are at different levels:
+  - Worker heartbeat is used to indicate worker liveness and capacity.
+  - Node attempt heartbeat is used to indicate the progress and liveness of a specific `NodeAttempt`.
 
-## 15. Handover / Takeover 规则
+## 15. Handover / Takeover Rules
 
 `handover`
-: 系统内受控转移执lines权，例如原 worker 即将下线。
+: A controlled transfer of execution authority within the system, e.g., the original worker is about to be taken offline.
 
 `takeover`
-: 由于异常、人工接管或治理需要，mandatory把 `NodeRun` / `NodeAttempt` 交给新执lines主体或人工流程。
+: Due to anomaly, manual takeover, or governance need, forcibly handing the `NodeRun` / `NodeAttempt` over to a new execution principal or manual process.
 
-规则：
+Rules:
 
-- handover 必须record旧 lease、新 lease 和 lineage。
-- takeover 必须生成 `TakeoverProposal` 或治理Decisionrecord。
-- takeover 不得静默发生，必须可追溯到原因和触发者。
+- Handover must record the old lease, new lease, and lineage.
+- Takeover must generate a `TakeoverProposal` or governance decision record.
+- Takeover must not occur silently; it must be traceable to the cause and the trigger.
 
 ## 16. Failure Mode
 
-主要failed模式：
+Main failure modes:
 
-- worker 崩溃但 lease 未及时过期。
-- worker network隔离导致假存活。
-- ticket 已消费但结果未写回。
-- lease 已过期但旧 worker 继续执lines。
+- Worker crashes but the lease is not expired in time.
+- Worker network isolation causes false liveness.
+- Ticket has been consumed but the result was not written back.
+- Lease has expired but the old worker continues to execute.
 
-handle规则：
+Handling rules:
 
-- authoritative 结果以 control plane + storage 为准，不以 worker 本地内存为准。
-- 旧 worker 在 lease 失效后继续回写时，应被识别为过期writes并拒绝或降级handle。
-- recovery scan 至少能识别 `running but stale`、`ticket lost`、`duplicate claimant` 三class异常，并能回链到对应 `NodeAttemptReceipt` 缺口。
+- Authoritative results are based on control plane + storage, not on the worker's local memory.
+- When an old worker continues to write back after its lease has expired, it should be identified as an expired write and be rejected or downgraded.
+- The recovery scan should at least identify the three anomaly types `running but stale`, `ticket lost`, `duplicate claimant`, and be linkable back to the corresponding `NodeAttemptReceipt` gap.
 
-## 17. vsstorage和治理的关系
+## 17. Relationship to Storage and Governance
 
-- `runtime_repository_and_migration_contract.md` 未来应为 lease / queue / worker registry 补 repository。
-- `governance_control_plane_contract.md` 约束 freeze / kill / takeover 的治理路径。
-- `storage_schema_contract.md` 继续负责 `HarnessRun / NodeRun / NodeAttempt / NodeAttemptReceipt` 的 authoritative 基线，execution plane 只is在其上增加调度层。
+- `runtime_repository_and_migration_contract.md` should add repositories for lease / queue / worker registry in the future.
+- `governance_control_plane_contract.md` constrains the governance path for freeze / kill / takeover.
+- `storage_schema_contract.md` continues to be responsible for the authoritative baseline of `HarnessRun / NodeRun / NodeAttempt / NodeAttemptReceipt`; the execution plane only adds a scheduling layer on top.
 
-## 18. 实施顺序
+## 18. Implementation Order
 
-- Phase 1b: 最小 queue + stale detection + worker registry。
-- Phase 2a: lease / failover / handover。
-- Phase 2b: capacity-aware scheduling + recovery policy。
-- Phase 4: enterprise 多环境 execution fleet。
+- Phase 1b: minimum queue + stale detection + worker registry.
+- Phase 2a: lease / failover / handover.
+- Phase 2b: capacity-aware scheduling + recovery policy.
+- Phase 4: enterprise multi-environment execution fleet.
 
-## 19. 收口Conclusion
+## 19. Closure Conclusion
 
-Execution plane 的核心不is“把运lines挪到多进程”，而is把 execution 权、恢复权和调度权正式建模。
+The core of the execution plane is not "moving the runtime to multiple processes", but formally modeling execution authority, recovery authority, and scheduling authority.
 
-当前平台已有单机 runtime 基线；补齐本 contract 后，后续实现应以“control plane vs worker plane 分层”作为唯一演进方向。
+The platform currently has a single-machine runtime baseline; after completing this contract, subsequent implementations should use "control plane and worker plane layering" as the only evolution direction.
 
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following entries fix the contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If any historical section of this document conflicts with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-14: 本文原先把 `PlanDTO + steps[] + dag` 和 `DualChannelStepOutput / FeedbackSignal` directly写成执lines平面主输入输出，Root cause: 旧 execution plane 文档accesses along用了 ADR-060/079 的线性 plan vs反馈桥接草案，没有随着 `PlanGraphBundle` / `NodeAttemptReceipt` 成为 canonical truth 一起重写对象模型。修复：正文现把 P3 -> P4 输入收敛到 `PlanGraphBundle`，P4 truth 输出收敛到 `NodeAttemptReceipt`，其余对象只允许作为派生 view。
-- T-75: 本文原先在 Execute -> Feedback 边界里继续uses `nodeAttemptReceiptId`，Root cause:  execution plane contract 在 v4.3 重命名后没有把 API 级字段形状synchronous收口。修复：正文现统一uses `receiptId` 作为回执主键。
-- T-20: 原 `WorkerSnapshot.isolation_level` references用废弃枚举 `standard/hardened/strict`，未对齐Architecture §25.8 defines的 `read_only/workspace_write/scoped_external_access/restricted_exec`。修复：§10 `WorkerSnapshot` 字段已更新为规范枚举；`ExecutionTicket.required_isolation_level` 字段（§8）保持一致。
+- T-14: This document originally wrote `PlanDTO + steps[] + dag` and `DualChannelStepOutput / FeedbackSignal` directly as the main inputs and outputs of the execution plane. The root cause was that the old execution plane documentation followed the linear plan and feedback bridging draft of ADR-060/079, and did not rewrite the object model after `PlanGraphBundle` / `NodeAttemptReceipt` became the canonical truth. Fix: The main text now converges P3 -> P4 input to `PlanGraphBundle`, and P4 truth output to `NodeAttemptReceipt`; the remaining objects are only allowed as derived views.
+- T-75: This document continued to use `nodeAttemptReceiptId` in the Execute -> Feedback boundary. The root cause was that the execution plane contract did not sync the API-level field shape to a consistent form after the v4.3 rename. Fix: The main text now uniformly uses `receiptId` as the receipt primary key.
+- T-20: The original `WorkerSnapshot.isolation_level` referenced deprecated enums `standard/hardened/strict`, which did not align with the `read_only/workspace_write/scoped_external_access/restricted_exec` defined in architecture §25.8. Fix: The `WorkerSnapshot` field in §10 has been updated to the canonical enum; the `ExecutionTicket.required_isolation_level` field (§8) is kept consistent.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: state transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events may only use `platform.*`; OAPEFLIR may only act as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

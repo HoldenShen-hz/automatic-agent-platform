@@ -157,3 +157,26 @@ test("SideEffectManager requires lease and fencing token for compensation transi
     /lease and fencing token/,
   );
 });
+
+test("SideEffectManager validates proposed transitions and URI-encodes audit refs", () => {
+  const validations: Array<{ targetStatus: string; sideEffectId: string }> = [];
+  const manager = new SideEffectManager({
+    preCommitValidator: {
+      validate({ sideEffect, targetStatus }) {
+        validations.push({ targetStatus, sideEffectId: sideEffect.sideEffectId });
+      },
+    },
+  });
+
+  const result = manager.registerProposal(
+    createSideEffect({
+      sideEffectId: "side?effect#1",
+      status: "approved",
+    }),
+    createContext(),
+  );
+  const payload = result.event.payload as Record<string, unknown>;
+
+  assert.deepEqual(validations, [{ targetStatus: "proposed", sideEffectId: "side?effect#1" }]);
+  assert.equal(payload.auditRef, "audit://side-effects/side%3Feffect%231/side_effect.proposed");
+});

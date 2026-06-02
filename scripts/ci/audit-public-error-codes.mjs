@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { readFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 const registry = readFileSync("docs_zh/contracts/error_code_registry.md", "utf8");
 const allowed = new Set(
@@ -10,25 +10,22 @@ const allowed = new Set(
     .filter((code) => code.includes(".")),
 );
 
-const result = spawnSync(
-  "rg",
-  [
-    "-n",
-    'code:\\s*"[^"]+"',
-    "src/platform/five-plane-interface",
-  ],
-  { encoding: "utf8" },
-);
-
-if (result.error) {
-  throw result.error;
+const rootDir = "src/platform/five-plane-interface";
+const matches = [];
+if (!existsSync(rootDir)) {
+  console.error(`missing audit root: ${rootDir}`);
+  process.exit(2);
 }
-if (result.status !== 0 && result.status !== 1) {
-  throw new Error(result.stderr || "rg failed while auditing public error codes");
+for (const filePath of listFiles(rootDir)) {
+  const content = readFileSync(filePath, "utf8");
+  for (const match of content.matchAll(/code:\s*"([^"]+)"/g)) {
+    const lineNumber = content.slice(0, match.index ?? 0).split("\n").length;
+    matches.push(`${filePath}:${lineNumber}:${match[0]}`);
+  }
 }
 
 const failures = [];
-for (const line of result.stdout.split("\n")) {
+for (const line of matches) {
   if (!line.trim()) {
     continue;
   }
@@ -54,3 +51,28 @@ if (failures.length > 0) {
 }
 
 console.log(`public error code audit passed: ${allowed.size} registered codes available`);
+
+function listFiles(root) {
+  const results = [];
+  const stack = [root];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (current == null) {
+      continue;
+    }
+    const stat = statSync(current);
+    if (stat.isDirectory()) {
+      for (const entry of readdirSync(current)) {
+        if (entry === "node_modules" || entry === "dist" || entry === ".git") {
+          continue;
+        }
+        stack.push(join(current, entry));
+      }
+      continue;
+    }
+    if (stat.isFile() && /\.(ts|tsx|js|jsx|mjs|cjs)$/u.test(current)) {
+      results.push(current);
+    }
+  }
+  return results.sort();
+}

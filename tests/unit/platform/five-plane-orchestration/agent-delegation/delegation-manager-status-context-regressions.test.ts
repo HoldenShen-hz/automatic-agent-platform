@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createDelegationManager } from "../../../../../src/platform/five-plane-orchestration/agent-delegation/index.js";
+import { DelegationManagerService } from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-manager.service.js";
 import type {
   AgentContext,
   DelegationResult,
   DelegationSpec,
 } from "../../../../../src/platform/five-plane-orchestration/agent-delegation/index.js";
+import { InMemoryDelegationRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/delegation-repository.js";
 
 function createParentContext(overrides: Partial<AgentContext> = {}): AgentContext {
   return {
@@ -54,14 +56,14 @@ test("cancel rejects concurrent status changes via fencing token", async () => {
       delegation: DelegationResult,
       nextStatus: string,
       fencingToken?: string,
-    ) => void;
+    ) => Promise<void>;
   };
   const originalTransition = serviceWithInternals.transitionDelegationStatus.bind(serviceWithInternals);
-  serviceWithInternals.transitionDelegationStatus = (delegation, nextStatus, fencingToken) => {
+  serviceWithInternals.transitionDelegationStatus = async (delegation, nextStatus, fencingToken) => {
     if (nextStatus === "cancelled") {
       delegation.status = "completed";
     }
-    originalTransition(delegation, nextStatus, fencingToken);
+    await originalTransition(delegation, nextStatus, fencingToken);
   };
 
   await assert.rejects(
@@ -90,4 +92,35 @@ test("createDelegationContext rejects expired delegations as revoked permissions
       && "code" in error
       && error.code === "delegation.permissions_revoked",
   );
+});
+
+test("repository-backed delegations survive restart with narrowed permissions intact", async () => {
+  const repository = new InMemoryDelegationRepository();
+  const service = new DelegationManagerService({}, repository);
+  const handle = await service.delegate(createParentContext(), createDelegationSpec());
+
+  const reloadedService = new DelegationManagerService({}, repository);
+  const reloadedDelegation = await reloadedService.getDelegation(handle.delegationId);
+  const reloadedContext = reloadedService.createDelegationContext(handle.delegationId);
+
+  assert.ok(reloadedDelegation);
+  assert.deepEqual(reloadedDelegation?.permissions.resources, ["resource-a"]);
+  assert.deepEqual(reloadedDelegation?.permissions.actions, ["action-read"]);
+  assert.deepEqual(reloadedDelegation?.grantedPermissions.resources, ["resource-a"]);
+  assert.deepEqual(reloadedContext.permissions.resources, ["resource-a"]);
+  assert.deepEqual(reloadedContext.permissions.actions, ["action-read"]);
+});
+
+test("repository-backed delegation chains are recomputed after terminal status changes", async () => {
+  const repository = new InMemoryDelegationRepository();
+  const service = new DelegationManagerService({}, repository);
+  const handle = await service.delegate(createParentContext(), createDelegationSpec());
+
+  const chainBeforeCancel = await service.getDelegationChain("parent-agent");
+  assert.equal(chainBeforeCancel?.totalDelegations, 1);
+
+  await service.cancel(handle.delegationId);
+
+  const chainAfterCancel = await service.getDelegationChain("parent-agent");
+  assert.equal(chainAfterCancel, null);
 });

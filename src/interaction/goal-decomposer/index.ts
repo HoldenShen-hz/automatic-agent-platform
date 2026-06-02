@@ -64,9 +64,9 @@ const DEFAULT_DOMAIN_CAPABILITIES: Readonly<Record<string, readonly string[]>> =
   communications: [],
   content_production: [],
   data_analysis: ["analytics"],
-  engineering_ops: [],
+  "engineering-ops": [],
   finance: ["approval_workflow"],
-  general_ops: ["analytics", "approval_workflow"],
+  "general-ops": ["analytics", "approval_workflow"],
   hr: [],
   legal: ["approval_workflow"],
   operations: ["approval_workflow"],
@@ -78,9 +78,9 @@ const DEFAULT_DOMAIN_PERMISSIONS: Readonly<Record<string, readonly string[]>> = 
   communications: [],
   content_production: [],
   data_analysis: [],
-  engineering_ops: ["deployment:write"],
+  "engineering-ops": ["deployment:write"],
   finance: [],
-  general_ops: [],
+  "general-ops": [],
   hr: [],
   legal: [],
   operations: ["deployment:write"],
@@ -500,8 +500,8 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     const recipeService = this.options.domainRecipeService;
     if (recipeService != null) {
       // Try to match against registered domain recipes
-      // Use "general_ops" as default domain since we're doing broad template detection
-      const matched = recipeService.matchRecipe("general_ops", description);
+      // Use "general-ops" as default domain since we're doing broad template detection
+      const matched = recipeService.matchRecipe("general-ops", description);
       if (matched?.archetype != null) {
         const serviceMapped = this.mapArchetypeToTemplate(matched.archetype);
         if (serviceMapped != null) {
@@ -601,7 +601,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         ];
       case "release_launch":
         return [
-          this.makeTask("engineering_ops", "完成发布实现与变更确认", goal, "6h"),
+          this.makeTask("engineering-ops", "完成发布实现与变更确认", goal, "6h"),
           this.makeTask("quality_assurance", "执行发布前验证和回归检查", goal, "4h"),
           this.makeTask("operations", "准备部署、回滚和运行值守", goal, "4h"),
           this.makeTask("data_analysis", "跟踪发布后关键指标", goal, "3h"),
@@ -609,7 +609,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       case "incident_response":
         return [
           this.makeTask("operations", "收集症状、构建故障上下文", goal, "2h"),
-          this.makeTask("engineering_ops", "执行定位、修复和恢复动作", goal, "4h"),
+          this.makeTask("engineering-ops", "执行定位、修复和恢复动作", goal, "4h"),
           this.makeTask("security", "检查是否涉及安全或合规风险", goal, "2h"),
           this.makeTask("communications", "产出事件摘要与后续建议", goal, "2h"),
         ];
@@ -622,9 +622,9 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         ];
       default:
         return [
-          this.makeTask("general_ops", "分析目标、约束和成功标准", goal, "2h"),
-          this.makeTask("general_ops", "执行主体任务并产出主要结果", goal, "4h"),
-          this.makeTask("general_ops", "整理结果、验证并形成交付摘要", goal, "2h"),
+          this.makeTask("general-ops", "分析目标、约束和成功标准", goal, "2h"),
+          this.makeTask("general-ops", "执行主体任务并产出主要结果", goal, "4h"),
+          this.makeTask("general-ops", "整理结果、验证并形成交付摘要", goal, "2h"),
         ];
     }
   }

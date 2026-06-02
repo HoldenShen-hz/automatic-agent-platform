@@ -6,7 +6,7 @@
 # Creates a pre-restore snapshot of the current DB before restoring.
 #
 # Usage:
-#   ./restore-sqlite.sh BACKUP_PATH [DB_PATH]
+#   ./restore-sqlite.sh BACKUP_PATH [DB_PATH] [--confirm-schema-downgrade]
 #
 # Environment variables:
 #   AA_DB_PATH   Target database path (default: data/sqlite/automatic-agent.db)
@@ -20,29 +20,72 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+DATA_ROOT="${REPO_ROOT}/data"
 MIGRATION_PLAN_PATH="${REPO_ROOT}/src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.ts"
 CIPHER="aes-256-cbc"
 
-if [ $# -lt 1 ]; then
-  echo "Usage: $0 BACKUP_PATH [DB_PATH]" >&2
-  echo "ERROR: Missing required argument BACKUP_PATH" >&2
+usage() {
+  echo "Usage: $0 BACKUP_PATH [DB_PATH] [--confirm-schema-downgrade]" >&2
+}
+
+resolve_abs_path() {
+  node -e 'const path = require("node:path"); process.stdout.write(path.resolve(process.argv[1], process.argv[2]));' "$1" "$2"
+}
+
+require_repo_subpath() {
+  local path="$1"
+  local root="$2"
+  local label="$3"
+  case "$path" in
+    "$root") ;;
+    "$root"/*) ;;
+    *)
+      echo "ERROR: ${label} must stay within ${root}: ${path}" >&2
+      exit 2
+      ;;
+  esac
+}
+
+CONFIRM_SCHEMA_DOWNGRADE=0
+POSITIONAL_ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --confirm-schema-downgrade)
+      CONFIRM_SCHEMA_DOWNGRADE=1
+      ;;
+    --*)
+      usage
+      echo "ERROR: Unknown flag: $arg" >&2
+      exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$arg")
+      ;;
+  esac
+done
+
+if [ "${#POSITIONAL_ARGS[@]}" -lt 1 ] || [ "${#POSITIONAL_ARGS[@]}" -gt 2 ]; then
+  usage
+  echo "ERROR: Expected BACKUP_PATH plus optional DB_PATH and --confirm-schema-downgrade flag" >&2
   exit 1
 fi
 
-BACKUP_PATH="$1"
-DB_PATH="${2:-${AA_DB_PATH:-data/sqlite/automatic-agent.db}}"
+BACKUP_PATH="${POSITIONAL_ARGS[0]}"
+DB_PATH="${POSITIONAL_ARGS[1]:-${AA_DB_PATH:-data/sqlite/automatic-agent.db}}"
 DECRYPTED_BACKUP_PATH=""
 TMP_RESTORE_PATH=""
+RESTORE_LOCK_DIR=""
 
 # Resolve absolute paths
+BACKUP_PATH="$(resolve_abs_path "$REPO_ROOT" "$BACKUP_PATH")"
+DB_PATH="$(resolve_abs_path "$REPO_ROOT" "$DB_PATH")"
+require_repo_subpath "$DB_PATH" "$DATA_ROOT" "DB_PATH"
+mkdir -p "$(dirname "$DB_PATH")"
 BACKUP_PATH="$(realpath "$BACKUP_PATH" 2>/dev/null)" || {
   echo "ERROR: Cannot resolve backup path: $BACKUP_PATH" >&2
   exit 1
 }
-DB_PATH="$(realpath "$DB_PATH" 2>/dev/null)" || {
-  mkdir -p "$(dirname "$DB_PATH")"
-  DB_PATH="$(cd "$(dirname "$DB_PATH")" && pwd)/$(basename "$DB_PATH")"
-}
+RESTORE_LOCK_DIR="$(dirname "$DB_PATH")/.restore_lock.d"
 
 # Verify backup file exists
 if [ ! -f "$BACKUP_PATH" ]; then
@@ -55,7 +98,7 @@ if [[ "$BACKUP_PATH" == *.enc ]]; then
     echo "ERROR: AA_BACKUP_ENCRYPTION_KEY_FILE is required to restore encrypted backups." >&2
     exit 1
   fi
-  DECRYPTED_BACKUP_PATH="$(mktemp "${TMPDIR:-/tmp}/aa-restore.XXXXXX.db")"
+  DECRYPTED_BACKUP_PATH="$(mktemp "${TMPDIR:-/tmp}/aa-restore.XXXXXX")"
   openssl enc -d -"${CIPHER}" -pbkdf2 -iter 200000 -md sha256 \
     -pass "file:${AA_BACKUP_ENCRYPTION_KEY_FILE}" \
     -in "$BACKUP_PATH" \
@@ -63,7 +106,12 @@ if [[ "$BACKUP_PATH" == *.enc ]]; then
   BACKUP_PATH="$DECRYPTED_BACKUP_PATH"
 fi
 
-trap 'rm -f "$DECRYPTED_BACKUP_PATH" "$TMP_RESTORE_PATH"' EXIT
+if ! mkdir "$RESTORE_LOCK_DIR" 2>/dev/null; then
+  echo "ERROR: Restore already in progress. refusing to start." >&2
+  exit 1
+fi
+
+trap 'rm -f "$DECRYPTED_BACKUP_PATH" "$TMP_RESTORE_PATH"; rm -rf "$RESTORE_LOCK_DIR"' EXIT
 
 if [ -f "${BACKUP_PATH}.sha256" ]; then
   echo "Verifying backup checksum: ${BACKUP_PATH}.sha256"
@@ -94,11 +142,38 @@ read_schema_version() {
   sqlite3 "$1" "SELECT COALESCE(MAX(version), 0) FROM schema_migrations;" 2>/dev/null || echo "0"
 }
 
-LATEST_SCHEMA_VERSION="0"
-if [ -f "$MIGRATION_PLAN_PATH" ]; then
-  LATEST_SCHEMA_VERSION="$(grep -o 'defineMigration([[:space:]]*[0-9]\+' "$MIGRATION_PLAN_PATH" | sed -E 's/.*\(([[:space:]]*[0-9]+).*/\1/' | tr -d ' ' | sort -n | tail -1)"
-  LATEST_SCHEMA_VERSION="${LATEST_SCHEMA_VERSION:-0}"
-fi
+read_latest_schema_version() {
+  if [ ! -f "$MIGRATION_PLAN_PATH" ]; then
+    echo "ERROR: Migration plan not found: $MIGRATION_PLAN_PATH" >&2
+    exit 1
+  fi
+  local latest
+  latest="$(node - "$MIGRATION_PLAN_PATH" <<'NODE'
+const fs = require("node:fs");
+const source = fs.readFileSync(process.argv[2], "utf8");
+const stripped = source
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .replace(/^[ \t]*\/\/.*$/gm, "");
+const matches = [...stripped.matchAll(/defineMigration\(\s*(\d+)/g)].map((entry) => Number.parseInt(entry[1], 10));
+if (matches.length === 0) {
+  console.error("No migrations found in migration plan.");
+  process.exit(1);
+}
+const latest = Math.max(...matches);
+process.stdout.write(String(latest));
+NODE
+)" || {
+    echo "ERROR: Could not determine repository migration head." >&2
+    exit 1
+  }
+  if ! [[ "$latest" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: Repository migration head is not numeric: $latest" >&2
+    exit 1
+  fi
+  printf '%s\n' "$latest"
+}
+
+LATEST_SCHEMA_VERSION="$(read_latest_schema_version)"
 
 BACKUP_SCHEMA_VERSION="$(read_schema_version "$BACKUP_PATH")"
 if [ "$BACKUP_SCHEMA_VERSION" -gt "$LATEST_SCHEMA_VERSION" ]; then
@@ -108,9 +183,11 @@ fi
 
 if [ -f "$DB_PATH" ]; then
   CURRENT_SCHEMA_VERSION="$(read_schema_version "$DB_PATH")"
-  if [ "$CURRENT_SCHEMA_VERSION" -gt "$BACKUP_SCHEMA_VERSION" ] && [ "${AA_RESTORE_ALLOW_SCHEMA_DOWNGRADE:-0}" != "1" ]; then
-    echo "ERROR: Refusing schema downgrade from ${CURRENT_SCHEMA_VERSION} to ${BACKUP_SCHEMA_VERSION}. Set AA_RESTORE_ALLOW_SCHEMA_DOWNGRADE=1 to override." >&2
-    exit 1
+  if [ "$CURRENT_SCHEMA_VERSION" -gt "$BACKUP_SCHEMA_VERSION" ]; then
+    if [ "${AA_RESTORE_ALLOW_SCHEMA_DOWNGRADE:-0}" != "1" ] || [ "$CONFIRM_SCHEMA_DOWNGRADE" -ne 1 ]; then
+      echo "ERROR: Refusing schema downgrade from ${CURRENT_SCHEMA_VERSION} to ${BACKUP_SCHEMA_VERSION}. Set AA_RESTORE_ALLOW_SCHEMA_DOWNGRADE=1 and pass --confirm-schema-downgrade to override." >&2
+      exit 1
+    fi
   fi
 fi
 
@@ -118,7 +195,11 @@ fi
 PRE_RESTORE="${DB_PATH}.pre-restore.$(date +%s)"
 if [ -f "$DB_PATH" ]; then
   echo "Creating pre-restore snapshot: $PRE_RESTORE"
-  cp "$DB_PATH" "$PRE_RESTORE"
+  ESCAPED_PRE_RESTORE=${PRE_RESTORE//\'/\'\'}
+  sqlite3 "$DB_PATH" ".timeout 5000" ".backup '$ESCAPED_PRE_RESTORE'" || {
+    echo "ERROR: Failed to create WAL-safe pre-restore snapshot." >&2
+    exit 1
+  }
 else
   echo "WARNING: Current DB does not exist at $DB_PATH — no pre-restore snapshot created."
 fi
@@ -141,8 +222,18 @@ if [ "$TMP_INTEGRITY" != "ok" ]; then
   exit 1
 fi
 
-rm -f "${DB_PATH}-wal" "${DB_PATH}-shm"
-mv -f "$TMP_RESTORE_PATH" "$DB_PATH"
+if [ -f "$DB_PATH" ]; then
+  echo "Applying restore via sqlite .restore (WAL-safe)"
+  ESCAPED_TMP_RESTORE=${TMP_RESTORE_PATH//\'/\'\'}
+  sqlite3 "$DB_PATH" ".timeout 5000" ".restore '$ESCAPED_TMP_RESTORE'" || {
+    echo "ERROR: SQLite restore command failed." >&2
+    echo "Pre-restore snapshot available at: $PRE_RESTORE" >&2
+    exit 1
+  }
+  rm -f "$TMP_RESTORE_PATH"
+else
+  mv -f "$TMP_RESTORE_PATH" "$DB_PATH"
+fi
 TMP_RESTORE_PATH=""
 
 # Verify restored DB opens correctly

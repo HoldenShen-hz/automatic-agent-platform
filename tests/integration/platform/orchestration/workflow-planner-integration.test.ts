@@ -124,8 +124,8 @@ test("WorkflowPlanner preserves workflow division ID in step defaults", () => {
 
     const result = planner.plan(input);
 
-    assert.equal(result.workflow.divisionId, "general_ops");
-    assert.equal(result.executionSteps[0]!.divisionId, "general_ops");
+    assert.equal(result.workflow.divisionId, "general-ops");
+    assert.equal(result.executionSteps[0]!.divisionId, "general-ops");
   } finally {
     ctx.cleanup();
   }

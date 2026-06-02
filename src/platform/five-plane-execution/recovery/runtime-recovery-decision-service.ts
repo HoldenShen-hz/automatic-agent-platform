@@ -35,6 +35,7 @@ import {
   type RuntimeRecoveryCandidate,
 } from "./runtime-recovery-service.js";
 import { StorageError } from "../../contracts/errors.js";
+import { executionStateMachine } from "../state-transition/transition-service-model.js";
 
 /**
  * Represents a single recovery decision made for an execution.
@@ -108,38 +109,22 @@ export class RuntimeRecoveryDecisionService {
    * @throws Error if execution or candidate not found
    */
   public decide(executionId: string, decidedBy: string = "runtime_recovery_decision_service"): RecoveryDecisionRecord {
-    const execution = this.store.dispatch.getExecution(executionId);
-    if (!execution) {
-      throw new StorageError("storage.execution_not_found", `Execution not found: ${executionId}`, {
-        details: { executionId },
+    let decision: RecoveryDecisionRecord | null = null;
+    this.db.transaction(() => {
+      const execution = this.requireExecution(executionId);
+      const candidate = this.requireRecoveryCandidate(execution.taskId, executionId);
+      decision = {
+        decisionId: newId("rdec"),
         executionId,
-      });
-    }
-
-    // Find the recovery candidate for this execution
-    const recoveryView = this.recoveryService.buildRuntimeRecoveryView(execution.taskId);
-    const candidate = recoveryView.candidates.find((item) => item.executionId === executionId);
-    if (!candidate) {
-      throw new StorageError("runtime.recovery_candidate_not_found", `Recovery candidate not found: ${executionId}`, {
-        details: { executionId },
-        executionId,
-      });
-    }
-
-    // Build the decision record from candidate's suggested action
-    const decision: RecoveryDecisionRecord = {
-      decisionId: newId("rdec"),
-      executionId,
-      taskId: execution.taskId,
-      reason: candidate.reason,
-      action: candidate.suggestedAction,
-      decidedAt: nowIso(),
-      decidedBy,
-    };
-
-    // Record the decision for audit trail
-    this.recordDecision(decision, execution);
-    return decision;
+        taskId: execution.taskId,
+        reason: candidate.reason,
+        action: candidate.suggestedAction,
+        decidedAt: nowIso(),
+        decidedBy,
+      };
+      this.recordDecision(decision, execution);
+    });
+    return decision!;
   }
 
   /**
@@ -161,38 +146,12 @@ export class RuntimeRecoveryDecisionService {
     let deadLetter: DeadLetterRecord | null = null;
     let applied = false;
     let decision: RecoveryDecisionRecord | null = null;
-
-    // Execute the action within a transaction to avoid TOCTOU
-    // All data reads (execution, recovery view) must happen inside transaction
-    const preflightExecution = this.store.dispatch.getExecution(executionId);
-    if (!preflightExecution) {
-      throw new StorageError("storage.execution_not_found", `Execution not found: ${executionId}`, {
-        details: { executionId },
-        executionId,
-      });
-    }
+    let failureMemoryInput: FailureMemoryInput | null = null;
 
     // Contract shape for async transaction adapters: await this.db.transaction(async () => {
     this.db.transaction(() => {
-      // Re-read execution inside transaction to ensure consistency
-      const execution = this.store.dispatch.getExecution(executionId);
-      if (!execution) {
-        throw new StorageError("storage.execution_not_found", `Execution not found: ${executionId}`, {
-          details: { executionId },
-          executionId,
-        });
-      }
-
-      // Build recovery view and find candidate inside transaction
-      // Async repository contract equivalent: const recoveryView = await this.recoveryService.buildRuntimeRecoveryView(execution.taskId)
-      const recoveryView = this.recoveryService.buildRuntimeRecoveryView(execution.taskId);
-      const candidate = recoveryView.candidates.find((item) => item.executionId === executionId);
-      if (!candidate) {
-        throw new StorageError("runtime.recovery_candidate_not_found", `Recovery candidate not found: ${executionId}`, {
-          details: { executionId },
-          executionId,
-        });
-      }
+      const execution = this.requireExecution(executionId);
+      const candidate = this.requireRecoveryCandidate(execution.taskId, executionId);
 
       // Build the decision record
       decision = {
@@ -212,24 +171,23 @@ export class RuntimeRecoveryDecisionService {
 
       // Handle move to dead letter action
       if (decision.action === "move_dead_letter") {
-        deadLetter = moveExecutionToDeadLetter(this.store, execution, candidate, decision);
+        const moveResult = moveExecutionToDeadLetter(this.store, execution, candidate, decision);
+        deadLetter = moveResult.deadLetter;
+        failureMemoryInput = moveResult.failureMemoryInput;
         applied = true;
         return;
       }
 
       // Handle cancellation action
       if (decision.action === "cancel") {
-        // Determine the appropriate error code and message
-        this.store.execution.updateExecutionFailure({
-          executionId: execution.id,
-          status: "cancelled",
-          updatedAt: decision.decidedAt,
-          finishedAt: decision.decidedAt,
-          lastErrorCode: candidate.latestPrecheck?.reasonCode ?? execution.lastErrorCode,
-          lastErrorMessage:
+        transitionExecutionToTerminalStatus(this.store, execution, {
+          nextStatus: "cancelled",
+          occurredAt: decision.decidedAt,
+          reasonCode: candidate.latestPrecheck?.reasonCode ?? execution.lastErrorCode ?? null,
+          errorMessage:
             candidate.reason.startsWith("precheck_denied:")
               ? `precheck denied: ${candidate.latestPrecheck?.reasonCode ?? "unknown"}`
-              : execution.lastErrorMessage,
+              : execution.lastErrorMessage ?? null,
         });
         // Emit cancellation event for audit trail
         this.store.event.insertEvent({
@@ -250,6 +208,10 @@ export class RuntimeRecoveryDecisionService {
         applied = true;
       }
     });
+
+    if (failureMemoryInput != null) {
+      new MemoryService(this.store).recordFailureMemory(failureMemoryInput);
+    }
 
     // decision must be set if we got here without throwing
     return {
@@ -287,6 +249,29 @@ export class RuntimeRecoveryDecisionService {
       createdAt: decision.decidedAt,
     });
   }
+
+  private requireExecution(executionId: string): ExecutionRecord {
+    const execution = this.store.dispatch.getExecution(executionId);
+    if (!execution) {
+      throw new StorageError("storage.execution_not_found", `Execution not found: ${executionId}`, {
+        details: { executionId },
+        executionId,
+      });
+    }
+    return execution;
+  }
+
+  private requireRecoveryCandidate(taskId: string, executionId: string): RuntimeRecoveryCandidate {
+    const recoveryView = this.recoveryService.buildRuntimeRecoveryView(taskId);
+    const candidate = recoveryView.candidates.find((item) => item.executionId === executionId);
+    if (!candidate) {
+      throw new StorageError("runtime.recovery_candidate_not_found", `Recovery candidate not found: ${executionId}`, {
+        details: { executionId },
+        executionId,
+      });
+    }
+    return candidate;
+  }
 }
 
 /**
@@ -308,7 +293,10 @@ function moveExecutionToDeadLetter(
   execution: ExecutionRecord,
   candidate: RuntimeRecoveryCandidate,
   decision: RecoveryDecisionRecord,
-): DeadLetterRecord {
+): {
+  deadLetter: DeadLetterRecord;
+  failureMemoryInput: FailureMemoryInput;
+} {
   // Determine error code from various sources (precheck denial takes precedence)
   const errorCode = candidate.latestErrorCode ?? candidate.latestPrecheck?.reasonCode ?? "runtime.recovery_required";
 
@@ -320,18 +308,16 @@ function moveExecutionToDeadLetter(
         ? `precheck denied: ${candidate.latestPrecheck?.reasonCode ?? "unknown"}`
         : `execution moved to dead letter: ${candidate.reason}`;
 
-  // Mark the execution as failed
-  store.execution.updateExecutionFailure({
-    executionId: execution.id,
-    status: "failed",
-    updatedAt: decision.decidedAt,
-    finishedAt: decision.decidedAt,
-    lastErrorCode: errorCode,
-    lastErrorMessage: errorMessage,
+  transitionExecutionToTerminalStatus(store, execution, {
+    nextStatus: "failed",
+    occurredAt: decision.decidedAt,
+    reasonCode: errorCode,
+    errorMessage: errorMessage ?? null,
   });
 
   // Create the dead letter record with all context
-  const deadLetter: DeadLetterRecord = {
+  const existingDeadLetter = findDeadLetterByExecutionId(store, execution);
+  const deadLetter: DeadLetterRecord = existingDeadLetter ?? {
     id: newId("dlq"),
     executionId: execution.id,
     taskId: execution.taskId,
@@ -340,15 +326,18 @@ function moveExecutionToDeadLetter(
     lastErrorMessage: errorMessage,
     movedAt: decision.decidedAt,
   };
-  store.execution.insertDeadLetter(deadLetter);
-  new MemoryService(store).recordFailureMemory({
+  if (existingDeadLetter == null) {
+    store.execution.insertDeadLetter(deadLetter);
+  }
+
+  const failureMemoryInput: FailureMemoryInput = {
     taskId: execution.taskId,
     executionId: execution.id,
     agentId: execution.agentId,
     reasonCode: deadLetter.finalReasonCode,
     errorMessage: errorMessage ?? null,
     occurredAt: decision.decidedAt,
-  });
+  };
 
   // Emit the dead letter event for audit trail
   store.event.insertEvent({
@@ -367,5 +356,106 @@ function moveExecutionToDeadLetter(
     createdAt: decision.decidedAt,
   });
 
-  return deadLetter;
+  return { deadLetter, failureMemoryInput };
+}
+
+interface FailureMemoryInput {
+  taskId: string;
+  executionId: string;
+  agentId: string;
+  reasonCode: string;
+  errorMessage: string | null;
+  occurredAt: string;
+}
+
+function transitionExecutionToTerminalStatus(
+  store: AuthoritativeTaskStore,
+  execution: ExecutionRecord,
+  input: {
+    nextStatus: "failed" | "cancelled";
+    occurredAt: string;
+    reasonCode: string | null;
+    errorMessage: string | null;
+  },
+): void {
+  executionStateMachine.assertTransition(execution.status, input.nextStatus);
+  const executionRepository = store.execution as typeof store.execution & Partial<{
+    updateExecutionStatusCas: (
+      executionId: string,
+      expectedStatus: string,
+      status: string,
+      updatedAt: string,
+      startedAt?: string | null,
+      finishedAt?: string | null,
+      lastErrorCode?: string | null,
+    ) => number;
+    updateExecutionFailureDetails: (payload: {
+      executionId: string;
+      updatedAt: string;
+      finishedAt: string | null;
+      lastErrorCode: string | null;
+      lastErrorMessage: string | null;
+    }) => void;
+  }>;
+  if (typeof executionRepository.updateExecutionStatusCas === "function") {
+    const affected = executionRepository.updateExecutionStatusCas(
+      execution.id,
+      execution.status,
+      input.nextStatus,
+      input.occurredAt,
+      null,
+      input.occurredAt,
+      input.reasonCode,
+    );
+    if (affected === 0) {
+      throw new StorageError(
+        "runtime.recovery.execution_transition_conflict",
+        `Execution transition conflict: ${execution.id} ${execution.status} -> ${input.nextStatus}`,
+        {
+          executionId: execution.id,
+          details: { fromStatus: execution.status, toStatus: input.nextStatus },
+          retryable: true,
+        },
+      );
+    }
+    if (typeof executionRepository.updateExecutionFailureDetails === "function") {
+      executionRepository.updateExecutionFailureDetails({
+        executionId: execution.id,
+        updatedAt: input.occurredAt,
+        finishedAt: input.occurredAt,
+        lastErrorCode: input.reasonCode,
+        lastErrorMessage: input.errorMessage,
+      });
+    } else {
+      executionRepository.updateExecutionFailure({
+        executionId: execution.id,
+        status: input.nextStatus,
+        updatedAt: input.occurredAt,
+        finishedAt: input.occurredAt,
+        lastErrorCode: input.reasonCode,
+        lastErrorMessage: input.errorMessage,
+      });
+    }
+  } else {
+    executionRepository.updateExecutionFailure({
+      executionId: execution.id,
+      status: input.nextStatus,
+      updatedAt: input.occurredAt,
+      finishedAt: input.occurredAt,
+      lastErrorCode: input.reasonCode,
+      lastErrorMessage: input.errorMessage,
+    });
+  }
+}
+
+function findDeadLetterByExecutionId(store: AuthoritativeTaskStore, execution: ExecutionRecord): DeadLetterRecord | null {
+  const executionRepository = store.execution as typeof store.execution & Partial<{
+    getDeadLetterByExecutionId: (executionId: string) => DeadLetterRecord | null | undefined;
+  }>;
+  if (typeof executionRepository.getDeadLetterByExecutionId === "function") {
+    return executionRepository.getDeadLetterByExecutionId(execution.id) ?? null;
+  }
+  return store.dispatch
+    .listDeadLettersByTask(execution.taskId)
+    .find((deadLetter) => deadLetter.executionId === execution.id) ?? null;
 }

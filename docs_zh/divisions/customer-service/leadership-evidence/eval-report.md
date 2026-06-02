@@ -1,5 +1,7 @@
 # Customer Service Eval Report
 
+LastRefreshedAt: `2026-06-02T08:30:00.000Z`
+
 EvidenceRefs:
 
 - `eval/divisions/customer-service/eval-suite.yaml`

@@ -50,7 +50,7 @@ function insertTaskWithExecution(
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Multi-step execution test",
       status,
       source: "user",
@@ -97,7 +97,7 @@ function insertTaskWithExecution(
 
     store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId,
       currentStepIndex: 0,
       status: "running",

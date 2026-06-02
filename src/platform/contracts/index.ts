@@ -25,7 +25,6 @@ export * from "./model-request/index.js";
 export * from "./projection-update/index.js";
 export * from "./prompt-bundle/index.js";
 export * from "./result-envelope/index.js";
-export * as missionContracts from "./mission/index.js";
 export * from "./mission/index.js";
 export * from "./types/ids.js";
 export * from "./types/anomaly-event-classification.js";
@@ -101,10 +100,10 @@ export * from "./evidence-record/index.js";
 export {
   type EvidenceMappingRule,
   type ComplianceReportRequest,
-  type Artifact,
-  type EvidenceRecord as ComplianceEvidenceRecord,
-  type AuditAppendCommand as ComplianceAuditAppendCommand,
-} from "../five-plane-control-plane/compliance/index.js";
+  type ComplianceArtifact as Artifact,
+  type ComplianceEvidenceRecord,
+  type ComplianceAuditAppendCommand,
+} from "./types/compliance.js";
 
 // =============================================================================
 // Deprecated Contracts - DO NOT USE IN NEW CODE

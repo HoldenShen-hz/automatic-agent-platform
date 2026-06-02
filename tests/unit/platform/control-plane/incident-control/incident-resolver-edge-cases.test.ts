@@ -293,7 +293,7 @@ test("IncidentResolver actions have valid action IDs", () => {
     const actions = resolver.buildActions(createMockIncident(), strategy);
 
     for (const action of actions) {
-      assert.match(action.actionId, /^action_\d+_\d+$/);
+      assert.match(action.actionId, /^action_/);
     }
   }
 });

@@ -42,7 +42,7 @@ function createTestTaskRecord(overrides: Partial<TaskRecord> = {}): TaskRecord {
     id: taskId,
     parentId: null,
     rootId: taskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     tenantId: "tenant_perf",
     title: `Workflow perf task ${taskId}`,
     status: "in_progress",
@@ -65,7 +65,7 @@ function createWorkflowStateRecord(taskId: string, overrides: Partial<WorkflowSt
   const timestamp = nowIso();
   return {
     taskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "single_division_multi_step_orchestration",
     currentStepIndex: 0,
     status: "running",

@@ -10,9 +10,14 @@
  * @see docs_zh/contracts/audit_lineage_and_retention_contract.md
  */
 
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { createAuditIntegrityRepository, type AuditIntegrityRepository, AUDIT_INTEGRITY_DDL } from "../iam/audit-integrity-repository.js";
+import { computeTier1AuditEventChecksum, verifyTier1AuditIntegrity } from "../iam/audit-event-integrity.js";
+import type { EventRecord } from "../../contracts/types/domain.js";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -103,6 +108,10 @@ CREATE INDEX IF NOT EXISTS idx_audit_exports_status ON audit_exports(status, cre
 
 type RawRow = Record<string, unknown>;
 
+export interface AuditExportServiceOptions {
+  exportRoot?: string;
+}
+
 // ── Service ────────────────────────────────────────────────────────────
 
 /**
@@ -115,6 +124,7 @@ export class AuditExportService {
   constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly integrityRepository?: AuditIntegrityRepository,
+    private readonly options: AuditExportServiceOptions = {},
   ) {
     if (!this.integrityRepository) {
       this.integrityRepository = createAuditIntegrityRepository(db);
@@ -134,6 +144,10 @@ export class AuditExportService {
     requestedBy: string;
     metadata?: Record<string, unknown>;
   }): AuditExportRecord {
+    const existing = this.findEquivalentExport(input);
+    if (existing != null && existing.status !== "failed") {
+      return existing;
+    }
     const now = nowIso();
     const record: AuditExportRecord = {
       id: newId("aexport"),
@@ -178,8 +192,7 @@ export class AuditExportService {
     // Collect audit events from the window
     const summary = this.summarizeWindow(existing.windowStart, existing.windowEnd);
     const integrityCheck = this.verifyIntegrity(existing.windowStart, existing.windowEnd);
-
-    const exportPath = `exports/${exportId}.${existing.format === "csv" ? "csv" : "json"}`;
+    const exportPath = this.persistExport(existing, summary, integrityCheck);
 
     this.db.connection
       .prepare(`UPDATE audit_exports SET status = 'completed', event_count = ?, integrity_verified = ?, export_path = ?, generated_at = ? WHERE id = ?`)
@@ -267,29 +280,31 @@ export class AuditExportService {
       return { valid: true, eventsChecked: 0, chainBreaks: 0, firstBreakAt: null, details: "no_tier_1_events_in_window" };
     }
 
-    // Sort by chain position
-    const sorted = [...integrityRecords].sort((a, b) => a.chainPosition - b.chainPosition);
-
-    let chainBreaks = 0;
-    let firstBreakAt: string | null = null;
-
-    for (let i = 1; i < sorted.length; i++) {
-      const prev = sorted[i - 1]!;
-      const curr = sorted[i]!;
-      if (prev.chainHash !== curr.previousChainHash) {
-        chainBreaks++;
-        if (!firstBreakAt) {
-          firstBreakAt = curr.eventCreatedAt;
-        }
-      }
+    const events = this.collectEvents(windowStart, windowEnd, Number.MAX_SAFE_INTEGER);
+    const eventMap = new Map(events.map((event) => [String(event.id), this.mapEventRowToRecord(event)]));
+    const report = verifyTier1AuditIntegrity(
+      integrityRecords.map((record) => ({
+        integrityRecord: record,
+        event: eventMap.get(record.eventId) ?? null,
+      })),
+    );
+    const continuityBreak = this.findChainPositionGap(integrityRecords);
+    const firstCompromisedEventId = report.compromisedEventIds[0] ?? null;
+    const firstBreakAt = continuityBreak?.eventCreatedAt
+      ?? (firstCompromisedEventId == null
+        ? null
+        : integrityRecords.find((record) => record.eventId === firstCompromisedEventId)?.eventCreatedAt ?? null);
+    const findings = [...report.findings];
+    if (continuityBreak != null) {
+      findings.push(`missing_chain_position:${continuityBreak.expected}->${continuityBreak.actual}`);
     }
 
     return {
-      valid: chainBreaks === 0,
+      valid: report.compromisedEvents === 0 && report.chainBreaks === 0 && continuityBreak == null,
       eventsChecked: integrityRecords.length,
-      chainBreaks,
+      chainBreaks: report.chainBreaks + (continuityBreak == null ? 0 : 1),
       firstBreakAt,
-      details: chainBreaks === 0 ? "integrity_chain_valid" : `${chainBreaks}_chain_breaks_detected`,
+      details: findings.length === 0 ? "integrity_chain_valid" : findings.join(","),
     };
   }
 
@@ -348,5 +363,122 @@ export class AuditExportService {
       createdAt: String(row.created_at ?? ""),
       metadata: row.metadata != null ? String(row.metadata) : null,
     };
+  }
+
+  private findEquivalentExport(input: {
+    framework: ComplianceFramework;
+    format: ExportFormat;
+    windowStart: string;
+    windowEnd: string;
+    requestedBy: string;
+    metadata?: Record<string, unknown>;
+  }): AuditExportRecord | null {
+    const metadata = input.metadata ? JSON.stringify(input.metadata) : null;
+    const row = this.db.connection
+      .prepare(
+        `SELECT * FROM audit_exports
+         WHERE framework = ? AND format = ? AND window_start = ? AND window_end = ? AND requested_by = ? AND ((metadata IS NULL AND ? IS NULL) OR metadata = ?)
+         ORDER BY created_at DESC
+         LIMIT 1`,
+      )
+      .get(input.framework, input.format, input.windowStart, input.windowEnd, input.requestedBy, metadata, metadata) as RawRow | undefined;
+    return row != null ? this.mapExport(row) : null;
+  }
+
+  private persistExport(
+    record: AuditExportRecord,
+    summary: AuditEventSummary,
+    integrityCheck: IntegrityCheckResult,
+  ): string {
+    const content = this.buildExportContent(record, summary, integrityCheck);
+    const extension = record.format === "csv" ? "csv" : "json";
+    const root = resolve(this.options.exportRoot ?? "data/exports/audit");
+    mkdirSync(root, { recursive: true });
+    const filePath = join(root, `${record.id}.${extension}`);
+    writeFileSync(filePath, content, "utf8");
+    return filePath;
+  }
+
+  private buildExportContent(
+    record: AuditExportRecord,
+    summary: AuditEventSummary,
+    integrityCheck: IntegrityCheckResult,
+  ): string {
+    const events = this.collectEvents(record.windowStart, record.windowEnd, Number.MAX_SAFE_INTEGER);
+    if (record.format === "csv") {
+      const header = ["id", "event_type", "event_tier", "created_at", "trace_id"];
+      const rows = events.map((event) => [
+        String(event.id ?? ""),
+        String(event.event_type ?? ""),
+        String(event.event_tier ?? ""),
+        String(event.created_at ?? ""),
+        String(event.trace_id ?? ""),
+      ].map((value) => JSON.stringify(value)).join(","));
+      return [header.join(","), ...rows].join("\n");
+    }
+    if (record.format === "soc2_package") {
+      return JSON.stringify(this.generateSoc2Package(record.id), null, 2);
+    }
+    return JSON.stringify({
+      exportId: record.id,
+      framework: record.framework,
+      format: record.format,
+      generatedAt: nowIso(),
+      summary,
+      integrityCheck,
+      events,
+    }, null, 2);
+  }
+
+  private mapEventRowToRecord(row: Record<string, unknown>): EventRecord {
+    const event = {
+      id: String(row.id ?? ""),
+      taskId: row.task_id != null ? String(row.task_id) : null,
+      sessionId: row.session_id != null ? String(row.session_id) : null,
+      executionId: row.execution_id != null ? String(row.execution_id) : null,
+      eventType: String(row.event_type ?? row.eventType ?? ""),
+      eventTier: String(row.event_tier ?? row.eventTier ?? "tier_1") as EventRecord["eventTier"],
+      payloadJson: String(row.payload_json ?? row.payloadJson ?? "{}"),
+      traceId: row.trace_id != null ? String(row.trace_id) : row.traceId != null ? String(row.traceId) : null,
+      createdAt: String(row.created_at ?? row.createdAt ?? ""),
+    };
+    return {
+      ...event,
+      schemaVersion: "v4.3",
+      aggregateId: event.taskId ?? event.executionId ?? event.id,
+      runId: event.executionId ?? event.taskId ?? event.id,
+      sequence: 1,
+      causationId: null,
+      correlationId: event.traceId ?? event.id,
+      payloadHash: "sha256:audit_export",
+      idempotencyKey: `audit_export:${event.id}`,
+      replayBehavior: "replay_as_fact",
+      principal: "system:audit_export",
+      evidenceRefs: [],
+    };
+  }
+
+  private findChainPositionGap(
+    integrityRecords: readonly {
+      chainPosition: number;
+      eventCreatedAt: string;
+    }[],
+  ): { expected: number; actual: number; eventCreatedAt: string } | null {
+    for (let index = 1; index < integrityRecords.length; index++) {
+      const previous = integrityRecords[index - 1];
+      const current = integrityRecords[index];
+      if (previous == null || current == null) {
+        continue;
+      }
+      const expected = previous.chainPosition + 1;
+      if (current.chainPosition !== expected) {
+        return {
+          expected,
+          actual: current.chainPosition,
+          eventCreatedAt: current.eventCreatedAt,
+        };
+      }
+    }
+    return null;
   }
 }

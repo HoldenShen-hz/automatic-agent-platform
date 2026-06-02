@@ -14,6 +14,7 @@ import type {
   TakeoverLifecycleEvent,
   TakeoverEventPayload,
   AsyncTakeoverActionType,
+  TakeoverRequestPayload,
 } from "../../../../../src/platform/five-plane-control-plane/incident-control/human-takeover-service-async.js";
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
@@ -368,7 +369,7 @@ test("TakeoverQueueManager integration: all action types can be enqueued", () =>
         operatorId: "op",
         reasonCode: "incident.testing",
         actionType,
-        payload: { type: actionType, sessionId: "s1" } as any,
+        payload: { type: actionType, sessionId: "s1" } as TakeoverRequestPayload,
       });
       assert.equal(entry.actionType, actionType, `Action type ${actionType} should be stored`);
     }

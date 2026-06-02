@@ -53,6 +53,19 @@ export interface ResumeSnapshotDescriptor {
   readonly runtimeVersion: string;
   readonly graphHash: string;
   readonly artifactLockHash: string;
+  readonly promptVersion?: string;
+  readonly modelVersion?: string;
+  readonly toolLockHash?: string;
+  readonly policyVersion?: string;
+  readonly domainDescriptorVersion?: string;
+  readonly domainSpecVersion?: string;
+  readonly connectorAuthVersion?: string;
+  readonly connectorSchemaVersion?: string;
+  readonly secretLeaseVersion?: string;
+  readonly approvalVersion?: string;
+  readonly budgetReservationVersion?: string;
+  readonly externalCallbackSignature?: string;
+  readonly providerVersion?: string;
 }
 
 export interface ResumeCompatibilityOptions {
@@ -68,6 +81,8 @@ export interface WakeEngineOptions {
   readonly defaultResumeTimeoutMs?: number;
   readonly maxResumeAttempts?: number;
   readonly compatibilityCheckTimeoutMs?: number;
+  readonly nowMs?: () => number;
+  readonly nowIso?: () => string;
 }
 
 /**
@@ -105,11 +120,15 @@ export class WakeEngine {
   private readonly defaultResumeTimeoutMs: number;
   private readonly maxResumeAttempts: number;
   private readonly compatibilityCheckTimeoutMs: number;
+  private readonly nowMs: () => number;
+  private readonly nowIso: () => string;
 
   constructor(options: WakeEngineOptions = {}) {
     this.defaultResumeTimeoutMs = options.defaultResumeTimeoutMs ?? 30_000;
     this.maxResumeAttempts = options.maxResumeAttempts ?? 3;
     this.compatibilityCheckTimeoutMs = options.compatibilityCheckTimeoutMs ?? 30_000;
+    this.nowMs = options.nowMs ?? (() => Date.now());
+    this.nowIso = options.nowIso ?? (() => new Date(this.nowMs()).toISOString());
   }
 
   /**
@@ -187,7 +206,7 @@ export class WakeEngine {
         compatible: false,
         timedOut: true,
         differences: [],
-        checkedAt: new Date().toISOString(),
+        checkedAt: this.nowIso(),
       };
     }
 
@@ -198,6 +217,19 @@ export class WakeEngine {
       "runtimeVersion",
       "graphHash",
       "artifactLockHash",
+      "promptVersion",
+      "modelVersion",
+      "toolLockHash",
+      "policyVersion",
+      "domainDescriptorVersion",
+      "domainSpecVersion",
+      "connectorAuthVersion",
+      "connectorSchemaVersion",
+      "secretLeaseVersion",
+      "approvalVersion",
+      "budgetReservationVersion",
+      "externalCallbackSignature",
+      "providerVersion",
     ];
 
     const differences = fields
@@ -212,7 +244,7 @@ export class WakeEngine {
       compatible: differences.length === 0,
       timedOut: false,
       differences,
-      checkedAt: new Date().toISOString(),
+      checkedAt: this.nowIso(),
     };
   }
 
@@ -241,7 +273,7 @@ export class WakeEngine {
       runId,
       differences,
       recommendation,
-      generatedAt: new Date().toISOString(),
+      generatedAt: this.nowIso(),
     };
   }
 
@@ -249,7 +281,7 @@ export class WakeEngine {
    * Check if a hibernation record has expired.
    */
   public isExpired(record: HibernationRecord): boolean {
-    const now = Date.now();
+    const now = this.nowMs();
     const expiresAt = new Date(record.expiresAt).getTime();
     return now > expiresAt;
   }
@@ -266,7 +298,7 @@ export class WakeEngine {
    */
   public calculateRenewalExpiration(record: HibernationRecord): string {
     const ttl = record.ttlMs;
-    return new Date(Date.now() + ttl).toISOString();
+    return new Date(this.nowMs() + ttl).toISOString();
   }
 
   /**

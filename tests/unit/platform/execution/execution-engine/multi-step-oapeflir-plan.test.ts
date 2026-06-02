@@ -73,7 +73,7 @@ test("buildOapeflirPlannedWorkflow creates workflow from legacy PlanStep [multi-
 
   assert.ok(workflow.workflow);
   assert.equal(workflow.workflow.workflowId, "oapeflir_plan_123");
-  assert.equal(workflow.workflow.divisionId, "general_ops");
+  assert.equal(workflow.workflow.divisionId, "general-ops");
   assert.equal(workflow.workflow.steps.length, 2);
   assert.equal(workflow.planReason, "oapeflir_bridge: plan_123");
 });

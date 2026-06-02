@@ -1,7 +1,19 @@
 {
-  "configVersion": "v4.3",
-  "configSchemaVersion": "v4.3",
+  "configVersion": "bundle-derived",
+  "configSchemaVersion": "bundle-derived",
   "maxConcurrentTasks": 8,
   "defaultTaskTimeoutMs": 600000,
-  "defaultStepTimeoutMs": 180000
+  "defaultStepTimeoutMs": 180000,
+  "circuitBreaker": {
+    "enabled": true,
+    "threshold": 3,
+    "resetMs": 120000,
+    "halfOpenMaxAttempts": 1
+  },
+  "rateLimit": {
+    "enabled": true,
+    "requestsPerMinute": 90,
+    "perTenantRequestsPerMinute": 60,
+    "perPrincipalRequestsPerMinute": 30
+  }
 }

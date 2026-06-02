@@ -37,7 +37,7 @@ function createTask(store: AuthoritativeTaskStore, taskId: string, now: string):
     id: taskId,
     parentId: null,
     rootId: taskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     tenantId: null,
     title: "Reaudit task",
     status: "in_progress",

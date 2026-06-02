@@ -86,12 +86,20 @@ export interface AdmissionDecision {
     | "admission.reject_queue_saturated"
     | "admission.reject_tier1_backlog"
     | "admission.reject_budget_exceeded"
+    | "admission.reject_missing_risk_class"
     | "admission.reject_risk_class_isolation"
     | "admission.reject_tenant_quota"
     | "admission.reject_sandbox_matching"
     | "admission.reject_capability_class";
   snapshot: AdmissionSnapshot;
   backpressure: AdmissionBackpressureSnapshot | null;
+}
+
+export interface AdmissionControllerOptions {
+  snapshotTtlMs?: number;
+  reservationTtlMs?: number;
+  sandboxAvailabilityProvider?: () => Record<string, number>;
+  nowMs?: () => number;
 }
 
 const DEFAULT_POLICY: AdmissionPolicy = {
@@ -122,7 +130,36 @@ function buildDistribution(values: readonly string[]): Record<string, number> {
   return distribution;
 }
 
-function readTaskRiskClass(task: unknown): string | null {
+const DEFAULT_SNAPSHOT_TTL_MS = 100;
+const RISK_CLASS_PARSE_CACHE_LIMIT = 2048;
+
+function parseTaskRiskClassFromInputJson(
+  inputJson: string,
+  cache: Map<string, string | null>,
+): string | null {
+  const cached = cache.get(inputJson);
+  if (cached !== undefined) {
+    return cached;
+  }
+  let parsedRiskClass: string | null = null;
+  try {
+    const parsed = JSON.parse(inputJson) as { readonly riskClass?: unknown; readonly riskPreview?: { readonly riskClass?: unknown } };
+    const nested = parsed.riskClass ?? parsed.riskPreview?.riskClass;
+    parsedRiskClass = typeof nested === "string" && nested.length > 0 ? nested : null;
+  } catch {
+    parsedRiskClass = null;
+  }
+  if (cache.size >= RISK_CLASS_PARSE_CACHE_LIMIT) {
+    cache.clear();
+  }
+  cache.set(inputJson, parsedRiskClass);
+  return parsedRiskClass;
+}
+
+function readTaskRiskClass(
+  task: unknown,
+  cache: Map<string, string | null>,
+): string | null {
   if (task == null || typeof task !== "object") {
     return null;
   }
@@ -134,27 +171,78 @@ function readTaskRiskClass(task: unknown): string | null {
   if (typeof inputJson !== "string" || inputJson.length === 0) {
     return null;
   }
-  try {
-    const parsed = JSON.parse(inputJson) as { readonly riskClass?: unknown; readonly riskPreview?: { readonly riskClass?: unknown } };
-    const nested = parsed.riskClass ?? parsed.riskPreview?.riskClass;
-    return typeof nested === "string" && nested.length > 0 ? nested : null;
-  } catch {
-    return null;
+  return parseTaskRiskClassFromInputJson(inputJson, cache);
+}
+
+interface AdmissionReservation {
+  readonly queuedSlots: number;
+  readonly activeSlots: number;
+  readonly riskClass: string | null;
+  readonly tenantId: string | null;
+  readonly sandboxType: string | null;
+  readonly capabilityClass: string | null;
+  readonly expiresAtMs: number;
+}
+
+interface AdmissionStoreSnapshot {
+  readonly computedAtMs: number;
+  readonly queuedTasks: number;
+  readonly activeExecutions: number;
+  readonly tier1AckBacklog: number;
+  readonly snapshot: AdmissionSnapshot;
+}
+
+function cloneCapacityMap(values: Record<string, number> | undefined, fallback: Record<string, number> | undefined): Record<string, number> {
+  return { ...(fallback ?? {}), ...(values ?? {}) };
+}
+
+function decrementCapacity(target: Record<string, number>, key: string | null, amount: number): void {
+  if (key == null || key.length === 0 || amount <= 0) {
+    return;
   }
+  target[key] = Math.max(0, (target[key] ?? 0) - amount);
 }
 
 export class AdmissionController {
+  private readonly snapshotTtlMs: number;
+  private readonly reservationTtlMs: number;
+  private readonly sandboxAvailabilityProvider: (() => Record<string, number>) | null;
+  private readonly nowMs: () => number;
+  private cachedSnapshot: AdmissionStoreSnapshot | null = null;
+  private readonly reservations = new Map<string, AdmissionReservation>();
+  private readonly riskClassParseCache = new Map<string, string | null>();
+
   public constructor(
     private readonly store: AuthoritativeTaskStore,
     private readonly policy: AdmissionPolicy = DEFAULT_POLICY,
     private readonly backpressureSnapshot: (() => AdmissionBackpressureSnapshot | null) | null = null,
-  ) {}
+    options: AdmissionControllerOptions = {},
+  ) {
+    this.snapshotTtlMs = Math.max(0, Math.trunc(options.snapshotTtlMs ?? DEFAULT_SNAPSHOT_TTL_MS));
+    this.reservationTtlMs = Math.max(50, Math.trunc(options.reservationTtlMs ?? 5_000));
+    this.sandboxAvailabilityProvider = options.sandboxAvailabilityProvider ?? null;
+    this.nowMs = options.nowMs ?? (() => Date.now());
+  }
 
   public snapshot(): AdmissionSnapshot {
+    const now = this.nowMs();
+    this.pruneReservations(now);
+    const queuedTasks = this.store.task.countQueuedTasks();
+    const activeExecutions = this.store.execution.countActiveExecutions();
+    const tier1AckBacklog = this.store.event.countPendingTier1Acks();
+    if (this.isCachedSnapshotValid({
+      now,
+      queuedTasks,
+      activeExecutions,
+      tier1AckBacklog,
+    })) {
+      return this.buildSnapshotWithReservations(this.cachedSnapshot!.snapshot);
+    }
+
     const tasks = this.store.task.listTasks?.() ?? [];
     const riskClassDistribution = buildDistribution(
       tasks
-        .map((task) => readTaskRiskClass(task))
+        .map((task) => readTaskRiskClass(task, this.riskClassParseCache))
         .filter((value): value is string => value != null),
     );
     const tenantUsage = buildDistribution(
@@ -162,22 +250,38 @@ export class AdmissionController {
         .map((task) => typeof task?.tenantId === "string" ? task.tenantId : null)
         .filter((value): value is string => value != null),
     );
-    return {
-      queuedTasks: this.store.task.countQueuedTasks(),
-      activeExecutions: this.store.execution.countActiveExecutions(),
-      tier1AckBacklog: this.store.event.countPendingTier1Acks(),
+    const snapshot: AdmissionSnapshot = {
+      queuedTasks,
+      activeExecutions,
+      tier1AckBacklog,
       riskClassDistribution,
       tenantUsage,
-      sandboxAvailability: { ...(this.policy.sandboxAvailability ?? DEFAULT_POLICY.sandboxAvailability) },
-      capabilityClassCapacity: { ...(this.policy.capabilityClassCapacity ?? DEFAULT_POLICY.capabilityClassCapacity) },
+      sandboxAvailability: this.resolveSandboxAvailability(),
+      capabilityClassCapacity: cloneCapacityMap(this.policy.capabilityClassCapacity, DEFAULT_POLICY.capabilityClassCapacity),
     };
+    this.cachedSnapshot = {
+      computedAtMs: now,
+      queuedTasks,
+      activeExecutions,
+      tier1AckBacklog,
+      snapshot: this.cloneSnapshot(snapshot),
+    };
+    return this.buildSnapshotWithReservations(snapshot);
   }
 
   public evaluate(request: AdmissionRequest): AdmissionDecision {
     const snapshot = this.snapshot();
     const backpressure = this.backpressureSnapshot?.() ?? null;
 
-    const effectiveRiskClass = request.riskClass ?? request.taskRiskClass ?? "low";
+    const effectiveRiskClass = request.riskClass ?? request.taskRiskClass ?? null;
+    if (effectiveRiskClass == null) {
+      return {
+        decision: "reject",
+        reasonCode: "admission.reject_missing_risk_class",
+        snapshot,
+        backpressure,
+      };
+    }
     if (this.policy.riskClassIsolationEnabled !== false) {
       const maxRiskClassTasks = {
         critical: 2,
@@ -225,17 +329,17 @@ export class AdmissionController {
     }
 
     if (this.policy.capabilityClassGateEnabled !== false) {
-      const requiredCapabilities = request.requiredCapabilities
-        ?? (request.capabilityClass != null ? [request.capabilityClass] : []);
-      for (const capability of requiredCapabilities) {
-        if ((snapshot.capabilityClassCapacity[capability] ?? 0) <= 0) {
-          return {
-            decision: "reject",
-            reasonCode: "admission.reject_capability_class",
-            snapshot,
-            backpressure,
-          };
-        }
+      const requiredCapabilityClass = this.resolveCapabilityClass(request, snapshot.capabilityClassCapacity);
+      if (
+        requiredCapabilityClass != null
+        && (snapshot.capabilityClassCapacity[requiredCapabilityClass] ?? 0) <= 0
+      ) {
+        return {
+          decision: "reject",
+          reasonCode: "admission.reject_capability_class",
+          snapshot,
+          backpressure,
+        };
       }
     }
 
@@ -302,19 +406,37 @@ export class AdmissionController {
     }
 
     if (snapshot.activeExecutions >= this.policy.maxActiveExecutions) {
-      // R6-3: High/critical risk tasks get headroom even when at capacity
-      if (isElevatedRisk && snapshot.queuedTasks < this.policy.maxQueuedTasks + (this.policy.criticalQueueHeadroom ?? this.policy.urgentQueueHeadroom)) {
+      const elevatedHeadroom = this.policy.criticalQueueHeadroom ?? this.policy.urgentQueueHeadroom;
+      if (isElevatedRisk && snapshot.activeExecutions < this.policy.maxActiveExecutions + elevatedHeadroom) {
+        this.reserveAdmission({
+          queuedSlots: 0,
+          activeSlots: 1,
+          riskClass: effectiveRiskClass,
+          tenantId: effectiveTenantId,
+          sandboxType: requestedSandboxType,
+          capabilityClass: this.resolveCapabilityClass(request, snapshot.capabilityClassCapacity),
+        });
+        const reservedSnapshot = this.snapshot();
         return {
-          decision: "queue",
-          reasonCode: "admission.queue_overloaded",
-          snapshot,
+          decision: "allow",
+          reasonCode: "admission.ok",
+          snapshot: reservedSnapshot,
           backpressure,
         };
       }
+      this.reserveAdmission({
+        queuedSlots: 1,
+        activeSlots: 0,
+        riskClass: effectiveRiskClass,
+        tenantId: effectiveTenantId,
+        sandboxType: requestedSandboxType,
+        capabilityClass: this.resolveCapabilityClass(request, snapshot.capabilityClassCapacity),
+      });
+      const reservedSnapshot = this.snapshot();
       return {
         decision: "queue",
         reasonCode: "admission.queue_overloaded",
-        snapshot,
+        snapshot: reservedSnapshot,
         backpressure,
       };
     }
@@ -327,10 +449,19 @@ export class AdmissionController {
         // R6-3: High/critical risk tasks get urgent queue headroom
         const maxQueueWithHeadroom = this.policy.maxQueuedTasks + (this.policy.criticalQueueHeadroom ?? this.policy.urgentQueueHeadroom);
         if (snapshot.queuedTasks < maxQueueWithHeadroom) {
+          this.reserveAdmission({
+            queuedSlots: 1,
+            activeSlots: 0,
+            riskClass: effectiveRiskClass,
+            tenantId: effectiveTenantId,
+            sandboxType: requestedSandboxType,
+            capabilityClass: this.resolveCapabilityClass(request, snapshot.capabilityClassCapacity),
+          });
+          const reservedSnapshot = this.snapshot();
           return {
             decision: "queue",
             reasonCode: "admission.queue_overloaded",
-            snapshot,
+            snapshot: reservedSnapshot,
             backpressure,
           };
         }
@@ -344,12 +475,123 @@ export class AdmissionController {
       };
     }
 
+    this.reserveAdmission({
+      queuedSlots: 0,
+      activeSlots: 1,
+      riskClass: effectiveRiskClass,
+      tenantId: effectiveTenantId,
+      sandboxType: requestedSandboxType,
+      capabilityClass: this.resolveCapabilityClass(request, snapshot.capabilityClassCapacity),
+    });
+    const reservedSnapshot = this.snapshot();
     return {
       decision: "allow",
       reasonCode: "admission.ok",
-      snapshot,
+      snapshot: reservedSnapshot,
       backpressure,
     };
+  }
+
+  private resolveSandboxAvailability(): Record<string, number> {
+    const providerAvailability = this.sandboxAvailabilityProvider?.() ?? null;
+    if (providerAvailability != null) {
+      return cloneCapacityMap(providerAvailability, this.policy.sandboxAvailability ?? DEFAULT_POLICY.sandboxAvailability);
+    }
+    return cloneCapacityMap(this.policy.sandboxAvailability, DEFAULT_POLICY.sandboxAvailability);
+  }
+
+  private resolveCapabilityClass(
+    request: AdmissionRequest,
+    capabilityClassCapacity: Record<string, number>,
+  ): string | null {
+    if (request.capabilityClass != null && request.capabilityClass.length > 0) {
+      return request.capabilityClass;
+    }
+    const requiredCapabilities = request.requiredCapabilities ?? [];
+    if (requiredCapabilities.length === 1 && capabilityClassCapacity[requiredCapabilities[0]!] !== undefined) {
+      return requiredCapabilities[0]!;
+    }
+    return null;
+  }
+
+  private reserveAdmission(input: {
+    queuedSlots: number;
+    activeSlots: number;
+    riskClass: string | null;
+    tenantId: string | null;
+    sandboxType: string | null;
+    capabilityClass: string | null;
+  }): void {
+    const now = this.nowMs();
+    this.pruneReservations(now);
+    const reservationId = `${now}:${this.reservations.size + 1}:${input.riskClass ?? "none"}`;
+    this.reservations.set(reservationId, {
+      ...input,
+      expiresAtMs: now + this.reservationTtlMs,
+    });
+    this.cachedSnapshot = null;
+  }
+
+  private pruneReservations(now: number): void {
+    let changed = false;
+    for (const [reservationId, reservation] of this.reservations.entries()) {
+      if (reservation.expiresAtMs <= now) {
+        this.reservations.delete(reservationId);
+        changed = true;
+      }
+    }
+    if (changed) {
+      this.cachedSnapshot = null;
+    }
+  }
+
+  private applyReservationView(snapshot: AdmissionSnapshot): void {
+    for (const reservation of this.reservations.values()) {
+      snapshot.queuedTasks += reservation.queuedSlots;
+      snapshot.activeExecutions += reservation.activeSlots;
+      if (reservation.riskClass != null) {
+        snapshot.riskClassDistribution[reservation.riskClass] =
+          (snapshot.riskClassDistribution[reservation.riskClass] ?? 0) + reservation.queuedSlots + reservation.activeSlots;
+      }
+      if (reservation.tenantId != null) {
+        snapshot.tenantUsage[reservation.tenantId] =
+          (snapshot.tenantUsage[reservation.tenantId] ?? 0) + reservation.queuedSlots + reservation.activeSlots;
+      }
+      decrementCapacity(snapshot.sandboxAvailability, reservation.sandboxType, reservation.queuedSlots + reservation.activeSlots);
+      decrementCapacity(snapshot.capabilityClassCapacity, reservation.capabilityClass, reservation.queuedSlots + reservation.activeSlots);
+    }
+  }
+
+  private cloneSnapshot(snapshot: AdmissionSnapshot): AdmissionSnapshot {
+    return {
+      queuedTasks: snapshot.queuedTasks,
+      activeExecutions: snapshot.activeExecutions,
+      tier1AckBacklog: snapshot.tier1AckBacklog,
+      riskClassDistribution: { ...snapshot.riskClassDistribution },
+      tenantUsage: { ...snapshot.tenantUsage },
+      sandboxAvailability: { ...snapshot.sandboxAvailability },
+      capabilityClassCapacity: { ...snapshot.capabilityClassCapacity },
+    };
+  }
+
+  private buildSnapshotWithReservations(storeSnapshot: AdmissionSnapshot): AdmissionSnapshot {
+    const snapshot = this.cloneSnapshot(storeSnapshot);
+    this.applyReservationView(snapshot);
+    return snapshot;
+  }
+
+  private isCachedSnapshotValid(input: {
+    readonly now: number;
+    readonly queuedTasks: number;
+    readonly activeExecutions: number;
+    readonly tier1AckBacklog: number;
+  }): boolean {
+    return this.cachedSnapshot != null
+      && this.snapshotTtlMs > 0
+      && input.now - this.cachedSnapshot.computedAtMs <= this.snapshotTtlMs
+      && this.cachedSnapshot.queuedTasks === input.queuedTasks
+      && this.cachedSnapshot.activeExecutions === input.activeExecutions
+      && this.cachedSnapshot.tier1AckBacklog === input.tier1AckBacklog;
   }
 }
 

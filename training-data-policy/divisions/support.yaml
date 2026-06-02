@@ -1,5 +1,7 @@
+$schema: training-data-policy/schemas/division-policy.schema.json
 divisionId: support
 policyMode: redacted_only
+policyModeRef: training-data-policy/policy-modes.md
 allowedSources:
   - redacted_support_cases
 forbiddenSources:

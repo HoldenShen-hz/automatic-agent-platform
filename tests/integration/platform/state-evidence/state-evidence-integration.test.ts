@@ -77,7 +77,7 @@ test("integration: state-evidence artifact bundle builds and publishes artifacts
 
     const bundle = bundles.build({
       taskId: "task-artifact-001",
-      domainId: "general_ops",
+      domainId: "general-ops",
       bundleType: "asset_bundle",
       artifacts: [
         {
@@ -219,7 +219,7 @@ test("integration: state-evidence workflow state stores and retrieves checkpoint
 
     store.insertWorkflowState({
       taskId: "task-checkpoint-001",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 2,
       status: "running",

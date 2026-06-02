@@ -22,8 +22,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
-  id-token: write
 
 concurrency:
   group: publish-image-${{ inputs.image_repository }}-${{ inputs.image_tag }}
@@ -41,6 +39,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -49,7 +49,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Validate workflow inputs
         id: validate
@@ -60,13 +60,14 @@ jobs:
           REGISTRY_SECRET_REF: ${{ inputs.registry_secret_ref }}
         run: |
           set -euo pipefail
+          IMAGE_REPOSITORY_PREFIX="automatic-agent-platform"
           [[ "$DEPLOY_ENVIRONMENT" =~ ^(dev|test|staging|pre-prod|prod)$ ]] || {
             echo "::error::Invalid environment"; exit 1;
           }
           [[ "$IMAGE_TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]] || {
             echo "::error::Invalid image_tag"; exit 1;
           }
-          [[ "$IMAGE_REPOSITORY" =~ ^[a-z0-9]+([._-][a-z0-9]+)*(\/[a-z0-9]+([._-][a-z0-9]+)*)*$ ]] || {
+          [[ "$IMAGE_REPOSITORY" =~ ^${IMAGE_REPOSITORY_PREFIX}([._-][a-z0-9]+)*(\/[a-z0-9]+([._-][a-z0-9]+)*)*$ ]] || {
             echo "::error::Invalid image_repository"; exit 1;
           }
           [[ "$REGISTRY_SECRET_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$ ]] || {
@@ -80,6 +81,10 @@ jobs:
         run: npm run build
 
   publish:
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
     runs-on: ubuntu-latest
     needs: preflight
     timeout-minutes: 30
@@ -91,6 +96,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
@@ -119,8 +126,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=min
+          cache-from: type=gha,scope=publish-image
+          cache-to: type=gha,scope=publish-image,mode=min
           provenance: true
           sbom: true
 

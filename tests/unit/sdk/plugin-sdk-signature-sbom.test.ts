@@ -264,23 +264,19 @@ test("DefaultSbomScanner.scan returns invalid for unsupported protocol", async (
   assert.ok(result.scanErrors.length > 0);
 });
 
-test("DefaultSbomScanner.scan accepts https URL", async () => {
+test("DefaultSbomScanner.scan rejects https URL", async () => {
   const scanner = new DefaultSbomScanner();
-
-  // Will fail to fetch, but should not be a format error
   const result = await scanner.scan("https://example.com/sbom.json");
-
-  // Format is valid but fetch fails
-  assert.ok(result.scanErrors.length > 0 || result.valid === true);
+  assert.equal(result.valid, false);
+  assert.ok(result.scanErrors.some((error) => error.includes("Unsupported SBOM protocol")));
 });
 
-test("DefaultSbomScanner.scan accepts http URL", async () => {
+test("DefaultSbomScanner.scan rejects http URL", async () => {
   const scanner = new DefaultSbomScanner();
 
   const result = await scanner.scan("http://example.com/sbom.json");
-
-  // Format is valid but fetch may fail
-  assert.ok(result.scanErrors.length > 0 || result.valid === true);
+  assert.equal(result.valid, false);
+  assert.ok(result.scanErrors.some((error) => error.includes("Unsupported SBOM protocol")));
 });
 
 test("DefaultSbomScanner.scan accepts file URL", async () => {
@@ -295,14 +291,10 @@ test("DefaultSbomScanner.scan accepts file URL", async () => {
 test("DefaultSbomScanner.scan filters by minSeverity", async () => {
   const scanner = new DefaultSbomScanner();
 
-  // The known vulnerability database has high/critical vulnerabilities
-  // With minSeverity set to critical, info/low/medium/high should be filtered
-  const result = await scanner.scan("https://example.com/sbom.json", { minSeverity: "critical" });
+  const result = await scanner.scan("http://example.com/sbom.json", { minSeverity: "critical" });
 
-  // Result structure should be valid regardless of vulnerabilities
-  assert.ok(result.scannedAt);
-  assert.ok(Array.isArray(result.vulnerabilities));
-  assert.ok(Array.isArray(result.scanErrors));
+  assert.equal(result.valid, false);
+  assert.ok(result.scanErrors.some((error) => error.includes("Unsupported SBOM protocol")));
 });
 
 // ============================================================================

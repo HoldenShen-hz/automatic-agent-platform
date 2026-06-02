@@ -149,7 +149,7 @@ export function validateCheckpointManifest(
       errors.push("combined_checksum_format_invalid: combinedChecksum must be SHA-256 hex (64 chars)");
     }
   } else if (options.requireCombinedChecksum) {
-    warnings.push("combined_checksum_missing: combinedChecksum is recommended for integrity verification");
+    errors.push("combined_checksum_missing: combinedChecksum is required for integrity verification");
   }
 
   // metadata validation
@@ -169,7 +169,14 @@ export function validateCheckpointManifest(
 /**
  * Computes a combined checksum for a manifest from individual checkpoint checksums.
  */
-export function computeCombinedChecksum(checkpointRefs: CheckpointRef[]): string {
+export function computeCombinedChecksum(
+  checkpointRefs: CheckpointRef[],
+  identity: {
+    readonly manifestId?: string;
+    readonly executionId?: string;
+    readonly workflowId?: string;
+  } = {},
+): string {
   if (checkpointRefs.length === 0) {
     throw new ValidationError(
       "checkpoint.manifest_checksums_required",
@@ -178,9 +185,13 @@ export function computeCombinedChecksum(checkpointRefs: CheckpointRef[]): string
   }
 
   const serializedChecksums = JSON.stringify(
-    [...checkpointRefs]
-      .sort((a, b) => (a.checkpointId ?? "").localeCompare(b.checkpointId ?? ""))
-      .map((ref) => {
+    {
+      manifestId: identity.manifestId ?? "",
+      executionId: identity.executionId ?? "",
+      workflowId: identity.workflowId ?? "",
+      checkpoints: [...checkpointRefs]
+        .sort((a, b) => compareCheckpointIds(a.checkpointId ?? "", b.checkpointId ?? ""))
+        .map((ref) => {
         const checksum = ref.checksum?.trim();
         if (checksum == null || checksum.length === 0) {
           throw new ValidationError(
@@ -189,7 +200,8 @@ export function computeCombinedChecksum(checkpointRefs: CheckpointRef[]): string
           );
         }
         return [ref.checkpointId ?? "", checksum];
-      }),
+        }),
+    },
   );
 
   return createHash("sha256").update(serializedChecksums).digest("hex");
@@ -204,7 +216,11 @@ export function verifyManifestChecksum(manifest: CheckpointManifest): boolean {
   }
 
   try {
-    const computed = computeCombinedChecksum(manifest.checkpoints);
+    const computed = computeCombinedChecksum(manifest.checkpoints, {
+      manifestId: manifest.manifestId,
+      executionId: manifest.executionId,
+      workflowId: manifest.workflowId,
+    });
     return computed.toLowerCase() === manifest.combinedChecksum.toLowerCase();
   } catch {
     return false;
@@ -217,6 +233,7 @@ export function verifyManifestChecksum(manifest: CheckpointManifest): boolean {
 export function createCheckpointManifest(input: {
   manifestId: string;
   checkpoints: CheckpointRef[];
+  createdAt?: string;
   executionId?: string;
   workflowId?: string;
   metadata?: Record<string, unknown>;
@@ -230,13 +247,17 @@ export function createCheckpointManifest(input: {
     0,
   );
 
-  const combinedChecksum = computeCombinedChecksum(input.checkpoints);
+  const combinedChecksum = computeCombinedChecksum(input.checkpoints, {
+    manifestId: input.manifestId,
+    executionId: input.executionId,
+    workflowId: input.workflowId,
+  });
 
   return {
     manifestId: input.manifestId,
     schemaVersion: "checkpoint_manifest.v1",
     checkpoints: input.checkpoints,
-    createdAt: new Date().toISOString(),
+    createdAt: normalizeManifestCreatedAt(input.createdAt),
     ...(input.executionId !== undefined && { executionId: input.executionId }),
     ...(input.workflowId !== undefined && { workflowId: input.workflowId }),
     totalSizeBytes,
@@ -271,6 +292,24 @@ export function requireValidCheckpointManifest(
  * Validates ISO 8601 date format.
  */
 function isValidIsoDate(dateStr: string): boolean {
-  const date = new Date(dateStr);
-  return !isNaN(date.getTime()) && dateStr.includes("T");
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{2}:\d{2})$/u.test(dateStr)
+    && Number.isFinite(Date.parse(dateStr));
+}
+
+function compareCheckpointIds(left: string, right: string): number {
+  return Buffer.from(left, "utf8").compare(Buffer.from(right, "utf8"));
+}
+
+function normalizeManifestCreatedAt(value: string | undefined): string {
+  if (value == null || value.trim().length === 0) {
+    return new Date().toISOString();
+  }
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) {
+    throw new ValidationError(
+      "checkpoint.manifest_created_at_invalid",
+      "checkpoint.manifest_created_at_invalid",
+    );
+  }
+  return new Date(parsed).toISOString();
 }

@@ -50,6 +50,7 @@ import { ContextIsolator, createContextIsolator } from "./context-isolator.js";
 import { DelegationTracker, createDelegationTracker } from "./delegation-tracker.js";
 import {
   ALLOWED_STATUS_TRANSITIONS,
+  buildDelegationResultFromRecord,
   createDelegationResultRecord,
   evictExpiredDelegationEntries,
   hydrateDelegationStoresFromRepository,
@@ -443,31 +444,7 @@ export class DelegationManagerService {
       }
 
       if (allRecords.length > 0) {
-        // R9-06: Reconstruct chain from repository records
-        const chain: DelegationChain = {
-          rootAgentId: agentId,
-          nodes: [],
-          maxDepthReached: 0,
-          totalDelegations: 0,
-        };
-        for (const record of allRecords) {
-          const node: DelegationChainNode = {
-            delegationId: record.delegationId,
-            agentId: record.childAgentId,
-            packId: record.childAgentId,
-            agentType: "worker",
-            depth: record.depth,
-            createdAt: record.createdAt,
-            parentDelegationId: null,
-            status: "active",
-          };
-          (chain.nodes as DelegationChainNode[]).push(node);
-          chain.maxDepthReached = Math.max(chain.maxDepthReached, record.depth);
-          chain.totalDelegations++;
-        }
-        // R9-06: Cache in-memory for subsequent in-memory lookups
-        this.chainStore.set(agentId, chain);
-        return chain;
+        return this.buildChainFromRepositoryRecords(agentId, allRecords);
       }
       return null;
     }
@@ -513,26 +490,11 @@ export class DelegationManagerService {
     if (this.delegationRepository) {
       const record = await this.delegationRepository.findById(delegationId);
       if (record) {
-        // Reconstruct partial result from repository record
-        const delegationResult: DelegationResult = {
-          delegationId: record.delegationId,
-          parentAgentId: record.parentAgentId,
-          childAgentId: record.childAgentId,
-          depth: record.depth,
-          status: record.status,
-          createdAt: record.createdAt,
-          expiresAt: record.expiresAt ?? nowIso(),
-          permissions: { resources: [], actions: [], constraints: {} },
-          grantedPermissions: { resources: [], actions: [], constraints: {} },
-          correlationId: record.delegationId,
-          artifact_refs: [],
-          trust_level: 0,
-          taint_labels: [],
-          evidence_refs: [],
-          policy_outcome: "delegation.from_repository",
-          data_class: "delegation",
-          summary: `Retrieved from repository: ${record.delegationId}`,
-        };
+        const delegationResult = buildDelegationResultFromRecord(
+          record,
+          "delegation.from_repository",
+          `Retrieved from repository: ${record.delegationId}`,
+        );
 
         // Cache in memory for subsequent lookups
         this.delegationStore.set(delegationId, delegationResult);
@@ -569,26 +531,11 @@ export class DelegationManagerService {
           if (this.delegationStore.has(record.delegationId)) {
             continue;
           }
-          // Reconstruct and cache
-          const delegationResult: DelegationResult = {
-            delegationId: record.delegationId,
-            parentAgentId: record.parentAgentId,
-            childAgentId: record.childAgentId,
-            depth: record.depth,
-            status: record.status,
-            createdAt: record.createdAt,
-            expiresAt: record.expiresAt ?? nowIso(),
-            permissions: { resources: [], actions: [], constraints: {} },
-            grantedPermissions: { resources: [], actions: [], constraints: {} },
-            correlationId: record.delegationId,
-            artifact_refs: [],
-            trust_level: 0,
-            taint_labels: [],
-            evidence_refs: [],
-            policy_outcome: "delegation.from_repository",
-            data_class: "delegation",
-            summary: `Retrieved from repository: ${record.delegationId}`,
-          };
+          const delegationResult = buildDelegationResultFromRecord(
+            record,
+            "delegation.from_repository",
+            `Retrieved from repository: ${record.delegationId}`,
+          );
           this.delegationStore.set(record.delegationId, delegationResult);
           inMemoryResults.push(delegationResult);
         }
@@ -945,6 +892,7 @@ export class DelegationManagerService {
     // R9-06: Always update cache with current state - cache is kept in sync with repository
     // for state queries. Delegations remain accessible in cache even after terminal state.
     this.delegationStore.set(delegation.delegationId, delegation);
+    this.updateChainNodeStatus(delegation.delegationId, nextStatus);
     this.delegationTracker.updateStatus(
       delegation.delegationId,
       nextStatus,
@@ -1011,6 +959,59 @@ export class DelegationManagerService {
       packId: spec.targetPackId,
       status: delegation.status,
     });
+  }
+
+  private buildChainFromRepositoryRecords(rootAgentId: string, records: readonly DelegationRecord[]): DelegationChain {
+    const nodes: DelegationChainNode[] = records
+      .map((record) => ({
+        delegationId: record.delegationId,
+        agentId: record.childAgentId,
+        packId: record.childAgentId,
+        agentType: "worker",
+        depth: record.depth,
+        createdAt: record.createdAt,
+        parentDelegationId: null,
+        status: record.status,
+      }))
+      .sort((left, right) => {
+        if (left.depth !== right.depth) {
+          return left.depth - right.depth;
+        }
+        return left.createdAt.localeCompare(right.createdAt);
+      });
+
+    return {
+      rootAgentId,
+      nodes,
+      maxDepthReached: nodes.reduce((maxDepth, node) => Math.max(maxDepth, node.depth), 0),
+      totalDelegations: nodes.length,
+    };
+  }
+
+  private updateChainNodeStatus(delegationId: string, status: DelegationStatus): void {
+    for (const [rootAgentId, chain] of this.chainStore.entries()) {
+      const nextNodes = chain.nodes.map((node) => node.delegationId === delegationId ? { ...node, status } : node);
+      const changed = nextNodes.some((node, index) => node !== chain.nodes[index]);
+      if (!changed) {
+        continue;
+      }
+      const activeNodes = nextNodes.filter((node) => {
+        const nodeStatus = node.status ?? "active";
+        return nodeStatus === "pending"
+          || nodeStatus === "pending_approval"
+          || nodeStatus === "active"
+          || nodeStatus === "discovery"
+          || nodeStatus === "bid"
+          || nodeStatus === "awarded";
+      });
+      this.chainStore.set(rootAgentId, {
+        ...chain,
+        nodes: activeNodes,
+        maxDepthReached: activeNodes.reduce((maxDepth, node) => Math.max(maxDepth, node.depth), 0),
+        totalDelegations: activeNodes.length,
+      });
+      return;
+    }
   }
 
   private createHandle(delegation: DelegationResult, correlationId: string): AwaitableDelegationHandle {

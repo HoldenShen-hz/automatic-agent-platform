@@ -11,27 +11,3 @@ export * from "../../platform/five-plane-execution/execution-engine/output-conti
 export * from "../../platform/shared/context/runtime-context.js";
 export * from "../../platform/five-plane-execution/execution-engine/runtime-factory.js";
 export * from "../../platform/five-plane-execution/worker-pool/worker-registry-service.js";
-export {
-  WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION,
-  NODE_RUN_CHECKPOINT_SCHEMA_VERSION,
-  CheckpointSchemaVersionMismatchError,
-  createNodeRunCheckpoint,
-  readNodeRunCheckpoint,
-  summarizeNodeRunCheckpoint,
-  createWorkflowStepCheckpoint,
-  readWorkflowStepCheckpoint,
-  summarizeWorkflowStepCheckpoint,
-  restoreWorkflowStepCheckpoint,
-  compareWorkflowStepCheckpointVersions,
-  type WorkflowStepCheckpointDecisionContext,
-  type WorkflowStepCheckpointResumeContext,
-  type WorkflowStepCheckpointFileDiffSummary,
-  type WorkflowStepCheckpointCompensationModel,
-  type WorkflowStepCheckpoint,
-  type CreateWorkflowStepCheckpointInput,
-  type WorkflowStepCheckpointSummary,
-  type WorkflowStepCheckpointRestoreState,
-  type WorkflowStepCheckpointDiff,
-  type CreateNodeRunCheckpointInput,
-  type NodeRunCheckpoint,
-} from "../../platform/five-plane-state-evidence/checkpoints/workflow-step-checkpoint.js";

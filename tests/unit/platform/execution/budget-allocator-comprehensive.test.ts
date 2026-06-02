@@ -58,7 +58,7 @@ test("BudgetAllocator.reserve rejects version mismatch [budget-allocator-compreh
         expectedVersion: 0,
       }),
     (error: unknown) =>
-      error instanceof ValidationError && error.code === "budget_reservation.version_cas_failed",
+      error instanceof ValidationError && error.code === "budget_ledger.version_cas_failed",
   );
 });
 

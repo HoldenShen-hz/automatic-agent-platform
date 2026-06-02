@@ -55,6 +55,14 @@ function createMockAuthService(): ApiAuthService {
   } as unknown as ApiAuthService;
 }
 
+function createWebhookHeaders(): Record<string, string> {
+  return {
+    "x-webhook-signature": "sig-test",
+    "x-webhook-timestamp": "1713225600",
+    "x-webhook-nonce": "nonce-test",
+  };
+}
+
 function createMockContext(
   pathname: string,
   method: string = "GET",
@@ -199,11 +207,16 @@ test("POST /v1/gateway/webhooks/receive processes webhook", async () => {
     gatewayTargetDirectoryService: createMockTargetDirectoryService(),
     channelGatewayService: createMockChannelGatewayService(),
     channelGatewayDeliveryService: createMockDeliveryService(),
-    webhookSecret: null,
+    webhookSecret: "test-webhook-secret",
   };
   const routes = createGatewayRoutes(deps);
   const route = routes.find((r) => r.pathname === "/v1/gateway/webhooks/receive")!;
-  const ctx = createMockContext("/v1/gateway/webhooks/receive", "POST", {}, JSON.stringify({ targetId: "tgt-1", channel: "webhook" }));
+  const ctx = createMockContext(
+    "/v1/gateway/webhooks/receive",
+    "POST",
+    createWebhookHeaders(),
+    JSON.stringify({ targetId: "tgt-1", channel: "webhook" }),
+  );
   const response = await route.handler(ctx);
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
@@ -236,11 +249,11 @@ test("POST /v1/gateway/webhooks/receive throws on invalid JSON", async () => {
     gatewayTargetDirectoryService: createMockTargetDirectoryService(),
     channelGatewayService: createMockChannelGatewayService(),
     channelGatewayDeliveryService: createMockDeliveryService(),
-    webhookSecret: null,
+    webhookSecret: "test-webhook-secret",
   };
   const routes = createGatewayRoutes(deps);
   const route = routes.find((r) => r.pathname === "/v1/gateway/webhooks/receive")!;
-  const ctx = createMockContext("/v1/gateway/webhooks/receive", "POST", {}, "not json{");
+  const ctx = createMockContext("/v1/gateway/webhooks/receive", "POST", createWebhookHeaders(), "not json{");
   try {
     await route.handler(ctx);
     assert.fail("Expected handler to throw");
@@ -302,14 +315,14 @@ test("POST /v1/gateway/webhooks/receive rejects dangerous JSON keys", async () =
     gatewayTargetDirectoryService: createMockTargetDirectoryService(),
     channelGatewayService: createMockChannelGatewayService(),
     channelGatewayDeliveryService: createMockDeliveryService(),
-    webhookSecret: null,
+    webhookSecret: "test-webhook-secret",
   };
   const routes = createGatewayRoutes(deps);
   const route = routes.find((r) => r.pathname === "/v1/gateway/webhooks/receive")!;
   const ctx = createMockContext(
     "/v1/gateway/webhooks/receive",
     "POST",
-    {},
+    createWebhookHeaders(),
     "{\"targetId\":\"tgt-1\",\"channel\":\"webhook\",\"__proto__\":{\"polluted\":true}}",
   );
   await assert.rejects(

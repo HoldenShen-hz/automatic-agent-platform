@@ -139,6 +139,7 @@ export interface CheckResidencyInput {
   tenantId: string;
   category: DataCategory;
   currentRegion: DataRegion;
+  destinationRegion?: DataRegion | null;
 }
 
 /**
@@ -306,15 +307,17 @@ export class DataResidencyService {
     const violations: string[] = [];
 
     // Check data localization requirement
-    if (rule.dataLocalizationRequired && currentJurisdiction !== "EU" && input.category === "personal") {
-      // EU requires personal data to stay in EU
+    if (rule.dataLocalizationRequired && currentJurisdiction === "EU" && input.category === "personal") {
       violations.push(
         `Data localization required for ${input.category} data in EU jurisdiction, but data is in ${input.currentRegion}`,
       );
     }
 
     // Check cross-border transfer restrictions
-    if (!rule.crossBorderTransfersAllowed && currentJurisdiction !== "OTHER") {
+    const destinationJurisdiction = input.destinationRegion == null
+      ? currentJurisdiction
+      : this.getJurisdictionForRegion(input.destinationRegion);
+    if (!rule.crossBorderTransfersAllowed && currentJurisdiction !== "OTHER" && destinationJurisdiction !== currentJurisdiction) {
       violations.push(`Cross-border transfers not allowed for ${currentJurisdiction} jurisdiction`);
     }
 

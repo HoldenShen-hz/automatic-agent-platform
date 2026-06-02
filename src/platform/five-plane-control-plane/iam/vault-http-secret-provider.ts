@@ -76,6 +76,12 @@ interface VaultLoginResponse {
   };
 }
 
+interface VaultTokenLookupResponse {
+  data?: {
+    ttl?: number;
+  };
+}
+
 const MINIMUM_VAULT_TOKEN_CACHE_TTL_MS = 30_000;
 
 /**
@@ -182,6 +188,25 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
     return 3600;
   }
 
+  private async lookupStaticTokenTtlMs(token: string): Promise<number> {
+    try {
+      const response = await this.fetchWithTimeout(`${this.addr}/v1/auth/token/lookup-self`, {
+        headers: { "X-Vault-Token": token },
+      });
+      if (!response.ok) {
+        return MINIMUM_VAULT_TOKEN_CACHE_TTL_MS;
+      }
+      const lookup = (await response.json()) as VaultTokenLookupResponse;
+      const ttlSeconds = lookup.data?.ttl;
+      if (typeof ttlSeconds !== "number" || !Number.isFinite(ttlSeconds) || ttlSeconds <= 0) {
+        return MINIMUM_VAULT_TOKEN_CACHE_TTL_MS;
+      }
+      return Math.max(ttlSeconds * 1000, MINIMUM_VAULT_TOKEN_CACHE_TTL_MS);
+    } catch {
+      return MINIMUM_VAULT_TOKEN_CACHE_TTL_MS;
+    }
+  }
+
   private async getToken(): Promise<string> {
     // R12-19: Use explicit cache validity check with expiry
     if (this.isTokenCacheValid()) {
@@ -199,15 +224,19 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
       });
       if (loginResp.ok) {
         const loginData = (await loginResp.json()) as VaultLoginResponse;
-        if (loginData.auth?.client_token) {
-          this._cachedToken = loginData.auth.client_token;
-          const leaseDurationMs = Math.max(
-            (loginData.auth.lease_duration ?? 3600) * 1000,
-            MINIMUM_VAULT_TOKEN_CACHE_TTL_MS,
-          );
-          this._tokenExpiry = Date.now() + leaseDurationMs;
-          return this._cachedToken;
+        if (!loginData.auth?.client_token) {
+          throw new ProviderError("vault.approle_token_missing", "vault.approle_token_missing", {
+            details: { hasAuthBlock: loginData.auth != null },
+            retryable: false,
+          });
         }
+        this._cachedToken = loginData.auth.client_token;
+        const leaseDurationMs = Math.max(
+          (loginData.auth.lease_duration ?? 3600) * 1000,
+          MINIMUM_VAULT_TOKEN_CACHE_TTL_MS,
+        );
+        this._tokenExpiry = Date.now() + leaseDurationMs;
+        return this._cachedToken;
       }
     }
 
@@ -227,8 +256,13 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
       reason: approleRole && approleSecret ? "approle_login_failed" : "approle_not_configured",
     });
     this._cachedToken = staticToken;
-    // R12-19: Use configurable TTL instead of a fixed 3600 seconds.
-    this._tokenExpiry = Date.now() + this.staticTokenTtlSec * 1000;
+    const introspectedTtlMs = await this.lookupStaticTokenTtlMs(staticToken);
+    const fallbackTtlMs = this.staticTokenTtlSec * 1000;
+    this._tokenExpiry = Date.now() + (
+      introspectedTtlMs > MINIMUM_VAULT_TOKEN_CACHE_TTL_MS
+        ? introspectedTtlMs
+        : fallbackTtlMs
+    );
     return this._cachedToken;
   }
 
@@ -328,14 +362,40 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
         maskedValue: null,
       };
     }
-    return {
-      secretRef,
-      envName: "AA_VAULT_ADDR",
-      scope: secretRef.replace(/^secret:\/\//, "").split("/")[0] ?? "",
-      source: "vault",
-      resolved: false,
-      maskedValue: null,
-    };
+    const vaultPath = this.extractSecretPath(secretRef);
+    const key = this.extractSecretKey(secretRef);
+    try {
+      const response = await this.vaultGet(vaultPath);
+      if (!response.ok) {
+        return {
+          secretRef,
+          envName: "AA_VAULT_ADDR",
+          scope: secretRef.replace(/^secret:\/\//, "").split("/")[0] ?? "",
+          source: "vault",
+          resolved: false,
+          maskedValue: null,
+        };
+      }
+      const data = (await response.json()) as VaultKvReadResponse;
+      const secretValue = data.data?.data?.[key];
+      return {
+        secretRef,
+        envName: "AA_VAULT_ADDR",
+        scope: secretRef.replace(/^secret:\/\//, "").split("/")[0] ?? "",
+        source: "vault",
+        resolved: typeof secretValue === "string",
+        maskedValue: typeof secretValue === "string" ? maskSecretValue(secretValue) : null,
+      };
+    } catch {
+      return {
+        secretRef,
+        envName: "AA_VAULT_ADDR",
+        scope: secretRef.replace(/^secret:\/\//, "").split("/")[0] ?? "",
+        source: "vault",
+        resolved: false,
+        maskedValue: null,
+      };
+    }
   }
 
   public async refreshSecret(secretRef: string): Promise<SecretProviderMetadata> {

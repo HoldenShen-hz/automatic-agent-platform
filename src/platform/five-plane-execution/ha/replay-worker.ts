@@ -61,11 +61,15 @@ export class ReplayWorker implements RecoveryWorker {
       this.assertReplayPolicySafe(this.replayPolicy);
       const taskIds = [...await this.options.listTaskIds()];
 
-      const reports = await Promise.all(taskIds.map((taskId) => this.options.replayService.buildTaskReplayReport(taskId, startedAt)));
+      const reports = await mapWithConcurrency(
+        taskIds,
+        Math.max(1, this.cadence.maxConcurrent),
+        async (taskId) => this.options.replayService.buildTaskReplayReport(taskId, startedAt),
+      );
       const replayOperations: ReplayOperation[] = reports.map((report) => ({
         operationId: `replay:${report.taskId}`,
         resourceKind: "tool" as const,
-        hasRealSideEffect: report.outcome === "repair_pending" && this.replayPolicy.mode !== "isolated_sandbox",
+        hasRealSideEffect: hasPotentialReplaySideEffect(report.outcome) && this.replayPolicy.mode !== "isolated_sandbox",
         tombstoneReplay: false,
       }));
       const replayMode: ReplayMode = this.replayPolicy.mode === "trace_only" ? "trace_replay" : "reexecution_replay";
@@ -130,4 +134,31 @@ export class ReplayWorker implements RecoveryWorker {
       throw new ValidationError("replay.sandbox_id_required", "replay.sandbox_id_required");
     }
   }
+}
+
+function hasPotentialReplaySideEffect(outcome: string): boolean {
+  return outcome === "repair_pending" || outcome === "cancelled" || outcome === "dead_lettered";
+}
+
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  maxConcurrent: number,
+  mapper: (item: T, index: number) => Promise<R> | R,
+): Promise<R[]> {
+  if (items.length === 0) {
+    return [];
+  }
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  const worker = async () => {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex++;
+      results[currentIndex] = await mapper(items[currentIndex]!, currentIndex);
+    }
+  };
+
+  const concurrency = Math.min(items.length, Math.max(1, maxConcurrent));
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
+  return results;
 }

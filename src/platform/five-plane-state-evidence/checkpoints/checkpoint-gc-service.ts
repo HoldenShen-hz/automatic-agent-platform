@@ -10,9 +10,9 @@
  * R23-10 Fix: CheckpointGC implementation
  */
 
-import { closeSync, constants as fsConstants, existsSync, fstatSync, lstatSync, openSync, readFileSync, readdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, constants as fsConstants, existsSync, fsyncSync, fstatSync, lstatSync, openSync, readFileSync, readdirSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { StorageError, ValidationError } from "../../contracts/errors.js";
 import { nowIso } from "../../contracts/types/ids.js";
@@ -135,7 +135,7 @@ export class CheckpointGCService {
     }
 
     try {
-      const executionDirs = readdirSync(this.rootDir);
+      const executionDirs = readdirSync(this.rootDir).sort();
       for (const executionId of executionDirs) {
         const executionPath = join(this.rootDir, executionId);
         let execStat;
@@ -270,11 +270,11 @@ export class CheckpointGCService {
       return 0;
     }
 
-    type CheckpointFileInfo = { file: string; path: string; stat: { mtimeMs: number; birthtime: Date; birthtimeMs?: number; size: number; isDirectory(): boolean } };
+    type CheckpointFileInfo = { file: string; path: string; stat: { mtimeMs: number; birthtime: Date; birthtimeMs?: number; size: number; isDirectory(): boolean }; createdAt: string };
 
     const checkpointFiles: CheckpointFileInfo[] = [];
     try {
-      for (const f of readdirSync(executionPath)) {
+      for (const f of readdirSync(executionPath).sort()) {
         if (!f.endsWith(".checkpoint.json")) {
           continue;
         }
@@ -284,7 +284,7 @@ export class CheckpointGCService {
         }
         try {
           const s = statSync(filePath);
-          checkpointFiles.push({ file: f, path: filePath, stat: s });
+          checkpointFiles.push({ file: f, path: filePath, stat: s, createdAt: this.resolveCheckpointCreatedAt(filePath, s) });
         } catch {
           // Skip files we can't stat
         }
@@ -294,7 +294,7 @@ export class CheckpointGCService {
       return 0;
     }
 
-    checkpointFiles.sort((a, b) => this.resolveCheckpointBirthtimeMs(a.stat) - this.resolveCheckpointBirthtimeMs(b.stat));
+    checkpointFiles.sort((a, b) => compareCheckpointFilesByCreatedAt(a.createdAt, b.createdAt, a.file, b.file));
 
     const maxToRetain = this.retentionPolicy.maxCheckpointsPerExecution;
     if (checkpointFiles.length <= maxToRetain) {
@@ -308,8 +308,9 @@ export class CheckpointGCService {
       try {
         const candidate = this.createVersionLimitCandidate(executionId, file);
         this.removeCandidateFromManifests(candidate);
-        rmSync(file.path, { force: true });
-        deleted++;
+        if (this.unlinkCheckpointFileIfUnchanged(file.path)) {
+          deleted++;
+        }
       } catch (err) {
         logger.log({ level: "warn", message: "checkpoint_gc.version_limit_delete_failed", data: { path: file.path, error: String(err) } });
       }
@@ -339,7 +340,7 @@ export class CheckpointGCService {
     }
 
     try {
-      const executionDirs = readdirSync(this.rootDir);
+      const executionDirs = readdirSync(this.rootDir).sort();
       for (const executionId of executionDirs) {
         const executionPath = join(this.rootDir, executionId);
         let execStat;
@@ -355,7 +356,7 @@ export class CheckpointGCService {
         }
 
         try {
-          const checkpointFiles = readdirSync(executionPath);
+          const checkpointFiles = readdirSync(executionPath).sort();
           for (const file of checkpointFiles) {
             if (!file.endsWith(".checkpoint.json")) {
               continue;
@@ -368,7 +369,7 @@ export class CheckpointGCService {
             } catch {
               continue;
             }
-            const createdAt = fileStat.birthtime.toISOString();
+            const createdAt = this.resolveCheckpointCreatedAt(filePath, fileStat);
             const sizeBytes = Number(fileStat.size);
 
             totalCheckpoints++;
@@ -419,6 +420,7 @@ export class CheckpointGCService {
     try {
       const checkpointFiles = readdirSync(executionPath)
         .filter((f) => f.endsWith(".checkpoint.json"));
+      checkpointFiles.sort();
 
       for (const file of checkpointFiles) {
         const filePath = join(executionPath, file);
@@ -480,11 +482,11 @@ export class CheckpointGCService {
       checkpointRef: {
         checkpointId,
         storageUri: `file://${filePath}`,
-        createdAt: stats.birthtime.toISOString(),
+        createdAt: this.resolveCheckpointCreatedAt(filePath, stats),
       },
       storagePath: filePath,
       sizeBytes: Number(stats.size),
-      createdAt: stats.birthtime.toISOString(),
+      createdAt: this.resolveCheckpointCreatedAt(filePath, stats),
       executionId,
       isOrphaned,
       reason: isOrphaned
@@ -502,11 +504,11 @@ export class CheckpointGCService {
       checkpointRef: {
         checkpointId,
         storageUri: `file://${file.path}`,
-        createdAt: file.stat.birthtime.toISOString(),
+        createdAt: file.createdAt,
       },
       storagePath: file.path,
       sizeBytes: Number(file.stat.size),
-      createdAt: file.stat.birthtime.toISOString(),
+      createdAt: file.createdAt,
       executionId,
       isOrphaned: false,
       reason: "version_limit_exceeded",
@@ -539,10 +541,9 @@ export class CheckpointGCService {
         if (nextCheckpoints.length === parsed.checkpoints.length) {
           continue;
         }
-        writeFileSync(
+        writeJsonAtomically(
           manifestPath,
           JSON.stringify({ ...parsed, checkpoints: nextCheckpoints }, null, 2),
-          "utf8",
         );
       } catch (error) {
         throw new StorageError(
@@ -564,6 +565,27 @@ export class CheckpointGCService {
       return birthtime;
     }
     return stats.mtimeMs;
+  }
+
+  private resolveCheckpointCreatedAt(
+    filePath: string,
+    stats: { mtimeMs: number; birthtime: Date; birthtimeMs?: number },
+  ): string {
+    try {
+      const parsed = JSON.parse(readFileSync(filePath, "utf8")) as Partial<CheckpointEnvelope> & {
+        readonly metadata?: { readonly createdAt?: unknown } | null;
+      };
+      const metadataCreatedAt = parsed.metadata?.createdAt;
+      if (typeof metadataCreatedAt === "string" && metadataCreatedAt.trim().length > 0) {
+        const parsedCreatedAtMs = Date.parse(metadataCreatedAt);
+        if (Number.isFinite(parsedCreatedAtMs)) {
+          return new Date(parsedCreatedAtMs).toISOString();
+        }
+      }
+    } catch {
+      // Fall back to file metadata when the envelope cannot be parsed.
+    }
+    return new Date(this.resolveCheckpointBirthtimeMs(stats)).toISOString();
   }
 
   private isCheckpointEnvelopeFile(filePath: string): boolean {
@@ -592,6 +614,8 @@ export class CheckpointGCService {
         encoding: "utf8",
         flag: "wx",
       });
+      fsyncPath(this.gcLockPath);
+      fsyncDirectory(dirname(this.gcLockPath));
       return true;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "EEXIST") {
@@ -605,6 +629,52 @@ export class CheckpointGCService {
   }
 
   private releaseRunLock(): void {
-    rmSync(this.gcLockPath, { force: true });
+    if (!existsSync(this.gcLockPath)) {
+      return;
+    }
+    const lockContent = JSON.parse(readFileSync(this.gcLockPath, "utf8")) as { readonly pid?: unknown; readonly host?: unknown };
+    if (lockContent.pid !== process.pid || lockContent.host !== hostname()) {
+      throw new ValidationError(
+        "checkpoint_gc.lock_identity_mismatch",
+        "checkpoint_gc.lock_identity_mismatch",
+      );
+    }
+    unlinkSync(this.gcLockPath);
+    fsyncDirectory(dirname(this.gcLockPath));
+  }
+}
+
+function compareCheckpointFilesByCreatedAt(leftCreatedAt: string, rightCreatedAt: string, leftFile: string, rightFile: string): number {
+  const leftMs = Date.parse(leftCreatedAt);
+  const rightMs = Date.parse(rightCreatedAt);
+  if (leftMs !== rightMs) {
+    return leftMs - rightMs;
+  }
+  return leftFile.localeCompare(rightFile, "en");
+}
+
+function writeJsonAtomically(filePath: string, content: string): void {
+  const tempPath = `${filePath}.tmp-${process.pid}`;
+  writeFileSync(tempPath, content, "utf8");
+  fsyncPath(tempPath);
+  renameSync(tempPath, filePath);
+  fsyncDirectory(dirname(filePath));
+}
+
+function fsyncPath(filePath: string): void {
+  const fd = openSync(filePath, fsConstants.O_RDONLY);
+  try {
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function fsyncDirectory(directoryPath: string): void {
+  const fd = openSync(directoryPath, fsConstants.O_RDONLY);
+  try {
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
   }
 }

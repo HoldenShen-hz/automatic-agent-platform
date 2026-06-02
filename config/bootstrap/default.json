@@ -31,10 +31,9 @@
     "failureThreshold": 3
   },
   "hotReload": {
-    "enabled": true,
+    "enabled": false,
     "watchPaths": [
       "config/",
-      "src/",
       "domains/"
     ],
     "debounceMs": 500,

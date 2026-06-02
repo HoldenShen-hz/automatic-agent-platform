@@ -12,7 +12,7 @@ import {
 
 // Mock store helper - minimal mock for basic tests
 function createMockStore(overrides: {
-  tasks?: Array<{ id: string; divisionId?: string | null; status: string }>;
+  tasks?: Array<{ id: string; divisionId?: string | null; tenantId?: string | null; status: string }>;
   executions?: Array<{ id: string; taskId: string; traceId: string; attempt: number; status: string; lastErrorCode?: string | null }>;
   deadLetters?: Array<{ id: string; executionId: string; taskId: string; finalReasonCode: string; retryCount: number; lastErrorMessage: string; movedAt: string }>;
   events?: Array<{ id: string; taskId: string; executionId?: string | null; eventType: string; payloadJson: string; createdAt: string; traceId?: string | null }>;
@@ -21,22 +21,73 @@ function createMockStore(overrides: {
   prechecks?: Array<{ executionId: string; allowed: number; reasonCode: string | null; resolvedBudgetUsd: number | null; resolvedTimeoutMs: number; resolvedSandboxMode: string; resolvedToolsJson: string | null; resolvedPathsJson: string | null; checkedAt: string }>;
 } = {}) {
   return {
-    listEventsForTask: (taskId: string) => overrides.events?.filter((event) => event.taskId === taskId) ?? [],
+    listEventsForTask: (taskId: string, tenantId?: string | number | null) =>
+      overrides.events?.filter((event) => {
+        if (event.taskId !== taskId) {
+          return false;
+        }
+        if (typeof tenantId !== "string") {
+          return true;
+        }
+        const task = overrides.tasks?.find((candidate) => candidate.id === event.taskId);
+        return task?.tenantId === tenantId;
+      }) ?? [],
     task: {
-      getTask: (id: string) => overrides.tasks?.find((t) => t.id === id) ?? null,
+      getTask: (id: string, tenantId?: string | null) =>
+        overrides.tasks?.find((t) => t.id === id && (tenantId == null || t.tenantId === tenantId)) ?? null,
     },
     execution: {
-      listExecutionsByTask: (taskId: string) => overrides.executions?.filter((execution) => execution.taskId === taskId) ?? [],
+      listExecutionsByTask: (taskId: string, tenantId?: string | null) =>
+        overrides.executions?.filter((execution) => {
+          if (execution.taskId !== taskId) {
+            return false;
+          }
+          if (tenantId == null) {
+            return true;
+          }
+          const task = overrides.tasks?.find((candidate) => candidate.id === execution.taskId);
+          return task?.tenantId === tenantId;
+        }) ?? [],
       getExecutionPrecheck: (executionId: string) => overrides.prechecks?.find((precheck) => precheck.executionId === executionId) ?? null,
     },
     dispatch: {
-      getExecution: (executionId: string) => overrides.executions?.find((execution) => execution.id === executionId) ?? null,
-      getDeadLetterByExecutionId: (executionId: string) => overrides.deadLetters?.find((deadLetter) => deadLetter.executionId === executionId) ?? null,
+      getExecution: (executionId: string, tenantId?: string | null) =>
+        overrides.executions?.find((execution) => {
+          if (execution.id !== executionId) {
+            return false;
+          }
+          if (tenantId == null) {
+            return true;
+          }
+          const task = overrides.tasks?.find((candidate) => candidate.id === execution.taskId);
+          return task?.tenantId === tenantId;
+        }) ?? null,
+      getDeadLetterByExecutionId: (executionId: string, tenantId?: string | null) =>
+        overrides.deadLetters?.find((deadLetter) => {
+          if (deadLetter.executionId !== executionId) {
+            return false;
+          }
+          if (tenantId == null) {
+            return true;
+          }
+          const task = overrides.tasks?.find((candidate) => candidate.id === deadLetter.taskId);
+          return task?.tenantId === tenantId;
+        }) ?? null,
       listDeadLettersByTask: (taskId: string) => overrides.deadLetters?.filter((deadLetter) => deadLetter.taskId === taskId) ?? [],
       getExecutionPrecheck: (executionId: string) => overrides.prechecks?.find((precheck) => precheck.executionId === executionId) ?? null,
     },
     event: {
-      listEventsForTask: (taskId: string) => overrides.events?.filter((event) => event.taskId === taskId) ?? [],
+      listEventsForTask: (taskId: string, tenantId?: string | number | null) =>
+        overrides.events?.filter((event) => {
+          if (event.taskId !== taskId) {
+            return false;
+          }
+          if (typeof tenantId !== "string") {
+            return true;
+          }
+          const task = overrides.tasks?.find((candidate) => candidate.id === event.taskId);
+          return task?.tenantId === tenantId;
+        }) ?? [],
     },
     operations: {
       buildRuntimeRecoveryView: () => overrides.recoveryRecords ?? [],
@@ -285,6 +336,111 @@ test("RuntimeRecoveryReplayService.buildExecutionReplayReport returns report [ru
   assert.equal(report.finalOutcome, "dead_lettered");
 });
 
+test("RuntimeRecoveryReplayService.buildTaskReplayReport forwards tenant scope to recovery reads [runtime-recovery-replay-service]", () => {
+  const tenantCalls: Array<{ kind: string; tenantId: string | null | undefined }> = [];
+  const store = createMockStore({
+    tasks: [{ id: "task-1", divisionId: "division-1", tenantId: "tenant-a", status: "in_progress" }],
+    executions: [{ id: "exec-1", taskId: "task-1", traceId: "trace-1", attempt: 1, status: "failed", lastErrorCode: "E1" }],
+    deadLetters: [{ id: "dlq-1", executionId: "exec-1", taskId: "task-1", finalReasonCode: "E1", retryCount: 1, lastErrorMessage: "boom", movedAt: "2026-04-24T00:00:02.000Z" }],
+    prechecks: [{
+      executionId: "exec-1",
+      allowed: 0,
+      reasonCode: "budget.blocked",
+      resolvedBudgetUsd: 1,
+      resolvedTimeoutMs: 1000,
+      resolvedSandboxMode: "workspace_write",
+      resolvedToolsJson: "[]",
+      resolvedPathsJson: "[]",
+      checkedAt: "2026-04-24T00:00:00.000Z",
+    }],
+  });
+  const typedStore = store as typeof store & {
+    execution: typeof store.execution;
+    dispatch: typeof store.dispatch;
+  };
+  typedStore.execution.listExecutionsByTask = (taskId: string, tenantId?: string | null) => {
+    tenantCalls.push({ kind: "executions", tenantId });
+    return taskId === "task-1" && tenantId === "tenant-a"
+      ? [{ id: "exec-1", taskId: "task-1", traceId: "trace-1", attempt: 1, status: "failed", lastErrorCode: "E1" }]
+      : [];
+  };
+  typedStore.dispatch.getDeadLetterByExecutionId = (executionId: string, tenantId?: string | null) => {
+    tenantCalls.push({ kind: "deadLetter", tenantId });
+    return executionId === "exec-1" && tenantId === "tenant-a"
+      ? { id: "dlq-1", executionId: "exec-1", taskId: "task-1", finalReasonCode: "E1", retryCount: 1, lastErrorMessage: "boom", movedAt: "2026-04-24T00:00:02.000Z" }
+      : null;
+  };
+  typedStore.dispatch.getExecutionPrecheck = (executionId: string, tenantId?: string | null) => {
+    tenantCalls.push({ kind: "precheck", tenantId });
+    return executionId === "exec-1" && tenantId === "tenant-a"
+      ? {
+        executionId: "exec-1",
+        allowed: 0,
+        reasonCode: "budget.blocked",
+        resolvedBudgetUsd: 1,
+        resolvedTimeoutMs: 1000,
+        resolvedSandboxMode: "workspace_write",
+        resolvedToolsJson: "[]",
+        resolvedPathsJson: "[]",
+        checkedAt: "2026-04-24T00:00:00.000Z",
+      }
+      : null
+    ;
+  };
+  typedStore.listEventsForTask = (taskId: string, tenantId?: string | number | null) => {
+    tenantCalls.push({ kind: "events", tenantId: typeof tenantId === "string" ? tenantId : null });
+    return taskId === "task-1" && tenantId === "tenant-a"
+      ? [{
+        id: "evt-1",
+        taskId: "task-1",
+        executionId: "exec-1",
+        eventType: "recovery:decision_recorded",
+        payloadJson: JSON.stringify({ decisionId: "dec-1", action: "cancel" }),
+        createdAt: "2026-04-24T00:00:00.000Z",
+        traceId: "trace-1",
+      }]
+      : [];
+  };
+  const service = new RuntimeRecoveryReplayService(typedStore as never);
+  const internals = service as unknown as {
+    recoveryService: {
+      buildRuntimeRecoveryView: (
+        taskId: string,
+        tenantId?: string | null,
+      ) => {
+        candidates: Array<Record<string, unknown>>;
+        requestedApprovals: Array<Record<string, unknown>>;
+        deadLetters: Array<Record<string, unknown>>;
+      };
+    };
+  };
+  internals.recoveryService.buildRuntimeRecoveryView = (taskId: string, tenantId?: string | null) => {
+    tenantCalls.push({ kind: "recoveryView", tenantId });
+    return taskId === "task-1" && tenantId === "tenant-a"
+      ? {
+        candidates: [createRecoveryRecord()],
+        requestedApprovals: [],
+        deadLetters: [],
+      }
+      : {
+        candidates: [],
+        requestedApprovals: [],
+        deadLetters: [],
+      };
+  };
+
+  const report = service.buildTaskReplayReport("task-1");
+
+  assert.equal(report.executions.length, 1);
+  assert.deepEqual(tenantCalls, [
+    { kind: "recoveryView", tenantId: "tenant-a" },
+    { kind: "events", tenantId: "tenant-a" },
+    { kind: "executions", tenantId: "tenant-a" },
+    { kind: "deadLetter", tenantId: "tenant-a" },
+    { kind: "precheck", tenantId: "tenant-a" },
+  ]);
+});
+
 test("RuntimeRecoveryReplayService identifies active execution and counts candidates [runtime-recovery-replay-service]", () => {
   const store = createMockStore({
     tasks: [{ id: "task-1", divisionId: "division-1", status: "in_progress" }],
@@ -379,6 +535,41 @@ test("RuntimeRecoveryReplayService does not attach dead-letter targetId events t
 
   assert.equal(report.timeline.length, 0);
   assert.equal(report.finalOutcome, "no_recovery_activity");
+});
+
+test("RuntimeRecoveryReplayService matches execution only by exact targetId equality [runtime-recovery-replay-service]", () => {
+  const store = createMockStore({
+    tasks: [{ id: "task-1", divisionId: "division-1", status: "failed" }],
+    executions: [
+      { id: "exec-1", taskId: "task-1", traceId: "trace-1", attempt: 1, status: "failed", lastErrorCode: "E1" },
+      { id: "exec-10", taskId: "task-1", traceId: "trace-10", attempt: 1, status: "failed", lastErrorCode: "E10" },
+    ],
+    events: [
+      {
+        id: "evt-exact",
+        taskId: "task-1",
+        executionId: null,
+        eventType: "recovery:repair_applied",
+        payloadJson: JSON.stringify({ repairAction: "requeue_execution", targetId: "exec-1" }),
+        createdAt: "2026-04-24T00:00:00.000Z",
+        traceId: "trace-1",
+      },
+      {
+        id: "evt-other",
+        taskId: "task-1",
+        executionId: null,
+        eventType: "recovery:repair_applied",
+        payloadJson: JSON.stringify({ repairAction: "requeue_execution", targetId: "exec-10" }),
+        createdAt: "2026-04-24T00:00:01.000Z",
+        traceId: "trace-10",
+      },
+    ],
+  });
+  const service = new RuntimeRecoveryReplayService(store as never);
+
+  const report = service.buildExecutionReplayReport("exec-1");
+
+  assert.deepEqual(report.timeline.map((event) => event.eventId), ["evt-exact"]);
 });
 
 test("RuntimeRecoveryReplayService orders timeline by parsed timestamp before lexical timestamp [runtime-recovery-replay-service]", () => {

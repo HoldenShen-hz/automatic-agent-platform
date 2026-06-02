@@ -103,7 +103,11 @@ test("GithubAdapter.execute builds correct endpoint for create_issue", async () 
   const output = result as any;
   assert.equal(output.action, "create_issue");
   assert.equal(output.repository, "owner/repo");
-  assert.ok(output.endpoint.includes("/repos/owner/repo/issues"));
+  assert.deepEqual(output.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/issues",
+    payloadKeys: ["body", "labels", "title"],
+  });
   assert.equal(output.timeoutMs, 10000);
   assert.equal(output.rateLimitPerMinute, 60);
   assert.equal(typeof output.idempotencyKey, "string");
@@ -123,8 +127,11 @@ test("GithubAdapter.execute builds correct endpoint for create_pr_comment", asyn
 
   const output = result as any;
   assert.equal(output.action, "create_pr_comment");
-  assert.ok(output.endpoint.includes("/issues/42/comments"));
-  assert.deepEqual(output.payload, { body: "PR comment" });
+  assert.deepEqual(output.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/issues/{issueNumber}/comments",
+    payloadKeys: ["body"],
+  });
 });
 
 test("GithubAdapter.execute builds correct endpoint for dispatch_workflow", async () => {
@@ -139,8 +146,11 @@ test("GithubAdapter.execute builds correct endpoint for dispatch_workflow", asyn
 
   const output = result as any;
   assert.equal(output.action, "dispatch_workflow");
-  assert.ok(output.endpoint.includes("/actions/workflows/build.yml/dispatches"));
-  assert.deepEqual(output.payload, { ref: "main", inputs: {} });
+  assert.deepEqual(output.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/actions/workflows/{workflowId}/dispatches",
+    payloadKeys: ["inputs", "ref"],
+  });
 });
 
 test("GithubAdapter.execute builds correct endpoint for get_file", async () => {
@@ -154,9 +164,12 @@ test("GithubAdapter.execute builds correct endpoint for get_file", async () => {
 
   const output = result as any;
   assert.equal(output.action, "get_file");
-  assert.ok(output.endpoint.includes("/contents/README.md"));
+  assert.deepEqual(output.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/contents/{path}",
+    payloadKeys: [],
+  });
   assert.equal(output.idempotencyKey, undefined);
-  assert.equal("payload" in output, false);
 });
 
 test("GithubAdapter.execute throws PolicyDeniedError when egress blocked", async () => {
@@ -199,7 +212,7 @@ test("GithubAdapter uses custom apiBaseUrl when provided", async () => {
   });
 
   const output = result as any;
-  assert.ok(output.endpoint.startsWith("https://github.example.com/api/v3"));
+  assert.equal(output.requestSummary.endpointHost, "github.example.com");
 });
 
 test("GithubAdapter.execute rejects repository traversal input", async () => {

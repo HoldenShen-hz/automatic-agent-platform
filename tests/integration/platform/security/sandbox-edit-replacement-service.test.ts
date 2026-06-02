@@ -28,7 +28,7 @@ function createSecurityHarness(prefix: string): {
       id: "task-edit-security",
       parentId: null,
       rootId: "task-edit-security",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Edit security test",
       status: "in_progress",
       source: "user",

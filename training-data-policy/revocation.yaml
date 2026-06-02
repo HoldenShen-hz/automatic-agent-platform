@@ -1,3 +1,5 @@
+$schema: training-data-policy/schemas/revocation.schema.json
+version: v1.0
 affectedStores:
   - memory
   - eval
@@ -5,11 +7,14 @@ affectedStores:
   - analytics
   - evidence_projection
   - dashboard_cache
+  - state-evidence
 requiresModelDataTombstone: true
 customerDeletionPropagation:
   - memory
   - dashboard_cache
   - training_export
+  - state-evidence
 sourceInvalidationPropagation:
   - eval
   - evidence_projection
+  - state-evidence

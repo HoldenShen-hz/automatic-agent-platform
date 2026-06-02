@@ -42,6 +42,28 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 
 const kmsLogger = new StructuredLogger({ retentionLimit: 50 });
 
+function summarizeUpstreamAwsError(text: string): Record<string, unknown> {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    return {
+      upstreamCode: typeof parsed["__type"] === "string" ? parsed["__type"] : parsed["code"],
+      upstreamMessage: typeof parsed["message"] === "string"
+        ? String(parsed["message"]).slice(0, 200)
+        : typeof parsed["Message"] === "string"
+          ? String(parsed["Message"]).slice(0, 200)
+          : trimmed.slice(0, 200),
+    };
+  } catch {
+    return {
+      upstreamMessage: trimmed.slice(0, 200),
+    };
+  }
+}
+
 function decodeStrictBase64(value: string, code: string, details: Record<string, unknown>): Buffer {
   const normalized = value.trim();
   if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(normalized)) {
@@ -303,8 +325,12 @@ export class AwsKmsHttpSecretProvider implements ManagedSecretProvider {
     const resp = await this.fetchWithTimeout(`${this.endpoint}${path}?${query}`, { method, headers, body: payloadStr });
     const text = await resp.text();
     if (!resp.ok) {
-      throw new ProviderError(`kms.request_failed:${action}:${resp.status}:${text}`, `kms.request_failed:${action}:${resp.status}:${text}`, {
-        details: { action, status: resp.status },
+      throw new ProviderError(`kms.request_failed:${action}:${resp.status}`, `kms.request_failed:${action}:${resp.status}`, {
+        details: {
+          action,
+          status: resp.status,
+          ...summarizeUpstreamAwsError(text),
+        },
         retryable: resp.status >= 500,
       });
     }
@@ -312,8 +338,8 @@ export class AwsKmsHttpSecretProvider implements ManagedSecretProvider {
       return JSON.parse(text) as Record<string, unknown>;
     } catch (err) {
       kmsLogger.log({ level: "warn", message: "KMS response parse failed", data: { error: err instanceof Error ? err.message : String(err), responseText: text.slice(0, 200) } });
-      throw new ProviderError(`kms.parse_failed:${text}`, `kms.parse_failed:${text}`, {
-        details: { action },
+      throw new ProviderError("kms.parse_failed", "kms.parse_failed", {
+        details: { action, responsePreview: text.slice(0, 200) },
         retryable: false,
       });
     }

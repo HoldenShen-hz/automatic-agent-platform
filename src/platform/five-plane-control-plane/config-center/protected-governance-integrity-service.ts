@@ -17,7 +17,7 @@ import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 
-import { PolicyDeniedError } from "../../contracts/errors.js";
+import { PolicyDeniedError, ValidationError } from "../../contracts/errors.js";
 import { checkSandboxPath, createWorkspaceWritePolicy, type SandboxPolicy } from "../iam/sandbox-policy.js";
 
 /** Identifiers for governance surfaces that are protected from tampering */
@@ -69,6 +69,8 @@ export interface ProtectedGovernanceIntegrityServiceOptions {
   agentsPath?: string;
   sandboxPolicy?: SandboxPolicy;
 }
+
+const MAX_PROTECTED_SURFACE_FILE_BYTES = 2 * 1024 * 1024;
 
 /**
  * Service for capturing and verifying integrity of protected governance surfaces.
@@ -242,7 +244,7 @@ export class ProtectedGovernanceIntegrityService {
       normalizedPath: check.normalizedPath,
       entryType: "file",
       exists: true,
-      hash: sha256(readFileSync(check.normalizedPath)),
+      hash: sha256(readProtectedSurfaceFile(check.normalizedPath)),
       fileCount: 1,
       issues: [],
     };
@@ -293,10 +295,17 @@ export class ProtectedGovernanceIntegrityService {
         continue;
       }
 
+      if (entry.isSymbolicLink()) {
+        throw new PolicyDeniedError(
+          `protected.surface_symlink_denied:${surfaceId}`,
+          `protected.surface_symlink_denied:${surfaceId}`,
+        );
+      }
+
       if (entry.isFile()) {
         files.push({
           relativePath: relative(rootPath, check.normalizedPath),
-          hash: sha256(readFileSync(check.normalizedPath)),
+          hash: sha256(readProtectedSurfaceFile(check.normalizedPath)),
         });
       }
     }
@@ -320,4 +329,14 @@ function stableStringify(value: unknown): string {
 
 function sha256(value: string | Buffer): string {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function readProtectedSurfaceFile(path: string): Buffer {
+  const stat = lstatSync(path);
+  if (stat.size > MAX_PROTECTED_SURFACE_FILE_BYTES) {
+    throw new ValidationError("protected.surface_file_too_large", "Protected governance surface file exceeds the maximum supported size.", {
+      details: { path, maxBytes: MAX_PROTECTED_SURFACE_FILE_BYTES, size: stat.size },
+    });
+  }
+  return readFileSync(path);
 }

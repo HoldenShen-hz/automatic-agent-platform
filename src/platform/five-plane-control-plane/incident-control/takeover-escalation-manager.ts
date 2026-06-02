@@ -17,6 +17,7 @@ import type {
   EscalationLevel,
   EscalationEvent,
   AckResult,
+  RestoredTakeoverSessionState,
 } from "./human-takeover-service-async.js";
 import type { HumanTakeoverService } from "./human-takeover-service.js";
 
@@ -86,10 +87,28 @@ export class TakeoverEscalationManager {
     this.initializeEscalationPolicy(sessionId, taskId);
   }
 
+  public restoreSessionTracking(state: RestoredTakeoverSessionState): void {
+    this.clearSessionTimers(state.sessionId);
+    this.sessionTaskIds.set(state.sessionId, state.taskId);
+    this.ackStatuses.set(state.sessionId, { ...state.ackStatus });
+    this.escalationPolicies.set(state.sessionId, {
+      ...state.policy,
+      escalationHistory: [...state.policy.escalationHistory],
+    });
+    this.armSessionTimers(state.sessionId, state.taskId, state.ackStatus, state.policy);
+  }
+
   /**
    * Stops all tracking (timeout and escalation) for a session.
    */
   public stopSessionTracking(sessionId: string): void {
+    this.clearSessionTimers(sessionId);
+    this.ackStatuses.delete(sessionId);
+    this.escalationPolicies.delete(sessionId);
+    this.sessionTaskIds.delete(sessionId);
+  }
+
+  private clearSessionTimers(sessionId: string): void {
     const timeout = this.activeTimeouts.get(sessionId);
     if (timeout) {
       clearTimeout(timeout);
@@ -101,10 +120,6 @@ export class TakeoverEscalationManager {
       clearTimeout(escalation);
       this.escalationTimers.delete(sessionId);
     }
-
-    this.ackStatuses.delete(sessionId);
-    this.escalationPolicies.delete(sessionId);
-    this.sessionTaskIds.delete(sessionId);
   }
 
   /**
@@ -121,7 +136,13 @@ export class TakeoverEscalationManager {
     }
 
     const timeout = setTimeout(() => {
-      this.handleSessionTimeout(sessionId, taskId);
+      void this.handleSessionTimeout(sessionId, taskId).catch((err) => {
+        this.logger.log({
+          level: "error",
+          message: "takeover.timeout_handler_failed",
+          data: { sessionId, taskId, error: err instanceof Error ? err.message : String(err) },
+        });
+      });
     }, durationMs);
     timeout.unref?.();
 
@@ -137,7 +158,7 @@ export class TakeoverEscalationManager {
   /**
    * Handles session timeout — escalates or auto-expires.
    */
-  private handleSessionTimeout(sessionId: string, taskId: string): void {
+  private async handleSessionTimeout(sessionId: string, taskId: string): Promise<void> {
     this.activeTimeouts.delete(sessionId);
 
     const ackStatus = this.ackStatuses.get(sessionId);
@@ -151,13 +172,7 @@ export class TakeoverEscalationManager {
         timedOutAt: nowIso(),
       });
 
-      this.escalateSession(sessionId, taskId, "timeout").catch((err) => {
-        this.logger.log({
-          level: "error",
-          message: "takeover.escalation_failed",
-          data: { sessionId, error: err instanceof Error ? err.message : String(err) },
-        });
-      });
+      await this.escalateSession(sessionId, taskId, "timeout");
     }
   }
 
@@ -183,6 +198,38 @@ export class TakeoverEscalationManager {
     });
   }
 
+  private armSessionTimers(
+    sessionId: string,
+    taskId: string,
+    ackStatus: TakeoverAckStatus,
+    policy: EscalationPolicy,
+  ): void {
+    if (ackStatus.status === "acknowledged" && ackStatus.expiresAt != null) {
+      const delayMs = Math.max(0, new Date(ackStatus.expiresAt).getTime() - Date.now());
+      this.startTimeoutTimer(sessionId, taskId, delayMs);
+      this.scheduleEscalationCheckAt(sessionId, taskId, ackStatus.expiresAt);
+      return;
+    }
+
+    if (policy.currentLevel === "auto_close" && this.onAutoClose) {
+      queueMicrotask(() => {
+        void this.onAutoClose?.(sessionId, taskId).catch((err) => {
+          this.logger.log({
+            level: "error",
+            message: "takeover.auto_close_restore_failed",
+            data: { sessionId, taskId, error: err instanceof Error ? err.message : String(err) },
+          });
+        });
+      });
+      return;
+    }
+
+    const nextEscalationAt = policy.nextEscalationAt ?? new Date().toISOString();
+    const delayMs = Math.max(0, new Date(nextEscalationAt).getTime() - Date.now());
+    this.startTimeoutTimer(sessionId, taskId, delayMs);
+    this.scheduleEscalationCheckAt(sessionId, taskId, nextEscalationAt);
+  }
+
   /**
    * Schedules the next escalation check.
    */
@@ -204,8 +251,14 @@ export class TakeoverEscalationManager {
       ? this.config.escalationCheckIntervalMs
       : Math.max(0, new Date(nextEscalationAt).getTime() - Date.now());
 
-    const timer = setTimeout(async () => {
-      await this.checkEscalation(sessionId, taskId);
+    const timer = setTimeout(() => {
+      void this.checkEscalation(sessionId, taskId).catch((err) => {
+        this.logger.log({
+          level: "error",
+          message: "takeover.escalation_check_failed",
+          data: { sessionId, taskId, error: err instanceof Error ? err.message : String(err) },
+        });
+      });
     }, delayMs);
     timer.unref?.();
 
@@ -258,12 +311,7 @@ export class TakeoverEscalationManager {
       timestamp: nowIso(),
       target: null,
     });
-    if (policy.escalationHistory.length > TakeoverEscalationManager.MAX_ESCALATION_HISTORY_ENTRIES) {
-      policy.escalationHistory.splice(
-        0,
-        policy.escalationHistory.length - TakeoverEscalationManager.MAX_ESCALATION_HISTORY_ENTRIES,
-      );
-    }
+    this.trimEscalationHistory(policy);
     policy.currentLevel = nextLevel;
 
     const escalationDelayMs = this.getEscalationDelayForLevel(nextLevel);
@@ -366,12 +414,7 @@ export class TakeoverEscalationManager {
         timestamp: now,
         target: operatorId,
       });
-      if (policy.escalationHistory.length > TakeoverEscalationManager.MAX_ESCALATION_HISTORY_ENTRIES) {
-        policy.escalationHistory.splice(
-          0,
-          policy.escalationHistory.length - TakeoverEscalationManager.MAX_ESCALATION_HISTORY_ENTRIES,
-        );
-      }
+      this.trimEscalationHistory(policy);
     }
 
     this.eventEmitter.emit("takeover:acknowledged", {
@@ -380,6 +423,7 @@ export class TakeoverEscalationManager {
       operatorId,
       acknowledgedAt: now,
       expiresAt,
+      renewed: previousStatus === "acknowledged",
     });
 
     this.logger.log({
@@ -428,6 +472,7 @@ export class TakeoverEscalationManager {
     }
 
     this.startTimeoutTimer(sessionId, this.sessionTaskIds.get(sessionId) ?? "", extensionMs);
+    this.scheduleEscalationCheckAt(sessionId, this.sessionTaskIds.get(sessionId) ?? "", newExpiresAt);
 
     this.logger.log({
       level: "info",
@@ -467,9 +512,7 @@ export class TakeoverEscalationManager {
     }
 
     for (const sessionId of entriesToDelete) {
-      this.ackStatuses.delete(sessionId);
-      this.escalationPolicies.delete(sessionId);
-      this.sessionTaskIds.delete(sessionId);
+      this.stopSessionTracking(sessionId);
     }
 
     if (this.ackStatuses.size > this.MAX_SESSION_ENTRIES) {
@@ -482,9 +525,7 @@ export class TakeoverEscalationManager {
       const toRemove = this.ackStatuses.size - this.MAX_SESSION_ENTRIES;
       for (let i = 0; i < toRemove; i++) {
         const sessionId = sortedEntries[i]![0];
-        this.ackStatuses.delete(sessionId);
-        this.escalationPolicies.delete(sessionId);
-        this.sessionTaskIds.delete(sessionId);
+        this.stopSessionTracking(sessionId);
       }
     }
   }
@@ -502,5 +543,14 @@ export class TakeoverEscalationManager {
       clearTimeout(timer);
     }
     this.escalationTimers.clear();
+  }
+
+  private trimEscalationHistory(policy: EscalationPolicy): void {
+    if (policy.escalationHistory.length <= TakeoverEscalationManager.MAX_ESCALATION_HISTORY_ENTRIES) {
+      return;
+    }
+    const first = policy.escalationHistory[0];
+    const recent = policy.escalationHistory.slice(-(TakeoverEscalationManager.MAX_ESCALATION_HISTORY_ENTRIES - 1));
+    policy.escalationHistory = first == null ? recent : [first, ...recent];
   }
 }

@@ -16,7 +16,7 @@ function createService(options?: { maxConsecutiveFailures?: number; dailyTrigger
 function makeScheduleTrigger(overrides: Partial<TriggerDefinition> = {}): TriggerDefinition {
   return {
     triggerId: "schedule_trigger_1",
-    domainId: "engineering_ops",
+    domainId: "engineering-ops",
     name: "Hourly Backup Check",
     type: "schedule",
     config: {
@@ -94,11 +94,11 @@ test("integration: ProactiveAgentService registers and lists schedule triggers",
   await service.registerTrigger(makeScheduleTrigger());
   await service.registerTrigger(makeScheduleTrigger({
     triggerId: "schedule_trigger_2",
-    domainId: "engineering_ops",
+    domainId: "engineering-ops",
     name: "Daily Cleanup",
   }));
 
-  const triggers = service.listTriggers("engineering_ops");
+  const triggers = service.listTriggers("engineering-ops");
   assert.equal(triggers.length, 2);
   assert.ok(triggers.some((t) => t.triggerId === "schedule_trigger_1"));
   assert.ok(triggers.some((t) => t.triggerId === "schedule_trigger_2"));
@@ -324,9 +324,9 @@ test("integration: ProactiveAgentService acknowledges and removes suggestion", a
 });
 
 test("integration: ProactiveAgentService enforces daily budget per domain", async () => {
-  const service = createService({ dailyTriggerBudgetByDomain: { engineering_ops: 2 } });
-  await service.registerTrigger(makeScheduleTrigger({ domainId: "engineering_ops" }));
-  await service.registerTrigger(makeScheduleTrigger({ triggerId: "schedule_trigger_2", domainId: "engineering_ops" }));
+  const service = createService({ dailyTriggerBudgetByDomain: { "engineering-ops": 2 } });
+  await service.registerTrigger(makeScheduleTrigger({ domainId: "engineering-ops" }));
+  await service.registerTrigger(makeScheduleTrigger({ triggerId: "schedule_trigger_2", domainId: "engineering-ops" }));
 
   // Fire first trigger - uses budget
   service.evaluate("schedule_trigger_1", { kind: "schedule", now: "2026-04-19T10:00:00.000Z" });
@@ -350,12 +350,12 @@ test("integration: ProactiveAgentService returns trigger not found for unknown t
 
 test("integration: ProactiveAgentService filters triggers by domain when listing", async () => {
   const service = createService();
-  await service.registerTrigger(makeScheduleTrigger({ domainId: "engineering_ops" }));
+  await service.registerTrigger(makeScheduleTrigger({ domainId: "engineering-ops" }));
   await service.registerTrigger(makeEventTrigger({ domainId: "customer_support" }));
 
-  const engineeringTriggers = service.listTriggers("engineering_ops");
+  const engineeringTriggers = service.listTriggers("engineering-ops");
   assert.equal(engineeringTriggers.length, 1);
-  assert.equal(engineeringTriggers[0]?.domainId, "engineering_ops");
+  assert.equal(engineeringTriggers[0]?.domainId, "engineering-ops");
 
   const supportTriggers = service.listTriggers("customer_support");
   assert.equal(supportTriggers.length, 1);

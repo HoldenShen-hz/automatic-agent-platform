@@ -230,26 +230,31 @@ export class RuntimeRecoveryReplayService {
    * @returns Complete task recovery replay report
    * @throws Error if task is not found
    */
-  public buildTaskReplayReport(taskId: string, generatedAt: string = nowIso()): TaskRecoveryReplayReport {
-    const task = this.store.task.getTask(taskId);
+  public buildTaskReplayReport(
+    taskId: string,
+    generatedAt: string = nowIso(),
+    tenantId?: string | null,
+  ): TaskRecoveryReplayReport {
+    const task = this.store.task.getTask(taskId, tenantId);
     if (!task) {
       throw new StorageError("storage.task_not_found", `Task not found: ${taskId}`, {
         details: { taskId },
         taskId,
       });
     }
+    const scopedTenantId = tenantId ?? task.tenantId ?? null;
 
     // Get comprehensive recovery view from the recovery service
-    const view = this.recoveryService.buildRuntimeRecoveryView(taskId);
+    const view = this.recoveryService.buildRuntimeRecoveryView(taskId, scopedTenantId);
 
     // Get all recovery events for this task, sorted chronologically
     const recoveryEvents = this.store
-      .listEventsForTask(taskId)
+      .listEventsForTask(taskId, scopedTenantId)
       .filter((event) => event.eventType.startsWith("recovery:"))
       .sort(compareRecoveryEventOrder);
 
     // Get all executions for this task
-    const executions = this.store.execution.listExecutionsByTask(taskId);
+    const executions = this.store.execution.listExecutionsByTask(taskId, scopedTenantId);
 
     // Build a report for each execution
     const reports = executions.map((execution) =>
@@ -260,9 +265,9 @@ export class RuntimeRecoveryReplayService {
         // Filter events to this execution
         recoveryEvents.filter((event) => matchesExecution(event, execution.id)),
         // Get dead letter if exists
-        this.store.dispatch.getDeadLetterByExecutionId(execution.id),
+        this.store.dispatch.getDeadLetterByExecutionId(execution.id, scopedTenantId),
         // Get precheck record if exists
-        this.store.dispatch.getExecutionPrecheck(execution.id),
+        this.store.dispatch.getExecutionPrecheck(execution.id, scopedTenantId),
       ),
     );
 
@@ -291,8 +296,12 @@ export class RuntimeRecoveryReplayService {
    * @returns Execution recovery replay report
    * @throws Error if execution is not found
    */
-  public buildExecutionReplayReport(executionId: string, generatedAt: string = nowIso()): ExecutionRecoveryReplayReport {
-    const execution = this.store.dispatch.getExecution(executionId);
+  public buildExecutionReplayReport(
+    executionId: string,
+    generatedAt: string = nowIso(),
+    tenantId?: string | null,
+  ): ExecutionRecoveryReplayReport {
+    const execution = this.store.dispatch.getExecution(executionId, tenantId);
     if (!execution) {
       throw new StorageError("storage.execution_not_found", `Execution not found: ${executionId}`, {
         details: { executionId },
@@ -301,7 +310,9 @@ export class RuntimeRecoveryReplayService {
     }
 
     // Build task report and find the specific execution's report
-    const report = this.buildTaskReplayReport(execution.taskId, generatedAt);
+    const task = this.store.task.getTask(execution.taskId, tenantId);
+    const scopedTenantId = tenantId ?? task?.tenantId ?? null;
+    const report = this.buildTaskReplayReport(execution.taskId, generatedAt, scopedTenantId);
     const executionReport = report.executions.find((report) => report.executionId === executionId);
     if (executionReport == null) {
       throw new StorageError("storage.execution_replay_report_missing", `Execution replay report not found: ${executionId}`, {

@@ -12,7 +12,7 @@ import {
 
 test("GrpcAdapterService creates with config", () => {
   const config: GrpcAdapterConfig = {
-    host: "0.0.0.0",
+    host: "localhost",
     port: 50051,
     packageName: "platform.v1",
     serviceName: "TaskService",
@@ -22,7 +22,7 @@ test("GrpcAdapterService creates with config", () => {
 
   assert.equal(adapter.isAvailable(), true);
   assert.equal(typeof adapter.hasNativeGrpcBindings(), "boolean");
-  assert.equal(adapter.getServerAddress(), "0.0.0.0:50051");
+  assert.equal(adapter.getServerAddress(), "localhost:50051");
 });
 
 test("GrpcAdapterService returns correct config", () => {
@@ -44,7 +44,7 @@ test("GrpcAdapterService returns correct config", () => {
 
 test("GrpcAdapterService createServer", () => {
   const adapter = new GrpcAdapterService({
-    host: "0.0.0.0",
+    host: "localhost",
     port: 50051,
     packageName: "platform.v1",
     serviceName: "TaskService",
@@ -57,7 +57,7 @@ test("GrpcAdapterService createServer", () => {
 
 test("GrpcAdapterService registers and retrieves services", () => {
   const adapter = new GrpcAdapterService({
-    host: "0.0.0.0",
+    host: "localhost",
     port: 50051,
     packageName: "platform.v1",
     serviceName: "TaskService",
@@ -91,7 +91,7 @@ test("GrpcAdapterService registers and retrieves services", () => {
 
 test("GrpcAdapterService makes unary call", async () => {
   const adapter = new GrpcAdapterService({
-    host: "0.0.0.0",
+    host: "localhost",
     port: 50051,
     packageName: "platform.v1",
     serviceName: "TaskService",
@@ -127,7 +127,7 @@ test("GrpcAdapterService makes unary call", async () => {
 
 test("GrpcAdapterService returns error for unknown service", async () => {
   const adapter = new GrpcAdapterService({
-    host: "0.0.0.0",
+    host: "localhost",
     port: 50051,
     packageName: "platform.v1",
     serviceName: "TaskService",
@@ -141,7 +141,7 @@ test("GrpcAdapterService returns error for unknown service", async () => {
 
 test("GrpcAdapterService returns error for unimplemented method", async () => {
   const adapter = new GrpcAdapterService({
-    host: "0.0.0.0",
+    host: "localhost",
     port: 50051,
     packageName: "platform.v1",
     serviceName: "TaskService",
@@ -223,7 +223,7 @@ test("HealthStatus enum", () => {
 
 test("GrpcAdapterService start/stop lifecycle", async () => {
   const adapter = new GrpcAdapterService({
-    host: "0.0.0.0",
+    host: "localhost",
     port: 50051,
     packageName: "platform.v1",
     serviceName: "TaskService",

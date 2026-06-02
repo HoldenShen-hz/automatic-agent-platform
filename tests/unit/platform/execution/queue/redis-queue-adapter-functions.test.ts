@@ -56,6 +56,7 @@ function createMockRedisClient(overrides: Partial<{
   smembers: (key: string) => Promise<string[]>;
   sadd: (key: string, member: string) => Promise<number>;
   srem: (key: string, member: string) => Promise<number>;
+  eval: (script: string, numberOfKeys: number, ...args: Array<string | number>) => Promise<unknown>;
   ping: () => Promise<string>;
   quit: () => Promise<unknown>;
   disconnect: () => void;
@@ -80,6 +81,7 @@ function createMockRedisClient(overrides: Partial<{
     smembers: async () => [],
     sadd: async () => 1,
     srem: async () => 1,
+    eval: async () => null,
     ping: async () => "PONG",
     quit: async () => {},
     disconnect: () => {},
@@ -113,7 +115,6 @@ test("RedisQueueAdapter in-memory client covers default config and empty-store b
     delayed: 0,
     active: 0,
     completed: 0,
-    failed: 0,
     deadLetter: 0,
   });
   await adapter.close();
@@ -138,63 +139,12 @@ test("RedisQueueAdapter forbids memory driver in production mode [redis-queue-ad
 // enqueue (sync) Tests
 // =============================================================================
 
-test("RedisQueueAdapter sync enqueue returns job immediately [redis-queue-adapter-functions]", () => {
+test("RedisQueueAdapter sync enqueue is not supported [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({ queueName: "test-queue", payload: { data: "test" } });
-
-  assert.ok(job.id.startsWith("qjob_"));
-  assert.equal(job.queueName, "test-queue");
-  assert.equal(job.status, "waiting");
-  assert.equal(job.attempts, 0);
-});
-
-test("RedisQueueAdapter sync enqueue sets delayed status for future date [redis-queue-adapter-functions]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const futureDate = new Date(Date.now() + 60000).toISOString();
-  const job = adapter.enqueue({
-    queueName: "test-queue",
-    payload: { data: "test" },
-    delayUntil: futureDate,
-  });
-
-  assert.equal(job.status, "delayed");
-  assert.equal(job.delayUntil, futureDate);
-});
-
-test("RedisQueueAdapter sync enqueue respects priority [redis-queue-adapter-functions]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({
-    queueName: "test-queue",
-    payload: { data: "test" },
-    priority: 99,
-  });
-
-  assert.equal(job.priority, 99);
-});
-
-test("RedisQueueAdapter sync enqueue uses default maxAttempts [redis-queue-adapter-functions]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({ queueName: "test-queue", payload: { data: "test" } });
-
-  assert.equal(job.maxAttempts, 3);
-});
-
-test("RedisQueueAdapter sync enqueue accepts custom maxAttempts [redis-queue-adapter-functions]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({
-    queueName: "test-queue",
-    payload: { data: "test" },
-    maxAttempts: 10,
-  });
-
-  assert.equal(job.maxAttempts, 10);
-});
-
-test("RedisQueueAdapter sync enqueue uses default priority when not specified [redis-queue-adapter-functions]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({ queueName: "test-queue", payload: { data: "test" } });
-
-  assert.equal(job.priority, 0);
+  assert.throws(
+    () => adapter.enqueue({ queueName: "test-queue", payload: { data: "test" } }),
+    /sync_enqueue_not_supported/,
+  );
 });
 
 // =============================================================================
@@ -343,6 +293,21 @@ test("RedisQueueAdapter dequeueAsync returns job with ack/nack functions [redis-
     srem: async () => 1,
     zrem: async () => 1,
     expire: async () => 1,
+    eval: async () => JSON.stringify({
+      id: "job-123",
+      queue_name: "test-queue",
+      payload: '{"test":true}',
+      status: "active",
+      priority: "5",
+      attempts: "1",
+      max_attempts: "3",
+      last_error: "",
+      delay_until: "",
+      idempotency_key: "",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: "",
+    }),
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
@@ -412,6 +377,21 @@ test("RedisQueueAdapter dequeueAsync ack completes job and cleans up [redis-queu
     srem: async () => { sremCalled = true; return 1; },
     zrem: async () => 1,
     expire: async () => 1,
+    eval: async () => JSON.stringify({
+      id: "ack-job",
+      queue_name: "test-queue",
+      payload: "{}",
+      status: "active",
+      priority: "0",
+      attempts: "1",
+      max_attempts: "3",
+      last_error: "",
+      delay_until: "",
+      idempotency_key: "",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: "",
+    }),
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
@@ -453,6 +433,21 @@ test("RedisQueueAdapter dequeueAsync nack requeues with delayed status when unde
     srem: async () => 1,
     zrem: async () => 1,
     zadd: async () => { zaddCalled = true; return 1; },
+    eval: async () => JSON.stringify({
+      id: "nack-job",
+      queue_name: "test-queue",
+      payload: "{}",
+      status: "active",
+      priority: "0",
+      attempts: "2",
+      max_attempts: "3",
+      last_error: "",
+      delay_until: "",
+      idempotency_key: "",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: "",
+    }),
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
@@ -496,6 +491,21 @@ test("RedisQueueAdapter dequeueAsync nack moves to dead letter when at maxAttemp
     },
     srem: async () => 1,
     zrem: async () => 1,
+    eval: async () => JSON.stringify({
+      id: "max-attempt-job",
+      queue_name: "test-queue",
+      payload: "{}",
+      status: "active",
+      priority: "0",
+      attempts: "4",
+      max_attempts: "3",
+      last_error: "",
+      delay_until: "",
+      idempotency_key: "",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: "",
+    }),
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
@@ -820,7 +830,7 @@ test("RedisQueueAdapter retryJobAsync returns null for active job [redis-queue-a
   assert.equal(result, null);
 });
 
-test("RedisQueueAdapter retryJobAsync returns null when failed job exhausted attempts [redis-queue-adapter-functions]", async () => {
+test("RedisQueueAdapter retryJobAsync returns null when dead-letter job exhausted attempts [redis-queue-adapter-functions]", async () => {
   let hmsetData: Record<string, string> = {};
   let sremCalledForActive = false;
   let sremCalledForDl = false;
@@ -830,7 +840,7 @@ test("RedisQueueAdapter retryJobAsync returns null when failed job exhausted att
       id: "retry-job",
       queue_name: "retry-queue",
       payload: "{}",
-      status: "failed",
+      status: "dead_letter",
       priority: "5",
       attempts: "3",
       max_attempts: "3",
@@ -1083,7 +1093,6 @@ test("RedisQueueAdapter statsAsync returns correct queue statistics [redis-queue
   assert.equal(result.active, 5);
   assert.equal(result.completed, 100);
   assert.equal(result.deadLetter, 3);
-  assert.equal(result.failed, 0);
 });
 
 test("RedisQueueAdapter statsAsync returns zeros for empty queue [redis-queue-adapter-functions]", async () => {
@@ -1101,7 +1110,6 @@ test("RedisQueueAdapter statsAsync returns zeros for empty queue [redis-queue-ad
   assert.equal(result.delayed, 0);
   assert.equal(result.active, 0);
   assert.equal(result.completed, 0);
-  assert.equal(result.failed, 0);
   assert.equal(result.deadLetter, 0);
 });
 

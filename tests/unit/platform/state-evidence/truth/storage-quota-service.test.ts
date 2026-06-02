@@ -196,6 +196,58 @@ test("storage quota service derives default roots from sandbox policy instead of
   }
 });
 
+test("storage quota service applies configurable default category overrides", () => {
+  const workspace = createTempWorkspace("aa-storage-quota-overrides-");
+  try {
+    const report = new StorageQuotaService({
+      sandboxPolicy: createWorkspaceWritePolicy(workspace),
+      tenantId: "tenant-a",
+      defaultCategoryOverrides: {
+        artifact: { maxBytes: 16 },
+      },
+      tenantCategoryOverrides: {
+        "tenant-a": {
+          artifact: { cleanupEnabled: false },
+        },
+      },
+    }).enforce();
+
+    const artifact = report.categories.find((category) => category.categoryId === "artifact");
+    assert.equal(artifact?.maxBytes, 16);
+    assert.equal(artifact?.cleanupEnabled, false);
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("storage quota service uses deterministic tiebreaker when mtimes are equal", () => {
+  const workspace = createTempWorkspace("aa-storage-quota-tiebreak-");
+  const artifactRoot = join(workspace, "artifacts");
+  const alpha = join(artifactRoot, "alpha.txt");
+  const beta = join(artifactRoot, "beta.txt");
+  try {
+    createFile(alpha, "a".repeat(32));
+    createFile(beta, "b".repeat(32));
+    applyModifiedAt(alpha, 2_000);
+    applyModifiedAt(beta, 2_000);
+
+    new StorageQuotaService({
+      sandboxPolicy: createWorkspaceWritePolicy(workspace),
+      categories: [{
+        categoryId: "artifact",
+        roots: [artifactRoot],
+        maxBytes: 40,
+        cleanupEnabled: true,
+      }],
+    }).enforce();
+
+    assert.equal(existsSync(alpha), false);
+    assert.equal(existsSync(beta), true);
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
 test("storage quota service fail-closes symlink escapes discovered during directory walk", () => {
   const workspace = createTempWorkspace("aa-storage-quota-symlink-escape-");
   const artifactRoot = join(workspace, "artifacts");

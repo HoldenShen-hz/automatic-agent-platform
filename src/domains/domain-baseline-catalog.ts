@@ -175,7 +175,7 @@ function configPathFor(domainId: VerticalDomainId): string {
 
 function divisionIdFor(domainId: VerticalDomainId): string {
   if (domainId === "coding" || domainId === "game-dev") {
-    return "engineering_ops";
+    return "engineering-ops";
   }
   if (domainId === "data-engineering" || domainId === "knowledge-base" || domainId === "industry-research" || domainId === "academic-research") {
     return "research";
@@ -193,7 +193,7 @@ function divisionIdFor(domainId: VerticalDomainId): string {
     return "support";
   }
   if (domainId === "education" || domainId === "human-resources") {
-    return "general_ops";
+    return "general-ops";
   }
   if (domainId === "finance-accounting" || domainId === "quant-trading" || domainId === "ecommerce") {
     return "analytics";

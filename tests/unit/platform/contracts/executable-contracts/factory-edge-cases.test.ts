@@ -56,8 +56,8 @@ test("normalizeDomainBindingId returns canonical form for standard domain IDs", 
 
 test("normalizeDomainBindingId applies legacy aliases", () => {
   assert.equal(normalizeDomainBindingId("engineering"), "coding");
-  assert.equal(normalizeDomainBindingId("engineering_ops"), "coding");
-  assert.equal(normalizeDomainBindingId("general_ops"), "project-management");
+  assert.equal(normalizeDomainBindingId("engineering-ops"), "coding");
+  assert.equal(normalizeDomainBindingId("general-ops"), "project-management");
   assert.equal(normalizeDomainBindingId("content_production"), "creative-production");
   assert.equal(normalizeDomainBindingId("content"), "creative-production");
   assert.equal(normalizeDomainBindingId("design"), "creative-production");

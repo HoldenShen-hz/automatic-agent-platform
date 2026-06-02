@@ -203,12 +203,12 @@ describe("e2e-harness", () => {
       }
     });
 
-    it("should set seeded task divisionId to general_ops", () => {
+    it("should set seeded task divisionId to general-ops", () => {
       const harness = createSeededE2EHarness("e2e-seeded-div-");
       try {
         const task = findTaskById(harness.store, "task-e2e-001");
         assert.ok(task, "task should exist");
-        assert.strictEqual(task.divisionId, "general_ops");
+        assert.strictEqual(task.divisionId, "general-ops");
       } finally {
         harness.cleanup();
       }

@@ -181,6 +181,43 @@ test("ExecutionDispatchReconciliationService.scan handles multiple tickets [exec
   assert.equal(issues.length, 0);
 });
 
+test("ExecutionDispatchReconciliationService.repairTicket allocates a fresh replacement attempt [execution-dispatch-reconciliation-service]", () => {
+  const insertedTickets: MockTicket[] = [];
+  const tickets: MockTicket[] = [
+    { id: "ticket-1", executionId: "exec-1", status: "claimed", leaseId: "lease-1", assignedWorkerId: "worker-1" },
+    { id: "ticket-older", executionId: "exec-1", status: "expired", leaseId: null, assignedWorkerId: null, attempt: 2 } as MockTicket & { attempt: number },
+  ];
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1" }],
+  ]);
+  const store = {
+    worker: {
+      listExecutionTicketsByStatuses: (statuses: string[]) =>
+        [...tickets, ...insertedTickets].filter((ticket) => statuses.includes(ticket.status)),
+      getExecutionTicket: (id: string) => [...tickets, ...insertedTickets].find((ticket) => ticket.id === id) ?? null,
+      getActiveExecutionLease: () => null,
+      invalidateExecutionTicket: () => {},
+      insertExecutionTicket: (ticket: MockTicket & { attempt: number }) => {
+        insertedTickets.push(ticket);
+      },
+      getWorkerSnapshot: () => null,
+    },
+    dispatch: {
+      getExecution: (id: string) => executions.get(id) ?? null,
+    },
+    event: {
+      insertEvent: () => {},
+    },
+  } as unknown as AuthoritativeTaskStore;
+  const service = new ExecutionDispatchReconciliationService(createMockDb(), store);
+
+  const repaired = service.repairTicket("ticket-1", new Date().toISOString());
+
+  assert.equal(repaired?.applied, true);
+  assert.equal(insertedTickets.length, 1);
+  assert.equal((insertedTickets[0] as { attempt: number }).attempt, 3);
+});
+
 // ---------------------------------------------------------------------------
 // findIssueByTicketId
 // ---------------------------------------------------------------------------

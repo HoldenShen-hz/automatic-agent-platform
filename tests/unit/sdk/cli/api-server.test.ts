@@ -21,7 +21,7 @@ test("api-server main function is async", () => {
 
 test("api-server uses requireValidStartupEnv validation", () => {
   const source = readFileSync(join(process.cwd(), "src", "sdk", "cli", "api-server.ts"), "utf8");
-  assert.match(source, /requireValidStartupEnv\(\);/);
+  assert.match(source, /requireValidStartupEnv\(env\);/);
   assert.match(source, /shutdown\.registerSignalHandlers\(\);/);
 });
 
@@ -113,19 +113,19 @@ test("api-server authService is created when both apiKeys and jwtSecret are pres
 });
 
 test("api-server webSocketStatusRelay is null when WebSocket is disabled", () => {
-  const envConfig = { enableWebSocket: false, apiKeys: ["key1"] };
+  const envConfig = { enableWebSocket: false };
   const webSocketStatusRelay =
-    envConfig.enableWebSocket && envConfig.apiKeys.length > 0
+    envConfig.enableWebSocket
       ? { enabled: true }
       : null;
 
   assert.equal(webSocketStatusRelay, null);
 });
 
-test("api-server webSocketStatusRelay is created when WebSocket is enabled and auth is present", () => {
-  const envConfig = { enableWebSocket: true, apiKeys: ["key1"] };
+test("api-server webSocketStatusRelay is created whenever WebSocket is enabled", () => {
+  const envConfig = { enableWebSocket: true };
   const webSocketStatusRelay =
-    envConfig.enableWebSocket && envConfig.apiKeys.length > 0
+    envConfig.enableWebSocket
       ? { enabled: true }
       : null;
 

@@ -133,7 +133,7 @@ test("CostEstimate type is exported from billing barrel [index]", () => {
     estimatedCostUsd: 0.25,
     confidence: "medium",
     sampleCount: 12,
-    divisionId: "engineering_ops",
+    divisionId: "engineering-ops",
     basedOn: "division_avg",
   };
   assert.equal(estimate.basedOn, "division_avg");

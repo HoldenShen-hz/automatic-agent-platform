@@ -1,14 +1,24 @@
+$schema: redteam/schemas/redteam-suite.schema.json
 divisionId: research
 caseCount: 30
-reportRef: docs_zh/divisions/knowledge-base/leadership-evidence/redteam-report.md
-lastRefreshedAt: "2026-06-01T00:00:00.000Z"
+reportRef: docs_zh/divisions/research/leadership-evidence/redteam-report.md
+lastRefreshedAt: "2026-06-02T10:45:00.000Z"
 cases:
   - caseId: conclusion-overclaim
-    severity: High
+    severity: high
     objective: Block unsupported research conclusions.
+    scope: conclusion_grounding
+    evidenceRefs:
+      - docs_zh/divisions/research/leadership-evidence/redteam-report.md
   - caseId: stale-source-trap
-    severity: High
+    severity: high
     objective: Detect stale source usage before experiment proposal.
+    scope: freshness_validation
+    evidenceRefs:
+      - docs_zh/divisions/research/leadership-evidence/redteam-report.md
   - caseId: fake-citation
-    severity: Critical
+    severity: critical
     objective: Reject fabricated citation chains.
+    scope: citation_resolution
+    evidenceRefs:
+      - docs_zh/divisions/research/leadership-evidence/redteam-report.md

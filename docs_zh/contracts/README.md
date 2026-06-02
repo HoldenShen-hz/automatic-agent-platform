@@ -26,6 +26,14 @@
 - contract 版本口径默认走目录级治理：`ADR-109` freeze、README authority map、以及文内 `更新日期`/scope note 共同组成版本事实来源；不是要求每个文件都额外维护 `version:` frontmatter。
 - 只有当某个 contract 需要脱离目录级 freeze 单独演进时，才额外引入机器可读版本字段；否则保持单一目录级事实源，避免多点漂移。
 
+旧 review 文件名映射：
+
+| 历史短文件名 | 当前 canonical contract |
+| --- | --- |
+| `runtime_state_machine.md` | [runtime_state_machine_contract.md](./runtime_state_machine_contract.md) |
+| `event_bus.md` | [event_bus_contract.md](./event_bus_contract.md) |
+| `gateway_message.md` | [gateway_message_contract.md](./gateway_message_contract.md) |
+
 ## 2. v4.3 Contract Freeze Scope
 
 v4.3 的实现入口以 [ADR-109](../adr/109-contract-freeze.md)、[ADR-110](../adr/110-runtime-state-machine-authority.md)、[ADR-111](../adr/111-platform-fact-vs-oapeflir-view-events.md)、[ADR-112](../adr/112-mvp-ring-implementation-boundary.md) 和下表 contract 为准。

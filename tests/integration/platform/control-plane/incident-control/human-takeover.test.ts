@@ -28,7 +28,7 @@ function seedWorkflowAndSession(
   db.transaction(() => {
     store.insertWorkflowState({
       taskId: input.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: input.workflowId ?? "single_agent_minimal",
       currentStepIndex: input.currentStepIndex ?? 0,
       status: input.workflowStatus ?? "running",
@@ -405,7 +405,7 @@ test("human takeover fail-closes on tenant scope mismatch", () => {
       id: "task-takeover-tenant",
       parentId: null,
       rootId: "task-takeover-tenant",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Tenant scoped takeover",
       source: "user",
       priority: "normal",

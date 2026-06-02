@@ -36,6 +36,8 @@ export interface RateLimitCheckResult {
 export class DistributedRateLimiter {
   private readonly redisLimiter: RedisRateLimiter | null;
   private readonly localEntries = new Map<string, { count: number; windowStart: number }>();
+  private static readonly LOCAL_IDLE_TTL_MULTIPLIER = 2;
+  private static readonly LOCAL_MAX_ENTRIES = 10_000;
   private readonly maxCalls: number;
   private readonly windowMs: number;
 
@@ -69,6 +71,7 @@ export class DistributedRateLimiter {
 
   private checkLocal(key: string): RateLimitCheckResult {
     const now = Date.now();
+    this.pruneLocalEntries(now);
     if (this.maxCalls <= 0) {
       return { allowed: false, remaining: 0, retryAfterMs: this.windowMs };
     }
@@ -89,6 +92,7 @@ export class DistributedRateLimiter {
     }
 
     entry.count += 1;
+    this.touchLocalEntry(key, entry);
     return { allowed: true, remaining: this.maxCalls - entry.count };
   }
 
@@ -101,5 +105,26 @@ export class DistributedRateLimiter {
       return { ...base, retryAfterMs: result.retryAfterMs };
     }
     return base;
+  }
+
+  private touchLocalEntry(key: string, entry: { count: number; windowStart: number }): void {
+    this.localEntries.delete(key);
+    this.localEntries.set(key, entry);
+    while (this.localEntries.size > DistributedRateLimiter.LOCAL_MAX_ENTRIES) {
+      const oldestKey = this.localEntries.keys().next().value;
+      if (oldestKey == null) {
+        return;
+      }
+      this.localEntries.delete(oldestKey);
+    }
+  }
+
+  private pruneLocalEntries(now: number): void {
+    const idleTtlMs = Math.max(this.windowMs, this.windowMs * DistributedRateLimiter.LOCAL_IDLE_TTL_MULTIPLIER);
+    for (const [entryKey, entry] of this.localEntries.entries()) {
+      if (now - entry.windowStart >= idleTtlMs) {
+        this.localEntries.delete(entryKey);
+      }
+    }
   }
 }

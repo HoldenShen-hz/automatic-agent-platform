@@ -154,7 +154,7 @@ test("buildOapeflirPlannedWorkflow creates workflow with correct structure [mult
   // Build workflow definition
   const workflowDef = {
     workflowId: `oapeflir_${planId}`,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: planSteps.map((step) => ({
       stepId: step.stepId,
       roleId: "general_executor", // resolved via resolveOapeflirRoleId
@@ -167,7 +167,7 @@ test("buildOapeflirPlannedWorkflow creates workflow with correct structure [mult
   };
 
   assert.equal(workflowDef.workflowId, "oapeflir_test-plan-123");
-  assert.equal(workflowDef.divisionId, "general_ops");
+  assert.equal(workflowDef.divisionId, "general-ops");
   assert.equal(workflowDef.steps.length, 2);
   assert.equal(workflowDef.steps[0]!.roleId, "general_executor");
   assert.equal(workflowDef.steps[1]!.dependsOnStepIds[0], "step_1");
@@ -190,7 +190,7 @@ test("buildOapeflirPlannedWorkflow maps executionSteps correctly [multi-step-orc
     const stepDeps = step.dependencies ?? [];
     return {
       stepId: step.stepId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       roleId: "general_executor",
       inputKeys: step.inputKeys ?? [],
       agentId: `agent_general_executor`,
@@ -315,7 +315,7 @@ test("Priority and dependency mapping in workflow [multi-step-orchestration-help
 
   const workflow = {
     workflowId: "oapeflir_priority_test",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: planSteps.map((step) => ({
       stepId: step.stepId,
       roleId: "general_executor",
@@ -344,7 +344,7 @@ test("compensationModel is preserved when present in step [multi-step-orchestrat
   const compensationModel = { type: "rollback" as const };
   const executionStep: Record<string, unknown> = {
     stepId: planSteps[0]!.stepId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     roleId: "general_executor",
     inputKeys: [],
     agentId: "agent_general_executor",

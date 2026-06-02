@@ -8,6 +8,8 @@ import {
 } from "../../src/platform/shared/stability/golden-task-runner.js";
 import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 test("single-task golden task suite stays stable", async () => {
   const workspace = createTempWorkspace("aa-golden-");
 

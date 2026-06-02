@@ -372,19 +372,28 @@ export class ConfigHotReloadService {
       .filter((sub) => sub.active && this.matchesSubscription(sub, change))
       .sort((a, b) => b.priority - a.priority);
 
-    // Notify in priority order
+    const priorityGroups = new Map<number, typeof matchingSubscribers>();
     for (const subscriber of matchingSubscribers) {
-      try {
-        await subscriber.onConfigChanged(change, newConfig);
-      } catch (error) {
-        logger.error("config_hot_reload.subscriber_failed", {
-          componentName: subscriber.componentName,
-          subscriptionId: subscriber.subscriptionId,
-          configPath: change.configPath,
-          layer: change.layer,
-          error: error instanceof Error ? error.stack ?? error.message : String(error),
-        });
-      }
+      const group = priorityGroups.get(subscriber.priority) ?? [];
+      group.push(subscriber);
+      priorityGroups.set(subscriber.priority, group);
+    }
+
+    for (const priority of [...priorityGroups.keys()].sort((left, right) => right - left)) {
+      const group = priorityGroups.get(priority) ?? [];
+      await Promise.all(group.map(async (subscriber) => {
+        try {
+          await subscriber.onConfigChanged(change, newConfig);
+        } catch (error) {
+          logger.error("config_hot_reload.subscriber_failed", {
+            componentName: subscriber.componentName,
+            subscriptionId: subscriber.subscriptionId,
+            configPath: change.configPath,
+            layer: change.layer,
+            error: error instanceof Error ? error.stack ?? error.message : String(error),
+          });
+        }
+      }));
     }
   }
 

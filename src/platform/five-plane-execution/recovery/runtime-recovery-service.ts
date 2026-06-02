@@ -392,6 +392,15 @@ export class RuntimeRecoveryService {
     const whereParts = [`e.status IN (${statuses.map(() => "?").join(", ")})`];
     const params: string[] = [...statuses];
 
+    if (query.tenantId !== undefined) {
+      if (query.tenantId == null) {
+        whereParts.push("t.tenant_id IS NULL");
+      } else {
+        whereParts.push("t.tenant_id = ?");
+        params.push(query.tenantId);
+      }
+    }
+
     if (query.divisionId !== undefined) {
       if (query.divisionId == null) {
         whereParts.push("t.division_id IS NULL");
@@ -467,7 +476,7 @@ export class RuntimeRecoveryService {
    */
   public listDivisionRecoveryOverview(
     staleBefore: string,
-    now: string = "9999-12-31T23:59:59.999Z",
+    now: string = nowIso(),
     tenantId?: string | null,
   ): DivisionRecoveryOverview[] {
     const aggregatedRecords = this.store.operations as typeof this.store.operations & Partial<{
@@ -580,10 +589,16 @@ export class RuntimeRecoveryService {
     }
 
     const actions: CompensationAction[] = [];
+    const seenActions = new Set<string>();
+    const existingDeadLetterExecutionIds = new Set(
+      this.store.dispatch
+        .listDeadLettersByTask(execution.taskId, tenantId)
+        .map((deadLetter) => deadLetter.executionId),
+    );
 
     // Add budget reservation release if there's a precheck with resolved budget
     if (candidate.latestPrecheck?.resolvedBudgetUsd != null) {
-      actions.push({
+      pushUniqueCompensationAction(actions, seenActions, {
         actionType: "release_budget_reservation",
         targetId: executionId,
         targetType: "budget_reservation",
@@ -592,8 +607,8 @@ export class RuntimeRecoveryService {
     }
 
     // Add dead letter recording for failed executions
-    if (candidate.status === "failed") {
-      actions.push({
+    if (candidate.status === "failed" && !existingDeadLetterExecutionIds.has(executionId)) {
+      pushUniqueCompensationAction(actions, seenActions, {
         actionType: "record_dead_letter",
         targetId: executionId,
         targetType: "dead_letter",
@@ -606,7 +621,7 @@ export class RuntimeRecoveryService {
     }
 
     // Add recovery event emission
-    actions.push({
+    pushUniqueCompensationAction(actions, seenActions, {
       actionType: "emit_recovery_event",
       targetId: executionId,
       targetType: "event",
@@ -739,7 +754,10 @@ function toLegacyCandidate(
   return {
     ...candidate,
     errorClassification,
-    suggestedAction: inferLegacySuggestedAction(candidate, errorClassification),
+    suggestedAction:
+      candidate.suggestedAction === "none"
+        ? inferLegacySuggestedAction(candidate, errorClassification)
+        : candidate.suggestedAction,
   };
 }
 
@@ -843,7 +861,12 @@ function inferSuggestedAction(
   if (record.status === "executing" || record.status === "prechecking" || record.status === "created") {
     const workerRegionId = options.workerRegionResolver?.(record) ?? null;
     const primaryRegionId = options.primaryRegionResolver?.(record) ?? null;
-    if (workerRegionId != null && primaryRegionId != null && workerRegionId !== primaryRegionId) {
+    if (
+      workerRegionId != null &&
+      primaryRegionId != null &&
+      workerRegionId !== primaryRegionId &&
+      attempt >= thresholds.resumeSameWorkerMaxAttempts
+    ) {
       return "retry_new_ticket";
     }
     if (attempt >= thresholds.resumeSameWorkerMaxAttempts) {
@@ -880,15 +903,67 @@ function resolveExceptionType(errorCode: string | null, reasonCode: string): Exc
   }
 
   // Try to map from reason code
-  const normalizedReason = reasonCode.toLowerCase().replace(/[._-]/g, "_");
-  for (const [key, value] of Object.entries(ERROR_CLASS_TO_EXCEPTION_TYPE)) {
-    if (normalizedReason.includes(key.toLowerCase())) {
-      return value;
-    }
+  const normalizedReason = normalizeExceptionLookupToken(reasonCode);
+  if (isExceptionType(normalizedReason)) {
+    return normalizedReason;
+  }
+  const errorClassMatch = NORMALIZED_ERROR_CLASS_TO_EXCEPTION_TYPE.get(normalizedReason);
+  if (errorClassMatch != null) {
+    return errorClassMatch;
+  }
+  const categoryToken = normalizedReason.split("_")[0] ?? normalizedReason;
+  const categoryMatch = CATEGORY_TO_EXCEPTION_TYPE[normalizedReason] ?? CATEGORY_TO_EXCEPTION_TYPE[categoryToken];
+  if (categoryMatch != null) {
+    return categoryMatch;
   }
 
   // Default to unknown_error if no match found
   return "unknown_error";
+}
+
+function pushUniqueCompensationAction(
+  actions: CompensationAction[],
+  seenKeys: Set<string>,
+  action: CompensationAction,
+): void {
+  const key = `${action.actionType}:${action.targetType}:${action.targetId}`;
+  if (seenKeys.has(key)) {
+    return;
+  }
+  seenKeys.add(key);
+  actions.push(action);
+}
+
+const NORMALIZED_ERROR_CLASS_TO_EXCEPTION_TYPE = new Map<string, ExceptionType>(
+  Object.entries(ERROR_CLASS_TO_EXCEPTION_TYPE).map(([errorClass, exceptionType]) => [
+    normalizeExceptionLookupToken(errorClass),
+    exceptionType,
+  ]),
+);
+
+function normalizeExceptionLookupToken(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function isExceptionType(value: string): value is ExceptionType {
+  return value in CATEGORY_TO_EXCEPTION_TYPE ||
+    value === "transient_external_error" ||
+    value === "permanent_external_error" ||
+    value === "tool_execution_error" ||
+    value === "workflow_state_error" ||
+    value === "tenant_boundary_error" ||
+    value === "monetization_error" ||
+    value === "internal_error" ||
+    value === "locking_error" ||
+    value === "memory_error" ||
+    value === "runtime_error" ||
+    value === "validation_error" ||
+    value === "policy_denied" ||
+    value === "auth_error" ||
+    value === "provider_error" ||
+    value === "sandbox_error" ||
+    value === "storage_error" ||
+    value === "unknown_error";
 }
 
 /**

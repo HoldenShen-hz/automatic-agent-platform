@@ -2,17 +2,29 @@ import { spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveDefaultTestConcurrency } from "./lib/test-concurrency.mjs";
 
 const workspaceRoot = process.cwd();
 const testsRoot = resolve(workspaceRoot, "tests");
 const scriptPath = fileURLToPath(import.meta.url);
-const DEFAULT_TEST_CONCURRENCY = 12;
+const DEFAULT_TEST_CONCURRENCY = resolveDefaultTestConcurrency();
 const defaultRegularConcurrency = DEFAULT_TEST_CONCURRENCY;
 const regularConcurrency = readConcurrency("AA_TEST_CONCURRENCY", defaultRegularConcurrency);
 const heavyweightConcurrency = readConcurrency("AA_HEAVY_TEST_CONCURRENCY", DEFAULT_TEST_CONCURRENCY);
 const performanceConcurrency = readConcurrency("AA_PERF_TEST_CONCURRENCY", DEFAULT_TEST_CONCURRENCY);
 const leakConcurrency = readConcurrency("AA_LEAK_TEST_CONCURRENCY", DEFAULT_TEST_CONCURRENCY);
 const testMaxOldSpaceSizeMb = readOptionalPositiveInteger("AA_TEST_MAX_OLD_SPACE_MB", 1536);
+const BLOCKED_NODE_ARG_PREFIXES = Object.freeze([
+  "--experimental-loader",
+  "--loader",
+  "--experimental-vm-modules",
+  "--inspect",
+  "--inspect-brk",
+  "--require",
+  "--import",
+  "--env-file",
+  "--openssl-config",
+]);
 const DEFAULT_LAYER_FILE_SLICE = Object.freeze({
   offset: 0,
   limit: null,
@@ -100,7 +112,17 @@ function readOptionalNonNegativeInteger(envName, fallback) {
 function listFilesRecursively(rootPath) {
   const results = [];
   const pending = [rootPath];
-  const skippedDirectories = new Set(["node_modules", ".git", "dist", "coverage", ".cache"]);
+  const skippedDirectories = new Set([
+    "node_modules",
+    ".git",
+    "dist",
+    "coverage",
+    ".cache",
+    ".stryker-tmp",
+    "coverage-report",
+    ".dr-reports",
+    "dist-types",
+  ]);
 
   while (pending.length > 0) {
     const current = pending.pop();
@@ -201,8 +223,24 @@ function hasExecArg(args, prefix) {
   return args.some((arg) => arg === prefix || arg.startsWith(`${prefix}=`));
 }
 
+function sanitizeNodeArgs(args, sourceLabel, mode = "reject") {
+  const safeArgs = [];
+  for (const arg of args) {
+    const isBlocked = BLOCKED_NODE_ARG_PREFIXES.some((prefix) => arg === prefix || arg.startsWith(`${prefix}=`));
+    if (!isBlocked) {
+      safeArgs.push(arg);
+      continue;
+    }
+    if (mode === "reject") {
+      throw new Error(`${sourceLabel} contains blocked Node flag: ${arg}`);
+    }
+  }
+  return safeArgs;
+}
+
 function buildNodeArgsForLayer(layerName, extraNodeArgs) {
-  const nodeArgs = [...process.execArgv];
+  const nodeArgs = sanitizeNodeArgs(process.execArgv, "process.execArgv", "strip");
+  const safeExtraNodeArgs = sanitizeNodeArgs(extraNodeArgs, "CLI arguments", "reject");
 
   if (layerName === "leaks" && !hasExecArg(nodeArgs, "--expose-gc")) {
     nodeArgs.push("--expose-gc");
@@ -217,7 +255,7 @@ function buildNodeArgsForLayer(layerName, extraNodeArgs) {
     "tsx",
     "--test",
     `--test-concurrency=${LAYER_DEFINITIONS[layerName].concurrency}`,
-    ...extraNodeArgs,
+    ...safeExtraNodeArgs,
   ];
 }
 
@@ -226,8 +264,12 @@ function buildChildEnv() {
     /(^|_)TOKEN$/i,
     /(^|_)SECRET$/i,
     /(^|_)PASSWORD$/i,
+    /(^|_)PASS$/i,
     /(^|_)API_KEY$/i,
     /(^|_)KEY$/i,
+    /(^|_)AUTH$/i,
+    /(^|_)AUTHORIZATION$/i,
+    /(^|_)FILE$/i,
     /^AA_API_KEYS_JSON$/i,
   ];
   const env = { ...process.env };

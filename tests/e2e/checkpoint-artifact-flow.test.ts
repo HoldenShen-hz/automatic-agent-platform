@@ -92,7 +92,7 @@ test("E2E: checkpoint created at each workflow step boundary", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Multi-step checkpoint test",
         status: "in_progress",
         source: "user",
@@ -139,7 +139,7 @@ test("E2E: checkpoint created at each workflow step boundary", () => {
 
       h.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "multi_step_wf",
         currentStepIndex: 0,
         status: "running",
@@ -230,7 +230,7 @@ test("E2E: artifacts stored and retrieved by task ID", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Artifact storage test",
         status: "in_progress",
         source: "user",
@@ -366,7 +366,7 @@ test("E2E: artifacts retrieved by execution ID", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Artifact by execution test",
         status: "in_progress",
         source: "user",
@@ -464,7 +464,7 @@ test("E2E: workflow checkpoint preserves state across execution retry", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Checkpoint retry test",
         status: "in_progress",
         source: "user",
@@ -513,7 +513,7 @@ test("E2E: workflow checkpoint preserves state across execution retry", () => {
       // Workflow state shows progress at step 1
       h.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "multi_step_wf",
         currentStepIndex: 1,
         status: "running",
@@ -609,7 +609,7 @@ test("E2E: task completion persists all checkpoint and artifact data", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Completion checkpoint test",
         status: "in_progress",
         source: "user",
@@ -656,7 +656,7 @@ test("E2E: task completion persists all checkpoint and artifact data", () => {
 
       h.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "multi_step_wf",
         currentStepIndex: 2,
         status: "completed",

@@ -15,7 +15,7 @@ function buildDatasetCases(count = 50) {
       {
         criterionId: `judge-${index + 1}`,
         type: "llm_judge" as const,
-        config: {},
+        config: { judgeEvaluatorId: "judge_default" },
         weight: 1,
         threshold: 0.8,
       },
@@ -32,7 +32,11 @@ function buildPassingResults(count = 50) {
 }
 
 function createHarness(): CrossProviderJudgeService {
-  const judgeService = new EvalDatasetJudgeService();
+  const judgeService = new EvalDatasetJudgeService({
+    judge_default: ({ criterion, criterionSignals }) => ({
+      score: criterionSignals[criterion.criterionId] ?? 0,
+    }),
+  });
   judgeService.registerDataset({
     datasetId: "dataset-cross-provider",
     name: "Cross Provider",
@@ -93,4 +97,45 @@ test("CrossProviderJudgeService fastest strategy does not degenerate to cheapest
   });
 
   assert.equal(selection.selectedJudge?.judgeId, "judge-anthropic");
+});
+
+test("CrossProviderJudgeService fastest strategy uses conservative fallback ranks for unknown models", () => {
+  const judgeService = new EvalDatasetJudgeService({
+    judge_default: ({ criterion, criterionSignals }) => ({
+      score: criterionSignals[criterion.criterionId] ?? 0,
+    }),
+  });
+  judgeService.registerDataset({
+    datasetId: "dataset-unknown-fastest",
+    name: "Unknown Fastest",
+    version: "1.0.0",
+    stage: "assess",
+    createdBy: "quality",
+    cases: buildDatasetCases(1),
+    sampleRequirements: { standard: 1 },
+  });
+  judgeService.activateDataset("dataset-unknown-fastest");
+  judgeService.registerJudge({
+    judgeId: "judge-unknown-cheap",
+    provider: "provider-a",
+    providerFamily: "provider-a",
+    modelId: "brand-new-alpha",
+    maxCostUsd: 0.005,
+  });
+  judgeService.registerJudge({
+    judgeId: "judge-unknown-expensive",
+    provider: "provider-b",
+    providerFamily: "provider-b",
+    modelId: "brand-new-beta",
+    maxCostUsd: 0.08,
+  });
+
+  const service = new CrossProviderJudgeService(judgeService);
+  const selection = service.selectJudge({
+    candidateProvider: "openai",
+    candidateProviderFamily: "openai",
+    strategy: "fastest",
+  });
+
+  assert.equal(selection.selectedJudge?.judgeId, "judge-unknown-cheap");
 });

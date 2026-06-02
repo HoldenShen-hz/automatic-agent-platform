@@ -298,79 +298,41 @@ test("RedisQueueAdapter handles ping failure gracefully [redis-queue-adapter-err
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SYS-REL-2.4: Sync enqueue() Silent Discard Defect
-// When pipeline.exec() fails, the sync enqueue() must propagate error to caller.
-// Current behavior: Returns job immediately before pipeline completes, and
-// .catch() only logs but doesn't propagate error - caller gets false success.
+// SYS-REL-2.4: Sync enqueue() is fail-closed because Redis requires async durability.
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SYS-REL-2.4 sync enqueue() must propagate pipeline failure to caller [redis-queue-adapter-errors]", async () => {
-  runtimeMetricsRegistry.reset();
+test("SYS-REL-2.4 sync enqueue() is rejected before any pipeline runs [redis-queue-adapter-errors]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const mockClient = adapter as unknown as { client: { redis: any } };
-
-  // Mock pipeline that fails on exec()
-  const pipelineError = new Error("pipeline exec failed - Redis connection lost");
-  const mockPipeline = {
-    hmset: () => mockPipeline,
-    expire: () => mockPipeline,
-    sadd: () => mockPipeline,
-    zadd: () => mockPipeline,
-    exec: () => Promise.reject(pipelineError),
-  };
-  mockClient.client.redis.pipeline = () => mockPipeline;
-
-  const result = adapter.enqueue({
-    queueName: "test-queue",
-    payload: { data: "test" },
-  });
-  await new Promise((resolve) => setTimeout(resolve, 0));
-
-  assert.equal(result.queueName, "test-queue");
-  assert.deepEqual(
-    runtimeMetricsRegistry.getCounters("queue_enqueue_failures_total").map((series) => ({
-      labels: series.labels,
-      value: series.value,
-    })),
-    [{ labels: { backend: "redis", mode: "sync" }, value: 1 }],
-    "SYS-REL-2.4: sync enqueue() should record pipeline.exec() failure in metrics",
+  assert.throws(
+    () => adapter.enqueue({
+      queueName: "test-queue",
+      payload: { data: "test" },
+    }),
+    /sync_enqueue_not_supported/,
   );
 });
 
-test("SYS-REL-2.4 sync enqueue() must propagate pipeline result-level failure to caller [redis-queue-adapter-errors]", async () => {
+test("SYS-REL-2.4 async enqueue continues to report write failures via metrics [redis-queue-adapter-errors]", async () => {
   runtimeMetricsRegistry.reset();
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = adapter as unknown as { client: { redis: any } };
 
-  // Mock pipeline where exec() succeeds but results contain an error
-  const mockPipeline = {
-    hmset: () => mockPipeline,
-    expire: () => mockPipeline,
-    sadd: () => mockPipeline,
-    zadd: () => mockPipeline,
-    exec: () =>
-      Promise.resolve([
-        [null, "OK"], // hmset success
-        [null, 1],    // expire success
-        [null, 1],    // sadd success
-        [new Error("ZADD failed - not a sorted set"), 0], // zadd failure
-      ]),
+  mockClient.client.redis.hmset = async () => {
+    throw new Error("HMSET failed - Redis connection lost");
   };
-  mockClient.client.redis.pipeline = () => mockPipeline;
 
-  const result = adapter.enqueue({
-    queueName: "test-queue",
-    payload: { data: "test" },
-  });
-  await new Promise((resolve) => setTimeout(resolve, 0));
-
-  assert.equal(result.queueName, "test-queue");
+  await assert.rejects(
+    () => adapter.enqueueAsync({
+      queueName: "test-queue",
+      payload: { data: "test" },
+    }),
+    /queue\.enqueue_failed/,
+  );
   assert.deepEqual(
     runtimeMetricsRegistry.getCounters("queue_enqueue_failures_total").map((series) => ({
       labels: series.labels,
       value: series.value,
     })),
-    [{ labels: { backend: "redis", mode: "sync" }, value: 1 }],
-    "SYS-REL-2.4: sync enqueue() should record result-level pipeline failures in metrics",
+    [{ labels: { backend: "redis", mode: "async" }, value: 1 }],
   );
 });

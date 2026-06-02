@@ -746,3 +746,89 @@ test("ExecutionWorkerHandshakeService can be constructed with custom resourceCei
 
   assert.ok(service != null);
 });
+
+test("ExecutionWorkerHandshakeService claimExecution blocks remote authority before lease validation [execution-worker-handshake-service]", () => {
+  const ticket: Partial<ExecutionTicketRecord> = {
+    id: "ticket-001",
+    taskId: "task-001",
+    executionId: "exec-001",
+    status: "claimed",
+    assignedWorkerId: "worker-001",
+    leaseId: "lease-001",
+  };
+  const workerSnapshot: Partial<WorkerSnapshotRecord> = {
+    workerId: "worker-001",
+    status: "idle",
+    placement: "remote",
+    registrationVerifiedAt: "2026-01-01T00:00:00.000Z",
+    remoteSessionStatus: "viewer_only",
+    capabilitiesJson: "[]",
+    runningExecutionsJson: "[]",
+    maxConcurrency: 4,
+  };
+  let validateCalls = 0;
+  const store = createMockStore({
+    getExecutionTicket: () => ticket,
+    getWorkerSnapshot: () => workerSnapshot,
+  });
+  const db = createMockDb();
+  const service = new ExecutionWorkerHandshakeService(db, store, {
+    leases: {
+      validateWriteAccess() {
+        validateCalls += 1;
+        return { allowed: true, reasonCode: null, authoritativeFencingToken: 1, activeLeaseId: "lease-001" };
+      },
+    } as any,
+  });
+
+  const decision = service.claimExecution({
+    ticketId: "ticket-001",
+    workerId: "worker-001",
+    leaseId: "lease-001",
+    fencingToken: 1,
+  });
+
+  assert.equal(decision.accepted, false);
+  assert.equal(decision.reasonCode, "remote_session_viewer_only");
+  assert.equal(validateCalls, 0);
+});
+
+test("ExecutionWorkerHandshakeService deduplicates repeated claim rejection events by ticket and reason [execution-worker-handshake-service]", () => {
+  const ticket: Partial<ExecutionTicketRecord> = {
+    id: "ticket-001",
+    taskId: "task-001",
+    executionId: "exec-001",
+    status: "claimed",
+    assignedWorkerId: "worker-001",
+    leaseId: "lease-001",
+  };
+  const events: unknown[] = [];
+  const store = createMockStore({
+    getExecutionTicket: () => ticket,
+    getWorkerSnapshot: () => null,
+  });
+  store.event.insertEvent = (event: unknown) => {
+    events.push(event);
+  };
+  const db = createMockDb();
+  const service = new ExecutionWorkerHandshakeService(db, store, {
+    rejectedClaimEventDedupTtlMs: 60_000,
+  });
+
+  service.claimExecution({
+    ticketId: "ticket-001",
+    workerId: "worker-001",
+    leaseId: "lease-001",
+    fencingToken: 1,
+    occurredAt: "2026-06-02T10:00:00.000Z",
+  });
+  service.claimExecution({
+    ticketId: "ticket-001",
+    workerId: "worker-001",
+    leaseId: "lease-001",
+    fencingToken: 1,
+    occurredAt: "2026-06-02T10:00:05.000Z",
+  });
+
+  assert.equal(events.length, 1);
+});

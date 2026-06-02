@@ -67,7 +67,6 @@ export type {
 export class HaCoordinatorService {
   private readonly defaultTtlMs: number;
   private readonly strictLeaderAuthority: boolean;
-  private readonly fencingTokenCounter: { value: number };
 
   constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -76,7 +75,6 @@ export class HaCoordinatorService {
     this.db.connection.exec(HA_COORDINATOR_DDL);
     this.defaultTtlMs = options?.defaultTtlMs ?? DEFAULT_LEASE_TTL_MS;
     this.strictLeaderAuthority = options?.strictLeaderAuthority ?? true;
-    this.fencingTokenCounter = { value: this.loadLatestFencingToken() };
   }
 
   // ── Node Management ────────────────────────────────────────────────
@@ -169,7 +167,7 @@ export class HaCoordinatorService {
           .prepare(`UPDATE leadership_leases SET status = 'expired' WHERE node_id = ? AND status = 'active'`)
           .run(nodeId);
         this.db.connection
-          .prepare(`UPDATE leadership_epochs SET ended_at = ?, cause = 'expired' WHERE leader_node_id = ? AND ended_at IS NULL`)
+          .prepare(`UPDATE leadership_epochs SET ended_at = ?, cause = 'removed' WHERE leader_node_id = ? AND ended_at IS NULL`)
           .run(now, nodeId);
       }
 
@@ -206,8 +204,9 @@ export class HaCoordinatorService {
       }
 
       const effectiveTtl = Math.min(MAX_LEASE_TTL_MS, Math.max(MIN_LEASE_TTL_MS, ttlMs));
-      const now = nowIso();
-      const expiresAt = new Date(Date.now() + effectiveTtl).toISOString();
+      const nowMs = Date.now();
+      const now = new Date(nowMs).toISOString();
+      const expiresAt = new Date(nowMs + effectiveTtl).toISOString();
 
       // Check existing leadership
       const currentLeader = this.getCurrentLeader();
@@ -228,7 +227,17 @@ export class HaCoordinatorService {
             .prepare(`UPDATE leadership_epochs SET ended_at = ?, cause = 'expired' WHERE leader_node_id = ? AND ended_at IS NULL`)
             .run(now, currentLeader.nodeId);
         } else if (currentLeaderLease && currentLeaderLease.nodeId !== nodeId) {
-          const isExpired = new Date(currentLeaderLease.expiresAt) <= new Date(now);
+          const currentLeaderLeaseExpiryMs = parseStrictIsoMillis(currentLeaderLease.expiresAt);
+          if (currentLeaderLeaseExpiryMs == null) {
+            return {
+              acquired: false,
+              lease: null,
+              epoch: currentEpoch.epoch,
+              fencingToken: currentEpoch.fencingToken,
+              cause: "current_leader_lease_expiry_invalid",
+            };
+          }
+          const isExpired = currentLeaderLeaseExpiryMs <= nowMs;
           if (!isExpired) {
             return {
               acquired: false,
@@ -243,7 +252,7 @@ export class HaCoordinatorService {
 
       // Increment epoch for new leadership
       const newEpoch = currentEpoch.epoch + 1;
-      const newFencingToken = this.nextFencingToken();
+      const newFencingToken = this.allocateNextFencingToken();
 
       // Create new lease
       const leaseId = newId("llease");
@@ -258,12 +267,14 @@ export class HaCoordinatorService {
       };
 
       // Demote any existing leader
-      this.db.connection
-        .prepare(`UPDATE coordinator_nodes SET is_leader = 0 WHERE is_leader = 1`)
-        .run();
-      this.db.connection
-        .prepare(`UPDATE leadership_leases SET status = 'expired' WHERE status = 'active'`)
-        .run();
+      if (currentLeader) {
+        this.db.connection
+          .prepare(`UPDATE coordinator_nodes SET is_leader = 0 WHERE node_id = ?`)
+          .run(currentLeader.nodeId);
+        this.db.connection
+          .prepare(`UPDATE leadership_leases SET status = 'expired' WHERE node_id = ? AND status = 'active'`)
+          .run(currentLeader.nodeId);
+      }
 
       // Insert new lease
       this.db.connection
@@ -415,7 +426,7 @@ export class HaCoordinatorService {
     const leader = this.getCurrentLeader();
     const activeLease = this.getActiveLease();
     const latestEpoch = this.getLatestEpoch();
-    const now = new Date();
+      const nowMs = Date.now();
 
     if (!leader || !activeLease) {
       return {
@@ -428,7 +439,8 @@ export class HaCoordinatorService {
       };
     }
 
-    const isExpired = new Date(activeLease.expiresAt) <= now;
+    const activeLeaseExpiryMs = parseStrictIsoMillis(activeLease.expiresAt);
+    const isExpired = activeLeaseExpiryMs == null || activeLeaseExpiryMs <= nowMs;
 
     return {
       isLeader: !isExpired,
@@ -533,7 +545,8 @@ export class HaCoordinatorService {
       }
 
       // Check if lease is still valid
-      if (!activeLease || new Date(activeLease.expiresAt) <= new Date(now)) {
+      const activeLeaseExpiryMs = activeLease == null ? null : parseStrictIsoMillis(activeLease.expiresAt);
+      if (!activeLease || activeLeaseExpiryMs == null || activeLeaseExpiryMs <= parseStrictIsoMillis(now)!) {
         this.recordActionAudit(actionType, requestingNodeId, leader.nodeId, latestEpoch.epoch, latestEpoch.fencingToken, false, activeLease ? "leadership_lease_expired" : "no_active_lease");
         return {
           authorized: false,
@@ -736,11 +749,6 @@ export class HaCoordinatorService {
 
   // ── Helpers ───────────────────────────────────────────────────────
 
-  private nextFencingToken(): number {
-    this.fencingTokenCounter.value += 1;
-    return this.fencingTokenCounter.value;
-  }
-
   private loadLatestFencingToken(): number {
     const row = this.db.connection
       .prepare("SELECT MAX(fencing_token) AS fencingToken FROM leadership_epochs")
@@ -749,6 +757,10 @@ export class HaCoordinatorService {
       EPOCH_FENCING_TOKEN_START,
       Number(row?.fencingToken ?? EPOCH_FENCING_TOKEN_START) || EPOCH_FENCING_TOKEN_START,
     );
+  }
+
+  private allocateNextFencingToken(): number {
+    return this.loadLatestFencingToken() + 1;
   }
 
   private recordActionAudit(
@@ -769,4 +781,15 @@ export class HaCoordinatorService {
       )
       .run(id, actionType, requestingNodeId, leaderNodeId, epoch, fencingToken, authorized ? 1 : 0, reasonCode, now);
   }
+}
+
+function parseStrictIsoMillis(value: string): number | null {
+  if (
+    typeof value !== "string"
+    || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)
+  ) {
+    return null;
+  }
+  const millis = Date.parse(value);
+  return Number.isFinite(millis) ? millis : null;
 }

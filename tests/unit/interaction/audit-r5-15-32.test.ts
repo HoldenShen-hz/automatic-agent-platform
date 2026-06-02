@@ -73,7 +73,7 @@ test("R5-17: DetectedIntent supports 'why' intentType", async () => {
   const whyRouter = {
     route: () => ({
       classification: { intent: "query", continuation: "new_task", confidence: 0.9, matchedRules: [] },
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "simple_query",
     }),
   };
@@ -238,7 +238,7 @@ test("R5-22: Promotion requires incident-free time window", () => {
   const service = new ProgressiveAutonomyService();
   const profile: AgentTrustProfile = {
     agentId: "agent_r5_22",
-    domainId: "general_ops",
+    domainId: "general-ops",
     overallTrustLevel: "trusted",
     lastEvaluation: new Date().toISOString(),
     capabilityScores: [{
@@ -267,7 +267,7 @@ test("R5-23: Cost overbudget ratio triggers demotion", () => {
   const service = new ProgressiveAutonomyService();
   const profile: AgentTrustProfile = {
     agentId: "agent_r5_23",
-    domainId: "general_ops",
+    domainId: "general-ops",
     overallTrustLevel: "trusted",
     lastEvaluation: new Date().toISOString(),
     capabilityScores: [{
@@ -362,7 +362,7 @@ test("R5-27: ProactiveAgentService respects autonomy level for action mode", asy
   service.setAutonomyLevel("suggestion");
   await service.registerTrigger({
     triggerId: "test_trigger_r5_27",
-    domainId: "general_ops",
+    domainId: "general-ops",
     name: "test trigger",
     type: "schedule",
     config: { cron: "0 9 * * *", timezone: "UTC", skipIfPreviousRunning: true },
@@ -410,7 +410,7 @@ test("R5-29: ProactiveAgentService batches events within batchWindow", async () 
 
   await service.registerTrigger({
     triggerId: "batch_trigger",
-    domainId: "general_ops",
+    domainId: "general-ops",
     name: "batch trigger",
     type: "event",
     config: {

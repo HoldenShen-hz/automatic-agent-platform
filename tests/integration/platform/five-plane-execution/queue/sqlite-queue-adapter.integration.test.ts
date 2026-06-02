@@ -145,7 +145,7 @@ test("queue adapter: higher priority jobs dequeued first", () => {
 // Nack and retry tests
 // ---------------------------------------------------------------------------
 
-test("queue adapter: nack returns job to waiting", () => {
+test("queue adapter: nack applies backoff and returns job to delayed", () => {
   const workspace = createTempWorkspace("aa-queue-nack-");
 
   try {
@@ -158,13 +158,15 @@ test("queue adapter: nack returns job to waiting", () => {
     assert.ok(result !== null);
     assert.equal(result.job.status, "active");
 
-    // Nack without requeue - job goes back to waiting
+    // Nack applies retry backoff instead of immediate hot-loop requeue
     result.nack("Temporary failure");
 
     const requeued = adapter.getJob(enqueued.id);
-    assert.equal(requeued!.status, "waiting");
+    assert.equal(requeued!.status, "delayed");
     assert.equal(requeued!.attempts, 1);
     assert.ok(requeued!.lastError?.includes("Temporary failure"));
+    assert.ok(requeued!.delayUntil !== null);
+    assert.equal(adapter.dequeue("default"), null, "Delayed job should not be immediately dequeued");
   } finally {
     cleanupPath(workspace);
   }
@@ -186,6 +188,11 @@ test("queue adapter: job moves to dead letter after max attempts", () => {
     const result1 = adapter.dequeue("dlq-test");
     assert.ok(result1 !== null);
     result1.nack("Error 1");
+
+    const delayed = adapter.getJob(job.id);
+    assert.equal(delayed?.status, "delayed");
+    const retried = adapter.retryJob(job.id);
+    assert.equal(retried?.status, "waiting");
 
     // Second dequeue and nack - should go to dead letter
     const result2 = adapter.dequeue("dlq-test");
@@ -214,10 +221,13 @@ test("queue adapter: retryJob returns job to waiting", () => {
     result.nack("Need to retry");
 
     // Manually retry
+    const delayed = adapter.getJob(job.id);
+    assert.equal(delayed?.status, "delayed");
     const retried = adapter.retryJob(job.id);
     assert.ok(retried !== null);
     assert.equal(retried.status, "waiting");
     assert.equal(retried.attempts, 1);
+    assert.equal(retried.delayUntil, null);
   } finally {
     cleanupPath(workspace);
   }
@@ -265,7 +275,6 @@ test("queue adapter: stats returns correct counts", () => {
     assert.equal(stats.waiting, 3);
     assert.equal(stats.active, 0);
     assert.equal(stats.completed, 0);
-    assert.equal(stats.failed, 0);
     assert.equal(stats.deadLetter, 0);
 
     // Dequeue one and ack it
@@ -427,6 +436,36 @@ test("queue adapter: delayUntil postpones job availability", () => {
     // List delayed jobs
     const delayedJobs = adapter.listJobs("delayed-queue", "delayed");
     assert.equal(delayedJobs.length, 1, "Job should be in delayed status");
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("queue adapter: expired active job is reclaimed on next dequeue", () => {
+  const workspace = createTempWorkspace("aa-queue-visibility-");
+
+  try {
+    const dbPath = join(workspace, "queue.db");
+    const db = new SqliteDatabase(dbPath);
+    db.connection.exec(QUEUE_JOBS_DDL);
+    const adapter = new SqliteQueueAdapter(db);
+
+    const job = adapter.enqueue({ queueName: "reclaim-queue", payload: { reclaim: true }, maxAttempts: 3 });
+    const first = adapter.dequeue("reclaim-queue");
+    assert.ok(first !== null);
+    assert.equal(first.job.id, job.id);
+
+    db.connection
+      .prepare(`UPDATE queue_jobs SET delay_until = ?, updated_at = ? WHERE id = ?`)
+      .run(new Date(Date.now() - 1000).toISOString(), new Date(Date.now() - 1000).toISOString(), job.id);
+
+    const reclaimed = adapter.dequeue("reclaim-queue");
+    assert.ok(reclaimed !== null);
+    assert.equal(reclaimed.job.id, job.id);
+    assert.equal(reclaimed.job.attempts, 2);
+
+    reclaimed.ack();
+    assert.equal(adapter.getJob(job.id)?.status, "completed");
   } finally {
     cleanupPath(workspace);
   }

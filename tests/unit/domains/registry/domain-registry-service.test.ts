@@ -129,7 +129,7 @@ test("DomainRegistryService registers, validates, activates, and filters tools",
   assert.equal(service.getWorkflow("coding", "wf_build")?.name, "Build");
   assert.equal(service.getToolBundle("coding", "coding-default")?.tools.length, 2);
   assert.equal(service.getOutputContract("coding", "contract.patch")?.validationLevel, "strict");
-  assert.equal(service.resolvePlugins("coding", "presenter" as any).length, 1);
+  assert.equal(service.resolvePlugins("coding", "presenter").length, 1);
   assert.deepEqual(service.buildCapabilityEntry("coding").pluginIds, ["plugin.coding.presenter"]);
   assert.deepEqual(service.buildCapabilityEntry("coding").knowledgeNamespaces, ["coding/repo"]);
   assert.ok(events.includes("domain:registered"));
@@ -339,7 +339,7 @@ test("DomainRegistryService getPluginBindings filters by pluginType", () => {
   const all = service.getPluginBindings("multi_plugin");
   assert.equal(all.length, 3); // enabled presenter (2) + enabled retriever (1), disabled excluded
 
-  const presenters = service.getPluginBindings("multi_plugin", "presenter" as any);
+  const presenters = service.getPluginBindings("multi_plugin", "presenter");
   assert.equal(presenters.length, 2);
 
   const retrievers = service.getPluginBindings("multi_plugin", "retriever");

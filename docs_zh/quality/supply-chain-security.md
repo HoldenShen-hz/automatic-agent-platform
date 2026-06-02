@@ -16,3 +16,8 @@
 - 新增依赖必须说明用途、运行面和替代方案。
 - 依赖升级如果包含 breaking change，必须配套最小定向测试。
 - 安全漏洞不得用静态白名单长期绕过；例外必须有到期时间和 owner。
+
+## 对外入口
+
+- 仓库对外的安全披露入口见根 [SECURITY.md](../../SECURITY.md)。
+- 第三方依赖归因入口见根 [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md)。

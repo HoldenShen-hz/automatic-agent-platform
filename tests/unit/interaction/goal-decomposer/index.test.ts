@@ -54,7 +54,7 @@ test("GoalDecompositionService uses llm_plan strategy when injected generator su
         tasks: [
           {
             taskId: `${goal.goalId}:llm:1`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "分析复杂目标并拆出执行步骤",
             inputs: {},
             expectedOutputs: ["analysis"],

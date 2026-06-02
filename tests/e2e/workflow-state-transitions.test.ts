@@ -38,7 +38,7 @@ test("E2E: workflow transitions from running to paused", () => {
     h.db.transaction(() => {
       h.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "test_workflow",
         currentStepIndex: 1,
         status: "running",
@@ -82,7 +82,7 @@ test("E2E: workflow transitions from paused to resuming", () => {
     h.db.transaction(() => {
       h.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "test_workflow",
         currentStepIndex: 1,
         status: "paused",
@@ -126,7 +126,7 @@ test("E2E: workflow transitions from resuming to running", () => {
     h.db.transaction(() => {
       h.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "test_workflow",
         currentStepIndex: 1,
         status: "resuming",
@@ -217,7 +217,7 @@ test("E2E: workflow transitions to failed on error", () => {
     h.db.transaction(() => {
       h.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "test_workflow",
         currentStepIndex: 0,
         status: "running",
@@ -262,7 +262,7 @@ test("E2E: workflow completes with all step outputs", () => {
     h.db.transaction(() => {
       h.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "multi_step_wf",
         currentStepIndex: 2,
         status: "running",

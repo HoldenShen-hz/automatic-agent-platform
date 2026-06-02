@@ -5,7 +5,6 @@
 
 import { describe, it, beforeEach, mock } from "node:test";
 import assert from "node:assert/strict";
-import assert from "node:assert";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 import { MultiPartyApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/multi-party-approval-service.js";
@@ -83,6 +82,7 @@ describe("MultiPartyApprovalService", () => {
 
       assert.strictEqual(result.requiredApprovals, 3);
       assert.deepStrictEqual(result.approverGroups, ["group-a", "group-b"]);
+      assert.strictEqual(result.rejectionsRequired, 1);
     });
 
     it("should track pending approval in memory", () => {
@@ -199,7 +199,7 @@ describe("MultiPartyApprovalService", () => {
       assert.strictEqual(pending?.status, "approved");
     });
 
-    it("should reject immediately on rejected decision", () => {
+    it("should keep request pending until rejection threshold is reached", () => {
       const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
 
       const request = {
@@ -213,7 +213,10 @@ describe("MultiPartyApprovalService", () => {
         timeoutPolicy: "reject" as const,
       };
 
-      const created = service.createMultiPartyRequest(request);
+      const created = service.createMultiPartyRequest(request, {
+        requiredApprovals: 2,
+        totalApprovers: 3,
+      });
 
       mockRepository.getApproval.mock.mockImplementation(() => ({
         id: created.approvalId,
@@ -224,6 +227,8 @@ describe("MultiPartyApprovalService", () => {
           ...request,
           approvalId: created.approvalId,
           requiredApprovals: 2,
+          rejectionsReceived: 0,
+          rejectionsRequired: 2,
         }),
         responseJson: null,
       }));
@@ -238,7 +243,10 @@ describe("MultiPartyApprovalService", () => {
       });
 
       const pending = service.getPendingApproval(created.approvalId);
-      assert.strictEqual(pending?.status, "rejected");
+      assert.strictEqual(pending?.status, "pending");
+      assert.strictEqual(pending?.rejectionsReceived, 1);
+      assert.strictEqual(mockRepository.insertEvent.mock.callCount(), 2);
+      assert.strictEqual(mockRepository.insertEvent.mock.calls[1]?.arguments[0].eventType, "decision:partial_rejection");
     });
 
     it("should throw when approval not found", () => {
@@ -356,9 +364,19 @@ describe("MultiPartyApprovalService", () => {
     });
 
     it("should return true when approver is in group", () => {
-      const service = new MultiPartyApprovalService(mockDb as any, mockStore as any, mockRepository as any);
+      const service = new MultiPartyApprovalService(
+        mockDb as any,
+        mockStore as any,
+        mockRepository as any,
+        {
+          groupMembers: {
+            "group-a": ["user-1", "user-2"],
+            "group-b": ["user-3"],
+          },
+        },
+      );
 
-      const result = service.isApproverInGroups("group-a", ["group-a", "group-b"]);
+      const result = service.isApproverInGroups("user-1", ["group-a", "group-b"]);
 
       assert.strictEqual(result, true);
     });

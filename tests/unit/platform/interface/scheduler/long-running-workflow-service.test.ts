@@ -25,7 +25,7 @@ test("LongRunningWorkflowService suspends workflow and marks it resumable when t
     const now = nowIso();
     h.store.insertWorkflowState({
       taskId: "task_sleep_1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_sleep",
       currentStepIndex: 2,
       status: "running",
@@ -70,7 +70,7 @@ test("LongRunningWorkflowService expires suspensions and can fail workflow on ti
     const now = nowIso();
     h.store.insertWorkflowState({
       taskId: "task_sleep_2",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_sleep",
       currentStepIndex: 1,
       status: "running",
@@ -110,7 +110,7 @@ test("LongRunningWorkflowService builds sleep leases and resume windows for susp
     const now = nowIso();
     h.store.insertWorkflowState({
       taskId: "task_sleep_3",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_sleep_3",
       currentStepIndex: 3,
       status: "running",

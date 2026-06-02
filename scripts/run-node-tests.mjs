@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveDefaultTestConcurrency } from "./lib/test-concurrency.mjs";
 
 const scriptPath = fileURLToPath(import.meta.url);
 
-export const DEFAULT_NODE_TEST_CONCURRENCY = 12;
+export const DEFAULT_NODE_TEST_CONCURRENCY = resolveDefaultTestConcurrency();
 
 export function readNodeTestConcurrency(env = process.env) {
   const raw = env.AA_NODE_TEST_CONCURRENCY;

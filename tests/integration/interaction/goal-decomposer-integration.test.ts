@@ -21,7 +21,7 @@ function createMockPlan() {
     tasks: [
       {
         taskId: "goal_test:llm:1",
-        domainId: "engineering_ops",
+        domainId: "engineering-ops",
         description: "Implement feature",
         inputs: {},
         expectedOutputs: ["feature_impl"],
@@ -31,7 +31,7 @@ function createMockPlan() {
       },
       {
         taskId: "goal_test:llm:2",
-        domainId: "engineering_ops",
+        domainId: "engineering-ops",
         description: "Write tests",
         inputs: {},
         expectedOutputs: ["test_report"],
@@ -83,7 +83,7 @@ test("integration: GoalDecompositionService decomposes release launch goal", asy
   const result = await service.decompose(goal);
 
   assert.equal(result.decompositionStrategy, "template");
-  assert.ok(result.tasks.some((t) => t.domainId === "engineering_ops"));
+  assert.ok(result.tasks.some((t) => t.domainId === "engineering-ops"));
   assert.ok(result.riskSummary.approvalNeeded === true || result.riskSummary.overallRisk === "high");
 });
 

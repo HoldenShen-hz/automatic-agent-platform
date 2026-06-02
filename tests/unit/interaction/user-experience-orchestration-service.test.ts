@@ -131,7 +131,7 @@ test("UserExperienceOrchestrationService bootstrap returns recommended domains f
     components: [],
   });
 
-  assert.ok(result.recommendedDomains.includes("engineering_ops"));
+  assert.ok(result.recommendedDomains.includes("engineering-ops"));
 });
 
 test("UserExperienceOrchestrationService bootstrap returns welcome prompt", async () => {

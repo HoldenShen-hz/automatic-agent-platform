@@ -39,7 +39,7 @@ function seedTask(
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Transition test task",
       status: status as "queued",
       source: "user",
@@ -222,7 +222,7 @@ test("performance: transitionSessionStatus throughput >5000 ops/sec", (t) => {
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           title: "Session transition test",
           status: "in_progress",
           source: "user",
@@ -311,7 +311,7 @@ test("performance: transitionWorkflowStatus throughput >5000 ops/sec", (t) => {
       db.transaction(() => {
         store.insertWorkflowState({
           taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           workflowId: "test_workflow",
           currentStepIndex: 0,
           status: "running",

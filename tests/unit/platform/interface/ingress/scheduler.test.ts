@@ -23,7 +23,7 @@ function seedWorkflow(store: AuthoritativeTaskStore, db: SqliteDatabase, taskId:
   const now = nowIso();
   store.insertWorkflowState({
     taskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: `wf_${taskId}`,
     currentStepIndex: 1,
     status: status as "running",

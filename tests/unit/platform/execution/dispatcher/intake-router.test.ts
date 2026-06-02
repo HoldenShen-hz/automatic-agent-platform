@@ -169,14 +169,14 @@ test("IntakeRouter.route handles pipe-separated trigger alternatives [intake-rou
   assert.equal(result.divisionId, "release");
 });
 
-test("IntakeRouter.route falls back to general_ops when no division matches [intake-router]", () => {
-  const generalOps = createMockDivision({ id: "general_ops", priority: 0, triggers: [] });
+test("IntakeRouter.route falls back to general-ops when no division matches [intake-router]", () => {
+  const generalOps = createMockDivision({ id: "general-ops", priority: 0, triggers: [] });
   const registry = createMockRegistry([generalOps]);
   const router = new IntakeRouter({ divisionRegistry: registry });
 
   const result = router.route(createRouteInput({ title: "Unknown", request: "xyz123 abcdef" }));
 
-  assert.equal(result.divisionId, "general_ops");
+  assert.equal(result.divisionId, "general-ops");
 });
 
 test("IntakeRouter.route uses default workflow when no orchestration needed [intake-router]", () => {
@@ -696,5 +696,5 @@ test("IntakeRouter.route falls back to single_agent_minimal when no division mat
 
   assert.equal(result.requiresOrchestration, false);
   assert.equal(result.workflowId, "single_agent_minimal");
-  assert.equal(result.divisionId, "general_ops");
+  assert.equal(result.divisionId, "general-ops");
 });

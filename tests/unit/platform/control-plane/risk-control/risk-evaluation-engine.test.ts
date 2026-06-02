@@ -238,6 +238,51 @@ test("RiskEvaluationEngine applies domain override to raise risk level", () => {
   assert.equal(result.riskLevel, "high");
 });
 
+test("RiskEvaluationEngine applies domain override to legacy requests", () => {
+  const engine = new RiskEvaluationEngine({
+    config: createTestConfig(),
+    domainRiskProfiles: new Map([["legacy-domain", "high" as const]]),
+  });
+
+  const result = engine.evaluate({
+    taskId: "task-legacy-domain",
+    domainId: "legacy-domain",
+    factors: {
+      operationRisk: "read",
+      targetResourceCriticality: "internal",
+      dataSensitivity: "public",
+      autonomyModeRisk: "suggestion",
+      tenantImpact: "single_task",
+      blastRadius: "single_task",
+      historicalFailureRate: "low",
+      evidenceConfidence: "high",
+    },
+  });
+
+  assert.equal(result.riskLevel, "high");
+});
+
+test("RiskEvaluationEngine rejects mixed legacy and six-factor schemas", () => {
+  const engine = new RiskEvaluationEngine({ config: createTestConfig() });
+
+  assert.throws(
+    () => engine.evaluate({
+      taskId: "task-mixed-schema",
+      factors: {
+        operationRisk: "write",
+        targetResourceCriticality: "production",
+        stepTypeRisk: "delete",
+        targetSystemRisk: "production",
+        dataClassRisk: "restricted",
+        blastRadius: "platform",
+        priorFailureRatePercent: 80,
+        confidence: "low",
+      },
+    }),
+    (error: unknown) => error instanceof Error && (error as { code?: string }).code === "risk.schema_mixed",
+  );
+});
+
 test("RiskEvaluationEngine does not lower risk level via domain override", () => {
   const domainProfileConfig = createTestConfig();
   const domainProfiles = new Map([["high-risk-domain", "high" as const]]);

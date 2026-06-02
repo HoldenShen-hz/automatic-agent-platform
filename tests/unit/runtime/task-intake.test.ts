@@ -51,7 +51,7 @@ test("route() routes simple query to single_agent_minimal workflow [task-intake]
   const decision = await router.route(input);
 
   assert.equal(decision.workflowId, "single_agent_minimal");
-  assert.equal(decision.divisionId, "general_ops");
+  assert.equal(decision.divisionId, "general-ops");
   assert.ok(decision.routeTrace.length > 0);
   assert.ok(!decision.requiresOrchestration);
 });

@@ -137,6 +137,13 @@ export class CrossProviderJudgeService {
   }
 }
 
+const JUDGE_LATENCY_RANK_REGISTRY = new Map<string, number>([
+  ["anthropic:claude-haiku-judge", 15],
+  ["anthropic:claude-judge", 35],
+  ["openai:gpt-opus-judge", 75],
+  ["minimax:m1-judge", 45],
+]);
+
 function selectByStrategy(
   judges: JudgeProfileRecord[],
   strategy: JudgeSelectionStrategy,
@@ -182,20 +189,21 @@ function selectProviderDiverse(judges: JudgeProfileRecord[]): JudgeProfileRecord
 }
 
 function estimateLatencyRank(judge: JudgeProfileRecord): number {
+  const providerFamily = judge.providerFamily.toLowerCase();
   const modelId = judge.modelId.toLowerCase();
-  let rank = 100;
+  const registryKey = `${providerFamily}:${modelId}`;
+  const registeredRank = JUDGE_LATENCY_RANK_REGISTRY.get(registryKey);
 
-  if (/(haiku|mini|flash|turbo|instant|fast)/.test(modelId)) {
-    rank -= 35;
-  }
-  if (/(sonnet|pro|large|max|reasoning|opus|thinking)/.test(modelId)) {
-    rank += 30;
-  }
-  if (judge.capabilities.length > 2) {
-    rank += 5;
-  }
-  if (judge.providerFamily.toLowerCase() === "anthropic" && modelId.includes("haiku")) {
-    rank -= 10;
+  let rank = registeredRank ?? 50;
+  if (registeredRank == null) {
+    if (judge.maxCostUsd <= 0.01) {
+      rank -= 10;
+    } else if (judge.maxCostUsd >= 0.05) {
+      rank += 15;
+    }
+    if (judge.capabilities.length > 2) {
+      rank += 5;
+    }
   }
 
   return rank;
@@ -218,30 +226,25 @@ function buildConsensusResult(
   const promoteCount = results.filter((r) => r.report.gateDecision === "promote").length;
   const holdCount = results.filter((r) => r.report.gateDecision === "hold").length;
   const rollbackCount = results.filter((r) => r.report.gateDecision === "rollback").length;
+  const requiredVotes = Math.max(2, Math.ceil(results.length * Math.max(0, Math.min(1, threshold))));
   if (results.length > 0 && promoteCount === 0 && rollbackCount === 0 && holdCount === results.length) {
+    const blockingFindings = [...new Set(results.flatMap((r) => r.report.blockingFindings))];
+    if (results.length < requiredVotes) {
+      blockingFindings.push(`insufficient_judge_quorum:${results.length}/${requiredVotes}`);
+    }
     return {
       consensusDecision: "hold",
       individualResults: results,
       agreementScore: 1,
-      blockingFindings: [...new Set(results.flatMap((r) => r.report.blockingFindings))],
+      blockingFindings,
     };
   }
 
   let consensusDecision: "promote" | "hold" | "rollback";
-  if (promoteCount > rollbackCount && promoteCount >= holdCount) {
+  if (promoteCount >= requiredVotes && promoteCount > rollbackCount && promoteCount > holdCount) {
     consensusDecision = "promote";
-  } else if (rollbackCount > promoteCount && rollbackCount >= holdCount) {
+  } else if (rollbackCount >= requiredVotes && rollbackCount > promoteCount && rollbackCount > holdCount) {
     consensusDecision = "rollback";
-  } else if (promoteCount === rollbackCount && rollbackCount === holdCount) {
-    consensusDecision = "hold";
-  } else if (promoteCount > rollbackCount && promoteCount === holdCount) {
-    consensusDecision = "hold";
-  } else if (rollbackCount > promoteCount && rollbackCount === holdCount) {
-    consensusDecision = "hold";
-  } else if (rollbackCount > promoteCount) {
-    consensusDecision = "rollback";
-  } else if (promoteCount > rollbackCount) {
-    consensusDecision = "promote";
   } else {
     consensusDecision = "hold";
   }
@@ -255,6 +258,9 @@ function buildConsensusResult(
   const agreementScore = Number((majorityCount / results.length).toFixed(2));
 
   const allBlockingFindings = results.flatMap((r) => r.report.blockingFindings);
+  if (results.length < requiredVotes || (consensusDecision === "hold" && promoteCount + rollbackCount > 0 && majorityCount < requiredVotes)) {
+    allBlockingFindings.push(`insufficient_judge_quorum:${majorityCount}/${requiredVotes}`);
+  }
 
   return {
     consensusDecision,

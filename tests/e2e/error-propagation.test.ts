@@ -81,7 +81,7 @@ function insertTaskAndExecution(
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "E2E error test task",
       status: taskStatus,
       source: "user",
@@ -126,7 +126,7 @@ function insertTaskAndExecution(
     });
     store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",

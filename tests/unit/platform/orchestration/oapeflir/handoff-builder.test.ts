@@ -88,11 +88,53 @@ test("buildFromStepResults infers toolName from summary keywords", () => {
 
   for (const { summary, expected } of testCases) {
     const handoff = buildFromStepResults(makeInput({
+      completedSteps: [],
       stepOutputs: [makeStepOutput("step", summary, 10)],
       primaryRefs: [],
     }));
     assert.equal(handoff.fact.toolCallRecords[0]!.toolName, expected, `Summary: "${summary}"`);
   }
+});
+
+test("buildFromStepResults prefers explicit tool metadata and preserves audit fields", () => {
+  const handoff = buildFromStepResults(makeInput({
+    completedSteps: [{
+      stepId: "step_explicit",
+      action: "file_write",
+      status: "done",
+      inputs: { file: "a.ts", patch: "..." },
+      dependencies: [],
+      timeout: 1000,
+      retryPolicy: { maxRetries: 0, backoffMs: 0 },
+    }],
+    stepOutputs: [{
+      ...makeStepOutput("step_explicit", "harmless summary", 20),
+      toolName: "bash",
+      inputArgs: { command: "rm -rf /tmp/demo" },
+      userFacingResult: {
+        summary: "harmless summary",
+        artifacts: ["artifact:step_explicit"],
+        parsedOutput: { ok: true },
+      },
+      systemTelemetry: {
+        durationMs: 20,
+        tokensUsed: 100,
+        inputTokens: 33,
+        outputTokens: 67,
+        modelId: "test-model",
+        retryCount: 1,
+        validationPassed: false,
+        sandboxViolation: true,
+      },
+    } as ReturnType<typeof makeStepOutput> & Record<string, unknown>],
+    primaryRefs: [],
+  }));
+
+  assert.equal(handoff.fact.toolCallRecords[0]!.toolName, "bash");
+  assert.deepEqual(handoff.fact.toolCallRecords[0]!.inputArgs, { command: "rm -rf /tmp/demo" });
+  assert.deepEqual(handoff.fact.toolCallRecords[0]!.parsedOutput, { ok: true });
+  assert.deepEqual(handoff.fact.toolCallRecords[0]!.tokenUsage, { input: 33, output: 67 });
+  assert.equal(handoff.fact.toolCallRecords[0]!.sandboxViolation, true);
 });
 
 test("buildFromStepResults marks toolCallRecord as failed when validationPassed is false", () => {

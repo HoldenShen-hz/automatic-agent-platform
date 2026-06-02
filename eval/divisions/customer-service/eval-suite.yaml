@@ -1,8 +1,13 @@
+$schema: eval/schemas/eval-suite.schema.json
 divisionId: customer-service
 datasetCardRef: eval/datasets/tau-style/dataset-card.json
-runner: policy-adherence-evaluator
+runnerRegistryRef: eval/runner-registry.json
+runner:
+  runnerId: policy-adherence-evaluator
+  runnerVersion: "1.0.0"
+  implementationRef: src/domains/customer-service/policy-adherence-evaluator.ts
 reportRef: docs_zh/divisions/customer-service/leadership-evidence/eval-report.md
-lastRefreshedAt: "2026-06-01T00:00:00.000Z"
+lastRefreshedAt: "2026-06-02T08:30:00.000Z"
 metrics:
   - task_completion
   - policy_violation

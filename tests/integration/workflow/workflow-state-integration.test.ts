@@ -38,7 +38,7 @@ function createWorkflowStateHarness(workspacePrefix: string) {
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Workflow state test",
       status: "in_progress",
       source: "user",
@@ -56,7 +56,7 @@ function createWorkflowStateHarness(workspacePrefix: string) {
 
     store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_ops_standard",
       currentStepIndex: 0,
       status: "running",
@@ -143,7 +143,7 @@ test("workflow state: persists and retrieves workflow state", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Persist test",
         status: "in_progress",
         source: "user",
@@ -161,7 +161,7 @@ test("workflow state: persists and retrieves workflow state", () => {
 
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "wf_ops_standard",
         currentStepIndex: 0,
         status: "running",
@@ -579,7 +579,7 @@ test("workflow state: listSuspensions returns all active suspensions", () => {
         id: taskId2,
         parentId: null,
         rootId: taskId2,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Second workflow",
         status: "in_progress",
         source: "user",
@@ -597,7 +597,7 @@ test("workflow state: listSuspensions returns all active suspensions", () => {
 
       h.store.insertWorkflowState({
         taskId: taskId2,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "wf_ops_standard",
         currentStepIndex: 0,
         status: "running",

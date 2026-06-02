@@ -144,4 +144,56 @@ test("buildVcrReplayFixture with seed provides deterministic replay [vcr-replay-
   const fixture2 = buildVcrReplayFixture(options);
 
   assert.equal(fixture1.fixtureId, fixture2.fixtureId);
+  const recording = fixture1.record({
+    recordedAt: "2026-04-07T00:00:00.000Z",
+    durationMs: 10,
+    events: [],
+    metadata: {},
+  });
+  assert.equal(recording.metadata.replaySeed, 12345);
+});
+
+test("buildVcrReplayFixture replays seeded timelines deterministically [vcr-replay-fixture-additional]", () => {
+  const recording: VcrReplayRecording = {
+    fixtureId: "seeded-fixture",
+    recordedAt: "2026-04-07T00:00:00.000Z",
+    durationMs: 10,
+    events: [
+      {
+        eventType: "frame:one",
+        timestamp: "2026-04-07T00:00:00.000Z",
+        payload: { index: 1 },
+      },
+      {
+        eventType: "frame:two",
+        timestamp: "2026-04-07T00:00:00.000Z",
+        payload: { index: 2 },
+      },
+    ],
+    metadata: {},
+  };
+
+  const fixtureA = buildVcrReplayFixture({
+    fixtureId: "seeded-fixture",
+    outputDir: "/tmp/vcr-test",
+    seed: 12345,
+  });
+  const fixtureB = buildVcrReplayFixture({
+    fixtureId: "seeded-fixture",
+    outputDir: "/tmp/vcr-test",
+    seed: 12345,
+  });
+  const fixtureC = buildVcrReplayFixture({
+    fixtureId: "seeded-fixture",
+    outputDir: "/tmp/vcr-test",
+    seed: 54321,
+  });
+
+  const replayA = fixtureA.replay(recording);
+  const replayB = fixtureB.replay(recording);
+  const replayC = fixtureC.replay(recording);
+
+  assert.deepEqual(replayA, replayB);
+  assert.notDeepEqual(replayA, replayC);
+  assert.ok(replayA[1]!.timestamp > replayA[0]!.timestamp);
 });

@@ -155,6 +155,77 @@ test("run-layered-tests supports deterministic file slicing for large layers", a
   }
 });
 
+test("run-layered-tests rejects blocked node flags from CLI passthrough", async () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-layered-"));
+
+  try {
+    mkdirSync(join(workspace, "tests", "unit"), { recursive: true });
+    mkdirSync(join(workspace, "src"), { recursive: true });
+    writeFileSync(
+      join(workspace, "tests", "unit", "placeholder.test.ts"),
+      [
+        "import test from \"node:test\";",
+        "",
+        "test(\"placeholder\", () => {});",
+        "",
+      ].join("\n"),
+    );
+    writeFileSync(join(workspace, "src", "index.ts"), "");
+
+    const result = spawnSync("node", [SCRIPT_PATH, "unit", "--experimental-loader=./evil.mjs"], {
+      cwd: workspace,
+      env: { ...process.env },
+      stdio: "pipe",
+    });
+
+    assert.notEqual(result.status, 0);
+    assert.match(`${result.stderr}${result.stdout}`, /blocked Node flag/);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("run-layered-tests strips FILE PASS and AUTH secrets from child test environment", async () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-layered-"));
+
+  try {
+    mkdirSync(join(workspace, "tests", "unit"), { recursive: true });
+    mkdirSync(join(workspace, "src"), { recursive: true });
+    writeFileSync(join(workspace, "src", "index.ts"), "");
+    writeFileSync(
+      join(workspace, "tests", "unit", "sanitized-env.test.ts"),
+      [
+        "import assert from \"node:assert/strict\";",
+        "import test from \"node:test\";",
+        "",
+        "test(\"sanitized env\", () => {",
+        "  assert.equal(process.env.AA_SECRET_FILE, undefined);",
+        "  assert.equal(process.env.AA_DEPLOY_PASS, undefined);",
+        "  assert.equal(process.env.AA_SERVICE_AUTH, undefined);",
+        "  assert.equal(process.env.VISIBLE_VALUE, \"ok\");",
+        "});",
+        "",
+      ].join("\n"),
+    );
+
+    const result = spawnSync("node", [SCRIPT_PATH, "unit"], {
+      cwd: workspace,
+      env: {
+        ...process.env,
+        AA_SECRET_FILE: "/tmp/secret.txt",
+        AA_DEPLOY_PASS: "secret",
+        AA_SERVICE_AUTH: "secret",
+        VISIBLE_VALUE: "ok",
+      },
+      stdio: "pipe",
+    });
+
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
 test("run-layered-tests force exits when a test leaves an active handle behind", async () => {
   const workspace = mkdtempSync(join(tmpdir(), "aa-layered-"));
 
@@ -183,6 +254,38 @@ test("run-layered-tests force exits when a test leaves an active handle behind",
 
     assert.equal(result.status, 0);
     assert.equal(result.signal, null);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("run-layered-tests strips blocked process.execArgv before spawning child tests", async () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-layered-"));
+
+  try {
+    mkdirSync(join(workspace, "tests", "unit"), { recursive: true });
+    mkdirSync(join(workspace, "src"), { recursive: true });
+    writeFileSync(join(workspace, "src", "index.ts"), "");
+    writeFileSync(
+      join(workspace, "tests", "unit", "exec-argv.test.ts"),
+      [
+        "import assert from \"node:assert/strict\";",
+        "import test from \"node:test\";",
+        "",
+        "test(\"exec argv filtered\", () => {",
+        "  assert.equal(process.execArgv.some((arg) => arg.startsWith(\"--experimental-vm-modules\")), false);",
+        "});",
+        "",
+      ].join("\n"),
+    );
+
+    const result = spawnSync("node", ["--experimental-vm-modules", SCRIPT_PATH, "unit"], {
+      cwd: workspace,
+      env: { ...process.env },
+      stdio: "pipe",
+    });
+
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   } finally {
     rmSync(workspace, { recursive: true, force: true });
   }

@@ -48,8 +48,8 @@ test("StrategyLearningService.learnSync returns empty array for empty signals", 
 test("StrategyLearningService.learnSync filters out non-failure_pattern signals for mining", () => {
   const service = new StrategyLearningService();
   const signals = [
-    makeSignal({ learningSignalId: "sig-1", learningType: "user_correction", evidence: { someData: "value" } }),
-    makeSignal({ learningSignalId: "sig-2", learningType: "recovery_playbook", evidence: { recoveryData: true } }),
+    makeSignal({ learningSignalId: "sig-1", learningType: "user_correction", evidence: { someData: "value" }, evidenceRefs: ["ref-user-1"] }),
+    makeSignal({ learningSignalId: "sig-2", learningType: "recovery_playbook", evidence: { recoveryData: true }, evidenceRefs: ["ref-recovery-1"] }),
   ];
 
   const result = service.learnSync(signals);
@@ -61,7 +61,7 @@ test("StrategyLearningService.learnSync filters out non-failure_pattern signals 
 test("StrategyLearningService.learnSync includes distilled signals for non-failure_pattern types", () => {
   const service = new StrategyLearningService();
   const signals = [
-    makeSignal({ learningSignalId: "sig-distill", learningType: "user_correction", valueSummary: "User corrected the approach" }),
+    makeSignal({ learningSignalId: "sig-distill", learningType: "user_correction", valueSummary: "User corrected the approach", evidenceRefs: ["ref-distill"] }),
   ];
 
   const result = service.learnSync(signals);
@@ -121,8 +121,8 @@ test("StrategyLearningService.learnSync handles mixed learning types", () => {
   const service = new StrategyLearningService();
   const signals: LearningSignal[] = [
     makeSignal({ learningSignalId: "sig-mixed-1", learningType: "failure_pattern", evidence: { finishReason: "length", maxTokens: 100, tokensUsed: 100 } }),
-    makeSignal({ learningSignalId: "sig-mixed-2", learningType: "user_correction", valueSummary: "User corrected output" }),
-    makeSignal({ learningSignalId: "sig-mixed-3", learningType: "recovery_playbook", valueSummary: "Recovery was successful" }),
+    makeSignal({ learningSignalId: "sig-mixed-2", learningType: "user_correction", valueSummary: "User corrected output", evidenceRefs: ["ref-mixed-2"] }),
+    makeSignal({ learningSignalId: "sig-mixed-3", learningType: "recovery_playbook", valueSummary: "Recovery was successful", evidenceRefs: ["ref-mixed-3"] }),
   ];
 
   const result = service.learnSync(signals);
@@ -252,13 +252,30 @@ test("StrategyLearningService assigns confidence from original signal", () => {
 test("StrategyLearningService uses fallback template when LLM service is not configured", () => {
   const service = new StrategyLearningService();
   const signals = [
-    makeSignal({ learningSignalId: "sig-fallback", learningType: "user_correction", valueSummary: "User provided correction" }),
+    makeSignal({ learningSignalId: "sig-fallback", learningType: "user_correction", valueSummary: "User provided correction", evidenceRefs: ["ref-fallback"] }),
   ];
 
   const result = service.learnSync(signals);
 
   assert.ok(result.length >= 1);
   assert.ok(result[0]!.recommendation.length > 0);
+});
+
+test("StrategyLearningService does not self-prove evidence from sourceFeedbackId", () => {
+  const service = new StrategyLearningService();
+
+  const result = service.learnSync([
+    makeSignal({
+      learningSignalId: "sig-no-proof",
+      learningType: "user_correction",
+      evidenceRefs: [],
+      sourceSignalIds: [],
+      sourceFeedbackId: "feedback-self-proof",
+      valueSummary: "Correction without explicit evidence refs",
+    }),
+  ]);
+
+  assert.equal(result.length, 0);
 });
 
 test("StrategyLearningService handles large number of signals", () => {

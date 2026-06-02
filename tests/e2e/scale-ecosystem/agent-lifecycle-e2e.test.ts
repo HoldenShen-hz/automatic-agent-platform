@@ -9,7 +9,7 @@ function createAgent(overrides: Partial<ManagedAgentDefinition> = {}): ManagedAg
   return {
     agentId: overrides.agentId ?? "agent-e2e-001",
     name: overrides.name ?? "E2E Agent",
-    domainId: overrides.domainId ?? "general_ops",
+    domainId: overrides.domainId ?? "general-ops",
     owner: overrides.owner ?? {
       orgNodeId: "org.platform.sre",
       path: "/platform/sre",

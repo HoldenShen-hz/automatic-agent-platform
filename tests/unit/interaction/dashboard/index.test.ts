@@ -5,7 +5,7 @@ import { DashboardAggregationService, type AttentionItem } from "../../../../src
 import type { TaskBoardItem } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { SystemSituation } from "../../../../src/platform/shared/observability/system-situation-model.js";
 
-function makeTask(taskId: string, taskStatus: TaskBoardItem["taskStatus"], divisionId = "general_ops"): TaskBoardItem {
+function makeTask(taskId: string, taskStatus: TaskBoardItem["taskStatus"], divisionId = "general-ops"): TaskBoardItem {
   return {
     taskId,
     title: `Task ${taskId}`,
@@ -62,9 +62,9 @@ test("DashboardAggregationService builds operator dashboard with attention queue
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_1", "failed", "engineering_ops"),
+        makeTask("task_1", "failed", "engineering-ops"),
         makeTask("task_2", "pending", "finance"),
-        makeTask("task_3", "done", "engineering_ops"),
+        makeTask("task_3", "done", "engineering-ops"),
       ],
     },
     systemSource: {
@@ -133,8 +133,8 @@ test("DashboardAggregationService builds fleet dashboard grouped by division", (
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_1", "in_progress", "engineering_ops"),
-        makeTask("task_2", "failed", "engineering_ops"),
+        makeTask("task_1", "in_progress", "engineering-ops"),
+        makeTask("task_2", "failed", "engineering-ops"),
         makeTask("task_3", "pending", "finance"),
       ],
     },
@@ -147,15 +147,15 @@ test("DashboardAggregationService builds fleet dashboard grouped by division", (
 
   assert.equal(dashboard.platformHealth.overall, 58);
   assert.equal(dashboard.departmentOverview.length, 2);
-  assert.ok(dashboard.departmentOverview.some((item) => item.departmentId === "engineering_ops"));
+  assert.ok(dashboard.departmentOverview.some((item) => item.departmentId === "engineering-ops"));
 });
 
 test("DashboardAggregationService buildDomainAdminDashboard filters by domainId", () => {
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_1", "in_progress", "engineering_ops"),
-        makeTask("task_2", "pending", "engineering_ops"),
+        makeTask("task_1", "in_progress", "engineering-ops"),
+        makeTask("task_2", "pending", "engineering-ops"),
         makeTask("task_3", "done", "finance"),
       ],
     },
@@ -165,9 +165,9 @@ test("DashboardAggregationService buildDomainAdminDashboard filters by domainId"
     currentTime: () => "2026-04-19T00:00:00.000Z",
   });
 
-  const dashboard = service.buildDomainAdminDashboard("engineering_ops");
+  const dashboard = service.buildDomainAdminDashboard("engineering-ops");
 
-  assert.equal(dashboard.domainId, "engineering_ops");
+  assert.equal(dashboard.domainId, "engineering-ops");
   assert.equal(dashboard.activeWorkflows.length, 2);
   assert.equal(dashboard.pendingApprovals.length, 1);
 });
@@ -176,7 +176,7 @@ test("DashboardAggregationService buildDomainAdminDashboard returns empty for un
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_1", "in_progress", "engineering_ops"),
+        makeTask("task_1", "in_progress", "engineering-ops"),
       ],
     },
     systemSource: {
@@ -195,8 +195,8 @@ test("DashboardAggregationService buildDomainAdminDashboard calculates domain bu
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_1", "in_progress", "engineering_ops"),
-        makeTask("task_2", "pending", "engineering_ops"),
+        makeTask("task_1", "in_progress", "engineering-ops"),
+        makeTask("task_2", "pending", "engineering-ops"),
       ],
     },
     systemSource: {
@@ -204,7 +204,7 @@ test("DashboardAggregationService buildDomainAdminDashboard calculates domain bu
     },
   });
 
-  const dashboard = service.buildDomainAdminDashboard("engineering_ops");
+  const dashboard = service.buildDomainAdminDashboard("engineering-ops");
 
   assert.ok(dashboard.domainBudget.allocated);
   assert.ok(dashboard.domainBudget.consumed);
@@ -313,13 +313,13 @@ test("DashboardAggregationService respects limit parameter for buildOperatorDash
 });
 
 test("DashboardAggregationService respects limit parameter for buildDomainAdminDashboard", () => {
-  const tasks = Array.from({ length: 60 }, (_, i) => makeTask(`task_${i}`, "in_progress", "engineering_ops"));
+  const tasks = Array.from({ length: 60 }, (_, i) => makeTask(`task_${i}`, "in_progress", "engineering-ops"));
   const service = new DashboardAggregationService({
     taskSource: { list: (limit) => (limit ? tasks.slice(0, limit) : tasks) },
     systemSource: { build: () => makeSystemSituation() },
   });
 
-  const dashboard = service.buildDomainAdminDashboard("engineering_ops", 20);
+  const dashboard = service.buildDomainAdminDashboard("engineering-ops", 20);
 
   assert.ok(dashboard.activeWorkflows.length <= 20);
 });
@@ -397,9 +397,9 @@ test("DashboardAggregationService buildFleetDashboard calculates health scores p
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_1", "failed", "engineering_ops"),
-        makeTask("task_2", "failed", "engineering_ops"),
-        makeTask("task_3", "in_progress", "engineering_ops"),
+        makeTask("task_1", "failed", "engineering-ops"),
+        makeTask("task_2", "failed", "engineering-ops"),
+        makeTask("task_3", "in_progress", "engineering-ops"),
         makeTask("task_4", "pending", "finance"),
       ],
     },
@@ -410,7 +410,7 @@ test("DashboardAggregationService buildFleetDashboard calculates health scores p
 
   const dashboard = service.buildFleetDashboard();
 
-  const engOps = dashboard.departmentOverview.find((d) => d.departmentId === "engineering_ops");
+  const engOps = dashboard.departmentOverview.find((d) => d.departmentId === "engineering-ops");
   assert.ok(engOps);
   assert.equal(engOps!.incidentsOpen, 2);
   // activeWorkflows counts all non-done tasks: 2 failed + 1 in_progress = 3

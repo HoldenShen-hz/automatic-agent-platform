@@ -311,9 +311,10 @@ export class EvidenceService {
         signals.push(...categorySignals);
 
         // Update record status
+        const previousStatus = record.status;
         record.status = "integrated";
         record.integratedAt = nowIso();
-        this.requireIndex(this.STATUS_INDEX, "recorded").delete(id);
+        this.requireIndex(this.STATUS_INDEX, previousStatus).delete(id);
         this.requireIndex(this.STATUS_INDEX, "integrated").add(id);
       } catch (err) {
         errors.push(`Failed to integrate ${id}: ${err instanceof Error ? err.message : String(err)}`);
@@ -479,24 +480,30 @@ export class EvidenceService {
     const threshold = Date.now() - (this.retentionDays * 24 * 60 * 60 * 1000);
 
     // Find old records to evict
-    const toEvict: string[] = [];
+    const toEvict = new Set<string>();
     for (const [id, record] of this.records) {
-      if (record.status === "archived") continue; // Keep archived
       const recordedAt = new Date(record.recordedAt).getTime();
       if (recordedAt < threshold) {
-        toEvict.push(id);
+        if (record.status !== "archived") {
+          toEvict.add(id);
+        }
       }
     }
 
-    // If still over capacity, evict oldest records
-    if (this.records.size - toEvict.length > this.maxRecords) {
+    // If still over capacity, evict oldest records regardless of status.
+    if (this.records.size - toEvict.size > this.maxRecords) {
       const sorted = [...this.records.entries()]
-        .filter(([id]) => !toEvict.includes(id))
-        .sort((a, b) => a[1].recordedAt.localeCompare(b[1].recordedAt));
+        .filter(([id]) => !toEvict.has(id))
+        .sort((a, b) => {
+          if (a[1].recordedAt === b[1].recordedAt) {
+            return a[0].localeCompare(b[0]);
+          }
+          return a[1].recordedAt.localeCompare(b[1].recordedAt);
+        });
 
       const toRemove = this.records.size - this.maxRecords;
       for (let i = 0; i < toRemove && i < sorted.length; i++) {
-        toEvict.push(sorted[i]![0]);
+        toEvict.add(sorted[i]![0]);
       }
     }
 

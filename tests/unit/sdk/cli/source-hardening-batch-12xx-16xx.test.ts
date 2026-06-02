@@ -23,6 +23,9 @@ const uiEslintSource = readFileSync(join(root, "ui", "eslint.config.js"), "utf8"
 const prettierIgnore = readFileSync(join(root, ".prettierignore"), "utf8");
 const gitIgnore = readFileSync(join(root, ".gitignore"), "utf8");
 const mutationCriticalSource = readFileSync(join(root, "scripts", "ci", "mutation-critical-tests.sh"), "utf8");
+const mutationCriticalManifest = JSON.parse(
+  readFileSync(join(root, "config", "quality", "mutation-critical-tests.json"), "utf8"),
+) as { testFiles: string[] };
 const exceptionRecoveryConfig = readFileSync(join(root, "config", "exception-recovery", "default.json"), "utf8");
 const costAlertConfig = readFileSync(join(root, "config", "cost-alert", "default.json"), "utf8");
 const todoWriteToolSource = readFileSync(join(root, "src", "platform", "five-plane-execution", "tool-executor", "todo-write-tool.ts"), "utf8");
@@ -30,7 +33,6 @@ const gcpSecretProviderSource = readFileSync(join(root, "src", "platform", "five
 const packTestLocalSource = readFileSync(join(root, "src", "sdk", "pack-sdk", "pack-test-local-service.ts"), "utf8");
 const packPluginCompatibilitySource = readFileSync(join(root, "src", "sdk", "pack-sdk", "pack-plugin-compatibility-service.ts"), "utf8");
 const directExecGuardSources = [
-  "src/sdk/cli/dispatch-execution.ts",
   "src/sdk/cli/doctor.ts",
   "src/sdk/cli/pack-create.ts",
   "src/sdk/cli/pack-publish.ts",
@@ -46,6 +48,7 @@ const directExecGuardSources = [
   file,
   source: readFileSync(join(root, file), "utf8"),
 }));
+const dispatchExecutionSource = readFileSync(join(root, "src", "sdk", "cli", "dispatch-execution.ts"), "utf8");
 
 test("login and secret command CLIs fail closed on home, encryption, and secret output handling", () => {
   assert.match(loginSource, /function resolveSecureCliHome/);
@@ -110,6 +113,10 @@ test("CLI and repo scripts expose fast paths and avoid stale layered-test coupli
     assert.match(entry.source, /pathToFileURL/);
     assert.match(entry.source, /import\.meta\.url === pathToFileURL\(process\.argv\[1\]\)\.href/);
   }
+  assert.match(dispatchExecutionSource, /isCliEntryPoint/);
+  assert.match(dispatchExecutionSource, /runCliMain/);
+  assert.match(mutationCriticalSource, /MANIFEST_PATH="config\/quality\/mutation-critical-tests\.json"/);
+  assert.ok(Array.isArray(mutationCriticalManifest.testFiles) && mutationCriticalManifest.testFiles.length > 0);
 });
 
 test("lint and config metadata cover repo scripts, generated outputs, and schema consistency", () => {
@@ -157,5 +164,5 @@ test("repo hygiene keeps curated coverage, domain audits, snapshots, and helper 
   assert.equal(existsSync(join(root, "tests", "unit", "platform", "interface", "api", "http-server", "approval-routes.test.ts")), true);
   assert.equal(existsSync(join(root, "tests", "unit", "platform", "interface", "api", "http-server", "gateway-routes.test.ts")), true);
   assert.equal(existsSync(join(root, "tests", "unit", "platform", "orchestration", "oapeflir", "oapeflir-loop-service.test.ts")), true);
-  assert.match(mutationCriticalSource, /tests\/unit\/platform\/interface\/api\/http-server\/auth-routes\.test\.ts/);
+  assert.ok(mutationCriticalManifest.testFiles.includes("tests/unit/platform/interface/api/http-server/auth-routes.test.ts"));
 });

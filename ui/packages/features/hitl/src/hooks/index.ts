@@ -68,7 +68,8 @@ export function useHitlVm(): HitlVm {
 
   useEffect(() => {
     let mounted = true;
-    void fetchApprovals(client)
+    const reloadApprovals = async () => fetchApprovals(client);
+    void reloadApprovals()
       .then((items) => {
         if (mounted) {
           setApprovals(items);
@@ -82,7 +83,15 @@ export function useHitlVm(): HitlVm {
         }
       });
 
-    const unsubscribe = wsClient.subscribe("approvals", () => undefined);
+    const unsubscribe = wsClient.subscribe("approvals", () => {
+      void reloadApprovals()
+        .then((items) => {
+          if (mounted) {
+            setApprovals(items);
+          }
+        })
+        .catch(() => undefined);
+    });
     return () => {
       mounted = false;
       unsubscribe();
@@ -165,15 +174,27 @@ export function useHitlVm(): HitlVm {
 
   const bulkApprove = useCallback(async (approvalIds: readonly string[]) => {
     await withPending(async () => {
-      await Promise.all(approvalIds.map((approvalId) => approveApproval(client, approvalId)));
-      setApprovals((current) => current.filter((approval) => !approvalIds.includes(approval.approvalId)));
+      const results = await Promise.allSettled(approvalIds.map((approvalId) => approveApproval(client, approvalId)));
+      const succeededIds = approvalIds.filter((_, index) => results[index]?.status === "fulfilled");
+      if (succeededIds.length > 0) {
+        setApprovals((current) => current.filter((approval) => !succeededIds.includes(approval.approvalId)));
+      }
+      if (results.some((item) => item.status === "rejected")) {
+        throw new Error("hitl.bulk_approve_partial_failure");
+      }
     });
   }, [client, withPending]);
 
   const bulkReject = useCallback(async (approvalIds: readonly string[]) => {
     await withPending(async () => {
-      await Promise.all(approvalIds.map((approvalId) => rejectApproval(client, approvalId)));
-      setApprovals((current) => current.filter((approval) => !approvalIds.includes(approval.approvalId)));
+      const results = await Promise.allSettled(approvalIds.map((approvalId) => rejectApproval(client, approvalId)));
+      const succeededIds = approvalIds.filter((_, index) => results[index]?.status === "fulfilled");
+      if (succeededIds.length > 0) {
+        setApprovals((current) => current.filter((approval) => !succeededIds.includes(approval.approvalId)));
+      }
+      if (results.some((item) => item.status === "rejected")) {
+        throw new Error("hitl.bulk_reject_partial_failure");
+      }
     });
   }, [client, withPending]);
 

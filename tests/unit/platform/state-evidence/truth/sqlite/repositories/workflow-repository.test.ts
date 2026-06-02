@@ -19,7 +19,7 @@ function createTestTask(
     id: taskId,
     parentId: null,
     rootId: taskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     tenantId,
     title: "Test workflow task",
     status: "in_progress",
@@ -51,7 +51,7 @@ test("WorkflowRepository insertWorkflowState inserts a workflow record", () => {
 
     const workflow: WorkflowStateRecord = {
       taskId: "task-wf-1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf-1",
       currentStepIndex: 0,
       status: "in_progress",
@@ -123,7 +123,7 @@ test("WorkflowRepository insertStepOutput inserts a step output record", () => {
     // Verify by listing workflow states - step outputs are stored separately
     const workflow: WorkflowStateRecord = {
       taskId: "task-step-1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf-1",
       currentStepIndex: 1,
       status: "in_progress",
@@ -159,7 +159,7 @@ test("WorkflowRepository listWorkflowStates returns all workflows", () => {
 
     repo.insertWorkflowState({
       taskId: "task-list-1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf-1",
       currentStepIndex: 0,
       status: "in_progress",
@@ -173,7 +173,7 @@ test("WorkflowRepository listWorkflowStates returns all workflows", () => {
 
     repo.insertWorkflowState({
       taskId: "task-list-2",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf-2",
       currentStepIndex: 0,
       status: "completed",
@@ -207,7 +207,7 @@ test("WorkflowRepository updateWorkflowState updates workflow fields", () => {
 
     repo.insertWorkflowState({
       taskId: "task-update-1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf-1",
       currentStepIndex: 0,
       status: "in_progress",
@@ -251,7 +251,7 @@ test("WorkflowRepository updateWorkflowStateCas returns 1 on successful update",
 
     repo.insertWorkflowState({
       taskId: "task-cas-1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf-1",
       currentStepIndex: 0,
       status: "in_progress",
@@ -298,7 +298,7 @@ test("WorkflowRepository updateWorkflowStateCas returns 0 on CAS failure", () =>
 
     repo.insertWorkflowState({
       taskId: "task-cas-fail-1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf-1",
       currentStepIndex: 0,
       status: "in_progress",
@@ -347,7 +347,7 @@ test("WorkflowRepository updateWorkflowRecoveryState updates all recovery fields
 
     repo.insertWorkflowState({
       taskId: "task-recovery-1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf-1",
       currentStepIndex: 0,
       status: "in_progress",

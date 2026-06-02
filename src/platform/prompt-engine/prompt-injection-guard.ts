@@ -23,4 +23,4 @@ export {
   type PromptRoleSegment,
   type PromptProtectionInspection,
   type PromptProtectionPlan,
-} from "../shared/stability/prompt-injection-guard.js";
+} from "../stability/prompt-injection-guard.js";

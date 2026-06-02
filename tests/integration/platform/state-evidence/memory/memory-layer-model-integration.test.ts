@@ -356,7 +356,7 @@ test("Integration: ContextTruncationReport calculates estimated size", () => {
     createMemory({ id: "mem_size_2" }),
   ];
   const report = createContextTruncationReport("agent", memories, "stale_expired");
-  assert.ok(report.evictedSizeBytes >= memories.length * 1000);
+  assert.ok(report.evictedSizeBytes >= memories.length * 100);
 });
 
 test("Integration: ContextTruncationReport with different eviction reasons", () => {

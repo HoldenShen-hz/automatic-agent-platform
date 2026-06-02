@@ -1,7 +1,7 @@
 # Contracts
 
 > `contracts/` is the platform's authoritative specification layer.
-> This directory defines canonical objects, minimum fields, state machines, protocol boundaries, and testing requirements. Current coverage analysis is uniformly recorded in `docs_zh/analysis/` and is not written into the contract body.
+> This directory defines canonical objects, minimum fields, state machines, protocol boundaries, and testing requirements. Current coverage analysis is uniformly recorded in `docs_en/analysis/` and is not written into the contract body.
 
 ## 1. Usage Order
 
@@ -25,6 +25,14 @@ Recommended order:
 - Short filenames appearing in old reviews such as `runtime_state_machine.md`, `event_bus.md`, `gateway_message.md` should now map to actual existing `*_contract.md` / `*-contract.md` files, rather than supplementing a second set of historical files.
 - Contract version authority defaults to directory-level governance: `ADR-109` freeze, README authority map, and in-document `Update Date` / scope note together constitute the version source of truth; it is not required to additionally maintain `version:` frontmatter for each file.
 - Only when a contract needs to evolve separately from directory-level freeze should an additional machine-readable version field be introduced; otherwise, maintain a single directory-level source of truth to avoid multi-point drift.
+
+Legacy review filename mapping:
+
+| Historical short name | Current canonical contract |
+| --- | --- |
+| `runtime_state_machine.md` | [runtime_state_machine_contract.md](./runtime_state_machine_contract.md) |
+| `event_bus.md` | [event_bus_contract.md](./event_bus_contract.md) |
+| `gateway_message.md` | [gateway_message_contract.md](./gateway_message_contract.md) |
 
 ## 2. v4.3 Contract Freeze Scope
 

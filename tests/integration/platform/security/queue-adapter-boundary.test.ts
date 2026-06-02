@@ -84,7 +84,8 @@ test("queue adapter nack does not lose job even with null error", () => {
     assert.ok(r);
     r.nack(); // no error string
     const job = adapter.getJob(r.job.id);
-    assert.equal(job?.status, "waiting");
+    assert.equal(job?.status, "delayed");
+    assert.ok(job?.delayUntil);
   } finally {
     h.db.close();
     cleanupPath(h.workspace);
@@ -131,33 +132,35 @@ test("queue adapter purge with past cutoff does not remove recent jobs", () => {
 
 // Redis Queue Adapter Security Boundary Tests
 
-test("redis queue adapter enqueue works with JSON payload", () => {
+test("redis queue adapter sync enqueue is denied to avoid false durability claims", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  // enqueue is fire-and-forget, should return a job record
-  const job = adapter.enqueue({
-    queueName: "test-security",
-    payload: { cmd: "'; DROP TABLE--", nested: { arr: [1, 2, 3] } },
-  });
-  assert.equal(job.queueName, "test-security");
-  assert.equal(job.status, "waiting");
-  assert.equal(job.priority, 0);
-  assert.ok(job.id.startsWith("qjob_"));
+  assert.throws(
+    () => adapter.enqueue({
+      queueName: "test-security",
+      payload: { cmd: "'; DROP TABLE--", nested: { arr: [1, 2, 3] } },
+    }),
+    /sync_enqueue_not_supported/,
+  );
 });
 
-test("redis queue adapter enqueue handles large priority values", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({
-    queueName: "q",
-    payload: "test",
-    priority: Number.MAX_SAFE_INTEGER,
-  });
-  assert.equal(job.priority, Number.MAX_SAFE_INTEGER);
+test("redis queue adapter rejects unsafe ready-queue priority values", async () => {
+  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379, driver: "memory" });
+  await assert.rejects(
+    () => adapter.enqueueAsync({
+      queueName: "q",
+      payload: "test",
+      priority: Number.MAX_SAFE_INTEGER,
+    }),
+    /queue\.priority_out_of_range/,
+  );
+  await adapter.close();
 });
 
 test("redis queue adapter sync methods throw descriptive security errors", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   // All sync methods should throw with proper error codes
+  assert.throws(() => adapter.enqueue({ queueName: "q", payload: "x" }), /sync_enqueue_not_supported/);
   assert.throws(() => adapter.dequeue("q"), /sync_dequeue_not_supported/);
   assert.throws(() => adapter.getJob("x"), /sync_getJob_not_supported/);
   assert.throws(() => adapter.listJobs("q"), /sync_listJobs_not_supported/);

@@ -1,11 +1,11 @@
 # Release Rollout And Rollback Contract
 
-> **OAPEFLIR 相关**：本 contract defines OAPEFLIR Improve Hub 的受控发布vs回滚机制。当前执lines依据is ADR-075；ADR-018 只保留为历史Background。
-> **更新日期**：2026-04-17
+> **OAPEFLIR Related**: This contract defines the controlled release and rollback mechanism of the OAPEFLIR Improve Hub. The current execution basis is ADR-075; ADR-018 is retained only as historical context.
+> **Update Date**: 2026-04-17
 
 ## 1. Scope
 
-This contract defines industrial-grade release, canary, rollback, and schema compatibility strategies for the OAPEFLIR Improve/Rollout pipeline.
+This contract defines industrial-grade release, canary, rollback, and schema compatibility strategies for the OAPEFLIR Improve / Rollout pipeline.
 
 Related documents:
 
@@ -13,15 +13,15 @@ Related documents:
 - `prompt_model_policy_governance_contract.md`
 - `enterprise_operations_plane_contract.md`
 - [operations/release-versioning.md](../operations/release-versioning.md)
-- [ADR-075 六级受控发布](../adr/075-controlled-rollout-release.md)
+- [ADR-075 Six-Level Controlled Release](../adr/075-controlled-rollout-release.md)
 - [ADR-080 Learn Hub](../adr/080-learn-hub-pattern-detection.md)
 
 ## 2. Goals
 
-- Unify release paths for code, config, prompt, role, skill.
+- Unify release paths for code, config, prompt, role, and skill.
 - Make any production release have controllable canary and executable rollback.
-- Make schema changes comply with forward/backward compatibility.
-- Integrate with OAPEFLIR LearningObject → ImprovementCandidate → RolloutRecord pipeline.
+- Make schema changes comply with forward / backward compatibility.
+- Integrate with the OAPEFLIR `LearningObject` -> `ImprovementCandidate` -> `RolloutRecord` pipeline.
 
 ## 3. Release Objects
 
@@ -32,96 +32,96 @@ Related documents:
 - `role_bundle`
 - `skill_bundle`
 - `schema_migration`
-- `LearningObject`（对应 OAPEFLIR 副链）
+- `LearningObject` (corresponding to the OAPEFLIR side chain)
 
 ## 4. Release Levels and RolloutStatus
 
-### 4.1 六级受控发布（L0-L5）
+### 4.1 Six-Level Controlled Release (L0-L5)
 
-对应 ADR-075 §1：
+Corresponds to ADR-075 §1:
 
-| Level | Name | Traffic | AI 自主permission | 人class审批 |
-|---|-------|--------| --- | --- |
-| L0 | `off` | 0% | no操作permission，onlyrecord | — |
-| L1 | `evaluate_0` | 0%（onlyrecord） | candidate evaluation / evidence validation | — |
-| L2 | `canary_5` | 5% | 参数调整、策略选择 | critical/high 需审批 |
-| L3 | `partial_25` | 25% | configureRecommendation | 全部需审批 |
-| L4 | `stable_75` | 75% | 执linesconfigure变更 | 全部必须审批 |
-| L5 | `stable_100` | 100% | 完全自主（受 guardrail 约束） | only异常升级 |
+| Level | Name | Traffic | AI Autonomy | Human Approval |
+| --- | --- | --- | --- | --- |
+| L0 | `off` | 0% | No operation permission, record only | — |
+| L1 | `evaluate_0` | 0% (record only) | Candidate evaluation / evidence validation | — |
+| L2 | `canary_5` | 5% | Parameter tuning, strategy selection | Required for critical / high |
+| L3 | `partial_25` | 25% | Configuration suggestion | Required for all |
+| L4 | `stable_75` | 75% | Execute configuration change | Required for all |
+| L5 | `stable_100` | 100% | Fully autonomous (subject to guardrail constraints) | Only on exception escalation |
 
-### 4.2 Rollout Status机
+### 4.2 Rollout State Machine
 
-完整Status机以 ADR-075 §2 为执lines依据；ADR-018 onlyused for解释历史命名来源：
+The complete state machine uses ADR-075 §2 as the execution basis; ADR-018 is only used to explain the origin of historical naming:
 
 ```
 candidate_created
       ↓
-under_review （人class审批）
+under_review (human approval)
       ↓
 approved / rejected
       ↓
 evaluation_enabled (L1)
       ↓
-canary_5 (L2) ←→ auto_rollback
+canary_5 (L2) <-→ auto_rollback
       ↓
-partial_25 (L3) ←→ auto_rollback
+partial_25 (L3) <-→ auto_rollback
       ↓
-stable_75 (L4) ←→ auto_rollback
+stable_75 (L4) <-→ auto_rollback
       ↓
 stable_100 (L5)
       ↓
-released （持续 M 天noIssue）
+released (no issues for M consecutive days)
 ```
 
-### 4.3 Release Modes（补充）
+### 4.3 Release Modes (Supplementary)
 
 | Mode | Use Case |
 | --- | --- |
-| `blue_green` | Main chain major version, need quick full-group switch |
+| `blue_green` | Main chain major version, requires fast full-group switch |
 | `canary` | Small traffic validation |
 | `tenant_gray` | Designated tenant or division phased canary |
-| `feature_flag` | Feature enable/disable and quick damage control |
+| `feature_flag` | Feature enable / disable and quick damage control |
 
-### 4.4 自动回滚条件
+### 4.4 Automatic Rollback Conditions
 
-对应 ADR-075 §3.2：
+Corresponds to ADR-075 §3.2:
 
-| 指标 | threshold | 窗口 | 触发动作 |
-|------|------|------|---------|
-| 错误率 | > 1% | 5 分钟 | L4→L3 |
-| P99 delay | > 500ms | 5 分钟 | L4→L3 |
-| success率 | < 99% | 5 分钟 | L4→L3 |
-| 连续failed | > 10 iterations | 10 分钟 | directly回滚 L1 |
-| 资源耗尽 | Memory > 90% | 1 分钟 | directly回滚 L1 |
+| Metric | Threshold | Window | Trigger Action |
+| --- | --- | --- | --- |
+| Error rate | > 1% | 5 minutes | L4 -> L3 |
+| P99 latency | > 500ms | 5 minutes | L4 -> L3 |
+| Success rate | < 99% | 5 minutes | L4 -> L3 |
+| Consecutive failures | > 10 | 10 minutes | Rollback directly to L1 |
+| Resource exhaustion | Memory > 90% | 1 minute | Rollback directly to L1 |
 
-### 4.5 Status约束
+### 4.5 State Constraints
 
-- `evaluate_0`（L1）：候选评估和证据验证，不得directly覆盖user可见结果。
-- `canary_5`（L2）/ `partial_25`（L3）/ `stable_75`（L4）：需via metrics gate 方可升级。
-- `stable_100`（L5）：full流量，完全自主（受 guardrail 约束）。
-- `auto_rollback`：自动或手动回滚。
+- `evaluate_0` (L1): Candidate evaluation and evidence validation, must not directly overwrite user-visible results.
+- `canary_5` (L2) / `partial_25` (L3) / `stable_75` (L4): Must pass the metrics gate before promotion.
+- `stable_100` (L5): Full traffic, fully autonomous (subject to guardrail constraints).
+- `auto_rollback`: Automatic or manual rollback.
 
-## 5. OAPEFLIR 副链集成
+## 5. OAPEFLIR Side Chain Integration
 
 ```
-LearningObject(validated/promoted)
-    → ImprovementCandidate(candidate_created)
-    → under_review
-    → approved / rejected
-    → RolloutRecord(evaluate_0 → canary → partial → stable → released)
+LearningObject (validated / promoted)
+    -> ImprovementCandidate (candidate_created)
+    -> under_review
+    -> approved / rejected
+    -> RolloutRecord (evaluate_0 -> canary -> partial -> stable -> released)
 ```
 
-**必须满足的条件**（R4-EVIDENCE 约束）：
-- LearningObject without evidence chain must not enter rollout.
-- Candidate not passing guardrail can only stay in candidate_created state, must not enter `evaluation_enabled`.
-- `evaluation_enabled` runtime should record guardrail reason codes for explainability and audit.
+**Mandatory Conditions** (R4-EVIDENCE constraints):
+- A `LearningObject` without an evidence chain must not enter rollout.
+- A candidate that has not passed the guardrail can only stay in `candidate_created` and must not enter `evaluation_enabled`.
+- The `evaluation_enabled` runtime should record guardrail reason codes for explainability and audit.
 
-## 6. ImprovementCandidate 接口
+## 6. ImprovementCandidate Interface
 
 ```typescript
 interface ImprovementCandidate {
   candidateId: string;
-  learningObjectId: string;      // 关联的 LearningObject
+  learningObjectId: string;      // Associated LearningObject
   source: 'failure_pattern' | 'user_correction' | 'recovery_playbook';
   targetScope: 'task' | 'workflow' | 'domain' | 'platform';
   priority: 'critical' | 'high' | 'medium' | 'low';
@@ -136,7 +136,7 @@ interface ImprovementCandidate {
 type RolloutLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
 ```
 
-## 7. RolloutRecord 接口
+## 7. RolloutRecord Interface
 
 ```typescript
 interface RolloutRecord {
@@ -159,15 +159,15 @@ interface RolloutMetrics {
 }
 ```
 
-## 8. Rollback 规则
+## 8. Rollback Rules
 
 - Code rollback must be faster than data repair.
 - prompt / policy / feature flag should support independent rollback.
-- Schema rollback if irreversible, must declare in advance and prepare compensating migration.
-- Rollback action must produce logs, audit, and incident records.
-- If local workspace file modification is involved, allow using shadow snapshot / shadow git repo outside workspace as step-level undo / redo basis; but must not leak git state into user workspace.
-- Shadow snapshot should at least support: one stable snapshot per operation, common generation directory exclusion, oversized directory protection, and do not pollute user repository on failure.
-- Policy rollback must not be executed purely based on model suggestion; must be decided and recorded by system layer guardrail / policy code.
+- Schema rollback, if irreversible, must be declared in advance and a compensating migration prepared.
+- Rollback action must produce logs, audit records, and incident records.
+- If local workspace file modification is involved, allow using a shadow snapshot / shadow git repo outside the workspace as the basis for step-level undo / redo; but must not leak git state into the user workspace.
+- Shadow snapshot should at least support: one stable snapshot per operation, common generation directory exclusion, oversized directory protection, and must not pollute the user repository on failure.
+- Policy rollback must not be executed purely based on model suggestion; it must be decided and recorded by system-layer guardrail / policy code.
 
 ## 9. Required Capabilities
 
@@ -199,19 +199,19 @@ Not allowed:
 - Has tenant gray strategy
 - Has rollback owner
 - Has schema compatibility checklist
-- Has machine-readable secret/config injection plan, and workflow only consumes ref, not plaintext secret
+- Has machine-readable secret / config injection plan, and workflow only consumes ref, not plaintext secret
 
 ## 12. Autonomy Boundary
 
-对应 governance/autonomy_boundary_policy.md：
+Corresponds to `governance/autonomy_boundary_policy.md`:
 
-| 级别 | AI 自主permission | 人class审批要求 |
-|------|------------|------------|
-| L0-L1 | 完全自主（onlyrecord） | 不需要 |
-| L2 | 参数调整、策略选择 | 需要 for critical/high |
-| L3 | configure变更Recommendation | 需要 for all |
-| L4 | 执linesconfigure变更 | 必须 for all |
-| L5 | 完全自主（受 guardrail 约束） | only异常升级 |
+| Level | AI Autonomy | Human Approval Requirement |
+| --- | --- | --- |
+| L0-L1 | Fully autonomous (record only) | Not required |
+| L2 | Parameter tuning, strategy selection | Required for critical / high |
+| L3 | Configuration change suggestion | Required for all |
+| L4 | Execute configuration change | Required for all |
+| L5 | Fully autonomous (subject to guardrail constraints) | Only on exception escalation |
 
 ## 13. Closure Conclusion
 

@@ -38,7 +38,7 @@ test("E2E Orchestration Loop: plan → execute → observe → feedback complete
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Full orchestration loop test",
         status: "in_progress",
@@ -86,7 +86,7 @@ test("E2E Orchestration Loop: plan → execute → observe → feedback complete
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "multi_step_wf",
         currentStepIndex: 0,
         status: "running",
@@ -290,7 +290,7 @@ test("E2E Orchestration Loop: parallel branches merge and continue", async () =>
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Parallel merge test",
         status: "in_progress",
@@ -339,7 +339,7 @@ test("E2E Orchestration Loop: parallel branches merge and continue", async () =>
       // Workflow at merge step (step 2) with outputs from parallel branches
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "parallel_wf",
         currentStepIndex: 2,
         status: "running",
@@ -429,7 +429,7 @@ test("E2E Orchestration Loop: observe detects error and triggers recovery", asyn
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Error recovery test",
         status: "in_progress",
@@ -477,7 +477,7 @@ test("E2E Orchestration Loop: observe detects error and triggers recovery", asyn
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "recovery_wf",
         currentStepIndex: 1,
         status: "running",
@@ -560,7 +560,7 @@ test("E2E Orchestration Loop: observe aggregates step outputs throughout workflo
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Aggregate observe test",
         status: "in_progress",
@@ -579,7 +579,7 @@ test("E2E Orchestration Loop: observe aggregates step outputs throughout workflo
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "three_step_wf",
         currentStepIndex: 0,
         status: "running",

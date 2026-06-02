@@ -109,3 +109,51 @@ test("R19-08: buildFeedbackSignals severity is error when validation fails", () 
     "Failed step should have severity 'error' not 'info'"
   );
 });
+
+test("buildFeedbackSignals derives differentiated trust instead of hardcoded 0.5", () => {
+  const service = new OapeflirLoopService();
+  const result = (service as unknown as {
+    buildFeedbackSignals: (taskId: string, stepOutputs: Array<Record<string, unknown>>) => Array<{
+      source: string;
+      feedbackTrustScore: number;
+      trustFactors: { authenticatedSource: boolean };
+    }>;
+  }).buildFeedbackSignals("task_feedback_trust", [
+    {
+      stepId: "step_exec",
+      planRef: "plan_feedback",
+      nodeRunId: "node_run_exec",
+      userFacingResult: {
+        summary: "Executed step_exec",
+        artifacts: [],
+      },
+      systemTelemetry: {
+        durationMs: 25,
+        tokensUsed: 10,
+        modelId: "test-bridge",
+        retryCount: 0,
+        validationPassed: true,
+      },
+    },
+    {
+      stepId: "step_user",
+      planRef: "plan_feedback",
+      userFacingResult: {
+        summary: "Executed step_user",
+        artifacts: [],
+      },
+      systemTelemetry: {
+        durationMs: 25,
+        tokensUsed: 10,
+        modelId: "test-bridge",
+        retryCount: 2,
+        validationPassed: false,
+      },
+    },
+  ]);
+
+  assert.equal(result[0]?.source, "execution");
+  assert.equal(result[0]?.trustFactors.authenticatedSource, true);
+  assert.equal(result[1]?.source, "user");
+  assert.ok((result[0]?.feedbackTrustScore ?? 0) > (result[1]?.feedbackTrustScore ?? 1));
+});

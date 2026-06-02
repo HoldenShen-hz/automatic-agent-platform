@@ -43,4 +43,4 @@ export {
   type DualAdminConfirmation,
   type PropagationPolicy,
   DEFAULT_PROPAGATION_POLICY,
-} from "./panic-propagation-service.js";
+} from "../../../ops-maturity/emergency/panic-propagation-service.js";

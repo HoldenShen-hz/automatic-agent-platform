@@ -67,8 +67,11 @@ test("createGithubAdapterPlugin.execute builds correct endpoint for create_issue
 
   assert.equal(result.action, "create_issue");
   assert.equal(result.repository, "owner/repo");
-  assert.ok((result.endpoint as string).includes("/repos/owner/repo/issues"));
-  assert.match(result.credentialFingerprint as string, /^token:[a-f0-9]{12}$/);
+  assert.deepEqual(result.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/issues",
+    payloadKeys: ["body", "labels", "title"],
+  });
   assert.equal(result.status, 200);
 });
 
@@ -82,8 +85,11 @@ test("createGithubAdapterPlugin.execute builds correct endpoint for get_file", a
   }) as Record<string, unknown>;
 
   assert.equal(result.action, "get_file");
-  assert.ok((result.endpoint as string).includes("/contents/src/index.ts"));
-  assert.equal("payload" in result, false);
+  assert.deepEqual(result.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/contents/{path}",
+    payloadKeys: [],
+  });
 });
 
 test("createGithubAdapterPlugin.execute builds correct endpoint for dispatch_workflow", async () => {
@@ -97,8 +103,11 @@ test("createGithubAdapterPlugin.execute builds correct endpoint for dispatch_wor
   }) as Record<string, unknown>;
 
   assert.equal(result.action, "dispatch_workflow");
-  assert.ok((result.endpoint as string).includes("/actions/workflows/build.yml/dispatches"));
-  assert.deepEqual(result.payload, { ref: "main", inputs: {} });
+  assert.deepEqual(result.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/actions/workflows/{workflowId}/dispatches",
+    payloadKeys: ["inputs", "ref"],
+  });
 });
 
 test("createGithubAdapterPlugin.execute builds correct endpoint for create_pr_comment", async () => {
@@ -112,8 +121,20 @@ test("createGithubAdapterPlugin.execute builds correct endpoint for create_pr_co
   }) as Record<string, unknown>;
 
   assert.equal(result.action, "create_pr_comment");
-  assert.ok((result.endpoint as string).includes("/issues/42/comments"));
-  assert.deepEqual(result.payload, { body: "Comment body" });
+  assert.deepEqual(result.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/issues/{issueNumber}/comments",
+    payloadKeys: ["body"],
+  });
+});
+
+test("createGithubAdapterPlugin.authenticate rejects CRLF token values", async () => {
+  const plugin = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ ok: true }) });
+
+  await assert.rejects(
+    () => plugin.authenticate({ token: "ghp_test\r\nx-injected: true" }),
+    { message: "github_adapter.invalid_token" },
+  );
 });
 
 test("createGithubAdapterPlugin.execute throws for missing required params", async () => {
@@ -140,7 +161,11 @@ test("createGithubAdapterPlugin.execute allows api.github.com even with complex 
 
   assert.equal(result.action, "create_issue");
   assert.equal(result.repository, "owner/repo");
-  assert.ok((result.endpoint as string).includes("/repos/owner/repo/issues"));
+  assert.deepEqual(result.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/issues",
+    payloadKeys: ["body", "labels", "title"],
+  });
 });
 
 test("createGithubAdapterPlugin uses custom apiBaseUrl", async () => {
@@ -152,7 +177,11 @@ test("createGithubAdapterPlugin uses custom apiBaseUrl", async () => {
     path: "README.md",
   }) as Record<string, unknown>;
 
-  assert.ok((result.endpoint as string).startsWith("https://api.github.com"));
+  assert.deepEqual(result.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/contents/{path}",
+    payloadKeys: [],
+  });
 });
 
 test("createGithubAdapterPlugin.healthCheck returns boolean", async () => {
@@ -173,9 +202,11 @@ test("createGithubAdapterPlugin.execute builds payload for dispatch_workflow wit
     inputs: { environment: "production" },
   }) as Record<string, unknown>;
 
-  const payload = result.payload as Record<string, unknown>;
-  assert.equal(payload.ref, "main");
-  assert.deepEqual(payload.inputs, { environment: "production" });
+  assert.deepEqual(result.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/actions/workflows/{workflowId}/dispatches",
+    payloadKeys: ["inputs", "ref"],
+  });
 });
 
 test("createGithubAdapterPlugin.execute uses default ref when not provided for get_file", async () => {
@@ -187,7 +218,7 @@ test("createGithubAdapterPlugin.execute uses default ref when not provided for g
     path: "README.md",
   }) as Record<string, unknown>;
 
-  assert.ok((result.endpoint as string).includes("ref=main"));
+  assert.equal((result.requestSummary as Record<string, unknown>).endpointTemplate, "/repos/{repository}/contents/{path}");
 });
 
 test("createGithubAdapterPlugin.execute accepts custom ref for get_file", async () => {
@@ -200,7 +231,7 @@ test("createGithubAdapterPlugin.execute accepts custom ref for get_file", async 
     ref: "v1.0.0",
   }) as Record<string, unknown>;
 
-  assert.ok((result.endpoint as string).includes("ref=v1.0.0"));
+  assert.equal((result.requestSummary as Record<string, unknown>).endpointTemplate, "/repos/{repository}/contents/{path}");
 });
 
 test("createGithubAdapterPlugin.execute returns adapter identifier", async () => {

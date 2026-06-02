@@ -29,6 +29,7 @@ import {
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 const textDecoder = new TextDecoder();
+const MAX_PUBLIC_ERROR_SUMMARY_CHARS = 200;
 
 /**
  * Base API Error shared by all providers.
@@ -289,7 +290,7 @@ export abstract class BaseChatProvider {
       const retryAfterMs = parseRetryAfterMs(response.headers);
       const resetAt = parseResetAt(response.headers, this.getRatelimitResetHeaderNames());
       const { text: errorText, truncated } = await readResponseTextLimited(response, this.maxErrorBodyBytes);
-      const errorSummary = truncated ? `${errorText} [truncated]` : errorText;
+      const errorSummary = sanitizeProviderErrorSummary(errorText, truncated);
 
       let errorType: string | undefined;
       let errorCode: string | null = null;
@@ -342,6 +343,21 @@ export abstract class BaseChatProvider {
       });
     }
   }
+}
+
+function sanitizeProviderErrorSummary(errorText: string, truncated: boolean): string {
+  const normalized = errorText
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\b(sk-[A-Za-z0-9_-]{8,}|Bearer\s+[A-Za-z0-9._-]{8,}|api[-_\s]?key\s*[:=]\s*\S+)\b/gi, "[redacted-secret]")
+    .replace(/https?:\/\/\S+/gi, "[redacted-url]")
+    .trim();
+  const limited = normalized.length > MAX_PUBLIC_ERROR_SUMMARY_CHARS
+    ? `${normalized.slice(0, MAX_PUBLIC_ERROR_SUMMARY_CHARS)}...`
+    : normalized;
+  if (limited.length === 0) {
+    return truncated ? "[provider error body omitted] [truncated]" : "[provider error body omitted]";
+  }
+  return truncated ? `${limited} [truncated]` : limited;
 }
 
 function normalizePositiveInteger(value: number | undefined, fallback: number): number {

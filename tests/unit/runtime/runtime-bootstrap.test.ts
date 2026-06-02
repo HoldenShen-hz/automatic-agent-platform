@@ -71,18 +71,20 @@ test("runtime index re-exports WorkerRegistryService [runtime-bootstrap]", async
   assert.ok("WorkerRegistryService" in runtime, "should export WorkerRegistryService");
 });
 
-test("runtime index re-exports workflow step checkpoint schema version [runtime-bootstrap]", async () => {
+test("runtime index no longer re-exports workflow step checkpoint schema version [runtime-bootstrap]", async () => {
   const runtime = await import("../../../src/core/runtime/index.js");
-  assert.equal(
-    runtime.WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION,
-    "workflow_step_checkpoint.v1",
-    "should export workflow step checkpoint schema version",
-  );
+  assert.equal("WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION" in runtime, false);
 });
 
-test("runtime index re-exports createWorkflowStepCheckpoint [runtime-bootstrap]", async () => {
+test("runtime index no longer re-exports createWorkflowStepCheckpoint [runtime-bootstrap]", async () => {
   const runtime = await import("../../../src/core/runtime/index.js");
-  assert.ok("createWorkflowStepCheckpoint" in runtime, "should export createWorkflowStepCheckpoint");
+  assert.equal("createWorkflowStepCheckpoint" in runtime, false);
+});
+
+test("state-evidence index re-exports createWorkflowStepCheckpoint [runtime-bootstrap]", async () => {
+  const stateEvidence = await import("../../../src/core/state-evidence/index.js");
+  assert.equal(stateEvidence.WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION, "workflow_step_checkpoint.v1");
+  assert.ok("createWorkflowStepCheckpoint" in stateEvidence, "should export createWorkflowStepCheckpoint");
 });
 
 test("runtime index exports are callable functions or classes [runtime-bootstrap]", async () => {

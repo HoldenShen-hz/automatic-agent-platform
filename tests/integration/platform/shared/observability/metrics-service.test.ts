@@ -78,7 +78,7 @@ test("metrics service produces a complete summary from a real database with task
     // Insert a workflow state
     store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 1,
       status: "completed",

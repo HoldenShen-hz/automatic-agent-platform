@@ -50,7 +50,7 @@ test("runSingleTaskExecution creates task with correct properties [single-task-e
     const result = await runSingleTaskExecution(input);
 
     assert.ok(result.task.id.startsWith("task_"));
-    assert.equal(result.task.divisionId, "general_ops");
+    assert.equal(result.task.divisionId, "general-ops");
     assert.equal(result.task.status, "done");
     assert.equal(result.task.source, "user");
     assert.equal(result.task.priority, "normal");

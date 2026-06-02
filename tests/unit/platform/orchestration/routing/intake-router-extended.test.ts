@@ -241,12 +241,12 @@ test("IntakeRouter selects highest priority division when multiple match", () =>
   assert.equal(result.divisionId, "platform");
 });
 
-test("IntakeRouter falls back to general_ops when no division matches", () => {
+test("IntakeRouter falls back to general-ops when no division matches", () => {
   const registry = createMockRegistry([createMockDivision({ id: "other" })]);
   const router = new IntakeRouter({ divisionRegistry: registry });
   const result = router.route(createRouteInput({ request: "xyz123 unknown trigger" }));
 
-  assert.equal(result.divisionId, "general_ops");
+  assert.equal(result.divisionId, "general-ops");
 });
 
 test("IntakeRouter uses longest trigger match", () => {
@@ -385,7 +385,7 @@ test("IntakeRouter handles null division registry", () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const result = router.route(createRouteInput({ request: "test" }));
 
-  assert.equal(result.divisionId, "general_ops");
+  assert.equal(result.divisionId, "general-ops");
 });
 
 test("IntakeRouter handles missing title", () => {

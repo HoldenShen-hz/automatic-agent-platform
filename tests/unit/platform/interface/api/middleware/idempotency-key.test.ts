@@ -6,10 +6,12 @@ import {
   extractIdempotencyKey,
   buildIdempotencyErrorResponse,
   createIdempotencyKeyMiddleware,
+  configureGlobalIdempotencyKeyMiddleware,
   getGlobalIdempotencyKeyMiddleware,
   resetGlobalIdempotencyKeyMiddleware,
   type IdempotencyKeyConfig,
 } from "../../../../../../src/platform/five-plane-interface/api/middleware/idempotency-key.js";
+import { InMemoryIdempotencyStorage } from "../../../../../../src/platform/five-plane-interface/api/middleware/idempotency-key-storage.js";
 
 describe("IdempotencyKeyMiddleware", () => {
   let middleware: IdempotencyKeyMiddleware;
@@ -278,7 +280,7 @@ describe("extractIdempotencyKey", () => {
     strictEqual(extractIdempotencyKey(headers, "X-Custom-Key"), "custom123");
   });
 
-  it("should fall back to ContractEnvelope.idempotencyKey when header is absent", () => {
+  it("should not parse request bodies when the header is absent", () => {
     const headers = {};
     const body = JSON.stringify({
       envelopeId: "env_1",
@@ -286,7 +288,7 @@ describe("extractIdempotencyKey", () => {
       payload: { ok: true },
       idempotencyKey: "env-key-123",
     });
-    strictEqual(extractIdempotencyKey(headers, "Idempotency-Key", body), "env-key-123");
+    strictEqual(extractIdempotencyKey(headers, "Idempotency-Key", body), undefined);
   });
 });
 
@@ -318,15 +320,28 @@ describe("globalIdempotencyKeyMiddleware", () => {
     resetGlobalIdempotencyKeyMiddleware();
   });
 
+  it("should require explicit shared storage configuration", () => {
+    assert.throws(() => getGlobalIdempotencyKeyMiddleware(), /shared storage configuration/);
+  });
+
   it("should return singleton instance", () => {
+    configureGlobalIdempotencyKeyMiddleware(
+      createIdempotencyKeyMiddleware({ storage: new InMemoryIdempotencyStorage() }),
+    );
     const instance1 = getGlobalIdempotencyKeyMiddleware();
     const instance2 = getGlobalIdempotencyKeyMiddleware();
     strictEqual(instance1, instance2);
   });
 
   it("should reset singleton", () => {
+    configureGlobalIdempotencyKeyMiddleware(
+      createIdempotencyKeyMiddleware({ storage: new InMemoryIdempotencyStorage() }),
+    );
     const instance1 = getGlobalIdempotencyKeyMiddleware();
     resetGlobalIdempotencyKeyMiddleware();
+    configureGlobalIdempotencyKeyMiddleware(
+      createIdempotencyKeyMiddleware({ storage: new InMemoryIdempotencyStorage() }),
+    );
     const instance2 = getGlobalIdempotencyKeyMiddleware();
     notStrictEqual(instance1, instance2);
   });

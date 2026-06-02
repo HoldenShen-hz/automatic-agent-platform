@@ -294,6 +294,29 @@ test("DelegationTracker handles many delegations", () => {
   assert.equal(chain!.totalDelegations, 100);
 });
 
+test("DelegationTracker evicts expired terminal chains on status updates", () => {
+  const tracker = createDelegationTracker() as DelegationTracker & {
+    lastEvictionTime: number;
+    readonly EVICTION_INTERVAL_MS: number;
+  };
+  const createdAt = new Date(Date.now() - (31 * 60 * 1000)).toISOString();
+
+  tracker.recordDelegation(
+    createDelegationResult({
+      delegationId: "dlg-expired-terminal",
+      createdAt,
+      status: "completed",
+    }),
+    "root-expired",
+    { status: "completed" },
+  );
+  tracker.lastEvictionTime = Date.now() - tracker.EVICTION_INTERVAL_MS - 1;
+
+  tracker.updateStatus("missing-delegation", "completed", new Date().toISOString());
+
+  assert.equal(tracker.getChain("root-expired"), null);
+});
+
 test("DelegationTracker records delegation updates maxDepthReached", () => {
   const tracker = createDelegationTracker();
 

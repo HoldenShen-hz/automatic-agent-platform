@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { readFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 const pairs = [
   {
@@ -42,12 +42,18 @@ function check(name, ok, detail) {
   checks.push({ name, ok, detail });
 }
 
-function hasTrackedReference(excludedPath, pattern) {
-  const result = spawnSync("rg", ["-n", pattern, "src", "tests", "-g", `!${excludedPath}`], { encoding: "utf8" });
-  if (result.error) {
-    throw result.error;
+function hasTrackedReference(excludedPath, needles) {
+  const requiredNeedles = Array.isArray(needles) ? needles : [needles];
+  for (const filePath of listFiles(["src", "tests"])) {
+    if (filePath === excludedPath) {
+      continue;
+    }
+    const content = readFileSync(filePath, "utf8");
+    if (requiredNeedles.some((needle) => content.includes(needle))) {
+      return true;
+    }
   }
-  return result.status === 0;
+  return false;
 }
 
 for (const pair of pairs) {
@@ -61,7 +67,7 @@ for (const pair of pairs) {
   check(`${pair.name} async remains referenced`, hasTrackedReference(pair.async, asyncBase), pair.async);
   check(
     `${pair.name} has targeted tests`,
-    hasTrackedReference(pair.sync, `${syncBase}|${asyncBase}`),
+    hasTrackedReference(pair.sync, [syncBase, asyncBase]),
     `${pair.sync} / ${pair.async}`,
   );
   check(
@@ -87,3 +93,28 @@ if (failures.length > 0) {
 }
 
 console.log(`sync/async service pair audit passed: ${checks.length}/${checks.length}`);
+
+function listFiles(roots) {
+  const results = [];
+  const stack = roots.filter((root) => existsSync(root));
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (current == null) {
+      continue;
+    }
+    const stat = statSync(current);
+    if (stat.isDirectory()) {
+      for (const entry of readdirSync(current)) {
+        if (entry === "node_modules" || entry === "dist" || entry === ".git") {
+          continue;
+        }
+        stack.push(join(current, entry));
+      }
+      continue;
+    }
+    if (stat.isFile() && /\.(ts|tsx|js|jsx|mjs|cjs)$/u.test(current)) {
+      results.push(current);
+    }
+  }
+  return results.sort();
+}

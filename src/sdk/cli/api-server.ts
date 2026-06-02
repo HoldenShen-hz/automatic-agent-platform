@@ -26,7 +26,9 @@
 import { join } from "node:path";
 
 import { resolveCliDbPath, withPersistentCliStorageAsync } from "./authoritative-storage.js";
-import { isCliEntryPoint } from "./cli-exit.js";
+import { readCliProcessEnv } from "./cli-env.js";
+import { isCliEntryPoint, runCliMain } from "./cli-exit.js";
+import { summarizeCliError } from "./cli-file-guards.js";
 import { ChannelGatewayService } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-service.js";
 import { ChannelGatewayDeliveryService } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-delivery-service.js";
 import { CHANNEL_DELIVERY_DDL } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-delivery-support.js";
@@ -73,11 +75,12 @@ import { createSemanticVectorStoreFromEnvironment } from "../../platform/five-pl
  * starts the HTTP server, and registers graceful shutdown handlers to ensure clean termination.
  */
 async function main(): Promise<void> {
+  const env = readCliProcessEnv();
   // GAP-V2-06: Validate startup environment variables before any other initialization.
   // process.exit(1) if critical env vars are invalid or missing.
-  requireValidStartupEnv();
+  requireValidStartupEnv(env);
 
-  const envConfig = loadApiServerEnv();
+  const envConfig = loadApiServerEnv(env);
   await initOtel({
     enabled: envConfig.otelEnabled,
     endpoint: envConfig.otelEndpoint,
@@ -141,7 +144,7 @@ async function main(): Promise<void> {
     const pluginRegistry = registryBootstrap.pluginRegistry;
     const domainRegistry = registryBootstrap.domainRegistry;
     const semanticVectorStore = createSemanticVectorStoreFromEnvironment({
-      env: process.env,
+      env,
       storageDriver: storage.driver,
       database: storage.asyncSql,
     });
@@ -150,9 +153,9 @@ async function main(): Promise<void> {
       pluginRegistry,
       eventPublisher,
       semanticVectorStore,
-                snapshotStore: new KnowledgeSnapshotStore({
-                    snapshotPath: join("data", "knowledge", "knowledge-plane.snapshot.json"),
-                }),
+      snapshotStore: new KnowledgeSnapshotStore({
+        snapshotPath: join(dataRoot, "knowledge", "knowledge-plane.snapshot.json"),
+      }),
     });
     for (const namespace of registryBootstrap.knowledgeNamespaces) {
       domainRegistry.registerKnowledgeNamespace(namespace.path, namespace.ownerDomainId);
@@ -250,7 +253,7 @@ async function main(): Promise<void> {
       enableWebSocket: envConfig.enableWebSocket,
     });
     const webSocketStatusRelay =
-      envConfig.enableWebSocket && authService != null
+      envConfig.enableWebSocket
         ? new TaskWebSocketStatusRelay(server, store)
         : null;
     registerManagedHandler("task_websocket_status_relay", async () => {
@@ -300,7 +303,7 @@ async function main(): Promise<void> {
           port: address.port,
           baseUrl: address.baseUrl,
           ...(envConfig.metricsPort != null ? { metricsUrl: `http://${address.host}:${envConfig.metricsPort}/metrics` } : {}),
-          webSocketEnabled: envConfig.enableWebSocket && authService != null,
+          webSocketEnabled: envConfig.enableWebSocket,
           logTransports: enabledLogTransports,
         },
         null,
@@ -316,8 +319,9 @@ async function main(): Promise<void> {
     if (!startupComplete) {
       for (const handler of startupCleanup.slice().reverse()) {
         await handler().catch((cleanupError) => {
-          const message = cleanupError instanceof Error ? (cleanupError.stack ?? cleanupError.message) : String(cleanupError);
-          process.stderr.write(`startup_cleanup_failed: ${message}\n`);
+          process.stderr.write(
+            `startup_cleanup_failed:${summarizeCliError(cleanupError, "api_server.startup_cleanup_failed")}\n`,
+          );
         });
       }
     }
@@ -326,11 +330,9 @@ async function main(): Promise<void> {
 }
 
 if (isCliEntryPoint(import.meta.url)) {
-  try {
-    await main();
-  } catch (error) {
-    const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
-    process.stderr.write(`${message}\n`);
-    process.exitCode = 1;
-  }
+  void runCliMain(main, {
+    onError: (error) => {
+      process.stderr.write(`${summarizeCliError(error, "api_server.failed")}\n`);
+    },
+  });
 }

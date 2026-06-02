@@ -334,63 +334,29 @@ export class EvaluatorService {
         level: "unchanged",
       };
     }
-    // R11-03 FIX: When baseline is low and there are failures, we must elevate.
-    // The RiskEvaluationEngine may return "unchanged" if evaluated score doesn't
-    // cross the elevation threshold, but failures against low baseline should
-    // always be treated as elevated risk.
-    if (failureCount > 0 && baselineRisk === "low") {
-      return {
-        severity: failureCount >= 3 ? "error" : "warning",
-        message: `Risk boundary exceeded: baseline ${baselineRisk} with ${failureCount} failure signal(s)`,
-        level: "elevated",
-      };
-    }
-    // R11-04 FIX: When baseline is high and there are failures,
-    // the risk should be escalated to critical regardless of evaluated score.
-    // High baseline with failures indicates critical risk.
-    if (failureCount > 0 && baselineRisk === "high") {
-      return {
-        severity: failureCount >= 2 ? "critical" : "error",
-        message: `Risk boundary exceeded: baseline ${baselineRisk} with ${failureCount} failure signal(s)`,
-        level: "elevated",
-      };
-    }
-    // R11-05 FIX: When baseline is critical and there are failures,
-    // risk remains critical (already at maximum).
-    if (failureCount > 0 && baselineRisk === "critical") {
-      return {
-        severity: "critical",
-        message: `Risk boundary exceeded: baseline ${baselineRisk} with ${failureCount} failure signal(s)`,
-        level: "elevated",
-      };
-    }
-    // R11-06 FIX: Medium baseline with failures - use RiskEvaluationEngine for nuanced
-    // assessment. Fall back to warning for moderate failure counts (1-2).
-    if (failureCount === 2) {
-      return {
-        severity: "warning",
-        message: `Risk boundary exceeded: baseline ${baselineRisk} with ${failureCount} failure signals`,
-        level: "elevated",
-      };
-    }
-    // For medium baseline with 1 failure, also check RiskEvaluationEngine
-    // but if it doesn't elevate, fall back to warning
-    if (failureCount >= 3) {
-      return {
-        severity: "error",
-        message: `Risk boundary exceeded: baseline ${baselineRisk} with ${failureCount} failure signals`,
-        level: "elevated",
-      };
-    }
     const evaluated = this.riskEvaluationEngine.evaluate({
       taskId: planGraphBundle.planGraphBundleId,
       factors: this.buildRiskFactors(planGraphBundle, feedback),
     });
-    const level = this.compareRiskLevel(baselineRisk, evaluated.riskLevel);
-    const severity = this.mapRiskSeverity(level, evaluated.riskLevel);
-    const message = level === "elevated"
+    let level = this.compareRiskLevel(baselineRisk, evaluated.riskLevel);
+    let severity = this.mapRiskSeverity(level, evaluated.riskLevel);
+    let message = level === "elevated"
       ? `Risk boundary exceeded: baseline ${baselineRisk} -> ${evaluated.riskLevel} (${evaluated.riskScore})`
       : `Risk boundary: baseline ${baselineRisk} -> ${evaluated.riskLevel} (${evaluated.riskScore})`;
+
+    if (level === "unchanged" && failureCount > 0) {
+      level = "elevated";
+      if (baselineRisk === "critical") {
+        severity = "critical";
+      } else if (baselineRisk === "high") {
+        severity = failureCount >= 2 ? "critical" : "error";
+      } else if (failureCount >= 3) {
+        severity = "error";
+      } else {
+        severity = "warning";
+      }
+      message = `Risk boundary exceeded: baseline ${baselineRisk} with ${failureCount} failure signal(s); engine=${evaluated.riskLevel} (${evaluated.riskScore})`;
+    }
     return { severity, message, level };
   }
 
@@ -479,11 +445,28 @@ export class EvaluatorService {
       };
     }
 
-    // For now, return adherent - actual budget tracking requires BudgetLedger integration
+    const estimatedBudget = planGraphBundle.validationReport?.worstPath?.estimatedBudgetAmount ?? null;
+    if (estimatedBudget == null || !Number.isFinite(estimatedBudget) || estimatedBudget <= 0) {
+      return {
+        adherent: true,
+        severity: "info",
+        message: `Budget adherence: ${actualCost} cost consumed (budget ref: ${budgetReserved})`,
+      };
+    }
+
+    if (actualCost > estimatedBudget) {
+      const overrunRatio = actualCost / estimatedBudget;
+      return {
+        adherent: false,
+        severity: overrunRatio >= 1.5 ? "error" : "warning",
+        message: `Budget adherence breached: ${actualCost} > ${estimatedBudget} planned (budget ref: ${budgetReserved})`,
+      };
+    }
+
     return {
       adherent: true,
       severity: "info",
-      message: `Budget adherence: ${actualCost} cost consumed (budget ref: ${budgetReserved})`,
+      message: `Budget adherence: ${actualCost}/${estimatedBudget} within planned budget (budget ref: ${budgetReserved})`,
     };
   }
 

@@ -5,6 +5,7 @@
  * fingerprint comparison, and cross-agent analysis.
  */
 
+import { timingSafeEqual } from "node:crypto";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 
 import { BehaviorFingerprintBuilder } from "./fingerprint-builder/index.js";
@@ -91,9 +92,7 @@ export class DriftDetectorService implements IDriftDetector {
 
     // 1. Run changepoint detection on drift samples
     const windowResults = this.changepointDetector.detectAll(input.driftSamples, [...this.analyzedWindows]);
-    const fingerprintSignal = input.baselineFingerprints[0] == null
-      ? null
-      : this.detectFingerprintDrift(input.currentFingerprint, input.baselineFingerprints[0]!);
+    const fingerprintSignal = this.detectFingerprintDriftAgainstBaselines(input.currentFingerprint, input.baselineFingerprints);
     const windowPrimarySignal = this.buildPrimarySignal(windowResults, input.currentFingerprint.fingerprintId);
     const primarySignal = this.selectPrimarySignal(windowPrimarySignal, fingerprintSignal);
 
@@ -196,6 +195,26 @@ export class DriftDetectorService implements IDriftDetector {
       recommendedAction: this.severityToAction(severity),
       metadata: { dimension: "behavioral_drift" },
     };
+  }
+
+  private detectFingerprintDriftAgainstBaselines(
+    current: import("./fingerprint-builder/index.js").BehaviorFingerprint,
+    baselines: readonly import("./fingerprint-builder/index.js").BehaviorFingerprint[],
+  ): DriftSignal | null {
+    if (baselines.length === 0) {
+      return null;
+    }
+    let bestSignal: DriftSignal | null = null;
+    for (const baseline of baselines) {
+      const signal = this.detectFingerprintDrift(current, baseline);
+      if (signal == null) {
+        return null;
+      }
+      if (bestSignal == null || signal.driftScore < bestSignal.driftScore) {
+        bestSignal = signal;
+      }
+    }
+    return bestSignal;
   }
 
   /**
@@ -431,7 +450,12 @@ export class DriftDetectorService implements IDriftDetector {
 }
 
 function safeHashEquals(left: string, right: string): boolean {
-  return left === right;
+  const leftBuffer = Buffer.from(left, "utf8");
+  const rightBuffer = Buffer.from(right, "utf8");
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+  return timingSafeEqual(leftBuffer, rightBuffer);
 }
 
 function isChangepointConfig(value: DriftDetectorConfig | DriftDetectorServiceOptions): value is DriftDetectorConfig {

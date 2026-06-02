@@ -41,6 +41,24 @@ test("buildStartupConsistencyReport sets repair_required when findings are recov
   assert.equal(report.status, "repair_required");
 });
 
+test("assertCanOpenForTraffic blocks repair_required reports", () => {
+  const service = new ReplayRepairControlService();
+  const report = service.buildStartupConsistencyReport({
+    findings: [
+      {
+        checkId: "stale_execution",
+        severity: "p1",
+        entityRef: "execution:1",
+        summary: "heartbeat expired",
+        recoverable: true,
+        suggestedRepairAction: "requeue_execution",
+      },
+    ],
+  });
+
+  assert.throws(() => service.assertCanOpenForTraffic(report), /not ready to open for traffic/);
+});
+
 test("buildStartupConsistencyReport sets fail_closed when P0 findings exist", () => {
   const service = new ReplayRepairControlService();
   const report = service.buildStartupConsistencyReport({
@@ -241,7 +259,7 @@ test("listRecoveryCandidates sets disposition based on action type", () => {
   const ackCandidate = candidates.find(c => c.entityRef === "event:resume");
   const orphanCandidate = candidates.find(c => c.entityRef === "sess:orphan");
 
-  assert.strictEqual(requeueCandidate?.disposition, "retry");
+  assert.strictEqual(requeueCandidate?.disposition, "manual_handoff");
   assert.strictEqual(ackCandidate?.disposition, "resume");
   assert.strictEqual(orphanCandidate?.disposition, "resume");
 });
@@ -349,7 +367,7 @@ test("assertCanOpenForTraffic does not throw for open_for_traffic status", () =>
   assert.doesNotThrow(() => service.assertCanOpenForTraffic(report));
 });
 
-test("assertCanOpenForTraffic does not throw for repair_required status", () => {
+test("assertCanOpenForTraffic throws for repair_required status", () => {
   const service = new ReplayRepairControlService();
   const report = service.buildStartupConsistencyReport({
     findings: [
@@ -364,7 +382,7 @@ test("assertCanOpenForTraffic does not throw for repair_required status", () => 
     ],
   });
 
-  assert.doesNotThrow(() => service.assertCanOpenForTraffic(report));
+  assert.throws(() => service.assertCanOpenForTraffic(report), /not ready to open for traffic/);
 });
 
 test("assertCanOpenForTraffic throws ValidationError for fail_closed status", () => {
@@ -482,8 +500,8 @@ test("runRecoveryDrill validates non-recoverable P0 requires manual handoff asse
   });
 
   const assertion = result.assertions.find(a => a.assertion === "non-recoverable P0 findings require manual handoff");
-  assert.strictEqual(assertion?.passed, false);
-  assert.equal(result.status, "failed");
+  assert.strictEqual(assertion?.passed, true);
+  assert.equal(result.status, "passed");
 });
 
 test("all severity types are counted correctly in report", () => {
@@ -548,7 +566,7 @@ test("inferDisposition returns manual_handoff for manual_intervention_required a
   assert.strictEqual(candidates[0]!.disposition, "manual_handoff");
 });
 
-test("inferDisposition returns retry for requeue_execution action", () => {
+test("inferDisposition returns manual_handoff for p1 requeue_execution action", () => {
   const service = new ReplayRepairControlService();
   const report = service.buildStartupConsistencyReport({
     findings: [
@@ -565,7 +583,7 @@ test("inferDisposition returns retry for requeue_execution action", () => {
 
   const candidates = service.listRecoveryCandidates(report);
   assert.equal(candidates.length, 1);
-  assert.strictEqual(candidates[0]!.disposition, "retry");
+  assert.strictEqual(candidates[0]!.disposition, "manual_handoff");
 });
 
 test("inferDisposition returns resume for rebuild_ack action", () => {

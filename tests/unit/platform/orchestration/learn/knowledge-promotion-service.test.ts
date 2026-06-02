@@ -98,6 +98,36 @@ test("KnowledgePromotionService publishes one batch event containing all promote
   );
 });
 
+test("KnowledgePromotionService publishes failure metadata when promotion ingest fails", () => {
+  const published: Array<{ eventType: string; taskId: string; payload: Record<string, unknown> }> = [];
+  const publisher: TypedEventPublisher = {
+    publish(input) {
+      published.push(input);
+    },
+  } as TypedEventPublisher;
+  const knowledgePlane: KnowledgePlaneService = {
+    ingest() {
+      throw new Error("ingest failed");
+    },
+  } as unknown as KnowledgePlaneService;
+
+  const service = new KnowledgePromotionService({
+    knowledgePlane,
+    eventPublisher: publisher,
+  });
+
+  const result = service.promote([
+    createLearningObject({ learningObjectId: "lo-failed", title: "Failed title" }),
+  ], "task-failed");
+
+  assert.equal(result.promotedCount, 0);
+  assert.equal(result.failedCount, 1);
+  assert.equal(published.length, 1);
+  assert.equal(published[0]!.payload.status, "failed");
+  assert.equal(published[0]!.payload.failedCount, 1);
+  assert.deepEqual(published[0]!.payload.failedObjectIds, ["lo-failed"]);
+});
+
 test("KnowledgePromotionService includes evidence and source signal sections in promoted body", () => {
   let capturedBody = "";
   const knowledgePlane: KnowledgePlaneService = {

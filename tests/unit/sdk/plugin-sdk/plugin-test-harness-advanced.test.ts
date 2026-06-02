@@ -220,6 +220,69 @@ test("PluginTestHarness runCases calculates coverage correctly with expected out
   assert.equal(report.coveragePercent, 50);
 });
 
+test("PluginTestHarness runCases uses deep equality for Map and Date payloads", async () => {
+  const plugin = defineTool({
+    pluginId: "deep-equality-tool",
+    name: "Deep Equality Tool",
+    version: "1.0.0",
+    capabilities: [{
+      name: "execute",
+      description: "Execute",
+      inputSchema: { type: "object" },
+      outputSchema: { type: "object" },
+    }],
+  });
+
+  const expectedDate = new Date("2026-01-01T00:00:00.123Z");
+  const harness = new PluginTestHarness({
+    plugin,
+    mode: "live",
+    liveRunner: async () => ({ when: expectedDate, data: new Map([["a", 1]]) }),
+  });
+
+  const report = await harness.runCases([
+    { name: "deep-equality", input: {}, expectedOutput: { when: expectedDate, data: new Map([["a", 1]]) } },
+  ]);
+
+  assert.equal(report.passedCases, 1);
+  assert.equal(report.failedCases, 0);
+});
+
+test("PluginTestHarness passes abortSignal to live runners and aborts timed-out executions", async () => {
+  const plugin = defineTool({
+    pluginId: "abortable-runner-tool",
+    name: "Abortable Runner Tool",
+    version: "1.0.0",
+    capabilities: [{
+      name: "execute",
+      description: "Execute",
+      inputSchema: { type: "object" },
+      outputSchema: { type: "object" },
+    }],
+  });
+
+  let aborted = false;
+  const harness = new PluginTestHarness({
+    plugin,
+    mode: "live",
+    timeoutMs: 20,
+    liveRunner: async (input) => {
+      const signal = Reflect.get(input, "abortSignal") as AbortSignal;
+      return await new Promise((_, reject) => {
+        signal.addEventListener("abort", () => {
+          aborted = true;
+          reject(signal.reason);
+        }, { once: true });
+      });
+    },
+  });
+
+  const result = await harness.runCase({});
+  assert.equal(result.passed, false);
+  assert.equal(aborted, true);
+  assert.match(result.errorMessage ?? "", /timed out/i);
+});
+
 test("PluginTestHarness runCases with empty expectedOutput always passes", async () => {
   const plugin = defineTool({
     pluginId: "no-expected-tool",

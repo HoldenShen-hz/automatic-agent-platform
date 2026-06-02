@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,9 +16,10 @@ const require = createRequire(import.meta.url);
 const { createCoverageMap } = require("istanbul-lib-coverage");
 const { mergeProcessCovs } = require("@bcoe/v8-coverage");
 const v8ToIstanbul = require("v8-to-istanbul");
+const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
 
 const COVERAGE_LAYERS = ["leaks", "unit", "invariants", "integration", "golden", "e2e", "performance"];
-const COVERAGE_ROOT = path.join(process.cwd(), "coverage");
+const COVERAGE_ROOT = path.join(repoRoot, "coverage");
 const LAYERED_COVERAGE_ROOT = path.join(COVERAGE_ROOT, "layered");
 const COVERAGE_LAYER_BATCH_SIZE = {
   unit: 500,
@@ -28,6 +29,48 @@ const COVERAGE_BATCH_MAX_ATTEMPTS = Math.max(
   1,
   Number.parseInt(process.env.AA_COVERAGE_BATCH_MAX_ATTEMPTS ?? "2", 10) || 2,
 );
+const COVERAGE_SECRET_ENV_PATTERNS = [
+  /(^|_)TOKEN$/i,
+  /(^|_)SECRET$/i,
+  /(^|_)PASSWORD$/i,
+  /(^|_)PASS$/i,
+  /(^|_)API_KEY$/i,
+  /(^|_)KEY$/i,
+  /(^|_)AUTH$/i,
+  /(^|_)AUTHORIZATION$/i,
+  /(^|_)FILE$/i,
+  /^AA_API_KEYS_JSON$/i,
+];
+
+export function assertRepoSubpath(targetPath, label) {
+  const absoluteTarget = path.resolve(targetPath);
+  const normalizedRoot = `${repoRoot}${repoRoot.endsWith(path.sep) ? "" : path.sep}`;
+  if (absoluteTarget !== repoRoot && !absoluteTarget.startsWith(normalizedRoot)) {
+    throw new Error(`${label} must stay within ${repoRoot}: ${absoluteTarget}`);
+  }
+  return absoluteTarget;
+}
+
+function safeRmRecursive(targetPath) {
+  rmSync(assertRepoSubpath(targetPath, "coverage path"), { recursive: true, force: true });
+}
+
+export function buildCoverageChildEnv(overrides = {}) {
+  const env = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value == null) {
+      continue;
+    }
+    if (COVERAGE_SECRET_ENV_PATTERNS.some((pattern) => pattern.test(key))) {
+      continue;
+    }
+    env[key] = value;
+  }
+  return {
+    ...env,
+    ...overrides,
+  };
+}
 
 function copyCoverageFiles(sourceDir, destinationDir, prefix) {
   if (!existsSync(sourceDir)) {
@@ -125,14 +168,19 @@ function buildSummaryFromCoverageMap(coverageMap) {
 function runCoverageBatch(c8Entrypoint, layer, aggregateTempDir, options = {}) {
   const tempSuffix = options.suffix == null ? "" : `-${options.suffix}`;
   const batchLabel = `${layer}${tempSuffix}`;
-  const batchTempDir = path.join(LAYERED_COVERAGE_ROOT, `${batchLabel}-tmp`);
-  const batchReportDir = path.join(LAYERED_COVERAGE_ROOT, `${batchLabel}-report`);
+  const batchTempDir = assertRepoSubpath(path.join(LAYERED_COVERAGE_ROOT, `${batchLabel}-tmp`), "batch temp dir");
+  const batchReportDir = assertRepoSubpath(path.join(LAYERED_COVERAGE_ROOT, `${batchLabel}-report`), "batch report dir");
+  const attemptToken = `${process.pid}-${Date.now()}`;
 
   for (let attempt = 1; attempt <= COVERAGE_BATCH_MAX_ATTEMPTS; attempt += 1) {
-    rmSync(batchTempDir, { recursive: true, force: true });
-    rmSync(batchReportDir, { recursive: true, force: true });
-    mkdirSync(batchTempDir, { recursive: true });
-    mkdirSync(batchReportDir, { recursive: true });
+    const batchTempDirStage = assertRepoSubpath(`${batchTempDir}.stage-${attemptToken}-${attempt}`, "batch temp stage");
+    const batchReportDirStage = assertRepoSubpath(`${batchReportDir}.stage-${attemptToken}-${attempt}`, "batch report stage");
+    safeRmRecursive(batchTempDir);
+    safeRmRecursive(batchReportDir);
+    safeRmRecursive(batchTempDirStage);
+    safeRmRecursive(batchReportDirStage);
+    mkdirSync(batchTempDirStage, { recursive: true });
+    mkdirSync(batchReportDirStage, { recursive: true });
 
     const result = spawnSync(
       process.execPath,
@@ -141,9 +189,9 @@ function runCoverageBatch(c8Entrypoint, layer, aggregateTempDir, options = {}) {
         c8Entrypoint,
         "--clean",
         "--temp-directory",
-        batchTempDir,
+        batchTempDirStage,
         "--report-dir",
-        batchReportDir,
+        batchReportDirStage,
         "--reporter",
         "json-summary",
         process.execPath,
@@ -153,23 +201,27 @@ function runCoverageBatch(c8Entrypoint, layer, aggregateTempDir, options = {}) {
         layer,
       ],
       {
-        cwd: process.cwd(),
+        cwd: repoRoot,
         encoding: "utf8",
         stdio: "inherit",
-        env: {
-          ...process.env,
+        env: buildCoverageChildEnv({
           AA_RUNNING_TESTS: "1",
           AA_PRESERVE_DIST: "1",
           ...(options.offset == null ? {} : { AA_LAYER_FILE_OFFSET: String(options.offset) }),
           ...(options.limit == null ? {} : { AA_LAYER_FILE_LIMIT: String(options.limit) }),
-        },
+        }),
       },
     );
 
     if (result.status === 0) {
+      renameSync(batchTempDirStage, batchTempDir);
+      renameSync(batchReportDirStage, batchReportDir);
       copyCoverageFiles(batchTempDir, aggregateTempDir, options.suffix ?? "batch");
       return;
     }
+
+    safeRmRecursive(batchTempDirStage);
+    safeRmRecursive(batchReportDirStage);
 
     if (attempt < COVERAGE_BATCH_MAX_ATTEMPTS) {
       console.warn(
@@ -183,7 +235,7 @@ function runCoverageBatch(c8Entrypoint, layer, aggregateTempDir, options = {}) {
 
 async function buildLayerCoverageSummaryFromRaw(layer, aggregateTempDir) {
   const reportDir = path.join(LAYERED_COVERAGE_ROOT, `${layer}-report`);
-  rmSync(reportDir, { recursive: true, force: true });
+  safeRmRecursive(reportDir);
   mkdirSync(reportDir, { recursive: true });
 
   const coverageMap = createCoverageMap({});
@@ -244,11 +296,11 @@ function rebuildMergedRawCoverageFromExistingBatches(aggregateTempDir) {
   }
 }
 
-async function generateCoverageSummaryFromCurrentRun() {
+export async function generateCoverageSummaryFromCurrentRun() {
   const c8Entrypoint = fileURLToPath(new URL("../../node_modules/c8/bin/c8.js", import.meta.url));
   mkdirSync(LAYERED_COVERAGE_ROOT, { recursive: true });
   const mergedRawTempDir = path.join(LAYERED_COVERAGE_ROOT, "merged-tmp");
-  rmSync(mergedRawTempDir, { recursive: true, force: true });
+  safeRmRecursive(mergedRawTempDir);
   mkdirSync(mergedRawTempDir, { recursive: true });
   const reuseLayeredCoverage = process.env.AA_REUSE_LAYERED_COVERAGE === "1";
 
@@ -264,11 +316,21 @@ async function generateCoverageSummaryFromCurrentRun() {
   writeCoverageSummary(await buildLayerCoverageSummaryFromRaw("merged", mergedRawTempDir));
 }
 
-await generateCoverageSummaryFromCurrentRun();
+function isEntrypoint() {
+  return process.argv[1] != null && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+}
 
-const report = buildCoverageReport(loadCoverageSummary());
-writeCoverageArtifacts(report);
+export async function main() {
+  await generateCoverageSummaryFromCurrentRun();
 
-console.log("Coverage report generated.");
-console.log(`Global lines: ${report.global.lines.pct.toFixed(1)}%`);
-console.log(`Lowest directory: ${report.directories[0]?.directory ?? "n/a"} (${report.directories[0]?.metrics.lines.pct.toFixed(1) ?? "n/a"}%)`);
+  const report = buildCoverageReport(loadCoverageSummary());
+  writeCoverageArtifacts(report);
+
+  console.log("Coverage report generated.");
+  console.log(`Global lines: ${report.global.lines.pct.toFixed(1)}%`);
+  console.log(`Lowest directory: ${report.directories[0]?.directory ?? "n/a"} (${report.directories[0]?.metrics.lines.pct.toFixed(1) ?? "n/a"}%)`);
+}
+
+if (isEntrypoint()) {
+  await main();
+}

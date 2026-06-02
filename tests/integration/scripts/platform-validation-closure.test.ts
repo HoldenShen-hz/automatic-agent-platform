@@ -103,6 +103,16 @@ test("platform validation registry closure script passes for machine registry an
   assert.match(result.stdout, /registry platform validation passed/);
 });
 
+test("platform validation closure only publishes final report bundles after successful validation", () => {
+  const source = readFileSync(
+    "scripts/validation/platform-validation-closure.mjs",
+    "utf8",
+  );
+  assert.match(source, /if \(issues\.length === 0\) \{\s*writeClosureReports\(report\);\s*\}/);
+  assert.match(source, /const stagingRoot = join\(artifactRoot, "reports\.staging"\)/);
+  assert.match(source, /renameSync\(stagingRoot, reportsRoot\)/);
+});
+
 test("platform validation artifact exporter materializes schemas generated types and closure reports", () => {
   const exportResult = spawnSync(
     "node",

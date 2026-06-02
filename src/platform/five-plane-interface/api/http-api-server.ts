@@ -952,6 +952,12 @@ export class HttpApiServer {
         channelGatewayService: this.options.channelGatewayService ?? null,
         channelGatewayDeliveryService: this.options.channelGatewayDeliveryService ?? null,
         webhookSecret: this.options.webhookSecret ?? null,
+        ...(this.options.gatewayWebhookSignatureToleranceSeconds !== undefined
+          ? { webhookSignatureToleranceSeconds: this.options.gatewayWebhookSignatureToleranceSeconds }
+          : {}),
+        ...(this.options.gatewayWebhookNonceTtlSeconds !== undefined
+          ? { webhookNonceTtlSeconds: this.options.gatewayWebhookNonceTtlSeconds }
+          : {}),
       }),
       ...createTaskRoutes({
         authService: this.options.authService ?? null,
@@ -985,6 +991,7 @@ export class HttpApiServer {
         costReportService: this.costReportService,
         adminConfigService: this.adminConfigService,
         adminRuntimeDirectiveService: this.adminRuntimeDirectiveService,
+        platformRoot: this.options.platformRoot ?? process.cwd(),
       }),
       ...createConsoleRoutes({
         authService: this.options.authService ?? null,

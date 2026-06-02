@@ -1,4 +1,6 @@
+$schema: roi/schemas/division-roi.schema.json
 divisionId: coding
+protocolRef: roi/measurement-protocol.md
 method: assisted_vs_manual
 sampleWindow: 14d
 minimumSampleSize: 50
@@ -6,4 +8,14 @@ metrics:
   - review_time_saved
   - patch_rework_delta
   - regression_escape_delta
+costDeltaMetrics:
+  - compute_cost_per_patch
+  - reviewer_minutes_saved
+qualityDeltaMetrics:
+  - patch_rework_delta
+  - regression_escape_delta
+riskDeltaMetrics:
+  - release_blocker_escape_delta
+  - unsafe_patch_submission_delta
 confidence: medium
+confidenceCalculation: compare assisted vs manual cohorts over 14d with minimum 50 samples and weekly variance review.

@@ -31,8 +31,14 @@
     "labelingMethod": { "type": "string" },
     "allowedForTraining": { "type": "boolean" },
     "allowedForReleaseGate": { "type": "boolean" },
-    "retentionPolicyRef": { "type": "string" },
-    "frozenHash": { "type": "string" }
+    "retentionPolicyRef": {
+      "type": "string",
+      "pattern": "^training-data-policy/[A-Za-z0-9._/-]+\\.ya?ml$"
+    },
+    "frozenHash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

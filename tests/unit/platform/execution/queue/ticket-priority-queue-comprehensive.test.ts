@@ -14,6 +14,23 @@ test("TicketPriorityQueue can be instantiated [ticket-priority-queue-comprehensi
   assert.ok(queue instanceof TicketPriorityQueue);
 });
 
+test("TicketPriorityQueue is forbidden in production mode [ticket-priority-queue-comprehensive]", () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = "production";
+  try {
+    assert.throws(
+      () => new TicketPriorityQueue(),
+      /ticket_queue\.memory_only_forbidden_in_production/,
+    );
+  } finally {
+    if (previousNodeEnv == null) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = previousNodeEnv;
+    }
+  }
+});
+
 test("TicketPriorityQueue size starts at zero [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
   assert.equal(queue.size, 0);
@@ -56,6 +73,31 @@ test("TicketPriorityQueue enqueue with future dispatchAfter [ticket-priority-que
   const queue = new TicketPriorityQueue();
   const ticket = queue.enqueue({ payload: "test", dispatchAfter: futureTime });
   assert.equal(ticket.dispatchAfter, futureTime);
+});
+
+test("TicketPriorityQueue rejects malformed dispatchAfter [ticket-priority-queue-comprehensive]", () => {
+  const queue = new TicketPriorityQueue();
+  assert.throws(
+    () => queue.enqueue({ payload: "test", dispatchAfter: "not-a-date" }),
+    /ticket_queue\.dispatch_after_invalid/,
+  );
+});
+
+test("TicketPriorityQueue enforces max ticket capacity [ticket-priority-queue-comprehensive]", () => {
+  const queue = new TicketPriorityQueue({ maxTickets: 1 });
+  queue.enqueue({ payload: "first" });
+  assert.throws(
+    () => queue.enqueue({ payload: "second" }),
+    /ticket_queue\.capacity_exceeded/,
+  );
+});
+
+test("TicketPriorityQueue prunes expired tickets before counting or dequeuing [ticket-priority-queue-comprehensive]", async () => {
+  const queue = new TicketPriorityQueue({ ticketTtlMs: 1 });
+  queue.enqueue({ payload: "stale" });
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.equal(queue.size, 0);
+  assert.equal(queue.dequeue(), null);
 });
 
 test("TicketPriorityQueue enqueue ticket has correct structure [ticket-priority-queue-comprehensive]", () => {

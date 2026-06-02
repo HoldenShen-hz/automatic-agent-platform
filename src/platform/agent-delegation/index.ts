@@ -1,1 +1,42 @@
-export * from "../five-plane-orchestration/agent-delegation/index.js";
+export {
+  TopologyValidator,
+  createTopologyValidator,
+  DelegationDepthExceededError,
+  DelegationFanoutExceededError,
+  DelegationCycleDetectedError,
+  DEFAULT_MAX_DEPTH,
+  DEFAULT_MAX_FANOUT,
+  DelegationManagerService,
+  createDelegationManager,
+  ContextIsolator,
+  createContextIsolator,
+  IsolationLevel,
+  DelegationTracker,
+  createDelegationTracker,
+  DelegationGovernanceService,
+} from "../five-plane-orchestration/agent-delegation/index.js";
+
+export type {
+  AgentContext,
+  PermissionSet,
+  PermissionConstraints,
+  DelegationSpec,
+  DelegationResult,
+  DelegationHandle,
+  DelegationChain,
+  DelegationChainNode,
+  DelegationOptions,
+  DelegationEvent,
+  DelegationCreatedEvent,
+  DelegationCompletedEvent,
+  DelegationFailedEvent,
+  DelegationStatus,
+  TopologyValidatorConfig,
+  IsolatedContext,
+  DelegationTreeNode,
+  DelegationMetrics,
+  DelegationExpirationConfig,
+  ExpirationScanResult,
+} from "../five-plane-orchestration/agent-delegation/index.js";
+
+export * from "../five-plane-orchestration/agent-delegation/collaboration-protocol/index.js";

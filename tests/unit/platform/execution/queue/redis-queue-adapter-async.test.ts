@@ -7,9 +7,9 @@ import test from "node:test";
 import { RedisQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/redis-queue-adapter.js";
 import type { EnqueueInput, QueueJobRecord } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 
-test("RedisQueueAdapter enqueue returns a job record with correct structure [redis-queue-adapter-async]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({ queueName: "test-queue", payload: { data: "test" } });
+test("RedisQueueAdapter enqueueAsync returns a job record with correct structure [redis-queue-adapter-async]", async () => {
+  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379, driver: "memory" });
+  const job = await adapter.enqueueAsync({ queueName: "test-queue", payload: { data: "test" } });
 
   assert.equal(job.queueName, "test-queue");
   assert.equal(job.status, "waiting");
@@ -18,11 +18,12 @@ test("RedisQueueAdapter enqueue returns a job record with correct structure [red
   assert.ok(job.id.startsWith("qjob_"));
   assert.ok(job.createdAt);
   assert.ok(job.updatedAt);
+  await adapter.close();
 });
 
-test("RedisQueueAdapter enqueue respects priority and maxAttempts options [redis-queue-adapter-async]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({
+test("RedisQueueAdapter enqueueAsync respects priority and maxAttempts options [redis-queue-adapter-async]", async () => {
+  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379, driver: "memory" });
+  const job = await adapter.enqueueAsync({
     queueName: "priority-queue",
     payload: "high-priority",
     priority: 100,
@@ -31,12 +32,13 @@ test("RedisQueueAdapter enqueue respects priority and maxAttempts options [redis
 
   assert.equal(job.priority, 100);
   assert.equal(job.maxAttempts, 5);
+  await adapter.close();
 });
 
-test("RedisQueueAdapter enqueue sets delayed status for future delayUntil [redis-queue-adapter-async]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+test("RedisQueueAdapter enqueueAsync sets delayed status for future delayUntil [redis-queue-adapter-async]", async () => {
+  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379, driver: "memory" });
   const futureDate = new Date(Date.now() + 3600_000).toISOString();
-  const job = adapter.enqueue({
+  const job = await adapter.enqueueAsync({
     queueName: "delayed-queue",
     payload: "delayed-job",
     delayUntil: futureDate,
@@ -44,24 +46,27 @@ test("RedisQueueAdapter enqueue sets delayed status for future delayUntil [redis
 
   assert.equal(job.status, "delayed");
   assert.equal(job.delayUntil, futureDate);
+  await adapter.close();
 });
 
-test("RedisQueueAdapter enqueue sets waiting status for past delayUntil [redis-queue-adapter-async]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+test("RedisQueueAdapter enqueueAsync sets waiting status for past delayUntil [redis-queue-adapter-async]", async () => {
+  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379, driver: "memory" });
   const pastDate = new Date(Date.now() - 1000).toISOString();
-  const job = adapter.enqueue({
+  const job = await adapter.enqueueAsync({
     queueName: "ready-queue",
     payload: "ready-job",
     delayUntil: pastDate,
   });
 
   assert.equal(job.status, "waiting");
+  await adapter.close();
 });
 
-test("RedisQueueAdapter enqueue uses default priority when not specified [redis-queue-adapter-async]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({ queueName: "q", payload: "test" });
+test("RedisQueueAdapter enqueueAsync uses default priority when not specified [redis-queue-adapter-async]", async () => {
+  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379, driver: "memory" });
+  const job = await adapter.enqueueAsync({ queueName: "q", payload: "test" });
   assert.equal(job.priority, 0);
+  await adapter.close();
 });
 
 test("RedisQueueAdapter backendKind is redis [redis-queue-adapter-async]", () => {
@@ -73,6 +78,7 @@ test("RedisQueueAdapter sync methods throw sync_not_supported errors [redis-queu
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   const methods = [
+    { name: "enqueue", fn: () => adapter.enqueue({ queueName: "q", payload: "x" }), expected: "sync_enqueue_not_supported" },
     { name: "dequeue", fn: () => adapter.dequeue("q"), expected: "sync_dequeue_not_supported" },
     { name: "getJob", fn: () => adapter.getJob("x"), expected: "sync_getJob_not_supported" },
     { name: "listJobs", fn: () => adapter.listJobs("q"), expected: "sync_listJobs_not_supported" },

@@ -3,8 +3,11 @@ import { join, relative, resolve } from "node:path";
 
 const repoRoot = process.cwd();
 const testsRoot = resolve(repoRoot, "tests");
-const tsconfigPath = resolve(repoRoot, "tsconfig.json");
-const outputPath = resolve(repoRoot, "tsconfig.coverage-curated.json");
+const allowlistPath = resolve(repoRoot, "config", "quality", "test-exclusion-allowlist.json");
+const outputPaths = [
+  resolve(repoRoot, "tsconfig.tests-curated.json"),
+  resolve(repoRoot, "tsconfig.coverage-curated.json"),
+];
 
 function walkFiles(root) {
   const results = [];
@@ -41,9 +44,10 @@ function matchesAny(path, patterns) {
   return patterns.some((pattern) => globToRegExp(pattern).test(normalized));
 }
 
-const rootConfig = JSON.parse(readFileSync(tsconfigPath, "utf8"));
-const excludePatterns = (rootConfig.exclude ?? [])
-  .filter((pattern) => typeof pattern === "string" && pattern.startsWith("tests/"));
+const allowlist = JSON.parse(readFileSync(allowlistPath, "utf8"));
+const excludePatterns = Array.isArray(allowlist)
+  ? allowlist.filter((pattern) => typeof pattern === "string")
+  : [];
 const files = walkFiles(testsRoot)
   .map((path) => relative(repoRoot, path).replaceAll("\\", "/"))
   .filter((path) => path.endsWith(".test.ts"))
@@ -51,8 +55,9 @@ const files = walkFiles(testsRoot)
   .sort((left, right) => left.localeCompare(right));
 
 const output = {
-  extends: "./tsconfig.build-test.json",
+  extends: "./tsconfig.json",
   compilerOptions: {
+    composite: false,
     incremental: false,
     noEmitOnError: false,
   },
@@ -64,8 +69,10 @@ const output = {
   files,
 };
 
-writeFileSync(
-  outputPath,
-  `${JSON.stringify(output, null, 2)}\n`,
-  "utf8",
-);
+for (const outputPath of outputPaths) {
+  writeFileSync(
+    outputPath,
+    `${JSON.stringify(output, null, 2)}\n`,
+    "utf8",
+  );
+}

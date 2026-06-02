@@ -1,0 +1,80 @@
+id: engineering-ops
+version: 1
+name: Engineering Operations
+description: Handles software implementation, fixes, and code review workflows.
+priority: 50
+default_plan_blueprint_ref: plan://divisions/engineering-ops/default
+orchestration_plan_blueprint_ref: plan://divisions/engineering-ops/release-delivery
+default_workflow: engineering_single_agent_minimal
+orchestration_workflow: engineering_multi_step_delivery
+triggers:
+  - code
+  - coding
+  - implement
+  - fix
+  - bugfix
+  - refactor
+roles:
+  - id: engineer
+    name: Engineer
+    prompt: roles/engineer.prompt.md
+    model: coding
+    tools: [read, edit, bash]
+    max_instances: 4
+  - id: reviewer
+    name: Reviewer
+    prompt: roles/reviewer.prompt.md
+    model: reasoning
+    tools: [read]
+    max_instances: 2
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: engineering-ops
+  ownerOrgNodeId: org.engops
+  primaryEntities:
+    - build
+    - release
+    - deployment
+    - pipeline
+  recipeArchetype: release_ops
+  lifecycleState: active
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: engineering-ops.risk
+  domainId: engineering-ops
+  riskLevel: high
+  advisoryOnly: false
+  humanAccountable: true
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: engineering-ops
+  evalBaselines:
+    - release_success
+    - rollback_readiness
+  criticalCases:
+    - production_release
+    - broken_pipeline
+    - rollback_failure
+  acceptanceThresholds:
+    release_success: 92
+    rollback_readiness: 95
+    pipeline_recovery: 88
+  adversarialScenarios:
+    - partial_release
+    - stale_artifact_promotion
+# §37: ResourceBoundaries - Execution limits for the division
+resource_boundaries:
+  max_concurrent_executions: 4
+  max_queue_depth: 20
+  execution_timeout_ms: 900000
+  max_retry_attempts: 2
+  budget_limit_per_task: 8
+# §37: FaultDomains - Fault isolation and recovery configuration
+fault_domains:
+  isolation_level: elevated
+  retry_policy: standard
+  fallback_enabled: true
+  blast_radius: department
+  recovery_strategy: resume

@@ -41,8 +41,26 @@ export function ensureBudgetLedger(input: EnsureBudgetLedgerInput): BudgetLedger
     currency: input.currency,
     hardCap: input.hardCap,
   });
-  repository.insertLedger(ledger);
-  return ledger;
+  input.connection.prepare(
+    `INSERT OR IGNORE INTO budget_ledgers (
+      budget_ledger_id, tenant_id, harness_run_id, currency,
+      hard_cap, reserved_amount, settled_amount, released_amount,
+      status, version
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    ledger.budgetLedgerId,
+    ledger.tenantId,
+    ledger.harnessRunId,
+    ledger.currency,
+    ledger.hardCap,
+    ledger.reservedAmount,
+    ledger.settledAmount,
+    ledger.releasedAmount,
+    ledger.status,
+    ledger.version,
+  );
+
+  return repository.getLedger(input.budgetLedgerId) ?? ledger;
 }
 
 export function reserveBudgetLedger(input: ReserveBudgetLedgerInput): BudgetReservationResult {

@@ -7,6 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 import { BudgetReservationSweeper, type BudgetReservationSweepRecord } from "../../../../src/platform/five-plane-execution/budget-reservation-sweeper.js";
 
 // ---------------------------------------------------------------------------
@@ -145,6 +146,20 @@ test("sweep() handles invalid date format (NaN) by expiring immediately", () => 
   // Invalid dates should be cleaned up (expired immediately)
   assert.equal(result.orphanedReservationCount, 1);
   assert.deepEqual(result.releaseReservationIds, ["res-invalid-date"]);
+});
+
+test("sweep() rejects invalid dbTime instead of silently skipping cleanup", () => {
+  const sweeper = new BudgetReservationSweeper();
+
+  assert.throws(
+    () => sweeper.sweep({
+      reservations: [createSweepRecord()],
+      activeRunIds: createActiveRunIds([]),
+      dbTime: "invalid-db-time",
+      clockSkewSafetyMarginMs: 1000,
+    }),
+    (error: unknown) => error instanceof ValidationError && error.code === "budget_reservation.invalid_db_time",
+  );
 });
 
 test("sweep() respects clock skew safety margin", () => {

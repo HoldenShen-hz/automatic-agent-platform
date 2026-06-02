@@ -15,7 +15,7 @@ function createTestTask(db: SqliteDatabase, taskId: string, tenantId: string | n
     id: taskId,
     parentId: null,
     rootId: taskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     tenantId,
     title: "Test task",
     status: "in_progress",

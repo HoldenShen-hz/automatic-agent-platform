@@ -110,8 +110,8 @@ test("PolicyRolloutService.promote progresses through canary stages with good me
     assert.ok(record);
     assert.equal(record.status, "evaluation_enabled");
 
-    // Shadow requires no metrics
-    record = service.promote(candidate, record, "shadow", undefined, "admin");
+    // Shadow now also requires an explicit metrics gate input.
+    record = service.promote(candidate, record, "shadow", makeMetrics(), "admin");
     assert.equal(record.status, "shadow");
 
     // Canary_5 requires metrics but passes
@@ -134,7 +134,12 @@ test("PolicyRolloutService.promote triggers rollback when metrics indicate failu
     const sv = makeStrategyVersion({ releaseLevel: "suggest" });
 
     let record = service.start(candidate, sv);
-    record = service.promote(candidate, record, "shadow");
+    record = service.promote(
+      candidate,
+      record,
+      "shadow",
+      makeMetrics({ requestCount: 100, failureRate: 0.01, p99LatencyMs: 120, baselineP99LatencyMs: 100, observationWindowMs: 120_000 }),
+    );
     record = service.promote(candidate, record, "canary_5", makeMetrics({ failureRate: 0.01 }));
 
     // Now promote with bad metrics - should rollback
@@ -155,7 +160,12 @@ test("PolicyRolloutService.rollback creates rolled_back record", () => {
     const sv = makeStrategyVersion({ releaseLevel: "suggest" });
 
     let record = service.start(candidate, sv);
-    record = service.promote(candidate, record, "shadow");
+    record = service.promote(
+      candidate,
+      record,
+      "shadow",
+      makeMetrics({ requestCount: 100, failureRate: 0.01, p99LatencyMs: 120, baselineP99LatencyMs: 100, observationWindowMs: 120_000 }),
+    );
     record = service.promote(candidate, record, "canary_5", makeMetrics());
 
     // Manual rollback with bad metrics
@@ -168,7 +178,7 @@ test("PolicyRolloutService.rollback creates rolled_back record", () => {
   }
 });
 
-test("PolicyRolloutService.evaluateMetricsGate returns allowed for non-progressive", () => {
+test("PolicyRolloutService.evaluateMetricsGate blocks non-progressive promotion without metrics", () => {
   const ctx = createIntegrationContext("aa-prs-gate-nonprog-");
   try {
     const service = new PolicyRolloutService();
@@ -186,7 +196,8 @@ test("PolicyRolloutService.evaluateMetricsGate returns allowed for non-progressi
 
     const gate = service.evaluateMetricsGate(record, "rejected");
 
-    assert.equal(gate.allowed, true);
+    assert.equal(gate.allowed, false);
+    assert.ok(gate.reasonCodes.includes("rollout.metrics_required"));
   } finally {
     ctx.cleanup();
   }
@@ -447,7 +458,12 @@ test("PolicyRolloutService works with custom AutoRollbackService config", () => 
     let record = service.start(candidate, sv);
     assert.ok(record);
 
-    record = service.promote(candidate, record, "shadow");
+    record = service.promote(
+      candidate,
+      record,
+      "shadow",
+      makeMetrics({ requestCount: 100, failureRate: 0.01, p99LatencyMs: 120, baselineP99LatencyMs: 100, observationWindowMs: 120_000 }),
+    );
     record = service.promote(candidate, record, "canary_5", makeMetrics({ requestCount: 100, failureRate: 0.01, p99LatencyMs: 150, baselineP99LatencyMs: 100 }));
 
     // Verify evaluateMetricsGate returns allowed for good metrics with custom config
@@ -471,7 +487,7 @@ test("Full rollout lifecycle: propose to stable", () => {
     assert.equal(record?.status, "evaluation_enabled");
 
     // Progress through all stages with good metrics
-    record = service.promote(candidate, record, "shadow", undefined, "admin");
+    record = service.promote(candidate, record, "shadow", makeMetrics(), "admin");
     assert.equal(record.status, "shadow");
 
     record = service.promote(candidate, record, "canary_5", makeMetrics({ failureRate: 0.01 }));
@@ -501,7 +517,7 @@ test("Full rollout lifecycle: rollback mid-flight", () => {
     const sv = makeStrategyVersion({ releaseLevel: "suggest" });
 
     let record = service.start(candidate, sv);
-    record = service.promote(candidate, record, "shadow");
+    record = service.promote(candidate, record, "shadow", makeMetrics());
     record = service.promote(candidate, record, "canary_5", makeMetrics());
     record = service.promote(candidate, record, "partial_25", makeMetrics());
 

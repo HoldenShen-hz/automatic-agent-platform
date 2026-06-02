@@ -56,7 +56,7 @@ function createSchedulingClass(overrides: Partial<SchedulingClass> = {}): Schedu
   return {
     tenantId: overrides.tenantId ?? "tenant-001",
     orgNodeId: overrides.orgNodeId ?? null,
-    domainId: overrides.domainId ?? "general_ops",
+    domainId: overrides.domainId ?? "general-ops",
     slaTierId: overrides.slaTierId ?? "standard",
     priority: overrides.priority ?? 50,
     ...overrides,
@@ -94,7 +94,7 @@ function seedTask(
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       tenantId,
       title: `Task ${taskId}`,
       status,

@@ -213,7 +213,7 @@ test("TaskSnapshot interface structure", () => {
       id: "task-1",
       parentId: null,
       rootId: "task-1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       tenantId: "tenant-1",
       title: "Test Task",
       status: "pending",

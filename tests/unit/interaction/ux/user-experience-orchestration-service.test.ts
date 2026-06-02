@@ -75,8 +75,8 @@ test("UserExperienceOrchestrationService.bootstrap builds guided session, wizard
   assert.equal(result.draft.ownerUserId, "user_1");
   assert.ok(result.draft.workflowId);
   assert.deepEqual(result.draft.steps, ["Plan", "Execute", "Review"]);
-  assert.ok(result.recommendedDomains.includes("engineering_ops"));
-  assert.ok(result.wizard.recommendedDomains.includes("engineering_ops"));
+  assert.ok(result.recommendedDomains.includes("engineering-ops"));
+  assert.ok(result.wizard.recommendedDomains.includes("engineering-ops"));
   assert.match(result.welcomePrompt, /team 模式/);
 });
 

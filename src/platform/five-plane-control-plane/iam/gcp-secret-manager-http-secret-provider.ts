@@ -38,15 +38,16 @@ const gcpLogger = new StructuredLogger({ retentionLimit: 50 });
 const GCP_SAFE_RESOURCE_SEGMENT = /^[A-Za-z0-9_-]+$/;
 
 function decodeStrictBase64(value: string, secretRef: string): string {
-  const normalized = value.trim();
-  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(normalized)) {
+  const normalized = value.trim().replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(normalized.length + ((4 - normalized.length % 4) % 4), "=");
+  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(padded)) {
     throw new ProviderError(`gcp.invalid_secret_payload:${secretRef}`, `gcp.invalid_secret_payload:${secretRef}`, {
       details: { secretRef },
       retryable: false,
     });
   }
-  const decoded = Buffer.from(normalized, "base64");
-  if (decoded.length === 0 || decoded.toString("base64") !== normalized) {
+  const decoded = Buffer.from(padded, "base64");
+  if (decoded.length === 0 || decoded.toString("base64") !== padded) {
     throw new ProviderError(`gcp.invalid_secret_payload:${secretRef}`, `gcp.invalid_secret_payload:${secretRef}`, {
       details: { secretRef },
       retryable: false,
@@ -161,7 +162,7 @@ export class GcpSecretManagerHttpSecretProvider implements ManagedSecretProvider
    */
   private async getToken(): Promise<string> {
     // Use cached token if still valid
-    if (this._cachedToken && Date.now() < this._tokenExpiry) {
+    if (this._cachedToken && Date.now() < this._tokenExpiry - 60_000) {
       return this._cachedToken;
     }
 

@@ -58,7 +58,7 @@ test("goal-decomposer rejects LLM plans when dependency graph contains a cycle",
           tasks: [
             {
               taskId: `${goal.goalId}:a`,
-              domainId: "general_ops",
+              domainId: "general-ops",
               description: "Task A",
               inputs: {},
               expectedOutputs: ["a"],
@@ -68,7 +68,7 @@ test("goal-decomposer rejects LLM plans when dependency graph contains a cycle",
             },
             {
               taskId: `${goal.goalId}:b`,
-              domainId: "general_ops",
+              domainId: "general-ops",
               description: "Task B",
               inputs: {},
               expectedOutputs: ["b"],

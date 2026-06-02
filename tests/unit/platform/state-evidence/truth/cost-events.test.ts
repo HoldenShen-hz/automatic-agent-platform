@@ -19,7 +19,7 @@ function seedTask(store: AuthoritativeTaskStore, taskId: string): void {
     id: taskId,
     parentId: null,
     rootId: taskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     title: "cost test task",
     status: "queued",
     source: "user",

@@ -8,7 +8,7 @@ import { ValidationError } from "../../../../../../src/platform/contracts/errors
 function createValidWorkflow(overrides?: Partial<MinimalWorkflowDefinition>): MinimalWorkflowDefinition {
   return {
     workflowId: "test-workflow",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: [
       {
         stepId: "step-1",
@@ -109,7 +109,7 @@ test("WorkflowValidator integration: cycle detection in dependencies", () => {
   const validator = new WorkflowValidator();
   const workflow: MinimalWorkflowDefinition = {
     workflowId: "cycle-workflow",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: [
       {
         stepId: "step-a",
@@ -181,7 +181,7 @@ test("WorkflowValidator integration: no entrypoint workflow fails", () => {
   const validator = new WorkflowValidator();
   const workflow: MinimalWorkflowDefinition = {
     workflowId: "no-entry",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: [
       {
         stepId: "step-1",
@@ -293,7 +293,7 @@ test("WorkflowValidator integration: multiple issues collected", () => {
   const validator = new WorkflowValidator();
   const workflow: MinimalWorkflowDefinition = {
     workflowId: "multi-error",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: [
       {
         stepId: "",

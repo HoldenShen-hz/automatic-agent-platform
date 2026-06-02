@@ -78,11 +78,14 @@
 | [067](./067-capacity-planning-and-cost-prediction.md) | Capacity Planning and Cost Prediction Engine | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | Multimodal Capability Architecture | Accepted | 2026-04-20 |
 | [069](./069-platform-self-operating-agent.md) | Platform Self-Operating Agent Architecture | Partially Superseded by v4.3 control-plane and runtime authority ADRs | 2026-04-20 |
-| [070](./070-conclusion.md) | Conclusion | Withdrawn / Index | 2026-04-20 |
+| [070](./070-conclusion.md) | Conclusion | Withdrawn | 2026-04-20 |
 | [071](./071-plugin-spi-framework.md) | Plugin SPI Interface System and Lifecycle | Accepted | 2026-04-17 |
 | [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR Testing Strategy and New Module Testing Matrix | Partially Superseded by current layered test matrix and runtime contract tests | 2026-04-17 |
-| [073](./073-unified-resource-model.md) | ADR-073: Unified Agent Resource Model | Accepted | 2026-04-13 |
+| [073](./073-unified-resource-model.md) | Unified Agent Resource Model | Accepted | 2026-04-13 |
+| [074](./074-reserved-slot.md) | Reserved Slot | Withdrawn | 2026-04-20 |
 | [075](./075-controlled-rollout-release.md) | Six-Level Controlled Release and Rollout State Machine | Accepted | 2026-04-17 |
+| [076](./076-reserved-slot.md) | Reserved Slot | Withdrawn | 2026-04-20 |
+| [077](./077-reserved-slot.md) | Reserved Slot | Withdrawn | 2026-04-20 |
 | [078](./078-knowledge-plane-architecture.md) | Knowledge Plane Architecture and Trust Model | Partially Superseded by current knowledge-plane contract baseline | 2026-04-17 |
 | [079](./079-feedback-hub-signals.md) | Feedback Hub and Seven Signal Preprocessing Categories | Accepted | 2026-04-17 |
 | [080](./080-learn-hub-pattern-detection.md) | Learn Hub and Four Pattern Detectors | Accepted | 2026-04-17 |
@@ -93,9 +96,9 @@
 | [085](./085-organization-governance-and-knowledge-boundary.md) | Organization Governance And Knowledge Boundary | Accepted | 2026-04-20 |
 | [086](./086-scale-ecosystem-and-cross-region-runtime.md) | Scale Ecosystem And Cross Region Runtime | Accepted | 2026-04-20 |
 | [087](./087-ops-maturity-runtime.md) | Ops Maturity Runtime | Accepted | 2026-04-20 |
-| [088](./088-platform-surface-communication-and-extensibility.md) | ADR 088: Platform Surface, Communication, and Extensibility | Accepted | 2026-04-20 |
-| [089](./089-ai-operations-governance-and-quality.md) | ADR 089: AI Operations Governance and Quality | Accepted | 2026-04-20 |
-| [090](./090-runtime-data-reliability-and-operations.md) | ADR 090: Runtime, Data Reliability, and Operations | Accepted | 2026-04-20 |
+| [088](./088-platform-surface-communication-and-extensibility.md) | Platform Surface, Communication, and Extensibility | Accepted | 2026-04-20 |
+| [089](./089-ai-operations-governance-and-quality.md) | AI Operations Governance and Quality | Accepted | 2026-04-20 |
+| [090](./090-runtime-data-reliability-and-operations.md) | Runtime, Data Reliability, and Operations | Accepted | 2026-04-20 |
 | [091](./091-harness-eight-pillar-model.md) | Harness Eight Pillar Model | Accepted | 2026-04-23 |
 | [092](./092-harness-loop-controller.md) | Harness Loop Controller | Accepted | 2026-04-23 |
 | [093](./093-harness-constraint-engine.md) | Harness Constraint Engine | Accepted | 2026-04-23 |
@@ -136,12 +139,15 @@
 - **Accepted**: Accepted and implemented
 - **Superseded**: Replaced by a newer ADR
 - **Deprecated**: Retired
+- **Withdrawn**: Reserved number or index placeholder, not a current implementation authority
+- **Historical Context**: Kept only for historical background, not current implementation authority
+- **Partially Superseded by ...**: Still useful as background, but current execution authority has been partially transferred to newer ADRs or contracts
 
 ## Notes
 
 - The historical directory retains both `003-memory-six-layers.md` and `003-memory-seven-layers.md`; `seven-layers` is kept only as a historical alias/redirect page. The canonical content follows `003-memory-six-layers.md`.
 - Plugin SPI ADR has been consolidated into `071-plugin-spi-framework.md`; the old duplicate `066-plugin-spi-framework.md` has been removed, and all references unified to ADR-071.
-- `045`, `074`, `076`, `077` are currently reserved/withdrawn slots and will not be backfilled with historical content.
+- `045`, `074`, `076`, `077` are currently reserved/withdrawn slots, must retain explicit placeholder files, and will not be backfilled with historical content.
 - `091-108` are new entries to cover the Harness Eight Pillars and domain governance additions.
 - `109-122` are v4.3 Contract Freeze and subsequent implementation clarification entries: 12 canonical contracts frozen, state machine sole authority, `platform.*` and `oapeflir.view.*` event hierarchy, MVP/Hardening/Enterprise three-ring boundary, and authoritative explanations for tenant scope, auth precedence, self-healing boundary, interface rate-limit, WAL recovery, panic allowlist, pack-domain lifecycle, client transport, timeout hierarchy, and evidence boundary.
 - `109-122` constrain old `ExecutionPlan`/`ExecutionReceipt`/`ControlDirective`/`StateCommand`/OAPEFLIR runtime authority/Phase naming, tenant resolution, and cross-layer boundary semantics through rules on freeze/authority/event namespace/ring boundary/tenant scope/auth precedence/recovery boundary. Historical ADR bodies are preserved and not directly rewritten.

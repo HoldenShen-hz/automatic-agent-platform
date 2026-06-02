@@ -71,7 +71,7 @@ export function buildOapeflirPlannedWorkflow(
 ): PlannedWorkflow {
   const workflowDef: MinimalWorkflowDefinition = {
     workflowId: `oapeflir_${planId}`,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: steps.map(oapeflirStepToMinimalStep),
   };
 

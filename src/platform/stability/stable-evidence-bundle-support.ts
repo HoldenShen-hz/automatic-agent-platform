@@ -792,7 +792,7 @@ export function seedTakeoverEvidenceScenario(db: SqliteDatabase, store: Authorit
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Stable evidence takeover sample",
       status: "in_progress",
       source: "system",
@@ -809,7 +809,7 @@ export function seedTakeoverEvidenceScenario(db: SqliteDatabase, store: Authorit
     });
     store.workflow.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",

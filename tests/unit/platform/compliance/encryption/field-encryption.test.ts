@@ -267,7 +267,7 @@ test("FieldEncryptionService protectRecord skips missing fields without throwing
   assert.equal(result.protectedFields.length, 0);
 });
 
-test("FieldEncryptionService key fingerprint is deterministic", () => {
+test("FieldEncryptionService key fingerprint is salted per ciphertext", () => {
   const service = new FieldEncryptionService();
   const result1 = service.protectRecord({
     record: { data: "same" },
@@ -287,7 +287,9 @@ test("FieldEncryptionService key fingerprint is deterministic", () => {
 
   const prefix1 = parseEnvelope(cf1).kf;
   const prefix2 = parseEnvelope(cf2).kf;
-  assert.equal(prefix1, prefix2, "Same key should produce same fingerprint prefix");
+  assert.notEqual(prefix1, prefix2, "Same key should not leak a stable fingerprint across ciphertexts");
+  assert.equal(service.revealField({ ciphertext: cf1, keyRef: "same-key-ref" }), "same");
+  assert.equal(service.revealField({ ciphertext: cf2, keyRef: "same-key-ref" }), "same");
 });
 
 test("FieldEncryptionService different keys produce different fingerprints", () => {

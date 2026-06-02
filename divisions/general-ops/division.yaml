@@ -1,0 +1,45 @@
+id: general-ops
+version: 1
+name: General Operations
+description: General purpose fallback division for research, summaries, and operational requests.
+priority: 10
+default_workflow: single_agent_minimal
+orchestration_workflow: phase1b_single_division_orchestration
+triggers:
+  - summarize
+  - summary
+  - triage
+  - intake
+roles:
+  - id: general_executor
+    name: General Executor
+    prompt: roles/general_executor.prompt.md
+    model: balanced
+    tools: [read, bash]
+    max_instances: 3
+  - id: intake_router
+    name: Intake Router
+    prompt: roles/intake_router.prompt.md
+    model: balanced
+    tools: [read]
+    max_instances: 2
+  - id: workflow_planner
+    name: Workflow Planner
+    prompt: roles/workflow_planner.prompt.md
+    model: reasoning
+    tools: [read]
+    max_instances: 2
+# §37: ResourceBoundaries - Execution limits for the division
+resource_boundaries:
+  max_concurrent_executions: 3
+  max_queue_depth: 15
+  execution_timeout_ms: 300000
+  max_retry_attempts: 2
+  budget_limit_per_task: 3
+# §37: FaultDomains - Fault isolation and recovery configuration
+fault_domains:
+  isolation_level: standard
+  retry_policy: standard
+  fallback_enabled: true
+  blast_radius: team
+  recovery_strategy: resume

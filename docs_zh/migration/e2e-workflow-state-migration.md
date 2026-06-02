@@ -40,7 +40,7 @@ test("legacy: multi-step workflow", () => {
     h.store.insertExecution({ /* ... */ });
     h.store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "multi_step_test",
       currentStepIndex: 0,
       status: "running",

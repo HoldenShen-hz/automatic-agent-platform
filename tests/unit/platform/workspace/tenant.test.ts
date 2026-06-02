@@ -156,6 +156,16 @@ test("TenantBoundaryRegistryService supports governance exceptions and deploymen
   const service = createService();
   registerBaseline(service);
 
+  service.registerGovernanceException({
+    governanceRef: "gov_exception_001",
+    userId: "user_001",
+    tenantId: "tenant_001",
+    workspaceId: null,
+    organizationId: "org_001",
+    status: "approved",
+    reasonCode: "tenant.break_glass",
+    approvedAt: "2026-04-29T00:00:00.000Z",
+  });
   const exceptionDecision = service.authorizeTenantAccess({
     userId: "user_001",
     tenantId: "tenant_001",
@@ -177,6 +187,37 @@ test("TenantBoundaryRegistryService supports governance exceptions and deploymen
   assert.equal(exceptionDecision.decision, "allow_with_governance_exception");
   assert.equal(exceptionDecision.governanceRef, "gov_exception_001");
   assert.equal(bindings[0]?.bindingId, "binding_001");
+});
+
+test("TenantBoundaryRegistryService requires workspace membership on the target workspace", () => {
+  const service = createService();
+  registerBaseline(service);
+
+  service.registerWorkspace({
+    workspaceId: "ws_002",
+    ownerId: "user_001",
+    displayName: "Workspace Two",
+    planId: "plan.standard",
+    defaultPolicySet: "policy.default",
+    organizationId: "org_001",
+    createdAt: "2026-04-29T00:00:00.000Z",
+    updatedAt: "2026-04-29T00:00:00.000Z",
+  });
+  service.addWorkspaceMembership({
+    workspaceId: "ws_001",
+    userId: "user_001",
+    role: "member",
+    joinedAt: "2026-04-29T00:00:00.000Z",
+  });
+
+  const decision = service.authorizeTenantAccess({
+    userId: "user_001",
+    tenantId: "tenant_001",
+    workspaceId: "ws_002",
+  });
+
+  assert.equal(decision.decision, "deny");
+  assert.equal(decision.reasonCode, "tenant.default_deny");
 });
 
 test("TenantBoundaryRegistryService enforces same-tenant assertions", () => {

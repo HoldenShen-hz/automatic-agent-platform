@@ -8,7 +8,7 @@
  * - Layer 3: Context-aware authorization
  */
 
-import { createHash, createHmac, randomBytes } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { ValidationError } from "../../contracts/errors.js";
 import { assertInMemoryStoreAllowed } from "./in-memory-store-guard.js";
 
@@ -21,12 +21,13 @@ const REFRESH_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const TOKEN_SIZE = 32;
 const MAX_SESSION_STORE_ENTRIES = 10_000;
 const MAX_TOKEN_INDEX_ENTRIES = 20_000;
+const DEFAULT_TOKEN_LOOKUP_HMAC_SEED = "automatic-agent.session-token-lookup.v1";
 function loadTokenLookupHmacKey(env: NodeJS.ProcessEnv = process.env): Buffer {
   const configured = env["AA_SESSION_TOKEN_LOOKUP_HMAC_KEY"]?.trim();
   if (configured) {
     return createHash("sha256").update(configured, "utf8").digest();
   }
-  return randomBytes(32);
+  return createHash("sha256").update(DEFAULT_TOKEN_LOOKUP_HMAC_SEED, "utf8").digest();
 }
 
 const TOKEN_LOOKUP_HMAC_KEY = loadTokenLookupHmacKey();
@@ -178,6 +179,15 @@ function deriveTokenLookupKey(token: string): string {
   return hashToken(token);
 }
 
+function hashesEqual(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left, "utf8");
+  const rightBuffer = Buffer.from(right, "utf8");
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+  return timingSafeEqual(leftBuffer, rightBuffer);
+}
+
 function hasMatchingBoundContext(
   session: Session,
   clientIp?: string | null,
@@ -308,7 +318,7 @@ export function validateAccessToken(
     return { valid: false, session, reason: "access_token_expired" };
   }
 
-  if (entry.accessTokenSecretHash !== tokenHash) {
+  if (!hashesEqual(entry.accessTokenSecretHash, tokenHash)) {
     return { valid: false, session: null, reason: "access_token_invalid" };
   }
 
@@ -355,11 +365,11 @@ export function refreshSession(refreshTokenString: string, clientIp?: string | n
     throw new ValidationError("session.refresh_token_expired", "session.refresh_token_expired");
   }
 
-  if (reusedTokenSessionId != null && entry.refreshTokenSecretHash !== tokenHash) {
+  if (reusedTokenSessionId != null && !hashesEqual(entry.refreshTokenSecretHash, tokenHash)) {
     throw new ValidationError("session.refresh_token_reused", "session.refresh_token_reused");
   }
 
-  if (entry.refreshTokenSecretHash !== tokenHash) {
+  if (!hashesEqual(entry.refreshTokenSecretHash, tokenHash)) {
     throw new ValidationError("session.refresh_token_invalid", "session.refresh_token_invalid");
   }
 

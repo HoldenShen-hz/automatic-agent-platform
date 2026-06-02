@@ -11,6 +11,8 @@
  * @see docs_zh/contracts/prompt_model_policy_governance_contract.md
  */
 
+import { createHash } from "node:crypto";
+
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type { EvalSqlDatabase } from "./eval-storage-port.js";
@@ -59,26 +61,35 @@ export type {
 
 type RawRow = Record<string, unknown>;
 const logger = new StructuredLogger({ retentionLimit: 100 });
+const SUITE_CASES_ENVELOPE_VERSION = "suite-cases/v1";
+
+interface PersistedSuiteCasesEnvelope {
+  version: string;
+  frozenHash: string;
+  cases: EvalCaseDefinition[];
+}
+
+const PROVIDER_FAMILY_TOKEN_REGISTRY = {
+  anthropic: ["claude", "anthropic"],
+  openai: ["gpt", "openai"],
+  google: ["gemini", "google"],
+  meta: ["llama", "meta"],
+  mistral: ["mistral"],
+  minimax: ["minimax"],
+} as const;
 
 function inferProviderFamilyFromModel(modelId: string): string {
   const normalized = modelId.trim().toLowerCase();
-  if (normalized.includes("claude") || normalized.includes("anthropic")) {
-    return "anthropic";
+  const tokenSet = new Set(normalized.split(/[^a-z0-9]+/).filter((token) => token.length > 0));
+  const matchedFamilies = Object.entries(PROVIDER_FAMILY_TOKEN_REGISTRY)
+    .filter(([, tokens]) => tokens.some((token) => tokenSet.has(token)))
+    .map(([family]) => family)
+    .sort();
+  if (matchedFamilies.length === 1) {
+    return matchedFamilies[0]!;
   }
-  if (normalized.includes("gpt") || normalized.includes("openai")) {
-    return "openai";
-  }
-  if (normalized.includes("gemini") || normalized.includes("google")) {
-    return "google";
-  }
-  if (normalized.includes("llama") || normalized.includes("meta")) {
-    return "meta";
-  }
-  if (normalized.includes("mistral")) {
-    return "mistral";
-  }
-  if (normalized.includes("minimax")) {
-    return "minimax";
+  if (matchedFamilies.length > 1) {
+    return `ambiguous:${matchedFamilies.join(",")}`;
   }
   return `unknown:${normalized}`;
 }
@@ -104,12 +115,13 @@ export class LlmEvalService {
     cases: EvalCaseDefinition[];
   }): EvalSuiteRecord {
     const now = nowIso();
+    const casesEnvelope = buildSuiteCasesEnvelope(input.cases);
     const suite: EvalSuiteRecord = {
       id: newId("esuite"),
       name: input.name,
       kind: input.kind,
       description: input.description ?? "",
-      cases: JSON.stringify(input.cases),
+      cases: JSON.stringify(casesEnvelope),
       createdAt: now,
       updatedAt: now,
     };
@@ -141,16 +153,18 @@ export class LlmEvalService {
   /**
    * Starts a new evaluation run for a suite with a specific model and prompt version.
    */
-  startRun(suiteId: string, modelId: string, promptVersion: string = "default", triggeredBy: string = "ci"): EvalRunRecord {
+  startRun(suiteId: string, modelId: string, promptVersion: string, triggeredBy: string = "ci"): EvalRunRecord {
     const suite = this.getSuite(suiteId);
-    const cases = suite ? this.parseCases(suite) : [];
+    const casesEnvelope = suite ? this.parseSuiteCasesEnvelope(suite) : null;
+    const cases = casesEnvelope?.cases ?? [];
     const now = nowIso();
+    const normalizedPromptVersion = normalizePromptVersion(promptVersion);
 
     const run: EvalRunRecord = {
       id: newId("erun"),
       suiteId,
       modelId,
-      promptVersion,
+      promptVersion: normalizedPromptVersion,
       status: "running",
       totalCases: cases.length,
       passedCases: 0,
@@ -160,7 +174,10 @@ export class LlmEvalService {
       startedAt: now,
       completedAt: null,
       triggeredBy,
-      metadata: null,
+      metadata: JSON.stringify({
+        suiteCasesFrozenHash: casesEnvelope?.frozenHash ?? null,
+        suiteCasesVersion: casesEnvelope?.version ?? null,
+      }),
     };
 
     this.db.connection
@@ -293,6 +310,9 @@ export class LlmEvalService {
     }
     const controlFamily = inferProviderFamilyFromModel(config.controlModelId);
     const treatmentFamily = inferProviderFamilyFromModel(config.treatmentModelId);
+    if (controlFamily.startsWith("ambiguous:") || treatmentFamily.startsWith("ambiguous:")) {
+      throw new Error("ab_test.judge_independence_required: provider family inference is ambiguous; use explicitly registered model IDs per §17.5");
+    }
     if (controlFamily === treatmentFamily) {
       throw new Error("ab_test.judge_independence_required: control and treatment must use different provider families per §17.5");
     }
@@ -511,7 +531,10 @@ export class LlmEvalService {
         promptVersion,
         baselinePromptVersion,
       );
-      if (baselineRegression.hasRegression) {
+      if (!baselineRegression.baselineCompatible) {
+        regressions.push("baseline_fingerprint_mismatch");
+        regressionSummary = `, baseline ${baselinePromptVersion} is incompatible with current suite fingerprint`;
+      } else if (baselineRegression.hasRegression) {
         regressions.push(...baselineRegression.regressedCases);
         regressionSummary = `, regression delta vs ${baselinePromptVersion}: ${baselineRegression.delta.toFixed(2)}`;
       } else {
@@ -561,6 +584,7 @@ export class LlmEvalService {
     previousScore: number;
     delta: number;
     regressedCases: string[];
+    baselineCompatible: boolean;
   } {
     const currentRuns = this.db.connection
       .prepare(`SELECT * FROM eval_runs WHERE suite_id = ? AND model_id = ? AND prompt_version = ? AND status IN ('passed', 'degraded', 'failed') ORDER BY completed_at DESC LIMIT 1`)
@@ -572,9 +596,21 @@ export class LlmEvalService {
 
     const currentRun = currentRuns[0];
     const previousRun = previousRuns[0];
+    const currentMetadata = parseRunMetadata(currentRun?.metadata);
+    const previousMetadata = parseRunMetadata(previousRun?.metadata);
+    const baselineCompatible =
+      currentRun == null
+      || previousRun == null
+      || (
+        currentMetadata.suiteCasesFrozenHash != null
+        && previousMetadata.suiteCasesFrozenHash != null
+        && currentMetadata.suiteCasesFrozenHash === previousMetadata.suiteCasesFrozenHash
+        && currentMetadata.suiteCasesVersion === previousMetadata.suiteCasesVersion
+      );
     const currentScore = currentRun ? Number(currentRun.average_score ?? 0) : 0;
     const previousScore = previousRun ? Number(previousRun.average_score ?? 0) : 0;
     const delta = currentScore - previousScore;
+    const regressionThreshold = this.resolveRegressionThreshold(suiteId);
 
     const regressedCases: string[] = [];
     if (currentRun) {
@@ -585,11 +621,12 @@ export class LlmEvalService {
     }
 
     return {
-      hasRegression: delta < -0.05,
+      hasRegression: !baselineCompatible || delta < regressionThreshold,
       currentScore,
       previousScore,
       delta,
       regressedCases,
+      baselineCompatible,
     };
   }
 
@@ -628,7 +665,7 @@ export class LlmEvalService {
 
   private parseCases(suite: EvalSuiteRecord): EvalCaseDefinition[] {
     try {
-      return JSON.parse(suite.cases) as EvalCaseDefinition[];
+      return this.parseSuiteCasesEnvelope(suite)?.cases ?? [];
     } catch (error) {
       logger.warn("llm_eval_service.parse_cases_failed", {
         suiteId: suite.id,
@@ -636,6 +673,22 @@ export class LlmEvalService {
       });
       return [];
     }
+  }
+
+  private parseSuiteCasesEnvelope(suite: EvalSuiteRecord): PersistedSuiteCasesEnvelope | null {
+    return parseSuiteCasesEnvelope(suite.id, suite.cases);
+  }
+
+  private resolveRegressionThreshold(suiteId: string): number {
+    const suite = this.getSuite(suiteId);
+    const cases = suite == null ? [] : this.parseCases(suite);
+    if (cases.some((item) => item.priority === "critical")) {
+      return -0.01;
+    }
+    if (cases.some((item) => item.priority === "high")) {
+      return -0.03;
+    }
+    return -0.05;
   }
 }
 
@@ -645,13 +698,12 @@ export class LlmEvalService {
  */
 function createDeterministicCiEvaluator(): EvalCaseEvaluator {
   return ({ caseDefinition }) => {
-    const actualOutput = caseDefinition.expectedOutput;
-    const passed = caseDefinition.expectedOutput.trim().length > 0;
     return {
-      actualOutput,
-      score: passed ? 1 : 0,
-      passed,
+      actualOutput: `unevaluated:${caseDefinition.id}`,
+      score: 0,
+      passed: false,
       latencyMs: deterministicLatency(caseDefinition.id),
+      metadata: { reasonCode: "ci_evaluator_missing" },
     };
   };
 }
@@ -687,11 +739,7 @@ function clampScore(score: number): number {
 }
 
 function deterministicAbScore(seed: string): number {
-  const [arm, , , caseId] = seed.split(":");
-  const base = arm === "treatment" ? 0.93 : 0.74;
-  const suffix = caseId?.match(/(\d+)$/)?.[1];
-  const jitter = suffix == null ? 0 : Number.parseInt(suffix, 10) % 2 === 1 ? 0.01 : 0;
-  return clampScore(base + jitter);
+  return clampScore(0.35 + deterministicUnitInterval(seed) * 0.3);
 }
 
 /**
@@ -723,7 +771,7 @@ function calculateVariance(values: number[]): number {
  *
  * @param controlScores - Array of individual scores from control group
  * @param treatmentScores - Array of individual scores from treatment group
- * @returns Object containing pValue (two-tailed) and zScore (standardized effect)
+ * @returns Object containing pValue (two-tailed) and zScore (legacy field carrying the t-statistic)
  */
 function calculateWelchTTtest(
   controlScores: number[],
@@ -752,23 +800,13 @@ function calculateWelchTTtest(
   // Welch-Satterthwaite degrees of freedom
   const v1 = var1 / n1;
   const v2 = var2 / n2;
-  const df = Math.pow(v1 + v2, 2) / (
-    Math.pow(v1, 2) / (n1 - 1) + Math.pow(v2, 2) / (n2 - 1)
-  );
-
-  // Convert t-statistic to z-score using normal approximation for large df
-  // For small samples, use t-distribution approximation via standard normal
-  // We use the standard normal CDF (z-score) as a reasonable approximation
-  // when df is large (> 30), which is typical for A/B tests with meaningful sample sizes
-  const zScore = tStatistic;
-
-  // Two-tailed p-value from standard normal CDF
-  // Using error function approximation for normal CDF
-  const pValue = 2 * (1 - normalCdf(Math.abs(zScore)));
+  const dfDenominator = Math.pow(v1, 2) / (n1 - 1) + Math.pow(v2, 2) / (n2 - 1);
+  const df = dfDenominator === 0 ? Number.POSITIVE_INFINITY : Math.pow(v1 + v2, 2) / dfDenominator;
+  const pValue = 2 * (1 - studentTCdf(Math.abs(tStatistic), df));
 
   return {
     pValue: Math.min(1, Math.max(0, pValue)),
-    zScore: Number(zScore.toFixed(6)),
+    zScore: Number(tStatistic.toFixed(6)),
   };
 }
 
@@ -814,32 +852,28 @@ function bootstrapConfidenceInterval(
   confidenceLevel: number = 0.95,
 ): [number, number] {
   if (controlScores.length === 0 || treatmentScores.length === 0) {
-    return [-Infinity, Infinity];
+    return [0, 0];
   }
 
   const observedImprovement = calculateMean(treatmentScores) - calculateMean(controlScores);
   const bootstrapImprovements: number[] = [];
+  const sampleIterations = Math.max(100, Math.trunc(iterations));
 
-  for (let i = 0; i < iterations; i++) {
-    // Resample with replacement
+  for (let i = 0; i < sampleIterations; i++) {
     const resampledControl = resampleWithReplacement(controlScores);
     const resampledTreatment = resampleWithReplacement(treatmentScores);
     const diff = calculateMean(resampledTreatment) - calculateMean(resampledControl);
     bootstrapImprovements.push(diff);
   }
 
-  // Sort bootstrap improvements
   bootstrapImprovements.sort((a, b) => a - b);
 
-  // Calculate percentile confidence interval
   const alpha = 1 - confidenceLevel;
-  const lowerPercentile = (alpha / 2) * 100;
-  const upperPercentile = (1 - alpha / 2) * 100;
-  const lowerIndex = Math.floor((lowerPercentile / 100) * iterations);
-  const upperIndex = Math.floor((upperPercentile / 100) * iterations);
-
-  const lower = bootstrapImprovements[lowerIndex] ?? -Infinity;
-  const upper = bootstrapImprovements[upperIndex] ?? Infinity;
+  const maxIndex = bootstrapImprovements.length - 1;
+  const lowerIndex = clampIndex(Math.floor((alpha / 2) * maxIndex), maxIndex);
+  const upperIndex = clampIndex(Math.ceil((1 - alpha / 2) * maxIndex), maxIndex);
+  const lower = bootstrapImprovements[lowerIndex] ?? observedImprovement;
+  const upper = bootstrapImprovements[upperIndex] ?? observedImprovement;
 
   return [Number(lower.toFixed(6)), Number(upper.toFixed(6))];
 }
@@ -849,27 +883,12 @@ function bootstrapConfidenceInterval(
  */
 function resampleWithReplacement(values: number[]): number[] {
   if (values.length === 0) return [];
-  const random = createDeterministicSampler(values);
   const result: number[] = [];
-  for (const v of values) {
-    const randomIndex = Math.floor(random() * values.length);
+  for (let index = 0; index < values.length; index += 1) {
+    const randomIndex = Math.floor(Math.random() * values.length);
     result.push(values[randomIndex] as number);
   }
   return result;
-}
-
-function createDeterministicSampler(values: readonly number[]): () => number {
-  const material = values.join(",");
-  let seed = 2166136261;
-  for (let index = 0; index < material.length; index += 1) {
-    seed ^= material.charCodeAt(index);
-    seed = Math.imul(seed, 16777619);
-  }
-  let state = seed >>> 0;
-  return () => {
-    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
-    return state / 0x100000000;
-  };
 }
 
 /**
@@ -888,4 +907,186 @@ function serializeEvalOutput(output: EvalStructuredOutput): string {
 function deterministicLatency(seed: string): number {
   const checksum = [...seed].reduce((total, char) => total + char.charCodeAt(0), 0);
   return 40 + (checksum % 60);
+}
+
+function normalizePromptVersion(promptVersion: string): string {
+  const normalized = promptVersion.trim();
+  if (normalized.length === 0 || normalized === "default") {
+    throw new Error("eval_run.prompt_version_required: promptVersion must be explicitly versioned and cannot use the default placeholder.");
+  }
+  return normalized;
+}
+
+function buildSuiteCasesEnvelope(cases: readonly EvalCaseDefinition[]): PersistedSuiteCasesEnvelope {
+  const frozenHash = hashCaseDefinitions(cases);
+  return {
+    version: `${SUITE_CASES_ENVELOPE_VERSION}:${frozenHash.slice(0, 12)}`,
+    frozenHash,
+    cases: [...cases],
+  };
+}
+
+function parseSuiteCasesEnvelope(suiteId: string, serializedCases: string): PersistedSuiteCasesEnvelope | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(serializedCases);
+  } catch (error) {
+    logger.warn("llm_eval_service.parse_cases_failed", {
+      suiteId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+  if (Array.isArray(parsed)) {
+    return buildSuiteCasesEnvelope(parsed as EvalCaseDefinition[]);
+  }
+  if (isRecord(parsed) && Array.isArray(parsed.cases) && typeof parsed.frozenHash === "string" && typeof parsed.version === "string") {
+    const cases = parsed.cases as EvalCaseDefinition[];
+    const actualHash = hashCaseDefinitions(cases);
+    if (actualHash !== parsed.frozenHash) {
+      throw new Error(`eval_suite.case_fingerprint_mismatch:${suiteId}`);
+    }
+    return {
+      version: String(parsed.version),
+      frozenHash: String(parsed.frozenHash),
+      cases,
+    };
+  }
+  return null;
+}
+
+function hashCaseDefinitions(cases: readonly EvalCaseDefinition[]): string {
+  return `sha256:${createHash("sha256").update(stableSerialize(cases)).digest("hex")}`;
+}
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableSerialize(item)).join(",")}]`;
+  }
+  if (isRecord(value)) {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableSerialize(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function parseRunMetadata(raw: unknown): {
+  suiteCasesFrozenHash: string | null;
+  suiteCasesVersion: string | null;
+} {
+  if (typeof raw !== "string" || raw.trim().length === 0) {
+    return { suiteCasesFrozenHash: null, suiteCasesVersion: null };
+  }
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return {
+      suiteCasesFrozenHash: typeof parsed.suiteCasesFrozenHash === "string" ? parsed.suiteCasesFrozenHash : null,
+      suiteCasesVersion: typeof parsed.suiteCasesVersion === "string" ? parsed.suiteCasesVersion : null,
+    };
+  } catch {
+    return { suiteCasesFrozenHash: null, suiteCasesVersion: null };
+  }
+}
+
+function deterministicUnitInterval(seed: string): number {
+  const digest = createHash("sha256").update(seed).digest();
+  return digest.readUInt32BE(0) / 0xffffffff;
+}
+
+function clampIndex(index: number, maxIndex: number): number {
+  return Math.max(0, Math.min(maxIndex, index));
+}
+
+function studentTCdf(tValue: number, degreesOfFreedom: number): number {
+  if (!Number.isFinite(degreesOfFreedom) || degreesOfFreedom <= 0) {
+    return normalCdf(tValue);
+  }
+  const x = degreesOfFreedom / (degreesOfFreedom + tValue * tValue);
+  const incompleteBeta = regularizedIncompleteBeta(x, degreesOfFreedom / 2, 0.5);
+  return 1 - 0.5 * incompleteBeta;
+}
+
+function regularizedIncompleteBeta(x: number, a: number, b: number): number {
+  if (x <= 0) {
+    return 0;
+  }
+  if (x >= 1) {
+    return 1;
+  }
+  const lnBeta = logGamma(a) + logGamma(b) - logGamma(a + b);
+  const front = Math.exp(a * Math.log(x) + b * Math.log(1 - x) - lnBeta) / a;
+  if (x < (a + 1) / (a + b + 2)) {
+    return front * betaContinuedFraction(x, a, b);
+  }
+  return 1 - (Math.exp(b * Math.log(1 - x) + a * Math.log(x) - lnBeta) / b) * betaContinuedFraction(1 - x, b, a);
+}
+
+function betaContinuedFraction(x: number, a: number, b: number): number {
+  const maxIterations = 200;
+  const epsilon = 3e-7;
+  const fpMin = 1e-30;
+  let c = 1;
+  let d = 1 - ((a + b) * x) / (a + 1);
+  if (Math.abs(d) < fpMin) {
+    d = fpMin;
+  }
+  d = 1 / d;
+  let fraction = d;
+  for (let iteration = 1; iteration <= maxIterations; iteration += 1) {
+    const evenIndex = iteration * 2;
+    let numerator = (iteration * (b - iteration) * x) / ((a + evenIndex - 1) * (a + evenIndex));
+    d = 1 + numerator * d;
+    if (Math.abs(d) < fpMin) {
+      d = fpMin;
+    }
+    c = 1 + numerator / c;
+    if (Math.abs(c) < fpMin) {
+      c = fpMin;
+    }
+    d = 1 / d;
+    fraction *= d * c;
+
+    numerator = (-(a + iteration) * (a + b + iteration) * x) / ((a + evenIndex) * (a + evenIndex + 1));
+    d = 1 + numerator * d;
+    if (Math.abs(d) < fpMin) {
+      d = fpMin;
+    }
+    c = 1 + numerator / c;
+    if (Math.abs(c) < fpMin) {
+      c = fpMin;
+    }
+    d = 1 / d;
+    const delta = d * c;
+    fraction *= delta;
+    if (Math.abs(delta - 1) < epsilon) {
+      break;
+    }
+  }
+  return fraction;
+}
+
+function logGamma(value: number): number {
+  const coefficients = [
+    676.5203681218851,
+    -1259.1392167224028,
+    771.3234287776531,
+    -176.6150291621406,
+    12.507343278686905,
+    -0.13857109526572012,
+    9.984369578019572e-6,
+    1.5056327351493116e-7,
+  ];
+  if (value < 0.5) {
+    return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * value)) - logGamma(1 - value);
+  }
+  let series = 0.9999999999998099;
+  const shifted = value - 1;
+  for (let index = 0; index < coefficients.length; index += 1) {
+    series += coefficients[index]! / (shifted + index + 1);
+  }
+  const t = shifted + coefficients.length - 0.5;
+  return 0.5 * Math.log(2 * Math.PI) + (shifted + 0.5) * Math.log(t) - t + Math.log(series);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value);
 }

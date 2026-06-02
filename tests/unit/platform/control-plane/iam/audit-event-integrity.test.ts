@@ -2,11 +2,25 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  configureAuditIntegrity,
   computeTier1AuditChainHash,
   computeTier1AuditEventChecksum,
   verifyTier1AuditIntegrity,
+  __dangerousResetAuditIntegrityConfigForTests,
 } from "../../../../../src/platform/five-plane-control-plane/iam/audit-event-integrity.js";
 import type { EventRecord } from "../../../../../src/platform/contracts/types/domain.js";
+
+test.beforeEach(() => {
+  __dangerousResetAuditIntegrityConfigForTests();
+  configureAuditIntegrity({
+    hmacKey: "audit-integrity-secret-key-32-bytes!",
+    isProduction: false,
+  });
+});
+
+test.afterEach(() => {
+  __dangerousResetAuditIntegrityConfigForTests();
+});
 
 function createAuditEvent(
   input: Pick<EventRecord, "id" | "taskId" | "sessionId" | "executionId" | "eventType" | "eventTier" | "payloadJson" | "traceId" | "createdAt">,

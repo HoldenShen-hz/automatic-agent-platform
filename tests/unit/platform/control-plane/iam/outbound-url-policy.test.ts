@@ -26,10 +26,14 @@ test("isBlockedOutboundHostname blocks GCP metadata endpoint", () => {
 test("isBlockedOutboundHostname blocks IPv4 private ranges", () => {
   assert.equal(isBlockedOutboundHostname("10.0.0.1"), true);
   assert.equal(isBlockedOutboundHostname("10.255.255.255"), true);
+  assert.equal(isBlockedOutboundHostname("100.64.0.1"), true);
+  assert.equal(isBlockedOutboundHostname("100.127.255.254"), true);
   assert.equal(isBlockedOutboundHostname("172.16.0.1"), true);
   assert.equal(isBlockedOutboundHostname("172.31.255.255"), true);
   assert.equal(isBlockedOutboundHostname("192.168.0.1"), true);
   assert.equal(isBlockedOutboundHostname("192.168.255.255"), true);
+  assert.equal(isBlockedOutboundHostname("198.18.0.1"), true);
+  assert.equal(isBlockedOutboundHostname("198.19.255.255"), true);
 });
 
 test("isBlockedOutboundHostname blocks link-local addresses", () => {
@@ -42,6 +46,11 @@ test("isBlockedOutboundHostname blocks link-local addresses", () => {
 test("isBlockedOutboundHostname blocks IPv6 loopback", () => {
   assert.equal(isBlockedOutboundHostname("::1"), true);
   assert.equal(isBlockedOutboundHostname("[::1]"), true);
+  assert.equal(isBlockedOutboundHostname("::ffff:127.0.0.1"), true);
+});
+
+test("isBlockedOutboundHostname blocks bare metadata host", () => {
+  assert.equal(isBlockedOutboundHostname("metadata"), true);
 });
 
 test("isBlockedOutboundHostname blocks suspicious TLDs", () => {
@@ -119,6 +128,17 @@ test("sanitizeUrlForTelemetry removes sensitive query params", () => {
   assert.ok(result.includes("api_key=***"));
   assert.ok(result.includes("name=test"));
   assert.ok(!result.includes("secret123"));
+});
+
+test("sanitizeUrlForTelemetry redacts expanded secret parameter names", () => {
+  const result = sanitizeUrlForTelemetry("https://example.com/api?apikey=a&private_token=b&client_secret=c&access_key=d&bearer=e");
+
+  assert.ok(result.includes("apikey=***"));
+  assert.ok(result.includes("private_token=***"));
+  assert.ok(result.includes("client_secret=***"));
+  assert.ok(result.includes("access_key=***"));
+  assert.ok(result.includes("bearer=***"));
+  assert.ok(!result.includes("=a"));
 });
 
 test("sanitizeUrlForTelemetry removes authorization header", () => {

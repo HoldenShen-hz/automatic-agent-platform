@@ -45,7 +45,7 @@ function createValidDagGenerator(): LlmPlanGenerator {
         tasks: [
           {
             taskId: `${goal.goalId}:task_1`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "Initial analysis",
             inputs: {},
             expectedOutputs: ["analysis_result"],
@@ -55,7 +55,7 @@ function createValidDagGenerator(): LlmPlanGenerator {
           },
           {
             taskId: `${goal.goalId}:task_2`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "Main execution",
             inputs: {},
             expectedOutputs: ["execution_result"],
@@ -66,7 +66,7 @@ function createValidDagGenerator(): LlmPlanGenerator {
           },
           {
             taskId: `${goal.goalId}:task_3`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "Final verification",
             inputs: {},
             expectedOutputs: ["verification_result"],
@@ -95,7 +95,7 @@ function createCyclicGenerator(): LlmPlanGenerator {
         tasks: [
           {
             taskId: `${goal.goalId}:a`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "Task A",
             inputs: {},
             expectedOutputs: ["result"],
@@ -106,7 +106,7 @@ function createCyclicGenerator(): LlmPlanGenerator {
           },
           {
             taskId: `${goal.goalId}:b`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "Task B",
             inputs: {},
             expectedOutputs: ["result"],
@@ -135,7 +135,7 @@ function createParallelTasksGenerator(): LlmPlanGenerator {
         tasks: [
           {
             taskId: `${goal.goalId}:parallel_1`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "Parallel Task 1",
             inputs: {},
             expectedOutputs: ["result1"],
@@ -145,7 +145,7 @@ function createParallelTasksGenerator(): LlmPlanGenerator {
           },
           {
             taskId: `${goal.goalId}:parallel_2`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "Parallel Task 2",
             inputs: {},
             expectedOutputs: ["result2"],
@@ -155,7 +155,7 @@ function createParallelTasksGenerator(): LlmPlanGenerator {
           },
           {
             taskId: `${goal.goalId}:parallel_3`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "Parallel Task 3",
             inputs: {},
             expectedOutputs: ["result3"],
@@ -252,13 +252,13 @@ test("integration: Goal decomposition with custom LLM plan generator", async () 
         tasks: [
           {
             taskId: `${goal.goalId}:custom_1`,
-            domainId: "engineering_ops",
+            domainId: "engineering-ops",
             description: "Custom task 1",
             inputs: {},
             expectedOutputs: ["result"],
             delegationMode: "auto",
             estimatedDuration: "4h",
-            estimatedCost: { estimatedCostUsd: 0.2, confidence: "high", sampleCount: 10, divisionId: "engineering_ops", basedOn: "division_avg" },
+            estimatedCost: { estimatedCostUsd: 0.2, confidence: "high", sampleCount: 10, divisionId: "engineering-ops", basedOn: "division_avg" },
           },
           {
             taskId: `${goal.goalId}:custom_2`,
@@ -296,7 +296,7 @@ test("integration: Goal decomposition with custom LLM plan generator", async () 
   assert.equal(result.tasks.length, 2);
 
   // Verify custom plan was used
-  assert.ok(result.tasks.some(t => t.domainId === "engineering_ops"));
+  assert.ok(result.tasks.some(t => t.domainId === "engineering-ops"));
   assert.ok(result.tasks.some(t => t.domainId === "data_analysis"));
 });
 
@@ -734,7 +734,7 @@ test("integration: Goal decomposition with self-dependency creates cycle", async
         tasks: [
           {
             taskId: `${goal.goalId}:self`,
-            domainId: "general_ops",
+            domainId: "general-ops",
             description: "Self-referencing task",
             inputs: {},
             expectedOutputs: ["result"],

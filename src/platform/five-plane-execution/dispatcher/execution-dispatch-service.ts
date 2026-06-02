@@ -99,7 +99,7 @@ export class ExecutionDispatchService {
   public createTicket(input: CreateExecutionTicketInput): ExecutionTicketDecision {
     const occurredAt = input.occurredAt ?? nowIso();
 
-    return this.db.transaction(() => {
+    const decision = this.db.transaction(() => {
       const view = this.store.operations.loadExecutionAuthoritativeView(input.executionId);
       if (!view) {
         throw new StorageError("storage.execution_not_found", `Execution not found: ${input.executionId}`, {
@@ -151,38 +151,19 @@ export class ExecutionDispatchService {
       this.upsertAgentExecutionRecord(execution, occurredAt, {
         taskId: task.id,
         status: "ticket_pending",
-          planJson: JSON.stringify({
-            workflowId: execution.workflowId,
-            roleId: execution.roleId,
-            runKind: execution.runKind,
-            priority: input.priority ?? task.priority,
-            queueName: ticket.queueName,
-            dispatchTarget: ticket.dispatchTarget ?? "any",
-            requiredIsolationLevel: ticket.requiredIsolationLevel ?? "standard",
-            requiredRepoVersion: ticket.requiredRepoVersion ?? null,
-            requiredCapabilities: parseJsonArray(ticket.requiredCapabilitiesJson),
-            dispatchAfter: ticket.dispatchAfter,
-          }),
-        progressMessage: "execution ticket created",
-      });
-      this.store.event.insertEvent({
-        id: newId("evt"),
-        taskId: ticket.taskId,
-        executionId: ticket.executionId,
-        eventType: "dispatch:ticket_created",
-        eventTier: "tier_2",
-          payloadJson: JSON.stringify({
-            ticketId: ticket.id,
-            queueName: ticket.queueName,
-            dispatchTarget: ticket.dispatchTarget ?? "any",
-            requiredIsolationLevel: ticket.requiredIsolationLevel ?? "standard",
-            requiredRepoVersion: ticket.requiredRepoVersion ?? null,
-            attempt: ticket.attempt,
-            priority: ticket.priority,
-            requiredCapabilities: parseJsonArray(ticket.requiredCapabilitiesJson),
+        planJson: JSON.stringify({
+          workflowId: execution.workflowId,
+          roleId: execution.roleId,
+          runKind: execution.runKind,
+          priority: input.priority ?? task.priority,
+          queueName: ticket.queueName,
+          dispatchTarget: ticket.dispatchTarget ?? "any",
+          requiredIsolationLevel: ticket.requiredIsolationLevel ?? "standard",
+          requiredRepoVersion: ticket.requiredRepoVersion ?? null,
+          requiredCapabilities: parseJsonArray(ticket.requiredCapabilitiesJson),
+          dispatchAfter: ticket.dispatchAfter,
         }),
-        traceId: execution.traceId,
-        createdAt: occurredAt,
+        progressMessage: "execution ticket created",
       });
 
       return {
@@ -190,6 +171,26 @@ export class ExecutionDispatchService {
         ticket,
       };
     });
+    if (decision.outcome === "created") {
+      this.tryInsertDispatchLifecycleEvent({
+        taskId: decision.ticket.taskId,
+        executionId: decision.ticket.executionId,
+        eventType: "dispatch:ticket_created",
+        payloadJson: JSON.stringify({
+          ticketId: decision.ticket.id,
+          queueName: decision.ticket.queueName,
+          dispatchTarget: decision.ticket.dispatchTarget ?? "any",
+          requiredIsolationLevel: decision.ticket.requiredIsolationLevel ?? "standard",
+          requiredRepoVersion: decision.ticket.requiredRepoVersion ?? null,
+          attempt: decision.ticket.attempt,
+          priority: decision.ticket.priority,
+          requiredCapabilities: parseJsonArray(decision.ticket.requiredCapabilitiesJson),
+        }),
+        traceId: this.store.dispatch.getExecution(decision.ticket.executionId)?.traceId ?? null,
+        createdAt: occurredAt,
+      });
+    }
+    return decision;
   }
   public dispatchNext(options: DispatchExecutionOptions): DispatchExecutionDecision {
     const occurredAt = options.occurredAt ?? nowIso();
@@ -429,6 +430,15 @@ export class ExecutionDispatchService {
         reasonCode: "lease_grant_failed",
         lease: null,
       };
+      let claimedTicketEvent:
+        | {
+            taskId: string;
+            executionId: string;
+            payloadJson: string;
+            traceId: string | null;
+            createdAt: string;
+          }
+        | null = null;
       // Issue 1900 fix: Keep lease acquisition and claim in the same transaction boundary.
       this.db.transaction(() => {
         leaseResult = this.leases.acquireLeaseWithinTransaction({
@@ -461,12 +471,9 @@ export class ExecutionDispatchService {
           });
         }
         const execution = this.store.dispatch.getExecution(ticket.executionId);
-        this.store.event.insertEvent({
-          id: newId("evt"),
+        claimedTicketEvent = {
           taskId: ticket.taskId,
           executionId: ticket.executionId,
-          eventType: "dispatch:ticket_claimed",
-          eventTier: "tier_2",
           payloadJson: JSON.stringify({
             ticketId: ticket.id,
             workerId: selectedWorker.workerId,
@@ -481,7 +488,7 @@ export class ExecutionDispatchService {
           }),
           traceId: execution?.traceId ?? null,
           createdAt: occurredAt,
-        });
+        };
       });
 
       const resolvedLeaseResult = leaseResult;
@@ -504,6 +511,12 @@ export class ExecutionDispatchService {
           evaluations,
         });
         continue;
+      }
+      if (claimedTicketEvent != null) {
+        this.tryInsertDispatchLifecycleEvent({
+          ...claimedTicketEvent,
+          eventType: "dispatch:ticket_claimed",
+        });
       }
 
       const trace = this.recordDecisionEvent(ticket, occurredAt, {
@@ -1085,6 +1098,39 @@ export class ExecutionDispatchService {
     });
     this.enqueueDispatchDlq(ticket, occurredAt, "dispatch.poison_pill_abandoned", trace);
     return trace;
+  }
+
+  private tryInsertDispatchLifecycleEvent(input: {
+    taskId: string;
+    executionId: string;
+    eventType: "dispatch:ticket_created" | "dispatch:ticket_claimed";
+    payloadJson: string;
+    traceId: string | null;
+    createdAt: string;
+  }): void {
+    try {
+      this.store.event.insertEvent({
+        id: newId("evt"),
+        taskId: input.taskId,
+        executionId: input.executionId,
+        eventType: input.eventType,
+        eventTier: "tier_2",
+        payloadJson: input.payloadJson,
+        traceId: input.traceId,
+        createdAt: input.createdAt,
+      });
+    } catch (error) {
+      logger.log({
+        level: "error",
+        message: "dispatch.lifecycle_event_write_failed",
+        data: {
+          taskId: input.taskId,
+          executionId: input.executionId,
+          eventType: input.eventType,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
   }
 
   private upsertAgentExecutionRecord(

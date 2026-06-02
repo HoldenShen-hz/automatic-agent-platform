@@ -15,8 +15,8 @@ Description: `qa` and `quality-assurance` intentionally use different `default_w
 
 | division | Role Definition | Description |
 |---|---|-------|
-| `engineering_ops` | build/release delivery | Engineering delivery, pipelines, build and release coordination |
-| `general_ops` | generic operator fallback | Generic fallback execution plane, suitable for low-specificity tasks |
+| `engineering-ops` | build/release delivery | Engineering delivery, pipelines, build and release coordination |
+| `general-ops` | generic operator fallback | Generic fallback execution plane, suitable for low-specificity tasks |
 | `operations` | service operations | Service operations, on-call, daily operations |
 | `it-operations` | workstation / identity ops | Endpoint, account, device and identity domain operations |
 

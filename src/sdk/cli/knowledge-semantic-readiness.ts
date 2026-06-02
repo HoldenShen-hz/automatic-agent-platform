@@ -1,14 +1,16 @@
 import { pathToFileURL } from "node:url";
 
 import { resolveCliDbPath, withCliStorageBackendAsync } from "./authoritative-storage.js";
+import { readCliProcessEnv } from "./cli-env.js";
 import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 import { validateSemanticVectorReadiness } from "../../platform/five-plane-state-evidence/knowledge/semantic-vector-validation.js";
 
 async function main(): Promise<number> {
   const dbPath = resolveCliDbPath();
+  const env = readCliProcessEnv();
   const report = await withCliStorageBackendAsync(async (storage) => {
     return validateSemanticVectorReadiness({
-      env: process.env,
+      env,
       storageDriver: storage.driver,
       database: storage.asyncSql,
     });

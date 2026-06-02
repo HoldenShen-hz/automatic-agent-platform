@@ -59,7 +59,7 @@ test("ResponseFormatter.formatTaskSummary includes workflowId", () => {
   const formatter = new ResponseFormatter();
 
   const summary = formatter.formatTaskSummary({
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "deploy_wf",
     costEstimate: makeCostEstimate(),
     riskPreview: makeRiskPreview(),
@@ -73,7 +73,7 @@ test("ResponseFormatter.formatTaskSummary includes cost estimate", () => {
   const formatter = new ResponseFormatter();
 
   const summary = formatter.formatTaskSummary({
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "wf_001",
     costEstimate: makeCostEstimate({ estimatedCostUsd: 1.25 }),
     riskPreview: makeRiskPreview(),
@@ -87,7 +87,7 @@ test("ResponseFormatter.formatTaskSummary includes risk level", () => {
   const formatter = new ResponseFormatter();
 
   const summary = formatter.formatTaskSummary({
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "wf_001",
     costEstimate: makeCostEstimate(),
     riskPreview: makeRiskPreview({ overallRisk: "critical" }),
@@ -101,7 +101,7 @@ test("ResponseFormatter.formatTaskSummary indicates clarification needed", () =>
   const formatter = new ResponseFormatter();
 
   const summary = formatter.formatTaskSummary({
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "wf_001",
     costEstimate: makeCostEstimate(),
     riskPreview: makeRiskPreview(),
@@ -115,7 +115,7 @@ test("ResponseFormatter.formatTaskSummary indicates blocked by policy", () => {
   const formatter = new ResponseFormatter();
 
   const summary = formatter.formatTaskSummary({
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "wf_001",
     costEstimate: makeCostEstimate(),
     riskPreview: makeRiskPreview(),
@@ -129,7 +129,7 @@ test("ResponseFormatter.formatTaskSummary indicates can proceed", () => {
   const formatter = new ResponseFormatter();
 
   const summary = formatter.formatTaskSummary({
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "wf_001",
     costEstimate: makeCostEstimate(),
     riskPreview: makeRiskPreview(),

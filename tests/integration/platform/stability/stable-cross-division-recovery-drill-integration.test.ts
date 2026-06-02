@@ -66,14 +66,14 @@ test("runStableCrossDivisionRecoveryDrill cross_division_overview scenario passe
     assert.equal(details.overview.length, 2);
 
     // Engineering ops: 1 blocked, 1 dead letter, 0 stale
-    const engineeringOverview = details.overview.find((o) => o.divisionId === "engineering_ops");
+    const engineeringOverview = details.overview.find((o) => o.divisionId === "engineering-ops");
     assert.ok(engineeringOverview);
     assert.equal(engineeringOverview.activeCandidateCount, 1);
     assert.equal(engineeringOverview.blockedApprovalCount, 1);
     assert.equal(engineeringOverview.staleExecutionCount, 0);
 
     // General ops: 1 stale, 0 blocked
-    const generalOverview = details.overview.find((o) => o.divisionId === "general_ops");
+    const generalOverview = details.overview.find((o) => o.divisionId === "general-ops");
     assert.ok(generalOverview);
     assert.equal(generalOverview.activeCandidateCount, 1);
     assert.equal(generalOverview.blockedApprovalCount, 0);

@@ -78,7 +78,7 @@ test("[SYS-REL-2.7] concurrent workflow transitions detect conflict", async () =
   const now = new Date().toISOString();
   const repository = createWorkflowRepository({
     taskId: "workflow-cas-test-001",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "multi_step_v1",
     currentStepIndex: 0,
     status: "running",
@@ -140,7 +140,7 @@ test("[SYS-REL-2.7] workflow CAS error thrown when fromStatus doesn't match", ()
   const now = new Date().toISOString();
   const repository = createWorkflowRepository({
     taskId: "workflow-cas-error-001",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "multi_step_v1",
     currentStepIndex: 1,
     status: "completed",
@@ -178,7 +178,7 @@ test("[SYS-REL-2.7] multiple concurrent transitions on same workflow", async () 
   const now = new Date().toISOString();
   const repository = createWorkflowRepository({
     taskId: "workflow-multi-001",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "multi_step_v1",
     currentStepIndex: 0,
     status: "running",

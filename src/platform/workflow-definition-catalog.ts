@@ -13,7 +13,7 @@ import { DEFAULT_DIVISIONS_ROOT } from "../domains/governance/division-loader-su
 
 export const GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH = join(
   DEFAULT_DIVISIONS_ROOT,
-  "general_ops",
+  "general-ops",
   "schemas",
   "minimal-output.json",
 );
@@ -55,7 +55,7 @@ export type WorkflowTemplate = MinimalWorkflowDefinition;
 
 export const SINGLE_AGENT_MINIMAL_WORKFLOW: MinimalWorkflowDefinition = {
   workflowId: "single_agent_minimal",
-  divisionId: "general_ops",
+  divisionId: "general-ops",
   steps: [
     {
       stepId: "analyze_request",
@@ -71,7 +71,7 @@ export const SINGLE_AGENT_MINIMAL_WORKFLOW: MinimalWorkflowDefinition = {
 
 export const PHASE_1B_SINGLE_DIVISION_WORKFLOW: MinimalWorkflowDefinition = {
   workflowId: "single_division_multi_step_orchestration",
-  divisionId: "general_ops",
+  divisionId: "general-ops",
   steps: [
     {
       stepId: "intake_triage",

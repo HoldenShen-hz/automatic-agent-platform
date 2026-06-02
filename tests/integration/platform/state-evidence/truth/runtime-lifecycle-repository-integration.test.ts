@@ -21,7 +21,7 @@ function createTestTaskInput(overrides: Partial<{
     id: overrides.id ?? `task-lifecycle-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     parentId: null,
     rootId: overrides.id ?? `task-lifecycle-${Date.now()}`,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     tenantId: overrides.tenantId ?? null,
     title: "Lifecycle Test Task",
     status: overrides.status ?? "queued",
@@ -148,7 +148,7 @@ test("RuntimeLifecycleRepository updateWorkflowState advances through steps", ()
       ctx.store.insertTask(createTestTaskInput({ id: taskId }));
       const workflow: WorkflowStateRecord = {
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "wf-lifecycle-001",
         status: "running",
         currentStepIndex: 0,
@@ -195,7 +195,7 @@ test("RuntimeLifecycleRepository updateWorkflowStateCas prevents stale updates",
       ctx.store.insertTask(createTestTaskInput({ id: taskId }));
       const workflow: WorkflowStateRecord = {
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "wf-cas-001",
         status: "running",
         currentStepIndex: 0,

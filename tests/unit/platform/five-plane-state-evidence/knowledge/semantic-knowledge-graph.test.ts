@@ -105,3 +105,28 @@ test("SemanticKnowledgeGraph supports inspect and trust propagation over learned
   assert.ok(trust.propagatedNodeIds.includes("entity:b"));
   assert.equal((trust.trustScoreChanges["entity:b"] ?? 0) > 0, true);
 });
+
+test("SemanticKnowledgeGraph propagateTrust keeps the strongest path instead of first-visited path", () => {
+  const graph = new SemanticKnowledgeGraph();
+  graph.addEntityRelation("entity:a", "entity:b", "trust_boost", 0.2, "official");
+  graph.addEntityRelation("entity:a", "entity:c", "trust_boost", 0.9, "official");
+  graph.addEntityRelation("entity:c", "entity:b", "trust_boost", 0.9, "official");
+
+  const trust = graph.propagateTrust(["entity:a"], 0.1);
+  assert.ok((trust.trustScoreChanges["entity:b"] ?? 0) > 0.65);
+});
+
+test("SemanticKnowledgeGraph same_document builds document clique without duplicate reverse edges", () => {
+  const graph = new SemanticKnowledgeGraph();
+  graph.replace([
+    createRecord("doc1", "ns1", [
+      { chunkId: "chunk1", summary: "First chunk", keywords: [] },
+      { chunkId: "chunk2", summary: "Second chunk", keywords: [] },
+      { chunkId: "chunk3", summary: "Third chunk", keywords: [] },
+    ]),
+  ]);
+
+  const inspection = graph.inspect({ namespace: "ns1", limit: 20 });
+  const sameDocumentEdges = inspection.edges.filter((edge) => edge.relation === "same_document");
+  assert.equal(sameDocumentEdges.length, 3);
+});

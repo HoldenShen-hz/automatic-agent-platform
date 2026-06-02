@@ -162,7 +162,7 @@ test("result-envelope: buildStepResultEnvelope handles artifact references", () 
 function createMockTaskRecord(status: TaskRecord["status"], outputJson: string | null): TaskRecord {
   return {
     id: "task_test_123",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     rootId: "task_test_123",
     parentId: null,
     title: "Test Task",

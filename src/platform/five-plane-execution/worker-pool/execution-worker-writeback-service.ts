@@ -128,6 +128,9 @@ export interface WorkerWritebackDecision {
 /** Options for configuring the writeback service. */
 export interface ExecutionWorkerWritebackServiceOptions {
   resourceCeilingGuard?: ExecutionResourceCeilingGuard;
+  leases?: ExecutionLeaseService;
+  transitions?: TransitionService;
+  workers?: WorkerRegistryService;
 }
 
 /**
@@ -148,9 +151,9 @@ export class ExecutionWorkerWritebackService {
     private readonly store: AuthoritativeTaskStore,
     options: ExecutionWorkerWritebackServiceOptions = {},
   ) {
-    this.leases = new ExecutionLeaseService(db, store);
-    this.transitions = new TransitionService(db, store);
-    this.workers = new WorkerRegistryService(store);
+    this.leases = options.leases ?? new ExecutionLeaseService(db, store);
+    this.transitions = options.transitions ?? new TransitionService(db, store);
+    this.workers = options.workers ?? new WorkerRegistryService(store);
     this.resourceCeilingGuard = options.resourceCeilingGuard ?? new ExecutionResourceCeilingGuard();
   }
 
@@ -183,12 +186,13 @@ export class ExecutionWorkerWritebackService {
     const { execution, task, workflow, session } = view;
 
     if (!task) {
-      this.recordRejectedEvent(execution.taskId, execution.id, occurredAt, {
+      this.recordRejectedEvent(execution.taskId, execution.id, execution.traceId, occurredAt, {
         workerId: input.workerId,
         leaseId: input.leaseId,
         fencingToken: input.fencingToken,
         terminalStatus: input.terminalStatus,
         reasonCode: "task_not_found",
+        orphanedTaskContext: true,
       });
       return {
         accepted: false,
@@ -201,7 +205,7 @@ export class ExecutionWorkerWritebackService {
     }
 
     if (!workflow) {
-      this.recordRejectedEvent(task.id, execution.id, occurredAt, {
+      this.recordRejectedEvent(task.id, execution.id, execution.traceId, occurredAt, {
         workerId: input.workerId,
         leaseId: input.leaseId,
         fencingToken: input.fencingToken,
@@ -219,7 +223,7 @@ export class ExecutionWorkerWritebackService {
     }
 
     if (!session) {
-      this.recordRejectedEvent(task.id, execution.id, occurredAt, {
+      this.recordRejectedEvent(task.id, execution.id, execution.traceId, occurredAt, {
         workerId: input.workerId,
         leaseId: input.leaseId,
         fencingToken: input.fencingToken,
@@ -237,7 +241,7 @@ export class ExecutionWorkerWritebackService {
     }
 
     if (execution.status !== "executing") {
-      this.recordRejectedEvent(task.id, execution.id, occurredAt, {
+      this.recordRejectedEvent(task.id, execution.id, execution.traceId, occurredAt, {
         workerId: input.workerId,
         leaseId: input.leaseId,
         fencingToken: input.fencingToken,
@@ -262,7 +266,7 @@ export class ExecutionWorkerWritebackService {
       occurredAt,
     });
     if (!validation.allowed) {
-      this.recordRejectedEvent(task.id, execution.id, occurredAt, {
+      this.recordRejectedEvent(task.id, execution.id, execution.traceId, occurredAt, {
         workerId: input.workerId,
         leaseId: input.leaseId,
         fencingToken: input.fencingToken,
@@ -281,7 +285,7 @@ export class ExecutionWorkerWritebackService {
 
     const lease = this.store.worker.getExecutionLease(input.leaseId);
     if (!lease) {
-      this.recordRejectedEvent(task.id, execution.id, occurredAt, {
+      this.recordRejectedEvent(task.id, execution.id, execution.traceId, occurredAt, {
         workerId: input.workerId,
         leaseId: input.leaseId,
         fencingToken: input.fencingToken,
@@ -317,7 +321,7 @@ export class ExecutionWorkerWritebackService {
           recordedAt: occurredAt,
         });
       });
-      this.recordRejectedEvent(task.id, execution.id, occurredAt, {
+      this.recordRejectedEvent(task.id, execution.id, execution.traceId, occurredAt, {
         workerId: input.workerId,
         leaseId: input.leaseId,
         fencingToken: input.fencingToken,
@@ -341,7 +345,7 @@ export class ExecutionWorkerWritebackService {
     const executionTerminalStatus = toExecutionTerminalStatus(input.terminalStatus);
     const workerSnapshot = this.store.worker.getWorkerSnapshot(input.workerId);
     if ((workerSnapshot?.placement ?? "local") === "remote" && workerSnapshot?.registrationVerifiedAt == null) {
-      this.recordRejectedEvent(task.id, execution.id, occurredAt, {
+      this.recordRejectedEvent(task.id, execution.id, execution.traceId, occurredAt, {
         workerId: input.workerId,
         leaseId: input.leaseId,
         fencingToken: input.fencingToken,
@@ -369,7 +373,7 @@ export class ExecutionWorkerWritebackService {
               input.workspaceSyncStatus === undefined ? (workerSnapshot.workspaceSyncStatus ?? null) : input.workspaceSyncStatus,
           });
     if (remoteAuthorityBlockReason) {
-      this.recordRejectedEvent(task.id, execution.id, occurredAt, {
+      this.recordRejectedEvent(task.id, execution.id, execution.traceId, occurredAt, {
         workerId: input.workerId,
         leaseId: input.leaseId,
         fencingToken: input.fencingToken,
@@ -427,7 +431,7 @@ export class ExecutionWorkerWritebackService {
           completedAt: null,
         });
       }
-      this.recordRejectedEvent(task.id, execution.id, occurredAt, {
+      this.recordRejectedEvent(task.id, execution.id, execution.traceId, occurredAt, {
         workerId: input.workerId,
         leaseId: input.leaseId,
         fencingToken: input.fencingToken,
@@ -591,7 +595,7 @@ export class ExecutionWorkerWritebackService {
             error: error.message,
           },
         });
-        this.recordRejectedEvent(task.id, execution.id, occurredAt, {
+        this.recordRejectedEvent(task.id, execution.id, execution.traceId, occurredAt, {
           workerId: input.workerId,
           leaseId: input.leaseId,
           fencingToken: input.fencingToken,
@@ -632,7 +636,7 @@ export class ExecutionWorkerWritebackService {
           error: error.message,
         },
       });
-      this.recordRejectedEvent(task.id, execution.id, occurredAt, {
+      this.recordRejectedEvent(task.id, execution.id, execution.traceId, occurredAt, {
         workerId: input.workerId,
         leaseId: input.leaseId,
         fencingToken: input.fencingToken,
@@ -720,10 +724,10 @@ export class ExecutionWorkerWritebackService {
   private recordRejectedEvent(
     taskId: string,
     executionId: string,
+    traceId: string | null,
     occurredAt: string,
     payload: Record<string, unknown>,
   ): void {
-    const execution = this.store.dispatch.getExecution(executionId);
     this.store.event.insertEvent({
       id: newId("evt"),
       taskId,
@@ -731,7 +735,7 @@ export class ExecutionWorkerWritebackService {
       eventType: "worker:writeback_rejected",
       eventTier: "tier_2",
       payloadJson: JSON.stringify(payload),
-      traceId: execution?.traceId ?? null,
+      traceId,
       createdAt: occurredAt,
     });
   }

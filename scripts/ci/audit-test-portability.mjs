@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { extname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const GENERATED_EXTENSIONS = [".js", ".js.map", ".d.ts"];
 const ABSOLUTE_PATH_PATTERNS = [
-  "/Users/holden/Project/automatic_agent/automatic_agent_platform|/Users/holden/",
+  /\/Users\/[^/\n]+\/[^\n]*/u,
+  /\/home\/[^/\n]+\/[^\n]*/u,
+  /[A-Za-z]:\\Users\\[^\\\n]+\\[^\n]*/u,
 ];
 const TEXT_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".json", ".jsonl", ".md", ".yaml", ".yml", ".toml"]);
 const roots = ["tests", "helpers"];
@@ -48,8 +50,7 @@ function walk(directory) {
       continue;
     }
     const content = readFileSync(fullPath, "utf8");
-    if (content.includes("/Users/holden/Project/automatic_agent/automatic_agent_platform")
-      || content.includes("/Users/holden/")) {
+    if (ABSOLUTE_PATH_PATTERNS.some((pattern) => pattern.test(content))) {
       findings.push(`absolute-workspace-path: ${fullPath}`);
     }
   }
@@ -79,21 +80,13 @@ function findAbsoluteWorkspacePaths() {
     if (!existsSync(root)) {
       continue;
     }
-    const result = spawnSync(
-      "rg",
-      ["-l", ABSOLUTE_PATH_PATTERNS[0], root, "-g", "!**/*.map"],
-      { encoding: "utf8" },
-    );
-    if (result.error || result.status === 1) {
-      continue;
-    }
-    if (result.status !== 0) {
-      throw result.error ?? new Error(result.stderr || `rg failed for ${root}`);
-    }
-    for (const line of result.stdout.split("\n")) {
-      const trimmed = line.trim();
-      if (trimmed.length > 0 && trackedFiles.has(trimmed)) {
-        findings.push(`absolute-workspace-path: ${trimmed}`);
+    for (const filePath of listFiles(root)) {
+      if (!trackedFiles.has(filePath) || extname(filePath) === ".map" || !isTextFile(filePath)) {
+        continue;
+      }
+      const content = readFileSync(filePath, "utf8");
+      if (ABSOLUTE_PATH_PATTERNS.some((pattern) => pattern.test(content))) {
+        findings.push(`absolute-workspace-path: ${filePath}`);
       }
     }
   }
@@ -101,14 +94,36 @@ function findAbsoluteWorkspacePaths() {
 
 function listTrackedFiles() {
   const result = spawnSync("git", ["ls-files", "--", ...roots], { encoding: "utf8" });
-  if (result.error) {
-    throw result.error;
+  if (result.error == null && result.status === 0) {
+    return result.stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
   }
-  if (result.status !== 0) {
-    throw new Error(result.stderr || "git ls-files failed while auditing test portability");
+  return roots.flatMap((root) => listFiles(root));
+}
+
+function listFiles(root) {
+  if (!existsSync(root)) {
+    return [];
   }
-  return result.stdout
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+  const results = [];
+  const stack = [root];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (current == null) {
+      continue;
+    }
+    const stats = statSync(current);
+    if (stats.isDirectory()) {
+      for (const entry of readdirSync(current)) {
+        stack.push(join(current, entry));
+      }
+      continue;
+    }
+    if (stats.isFile()) {
+      results.push(current);
+    }
+  }
+  return results.sort((left, right) => left.localeCompare(right));
 }

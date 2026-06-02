@@ -80,12 +80,13 @@ export { GatewayRateLimitError } from "./errors.js";
  */
 export class ChannelGatewayService {
   private static readonly MAX_RESPONSE_BYTES = 64 * 1024;
+  private static readonly CIRCUIT_BREAKER_IDLE_TTL_MS = 15 * 60 * 1000;
   private readonly fetchImpl: FetchLike;
   private readonly logger = new StructuredLogger({ retentionLimit: 100 });
   private readonly requestTimeoutMs: number;
   private readonly circuitBreakerFailureThreshold: number;
   private readonly circuitBreakerResetMs: number;
-  private readonly circuitBreakers = new Map<string, CircuitBreaker>();
+  private readonly circuitBreakers = new Map<string, { breaker: CircuitBreaker; lastUsedAt: number }>();
   private readonly httpAgent: HttpAgent;
   private readonly httpsAgent: HttpsAgent;
   // R12-12: Pluggable adapter registry
@@ -300,7 +301,7 @@ export class ChannelGatewayService {
         deliveryInput.metadata = metadata;
       }
 
-      const deliveryReceipt = await this.deliverResolvedTarget(deliveryInput);
+      const deliveryReceipt = await this.deliverResolvedTarget(deliveryInput, tenantId);
 
       // Record success in delivery tracking
       if (deliveryService != null) {
@@ -413,7 +414,7 @@ export class ChannelGatewayService {
             deliveryInput.metadata.requestEnvelope = trackedPayload.requestEnvelope;
           }
         }
-        const receipt = await this.deliverResolvedTarget(deliveryInput);
+        const receipt = await this.deliverResolvedTarget(deliveryInput, trackedPayload.tenantId ?? null);
         const tracking = this.recordSuccessfulDelivery(
           queuedMessage.channel,
           queuedMessage.messageId,
@@ -626,8 +627,8 @@ export class ChannelGatewayService {
     externalTargetId: string | null;
     text: string;
     metadata?: Record<string, unknown>;
-  }): Promise<GatewayDeliveryReceipt> {
-    return this.executeProtectedDelivery(input.channel, async () => {
+  }, tenantId: string | null): Promise<GatewayDeliveryReceipt> {
+    return this.executeProtectedDelivery(input.channel, tenantId, async () => {
       // R12-12: Try adapter registry first for pluggable adapters
       const adapter = this.adapterRegistry.get(input.channel);
       if (adapter) {
@@ -656,8 +657,8 @@ export class ChannelGatewayService {
     });
   }
 
-  private async executeProtectedDelivery<T>(channel: string, operation: () => Promise<T>): Promise<T> {
-    const breaker = this.getCircuitBreaker(channel);
+  private async executeProtectedDelivery<T>(channel: string, tenantId: string | null, operation: () => Promise<T>): Promise<T> {
+    const breaker = this.getCircuitBreaker(channel, tenantId);
     try {
       return await breaker.execute(async () => operation());
     } catch (error) {
@@ -674,20 +675,34 @@ export class ChannelGatewayService {
     }
   }
 
-  private getCircuitBreaker(channel: string): CircuitBreaker {
-    const existing = this.circuitBreakers.get(channel);
+  private getCircuitBreaker(channel: string, tenantId: string | null): CircuitBreaker {
+    this.pruneCircuitBreakers();
+    const key = `${tenantId ?? "global"}:${channel}`;
+    const existing = this.circuitBreakers.get(key);
     if (existing != null) {
-      return existing;
+      existing.lastUsedAt = Date.now();
+      return existing.breaker;
     }
     const breaker = new CircuitBreaker({
-      name: `gateway.${channel}`,
+      name: `gateway.${tenantId ?? "global"}.${channel}`,
       failureThreshold: this.circuitBreakerFailureThreshold,
       successThreshold: 1,
       timeout: this.requestTimeoutMs,
       resetTimeout: this.circuitBreakerResetMs,
     });
-    this.circuitBreakers.set(channel, breaker);
+    this.circuitBreakers.set(key, {
+      breaker,
+      lastUsedAt: Date.now(),
+    });
     return breaker;
+  }
+
+  private pruneCircuitBreakers(now: number = Date.now()): void {
+    for (const [key, entry] of this.circuitBreakers.entries()) {
+      if (now - entry.lastUsedAt >= ChannelGatewayService.CIRCUIT_BREAKER_IDLE_TTL_MS) {
+        this.circuitBreakers.delete(key);
+      }
+    }
   }
 
   private async fetchWithTimeout(input: string, init: RequestInit, timeoutCode: string): Promise<Response> {

@@ -146,13 +146,19 @@ test("core/runtime index exports worker-registry-service class", async () => {
   assert.ok(typeof runtime.WorkerRegistryService === "function", "Should export WorkerRegistryService class");
 });
 
-// Test 18: index.ts re-exports workflow-step-checkpoint functions
-test("core/runtime index exports workflow-step-checkpoint functions", async () => {
+// Test 18: index.ts no longer re-exports workflow-step-checkpoint functions
+test("core/runtime index excludes workflow-step-checkpoint functions", async () => {
   const runtime = await import("../../../../src/core/runtime/index.js");
 
-  // readWorkflowStepCheckpoint and createWorkflowStepCheckpoint are functions
-  assert.ok(typeof runtime.readWorkflowStepCheckpoint === "function", "Should export readWorkflowStepCheckpoint function");
-  assert.ok(typeof runtime.createWorkflowStepCheckpoint === "function", "Should export createWorkflowStepCheckpoint function");
+  assert.equal("readWorkflowStepCheckpoint" in runtime, false);
+  assert.equal("createWorkflowStepCheckpoint" in runtime, false);
+});
+
+test("core/state-evidence index exports workflow-step-checkpoint functions", async () => {
+  const stateEvidence = await import("../../../../src/core/state-evidence/index.js");
+
+  assert.ok(typeof stateEvidence.readWorkflowStepCheckpoint === "function", "Should export readWorkflowStepCheckpoint function");
+  assert.ok(typeof stateEvidence.createWorkflowStepCheckpoint === "function", "Should export createWorkflowStepCheckpoint function");
 });
 
 // Test 19: index.ts re-exports orchestrator submodule

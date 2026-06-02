@@ -45,6 +45,8 @@ export interface HitlPersistenceStore {
   saveRequest(request: HitlRequest): void;
   loadRequests(): HitlRequest[];
   deleteRequest(requestId: string): void;
+  saveResponsibilityRecord?(record: HumanResponsibilityRecord): void;
+  loadResponsibilityRecords?(): HumanResponsibilityRecord[];
 }
 
 /**
@@ -53,6 +55,7 @@ export interface HitlPersistenceStore {
  */
 export class InMemoryHitlStore implements HitlPersistenceStore {
   private readonly requests = new Map<string, HitlRequest>();
+  private readonly responsibilityRecords = new Map<string, HumanResponsibilityRecord[]>();
 
   public saveRequest(request: HitlRequest): void {
     this.requests.set(request.requestId, request);
@@ -65,13 +68,22 @@ export class InMemoryHitlStore implements HitlPersistenceStore {
   public deleteRequest(requestId: string): void {
     this.requests.delete(requestId);
   }
+
+  public saveResponsibilityRecord(record: HumanResponsibilityRecord): void {
+    const existing = this.responsibilityRecords.get(record.requestId) ?? [];
+    this.responsibilityRecords.set(record.requestId, [...existing, record]);
+  }
+
+  public loadResponsibilityRecords(): HumanResponsibilityRecord[] {
+    return [...this.responsibilityRecords.values()].flatMap((records) => [...records]);
+  }
 }
 
 export class HitlRuntime {
   private static readonly DEFAULT_REQUEST_TTL_MS = 30 * 24 * 60 * 60 * 1000;
   private readonly store: HitlPersistenceStore;
   private readonly memoryFallback = new Map<string, HitlRequest>();
-  private readonly responsibilityRecords = new Map<string, HumanResponsibilityRecord>();
+  private readonly responsibilityRecords = new Map<string, HumanResponsibilityRecord[]>();
   private readonly requestTtlMs: number;
 
   /**
@@ -88,6 +100,10 @@ export class HitlRuntime {
       for (const request of this.store.loadRequests()) {
         const normalized = this.normalizeRequest(request);
         this.memoryFallback.set(normalized.requestId, normalized);
+      }
+      for (const record of this.store.loadResponsibilityRecords?.() ?? []) {
+        const existing = this.responsibilityRecords.get(record.requestId) ?? [];
+        this.responsibilityRecords.set(record.requestId, [...existing, record]);
       }
     } catch (error) {
       hitlRuntimeLogger.error("hitl.load_requests_failed", {
@@ -144,7 +160,9 @@ export class HitlRuntime {
       });
     }
     if (record != null) {
-      this.responsibilityRecords.set(normalized.requestId, record);
+      const existing = this.responsibilityRecords.get(normalized.requestId) ?? [];
+      this.responsibilityRecords.set(normalized.requestId, [...existing, record]);
+      this.store.saveResponsibilityRecord?.(record);
     }
   }
 
@@ -175,15 +193,10 @@ export class HitlRuntime {
   }
 
   public inspect(requestId: string, actorId: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requireRequest(requestId);
-    if (!request) {
-      throw new Error(`harness.hitl.request_not_found:${requestId}`);
-    }
+    const request = this.requireMutableRequest(requestId, ["pending", "pending_approval", "paused"]);
     const inspected: HitlRequest = {
       ...request,
-      status: "approved",
-      resolvedAt: nowIso(),
-      resolvedBy: actorId,
+      mode: "inspect",
     };
     this.persistRequest(inspected);
     const record = this.createResponsibilityRecord(inspected, actorId, "inspect", "observation");
@@ -196,10 +209,7 @@ export class HitlRuntime {
     patchContent: Readonly<Record<string, unknown>>,
     rationale: string,
   ): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requireRequest(requestId);
-    if (!request) {
-      throw new Error(`harness.hitl.request_not_found:${requestId}`);
-    }
+    const request = this.requireMutableRequest(requestId, ["pending", "pending_approval", "approved", "paused"]);
     const beforeRef = `patch:before:${requestId}:${nowIso()}`;
     const patched: HitlRequest = {
       ...request,
@@ -221,10 +231,7 @@ export class HitlRuntime {
     overrideContent: Readonly<Record<string, unknown>>,
     rationale: string,
   ): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requireRequest(requestId);
-    if (!request) {
-      throw new Error(`harness.hitl.request_not_found:${requestId}`);
-    }
+    const request = this.requireMutableRequest(requestId, ["pending", "pending_approval", "approved", "paused"]);
     const beforeRef = `override:before:${requestId}:${nowIso()}`;
     const afterRef = `override:after:${requestId}:${nowIso()}`;
     const overridden: HitlRequest = {
@@ -243,10 +250,7 @@ export class HitlRuntime {
   }
 
   public takeover(requestId: string, actorId: string, rationale: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requireRequest(requestId);
-    if (!request) {
-      throw new Error(`harness.hitl.request_not_found:${requestId}`);
-    }
+    const request = this.requireMutableRequest(requestId, ["pending", "pending_approval", "approved", "paused"]);
     const beforeRef = `takeover:before:${requestId}:${nowIso()}`;
     const takenOver: HitlRequest = {
       ...request,
@@ -262,14 +266,7 @@ export class HitlRuntime {
   }
 
   public resolve(requestId: string, resolution: "approved" | "rejected", actorId: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requireRequest(requestId);
-    if (!request) {
-      throw new Error(`harness.hitl.request_not_found:${requestId}`);
-    }
-    // R23-34/R3-2 fix: Add idempotency protection - reject double-resolution of already-resolved requests
-    if (request.status !== "pending" && request.status !== "pending_approval") {
-      throw new Error(`harness.hitl.request_already_resolved:${requestId}:${request.status}`);
-    }
+    const request = this.requireMutableRequest(requestId, ["pending", "pending_approval", "paused"]);
     const resolved: HitlRequest = {
       ...request,
       status: resolution,
@@ -281,7 +278,7 @@ export class HitlRuntime {
     const action: HitlMode = resolution === "approved" ? "resume" : "override";
     const rationale = `hitl_resolution:${resolution}`;
     const record = this.createResponsibilityRecord(resolved, actorId, action, rationale);
-    return { ...resolved, request: resolved, record };
+    return { request: resolved, record };
   }
 
   public edit(
@@ -290,10 +287,7 @@ export class HitlRuntime {
     patchContent: Readonly<Record<string, unknown>>,
     rationale: string,
   ): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requireRequest(requestId);
-    if (!request) {
-      throw new Error(`harness.hitl.request_not_found:${requestId}`);
-    }
+    const request = this.requireMutableRequest(requestId, ["pending", "pending_approval", "approved", "paused"]);
     const beforeRef = `edit:before:${requestId}:${nowIso()}`;
     const afterRef = `edit:after:${requestId}:${nowIso()}`;
     const edited: HitlRequest = {
@@ -317,10 +311,7 @@ export class HitlRuntime {
     delegateTo: string,
     rationale: string,
   ): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requireRequest(requestId);
-    if (!request) {
-      throw new Error(`harness.hitl.request_not_found:${requestId}`);
-    }
+    const request = this.requireMutableRequest(requestId, ["pending", "pending_approval", "approved", "paused"]);
     const beforeRef = `delegate:before:${requestId}:${nowIso()}`;
     const afterRef = `delegate:after:${requestId}:${delegateTo}:${nowIso()}`;
     const delegated: HitlRequest = {
@@ -341,10 +332,7 @@ export class HitlRuntime {
   }
 
   public escalate(requestId: string, actorId: string, rationale: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requireRequest(requestId);
-    if (!request) {
-      throw new Error(`harness.hitl.request_not_found:${requestId}`);
-    }
+    const request = this.requireMutableRequest(requestId, ["pending", "pending_approval", "approved", "paused"]);
     const beforeRef = `escalate:before:${requestId}:${nowIso()}`;
     const escalated: HitlRequest = {
       ...request,
@@ -364,14 +352,7 @@ export class HitlRuntime {
    * §45.18 requires 5 HITL states including paused for workflow suspension.
    */
   public pause(requestId: string, actorId: string, rationale: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requireRequest(requestId);
-    if (!request) {
-      throw new Error(`harness.hitl.request_not_found:${requestId}`);
-    }
-    // Only pending_approval or approved requests can be paused
-    if (request.status !== "pending" && request.status !== "pending_approval" && request.status !== "approved") {
-      throw new Error(`harness.hitl.cannot_pause_from_status:${requestId}:${request.status}`);
-    }
+    const request = this.requireMutableRequest(requestId, ["pending", "pending_approval", "approved"]);
     const beforeRef = `pause:before:${requestId}:${nowIso()}`;
     const paused: HitlRequest = {
       ...request,
@@ -386,10 +367,7 @@ export class HitlRuntime {
   }
 
   public resume(requestId: string, actorId: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requireRequest(requestId);
-    if (!request) {
-      throw new Error(`harness.hitl.request_not_found:${requestId}`);
-    }
+    const request = this.requireMutableRequest(requestId, ["approved", "paused", "pending_approval"]);
     const resumed: HitlRequest = {
       ...request,
       mode: "resume",
@@ -407,7 +385,12 @@ export class HitlRuntime {
   }
 
   public getResponsibilityRecord(requestId: string): HumanResponsibilityRecord | null {
-    return this.responsibilityRecords.get(requestId) ?? null;
+    const records = this.responsibilityRecords.get(requestId) ?? [];
+    return records.length === 0 ? null : records[records.length - 1] ?? null;
+  }
+
+  public getResponsibilityRecords(requestId: string): readonly HumanResponsibilityRecord[] {
+    return [...(this.responsibilityRecords.get(requestId) ?? [])];
   }
 
   private requireRequest(requestId: string): HitlRequest | null {
@@ -416,6 +399,20 @@ export class HitlRuntime {
       return null;
     }
     return this.expirePendingRequestIfNeeded(request);
+  }
+
+  private requireMutableRequest(
+    requestId: string,
+    allowedStatuses: readonly HitlRequestStatus[],
+  ): HitlRequest {
+    const request = this.requireRequest(requestId);
+    if (request == null) {
+      throw new Error(`harness.hitl.request_not_found:${requestId}`);
+    }
+    if (!allowedStatuses.includes(request.status)) {
+      throw new Error(`harness.hitl.request_already_resolved:${requestId}:${request.status}`);
+    }
+    return request;
   }
 
   private normalizeRequest(request: HitlRequest): HitlRequest {
@@ -476,7 +473,17 @@ export class HitlRuntime {
       auditRef: `audit://harness/hitl/${request.requestId}/${action}`,
       recordedAt: nowIso(),
     };
-    this.responsibilityRecords.set(request.requestId, record);
+    const existingRecords = this.responsibilityRecords.get(request.requestId) ?? [];
+    this.responsibilityRecords.set(request.requestId, [...existingRecords, record]);
+    try {
+      this.store.saveResponsibilityRecord?.(record);
+    } catch (error) {
+      hitlRuntimeLogger.error("hitl.persist_responsibility_record_failed", {
+        requestId: request.requestId,
+        recordId: record.recordId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
     return record;
   }
 }

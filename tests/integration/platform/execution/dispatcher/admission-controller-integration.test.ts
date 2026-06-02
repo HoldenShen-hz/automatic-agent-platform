@@ -28,7 +28,7 @@ function insertTaskWithStatus(
   store: AuthoritativeTaskStore,
   id: string,
   status: "queued" | "in_progress" | "done",
-  divisionId = "general_ops",
+  divisionId = "general-ops",
 ): void {
   const now = nowIso();
   store.insertTask({
@@ -137,7 +137,7 @@ test("AdmissionController evaluate allows when under all limits", () => {
     insertExecution(ctx.store, "exec-001", "task-exec-001", "executing");
 
     const controller = new AdmissionController(ctx.store);
-    const decision = controller.evaluate({ priority: "normal" });
+    const decision = controller.evaluate({ priority: "normal", riskClass: "low" });
 
     assert.equal(decision.decision, "allow");
     assert.equal(decision.reasonCode, "admission.ok");
@@ -155,7 +155,7 @@ test("AdmissionController evaluate queues when queued tasks exceed maxQueuedTask
     }
 
     const controller = new AdmissionController(ctx.store);
-    const decision = controller.evaluate({ priority: "normal" });
+    const decision = controller.evaluate({ priority: "normal", riskClass: "low" });
 
     assert.equal(decision.decision, "reject");
     assert.equal(decision.reasonCode, "admission.reject_queue_saturated");
@@ -175,7 +175,7 @@ test("AdmissionController evaluate allows urgent priority when queue is near lim
     const controller = new AdmissionController(ctx.store);
 
     // High priority with headroom of 2 should still be allowed
-    const decision = controller.evaluate({ priority: "high" });
+    const decision = controller.evaluate({ priority: "high", riskClass: "high" });
     assert.equal(decision.decision, "queue");
     assert.equal(decision.reasonCode, "admission.queue_overloaded");
   } finally {
@@ -193,7 +193,7 @@ test("AdmissionController evaluate queues when active executions exceed maxActiv
     }
 
     const controller = new AdmissionController(ctx.store);
-    const decision = controller.evaluate({ priority: "normal" });
+    const decision = controller.evaluate({ priority: "normal", riskClass: "low" });
 
     assert.equal(decision.decision, "queue");
     assert.equal(decision.reasonCode, "admission.queue_overloaded");
@@ -208,6 +208,7 @@ test("AdmissionController evaluate rejects when budget exceeded", () => {
     const controller = new AdmissionController(ctx.store);
     const decision = controller.evaluate({
       priority: "normal",
+      riskClass: "low",
       estimatedCostUsd: 10,
       budgetRemainingUsd: 5,
     });
@@ -225,6 +226,7 @@ test("AdmissionController evaluate allows when estimated cost is within budget",
     const controller = new AdmissionController(ctx.store);
     const decision = controller.evaluate({
       priority: "normal",
+      riskClass: "low",
       estimatedCostUsd: 3,
       budgetRemainingUsd: 5,
     });
@@ -250,7 +252,7 @@ test("AdmissionController custom policy overrides are respected", () => {
     insertTaskWithStatus(ctx.store, "task-2", "queued");
 
     const controller = new AdmissionController(ctx.store, customPolicy);
-    const decision = controller.evaluate({ priority: "normal" });
+    const decision = controller.evaluate({ priority: "normal", riskClass: "low" });
 
     // With maxQueuedTasks=2 and 2 queued tasks, should reject
     assert.equal(decision.decision, "reject");
@@ -289,11 +291,11 @@ test("AdmissionController decision includes snapshot in response", () => {
     insertTaskWithStatus(ctx.store, "task-1", "queued");
 
     const controller = new AdmissionController(ctx.store);
-    const decision = controller.evaluate({ priority: "normal" });
+    const decision = controller.evaluate({ priority: "normal", riskClass: "low" });
 
     assert.ok(decision.snapshot);
     assert.equal(decision.snapshot.queuedTasks, 1);
-    assert.equal(decision.snapshot.activeExecutions, 0);
+    assert.equal(decision.snapshot.activeExecutions, 1);
     assert.equal(decision.snapshot.tier1AckBacklog, 0);
   } finally {
     ctx.cleanup();
@@ -319,7 +321,7 @@ test("AdmissionController evaluate uses backpressureSnapshot when provided", () 
     } as const;
 
     const controller = new AdmissionController(ctx.store, undefined, () => snapshot);
-    const decision = controller.evaluate({ priority: "normal" });
+    const decision = controller.evaluate({ priority: "normal", riskClass: "low" });
 
     assert.equal(decision.reasonCode, "admission.queue_backpressure");
     assert.deepEqual(decision.backpressure, snapshot);
@@ -337,7 +339,7 @@ test("AdmissionController low priority task rejected when queue saturated", () =
     }
 
     const controller = new AdmissionController(ctx.store);
-    const decision = controller.evaluate({ priority: "low" });
+    const decision = controller.evaluate({ priority: "low", riskClass: "low" });
 
     assert.equal(decision.decision, "reject");
     assert.equal(decision.reasonCode, "admission.reject_queue_saturated");
@@ -355,7 +357,7 @@ test("AdmissionController normal priority at exact limit is rejected", () => {
     }
 
     const controller = new AdmissionController(ctx.store);
-    const decision = controller.evaluate({ priority: "normal" });
+    const decision = controller.evaluate({ priority: "normal", riskClass: "low" });
 
     // At exactly max, normal priority is rejected (>= check)
     assert.equal(decision.decision, "reject");

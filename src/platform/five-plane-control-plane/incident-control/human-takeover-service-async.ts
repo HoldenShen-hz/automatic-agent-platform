@@ -123,6 +123,13 @@ export interface TakeoverAckStatus {
   acknowledgedBy: string | null;
 }
 
+export interface RestoredTakeoverSessionState {
+  sessionId: string;
+  taskId: string;
+  ackStatus: TakeoverAckStatus;
+  policy: EscalationPolicy;
+}
+
 /**
  * Configuration for timeout behavior.
  */
@@ -189,6 +196,7 @@ export type TakeoverEventPayload = {
     operatorId: string;
     acknowledgedAt: string;
     expiresAt: string;
+    renewed?: boolean;
   };
   "takeover:completed": {
     sessionId: string;
@@ -295,6 +303,7 @@ export class HumanTakeoverServiceAsync {
   private readonly sync: HumanTakeoverService;
   private readonly config: HumanTakeoverServiceAsyncConfig;
   private readonly logger: StructuredLogger;
+  private readonly store: AuthoritativeTaskStore;
 
   /** Queue manager for pending takeover requests. */
   private readonly queueManager: TakeoverQueueManager;
@@ -319,6 +328,7 @@ export class HumanTakeoverServiceAsync {
   ) {
     const { HumanTakeoverService: SyncService } = require("./human-takeover-service.js");
     this.sync = new SyncService(db, store);
+    this.store = store;
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -344,6 +354,7 @@ export class HumanTakeoverServiceAsync {
         await this.handleAutoClose(sessionId, taskId);
       },
     );
+    this.restoreEscalationTracking();
   }
 
   // -------------------------------------------------------------------------
@@ -665,6 +676,8 @@ export class HumanTakeoverServiceAsync {
    * Emits a lifecycle event to all registered handlers.
    */
   private emit<T extends TakeoverLifecycleEvent>(event: T, payload: TakeoverEventPayload[T]): void {
+    this.persistLifecycleEvent(event, payload);
+
     const handlers = this.eventHandlers.get(event);
     if (!handlers || handlers.size === 0) return;
 
@@ -687,6 +700,212 @@ export class HumanTakeoverServiceAsync {
           data: { event, error: err instanceof Error ? err.message : String(err) },
         });
       }
+    }
+  }
+
+  private persistLifecycleEvent<T extends TakeoverLifecycleEvent>(
+    event: T,
+    payload: TakeoverEventPayload[T],
+  ): void {
+    if (
+      event !== "takeover:acknowledged"
+      && event !== "takeover:timeout"
+      && event !== "takeover:escalated"
+      && event !== "takeover:cancelled"
+      && event !== "takeover:completed"
+      && event !== "takeover:ack_expired"
+    ) {
+      return;
+    }
+
+    const taskId =
+      "taskId" in payload && typeof payload.taskId === "string"
+        ? payload.taskId
+        : null;
+    const sessionId =
+      "sessionId" in payload && typeof payload.sessionId === "string"
+        ? payload.sessionId
+        : null;
+    if (taskId == null || sessionId == null) {
+      return;
+    }
+
+    this.store.event.insertEvent({
+      id: newId("evt"),
+      taskId,
+      sessionId,
+      executionId: this.store.approval.getTakeoverSession(sessionId)?.executionId ?? null,
+      eventType: event,
+      eventTier: "tier_2",
+      payloadJson: JSON.stringify(payload),
+      traceId: null,
+      createdAt:
+        ("acknowledgedAt" in payload && typeof payload.acknowledgedAt === "string"
+          ? payload.acknowledgedAt
+          : "escalatedAt" in payload && typeof payload.escalatedAt === "string"
+          ? payload.escalatedAt
+          : "timedOutAt" in payload && typeof payload.timedOutAt === "string"
+          ? payload.timedOutAt
+          : "expiredAt" in payload && typeof payload.expiredAt === "string"
+          ? payload.expiredAt
+          : "cancelledAt" in payload && typeof payload.cancelledAt === "string"
+          ? payload.cancelledAt
+          : "completedAt" in payload && typeof payload.completedAt === "string"
+          ? payload.completedAt
+          : nowIso()),
+    });
+  }
+
+  private restoreEscalationTracking(): void {
+    const openedEvents = this.store.event.listEventsByType("takeover:session_opened", 10_000);
+    const sessionIds = new Set<string>();
+    for (const event of openedEvents) {
+      const payload = this.parseTakeoverEventPayload(event.payloadJson);
+      const sessionId =
+        (typeof event.sessionId === "string" && event.sessionId.length > 0 ? event.sessionId : null)
+        ?? (payload != null && typeof payload.takeoverSessionId === "string" ? payload.takeoverSessionId : null)
+        ?? (payload != null && typeof payload.sessionId === "string" ? payload.sessionId : null);
+      if (sessionId != null) {
+        sessionIds.add(sessionId);
+      }
+    }
+
+    for (const sessionId of sessionIds) {
+      const session = this.store.approval.getTakeoverSession(sessionId);
+      if (!session || session.status !== "open") {
+        continue;
+      }
+      const restored = this.rebuildSessionState(session.id, session.taskId, session.startedAt);
+      if (restored != null) {
+        this.escalationManager.restoreSessionTracking(restored);
+      }
+    }
+  }
+
+  private rebuildSessionState(
+    sessionId: string,
+    taskId: string,
+    startedAt: string,
+  ): RestoredTakeoverSessionState | null {
+    const taskEvents = this.store.event.listEventsForTask(taskId);
+    const lifecycleEvents = taskEvents
+      .filter((event) =>
+        event.eventType.startsWith("takeover:")
+        && this.eventBelongsToSession(event, sessionId),
+      )
+      .sort((left, right) => {
+        const createdDiff = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+        return createdDiff !== 0 ? createdDiff : left.id.localeCompare(right.id);
+      });
+
+    const ackStatus: TakeoverAckStatus = {
+      sessionId,
+      acknowledgedAt: null,
+      expiresAt: null,
+      status: "pending",
+      acknowledgedBy: null,
+    };
+    const policy: EscalationPolicy = {
+      sessionId,
+      currentLevel: "operator",
+      escalationHistory: [],
+      nextEscalationAt: new Date(new Date(startedAt).getTime() + this.config.timeoutConfig.defaultTimeoutMs).toISOString(),
+    };
+
+    for (const event of lifecycleEvents) {
+      const payload = this.parseTakeoverEventPayload(event.payloadJson);
+      if (payload == null) {
+        continue;
+      }
+      switch (event.eventType) {
+        case "takeover:acknowledged":
+          ackStatus.acknowledgedAt =
+            typeof payload.acknowledgedAt === "string" ? payload.acknowledgedAt : ackStatus.acknowledgedAt;
+          ackStatus.expiresAt =
+            typeof payload.expiresAt === "string" ? payload.expiresAt : ackStatus.expiresAt;
+          ackStatus.acknowledgedBy =
+            typeof payload.operatorId === "string" ? payload.operatorId : ackStatus.acknowledgedBy;
+          ackStatus.status = "acknowledged";
+          policy.nextEscalationAt = ackStatus.expiresAt;
+          policy.escalationHistory.push({
+            level: policy.currentLevel,
+            reason: typeof payload.renewed === "boolean" && payload.renewed ? "acknowledgment_renewed" : "acknowledged",
+            timestamp: typeof payload.acknowledgedAt === "string" ? payload.acknowledgedAt : event.createdAt,
+            target: typeof payload.operatorId === "string" ? payload.operatorId : null,
+          });
+          break;
+        case "takeover:ack_expired":
+          ackStatus.status = "expired";
+          policy.nextEscalationAt =
+            typeof payload.expiredAt === "string" ? payload.expiredAt : policy.nextEscalationAt;
+          break;
+        case "takeover:escalated":
+          if (typeof payload.toLevel === "string") {
+            policy.currentLevel = payload.toLevel as EscalationLevel;
+          }
+          policy.escalationHistory.push({
+            level: policy.currentLevel,
+            reason: typeof payload.reason === "string" ? payload.reason : "escalated",
+            timestamp: typeof payload.escalatedAt === "string" ? payload.escalatedAt : event.createdAt,
+            target: null,
+          });
+          policy.nextEscalationAt = this.computeNextEscalationAt(
+            policy.currentLevel,
+            typeof payload.escalatedAt === "string" ? payload.escalatedAt : event.createdAt,
+          );
+          break;
+        case "takeover:completed":
+        case "takeover:cancelled":
+          return null;
+        default:
+          break;
+      }
+    }
+
+    if (ackStatus.status === "acknowledged" && ackStatus.expiresAt != null) {
+      const expiresAtMs = new Date(ackStatus.expiresAt).getTime();
+      if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) {
+        ackStatus.status = "expired";
+      }
+    }
+
+    return { sessionId, taskId, ackStatus, policy };
+  }
+
+  private computeNextEscalationAt(level: EscalationLevel, occurredAt: string): string | null {
+    const createdAtMs = new Date(occurredAt).getTime();
+    if (!Number.isFinite(createdAtMs)) {
+      return null;
+    }
+    switch (level) {
+      case "operator":
+        return new Date(createdAtMs + this.config.timeoutConfig.defaultTimeoutMs).toISOString();
+      case "supervisor":
+        return new Date(createdAtMs + this.config.timeoutConfig.defaultTimeoutMs * 2).toISOString();
+      case "admin":
+        return new Date(createdAtMs + this.config.timeoutConfig.defaultTimeoutMs * 4).toISOString();
+      case "auto_close":
+        return null;
+    }
+  }
+
+  private eventBelongsToSession(event: { sessionId?: string | null; payloadJson: string }, sessionId: string): boolean {
+    if (event.sessionId === sessionId) {
+      return true;
+    }
+    const payload = this.parseTakeoverEventPayload(event.payloadJson);
+    if (payload == null) {
+      return false;
+    }
+    return payload.sessionId === sessionId || payload.takeoverSessionId === sessionId;
+  }
+
+  private parseTakeoverEventPayload(payloadJson: string): Record<string, unknown> | null {
+    try {
+      const parsed = JSON.parse(payloadJson) as unknown;
+      return parsed != null && typeof parsed === "object" ? parsed as Record<string, unknown> : null;
+    } catch {
+      return null;
     }
   }
 

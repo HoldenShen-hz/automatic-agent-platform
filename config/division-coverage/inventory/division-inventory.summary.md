@@ -1,10 +1,11 @@
 # Division Inventory Summary
 
-Generated at: 2026-06-01T01:00:44.902Z
+Generated at: 2026-06-01T19:15:16.543Z
 
 Total divisions: 56
 P0 divisions: 5
 Blocked divisions: 35
+ROI tracked divisions: 3
 Orphan source modules: 23
 
 | Division | Family | Status | Risk | Blockers |
@@ -26,7 +27,7 @@ Orphan source modules: 23
 | devops | engineering | coverage_draft | medium | missing_source_module |
 | ecommerce | gtm-content | coverage_draft | high | none |
 | education | unknown | untracked | medium | missing_division_yaml, missing_family_policy, unknown_family |
-| engineering_ops | engineering | coverage_draft | high | missing_source_module |
+| engineering-ops | engineering | coverage_draft | high | missing_source_module |
 | eval-framework | unknown | untracked | medium | missing_division_yaml, missing_family_policy, unknown_family |
 | executive-assistant | unknown | untracked | medium | missing_division_yaml, missing_family_policy, unknown_family |
 | facilities | unknown | untracked | medium | missing_division_yaml, missing_family_policy, unknown_family |
@@ -34,7 +35,7 @@ Orphan source modules: 23
 | financial-services | regulated | coverage_draft | critical | none |
 | game-dev | unknown | untracked | medium | alias_only_division, missing_division_yaml, missing_family_policy, unknown_family |
 | game-publishing | unknown | untracked | medium | missing_division_yaml, missing_family_policy, unknown_family |
-| general_ops | enterprise-ops | coverage_draft | medium | missing_source_module |
+| general-ops | enterprise-ops | coverage_draft | medium | missing_source_module |
 | governance | unknown | untracked | medium | missing_division_yaml, missing_family_policy, unknown_family |
 | healthcare | regulated | coverage_draft | critical | none |
 | human-resources | regulated | coverage_draft | high | none |
@@ -65,3 +66,11 @@ Orphan source modules: 23
 | support | enterprise-ops | coverage_draft | medium | missing_source_module |
 | user-operations | enterprise-ops | coverage_draft | medium | none |
 | yono | unknown | untracked | medium | missing_division_yaml, missing_family_policy, unknown_family |
+
+## Diff
+
+Added: none
+Removed: none
+Changed coding: roi:=>roi/divisions/coding.yaml
+Changed customer-service: roi:=>roi/divisions/customer-service.yaml
+Changed knowledge-base: roi:=>roi/divisions/knowledge-base.yaml

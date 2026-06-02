@@ -22,14 +22,14 @@ test("GrpcAdapterService - is available", () => {
 
 test("GrpcAdapterService - returns config", () => {
   const service = new GrpcAdapterService({
-    host: "0.0.0.0",
+    host: "localhost",
     port: 50051,
     packageName: "test",
     serviceName: "TestService",
   });
 
   const config = service.getConfig();
-  assert.equal(config.host, "0.0.0.0");
+  assert.equal(config.host, "localhost");
   assert.equal(config.port, 50051);
 });
 

@@ -102,7 +102,7 @@ test("BudgetAllocator reserve enforces CAS version checks", () => {
       expectedVersion: 1,
       context: createContext(),
     }),
-    (error: unknown) => error instanceof ValidationError && error.code === "budget_reservation.version_cas_failed",
+    (error: unknown) => error instanceof ValidationError && error.code === "budget_ledger.version_cas_failed",
   );
 });
 

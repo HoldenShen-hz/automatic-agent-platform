@@ -217,3 +217,29 @@ test("AutoRollbackService evaluates stable status rollout", () => {
 
   assert.equal(decision.rollback, false);
 });
+
+test("AutoRollbackService.evaluate requires evaluateAsync when rollback handler returns a promise", () => {
+  const service = new AutoRollbackService({
+    rollbackHandler: async () => undefined,
+  });
+
+  assert.throws(
+    () => service.evaluate(makeRolloutRecord(), makeMetrics({ failureRate: 0.10 })),
+    /auto_rollback\.async_handler_requires_evaluate_async/,
+  );
+});
+
+test("AutoRollbackService.evaluateAsync awaits async rollback handlers", async () => {
+  let called = false;
+  const service = new AutoRollbackService({
+    rollbackHandler: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      called = true;
+    },
+  });
+
+  const decision = await service.evaluateAsync(makeRolloutRecord(), makeMetrics({ failureRate: 0.10 }));
+
+  assert.equal(decision.rollback, true);
+  assert.equal(called, true);
+});

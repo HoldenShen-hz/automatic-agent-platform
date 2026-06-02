@@ -66,8 +66,9 @@ test("ProjectionRebuildWorker aggregates projection rebuild results [recovery-wo
 
   const report = await worker.runRecoveryCycle();
   assert.equal(report.itemsProcessed, 5);
-  assert.equal(report.itemsRecovered, 3);
+  assert.equal(report.itemsRecovered, 1);
   assert.equal(report.errors.length, 1);
+  assert.equal(report.metadata.partialFailure, true);
 });
 
 test("ReplayWorker builds replay reports for known tasks [recovery-workers]", async () => {

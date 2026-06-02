@@ -105,7 +105,7 @@ test("migration: can insert and retrieve data after migration", () => {
         taskId,
         null,
         taskId,
-        "general_ops",
+        "general-ops",
         null,
         "Migration test task",
         "queued",

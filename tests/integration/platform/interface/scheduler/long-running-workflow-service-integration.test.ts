@@ -25,7 +25,7 @@ function createWorkflowTestHarness() {
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Scheduler integration test",
       status: "in_progress",
       source: "user",
@@ -71,7 +71,7 @@ function createWorkflowTestHarness() {
 
     store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId,
       currentStepIndex: 0,
       status: "running",

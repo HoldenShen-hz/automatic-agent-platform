@@ -1,8 +1,15 @@
-import { mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import http from "node:http";
+import {
+  buildLocalStackChildEnv,
+  classifyPortListeners,
+  readLocalStackPort,
+  resolveRequiredBinaryPath,
+  resolveRequiredNpmCliPath,
+} from "./local-stack-lib.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = dirname(dirname(__dirname));
@@ -14,20 +21,18 @@ const apiPidFile = join(pidDir, "api-server.pid");
 const uiPidFile = join(pidDir, "ui-web.pid");
 const apiLogFile = join(logDir, "api-server.log");
 const uiLogFile = join(logDir, "ui-web.log");
-
-const apiPort = 4000;
-const metricsPort = 4001;
-const uiPort = 5173;
+const psCommand = resolveRequiredBinaryPath("ps", ["/bin/ps", "/usr/bin/ps"]);
+const lsofCommand = resolveRequiredBinaryPath("lsof", ["/usr/sbin/lsof", "/usr/bin/lsof", "/bin/lsof"]);
+const npmCliPath = resolveRequiredNpmCliPath(process.execPath, process.env);
+const apiPort = readLocalStackPort(process.env, "AA_LOCAL_API_PORT", 4000);
+const metricsPort = readLocalStackPort(process.env, "AA_LOCAL_METRICS_PORT", 4001);
+const uiPort = readLocalStackPort(process.env, "AA_LOCAL_UI_PORT", 5173);
 
 mkdirSync(pidDir, { recursive: true });
 mkdirSync(logDir, { recursive: true });
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function fileDescriptorForLog(path) {
-  return openSync(path, "a");
 }
 
 function readPid(pidFile) {
@@ -56,7 +61,7 @@ function isPidAlive(pid) {
 }
 
 function commandForPid(pid) {
-  const result = spawnSync("ps", ["-p", String(pid), "-o", "command="], {
+  const result = spawnSync(psCommand, ["-p", String(pid), "-o", "command="], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -67,7 +72,7 @@ function commandForPid(pid) {
 }
 
 function listenerPids(port) {
-  const result = spawnSync("lsof", ["-ti", `tcp:${port}`], {
+  const result = spawnSync(lsofCommand, ["-ti", `tcp:${port}`], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -98,23 +103,30 @@ async function terminatePid(pid) {
 }
 
 function matchesManagedCommand(command, label) {
-  if (command.includes(repoRoot)) {
-    return true;
-  }
   if (label === "api" || label === "metrics") {
     return command.includes("dist/src/sdk/cli/api-server.js");
   }
   if (label === "ui") {
-    return command.includes("vite --config vite.config.ts") || command.includes("node_modules/.bin/vite");
+    return command.includes("--workspace @aa/web run dev") || command.includes("node_modules/.bin/vite");
   }
   return false;
 }
 
 async function cleanupPort(port, label) {
-  for (const pid of listenerPids(port)) {
+  const trackedPids =
+    label === "ui"
+      ? [readPid(uiPidFile)]
+      : [readPid(apiPidFile)];
+  const { managedPids, unmanagedPids } = classifyPortListeners(listenerPids(port), trackedPids);
+  if (unmanagedPids.length > 0) {
+    throw new Error(
+      `Port ${port} for ${label} is occupied by unmanaged pid(s): ${unmanagedPids.join(", ")}. Refusing automatic termination.`,
+    );
+  }
+  for (const pid of managedPids) {
     const command = commandForPid(pid);
     if (!matchesManagedCommand(command, label)) {
-      continue;
+      throw new Error(`Tracked ${label} pid ${pid} no longer matches managed command identity.`);
     }
     console.log(`[cleanup] closing ${label} process ${pid}`);
     await terminatePid(pid);
@@ -122,17 +134,21 @@ async function cleanupPort(port, label) {
 }
 
 function spawnDetached(command, args, options) {
+  const stdio =
+    options.stdioMode === "ignore"
+      ? "ignore"
+      : ["ignore", "ignore", "ignore"];
   const child = spawn(command, args, {
     cwd: options.cwd,
-    env: options.env,
+    env: buildLocalStackChildEnv(process.env, options.env),
     detached: true,
-    stdio: ["ignore", fileDescriptorForLog(options.logFile), fileDescriptorForLog(options.logFile)],
+    stdio,
   });
   child.unref();
   return child.pid;
 }
 
-function request(url) {
+function request(url, timeoutMs = 5000) {
   return new Promise((resolve, reject) => {
     const req = http.get(url, (response) => {
       let body = "";
@@ -146,6 +162,9 @@ function request(url) {
           body,
         });
       });
+    });
+    req.setTimeout(timeoutMs, () => {
+      req.destroy(new Error(`Timed out waiting for ${url}`));
     });
     req.on("error", reject);
   });
@@ -169,7 +188,7 @@ async function waitForHttp(url, matcher, timeoutMs) {
 
 function runBuild() {
   console.log("[build] building backend");
-  const result = spawnSync("npm", ["run", "build"], {
+  const result = spawnSync(process.execPath, [npmCliPath, "run", "build"], {
     cwd: repoRoot,
     stdio: "inherit",
     env: process.env,
@@ -193,13 +212,13 @@ async function ensureApi() {
   await cleanupPort(metricsPort, "metrics");
 
   const env = {
-    ...process.env,
     AA_DB_PATH: join(repoRoot, "data", "sqlite", "automatic-agent-dev.db"),
     AA_API_HOST: "127.0.0.1",
     AA_API_PORT: String(apiPort),
     AA_METRICS_HOST: "127.0.0.1",
     AA_METRICS_PORT: String(metricsPort),
-    AA_LOG_STDOUT: "1",
+    AA_LOG_STDOUT: "0",
+    AA_LOG_FILE_PATH: apiLogFile,
   };
 
   const pid = spawnDetached(
@@ -208,7 +227,7 @@ async function ensureApi() {
     {
       cwd: repoRoot,
       env,
-      logFile: apiLogFile,
+      stdioMode: "ignore",
     },
   );
   writeFileSync(apiPidFile, `${pid}\n`, "utf8");
@@ -238,18 +257,22 @@ async function ensureUi() {
   await cleanupPort(uiPort, "ui");
 
   const env = {
-    ...process.env,
     VITE_API_BASE_URL: `http://127.0.0.1:${apiPort}/api`,
     VITE_WS_URL: `ws://127.0.0.1:${apiPort}/ws/v1/stream`,
   };
+  appendFileSync(
+    uiLogFile,
+    "[local-stack] UI process launched without raw stdout/stderr capture to avoid unredacted log sinks.\n",
+    "utf8",
+  );
 
   const pid = spawnDetached(
-    "npm",
-    ["--prefix", "ui", "--workspace", "@aa/web", "run", "dev", "--", "--host", "localhost", "--port", String(uiPort)],
+    process.execPath,
+    [npmCliPath, "--prefix", "ui", "--workspace", "@aa/web", "run", "dev", "--", "--host", "localhost", "--port", String(uiPort)],
     {
       cwd: repoRoot,
       env,
-      logFile: uiLogFile,
+      stdioMode: "ignore",
     },
   );
   writeFileSync(uiPidFile, `${pid}\n`, "utf8");

@@ -44,6 +44,17 @@ function compareTrees(leftRoot, rightRoot, label) {
   }
 }
 
+function compareTreePresence(leftRoot, rightRoot, label) {
+  const left = walkMarkdown(leftRoot);
+  const right = walkMarkdown(rightRoot);
+  const missingInRight = left.filter((entry) => !right.includes(entry));
+  const missingInLeft = right.filter((entry) => !left.includes(entry));
+  check(`${label} trees stay in sync`, missingInRight.length === 0 && missingInLeft.length === 0, [
+    missingInRight.length > 0 ? `missing in ${rightRoot}: ${missingInRight.join(", ")}` : null,
+    missingInLeft.length > 0 ? `missing in ${leftRoot}: ${missingInLeft.join(", ")}` : null,
+  ].filter(Boolean).join(" | ") || `${left.length} files`);
+}
+
 function summarizeMarkdown(source) {
   const lines = source.split(/\r?\n/);
   const nonEmptyLines = lines.filter((line) => line.trim().length > 0).length;
@@ -96,6 +107,12 @@ function compareAdrIndexes() {
 
 compareTrees("docs_zh/contracts", "docs_en/contracts", "contract docs");
 compareTrees("docs_zh/adr", "docs_en/adr", "ADR docs");
+compareTreePresence("docs_zh/architecture", "docs_en/architecture", "architecture docs");
+compareTreePresence("docs_zh/governance", "docs_en/governance", "governance docs");
+compareTreePresence("docs_zh/operations", "docs_en/operations", "operations docs");
+compareTreePresence("docs_zh/quality", "docs_en/quality", "quality docs");
+compareTreePresence("docs_zh/reference", "docs_en/reference", "reference docs");
+compareTreePresence("docs_zh/reviews", "docs_en/reviews", "review docs");
 compareAdrIndexes();
 
 for (const item of checks) {

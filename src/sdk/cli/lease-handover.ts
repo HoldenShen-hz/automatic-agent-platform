@@ -18,6 +18,7 @@ import { existsSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 import { withCliStorage } from "./authoritative-storage.js";
+import { readCliProcessEnv, type CliEnv } from "./cli-env.js";
 import { CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { loadLeaseHandoverCliEnv } from "../../platform/five-plane-control-plane/config-center/ops-cli-env.js";
@@ -39,9 +40,9 @@ function printHelp(): void {
   );
 }
 
-function resolveLegacyLeaseHandoverOutput(): unknown | null {
-  const action = readTrimmedEnv(process.env, "AA_LEASE_HANDOVER_ACTION");
-  if (action == null || readTrimmedEnv(process.env, "AA_LEASE_ID") != null) {
+function resolveLegacyLeaseHandoverOutput(env: CliEnv): unknown | null {
+  const action = readTrimmedEnv(env, "AA_LEASE_HANDOVER_ACTION");
+  if (action == null || readTrimmedEnv(env, "AA_LEASE_ID") != null) {
     return null;
   }
 
@@ -50,7 +51,7 @@ function resolveLegacyLeaseHandoverOutput(): unknown | null {
     return { mode: "help" };
   }
 
-  const dbPath = readTrimmedEnv(process.env, "AA_DB_PATH");
+  const dbPath = readTrimmedEnv(env, "AA_DB_PATH");
   if (dbPath == null || !existsSync(dbPath)) {
     throw new ValidationError("lease_handover.database_not_found", "lease_handover.database_not_found");
   }
@@ -67,8 +68,8 @@ function resolveLegacyLeaseHandoverOutput(): unknown | null {
     throw new ValidationError("lease_handover.invalid_action", "lease_handover.invalid_action");
   }
 
-  const executionId = readTrimmedEnv(process.env, "AA_LEASE_EXECUTION_ID");
-  const newWorkerId = readTrimmedEnv(process.env, "AA_LEASE_NEW_WORKER_ID");
+  const executionId = readTrimmedEnv(env, "AA_LEASE_EXECUTION_ID");
+  const newWorkerId = readTrimmedEnv(env, "AA_LEASE_NEW_WORKER_ID");
   if (executionId == null || !executionId.startsWith("exec-")) {
     throw new ValidationError("lease_handover.invalid_execution_id", "lease_handover.invalid_execution_id");
   }
@@ -85,12 +86,13 @@ function resolveLegacyLeaseHandoverOutput(): unknown | null {
  * lineage and incrementing the fencing token to prevent split-brain scenarios.
  */
 function main(): number {
+  const env = readCliProcessEnv();
   if (process.argv.includes("--help")) {
     printHelp();
     return CLI_EXIT_SUCCESS;
   }
 
-  const legacyOutput = resolveLegacyLeaseHandoverOutput();
+  const legacyOutput = resolveLegacyLeaseHandoverOutput(env);
   if (legacyOutput != null) {
     if ((legacyOutput as { mode?: string }).mode !== "help") {
       process.stdout.write(`${JSON.stringify(legacyOutput, null, 2)}\n`);

@@ -59,7 +59,7 @@ test("authoritative task store loads an authoritative execution view for critica
         id: "task-consistency",
         parentId: null,
         rootId: "task-consistency",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "consistency task",
         status: "in_progress",
         source: "user",
@@ -76,7 +76,7 @@ test("authoritative task store loads an authoritative execution view for critica
       });
       store.insertWorkflowState({
         taskId: "task-consistency",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",

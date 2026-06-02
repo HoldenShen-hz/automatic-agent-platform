@@ -438,6 +438,7 @@ test("integrateWithLearning() updates record status to integrated", () => {
   const updated = service.get(record.id);
   assert.equal(updated!.status, "integrated");
   assert.ok(updated!.integratedAt);
+  assert.equal(service.query({ status: "processed" }).length, 0);
 });
 
 test("integrateWithLearning() without specific IDs processes all processed records", () => {
@@ -520,6 +521,16 @@ test("EvidenceService preserves archived records during eviction", () => {
   // Even with low maxRecords, archived should be preserved
   const stats = service.getStats();
   assert.ok(stats.total >= 1);
+});
+
+test("EvidenceService evicts archived records when still over hard capacity", () => {
+  const service = new EvidenceService({ integrationEnabled: false, maxRecords: 1, retentionDays: 0 });
+  const archived = service.record("quality", "memory:archived", {}, makeMetadata());
+  service.updateStatus(archived.id, "archived");
+  service.record("quality", "memory:active", {}, makeMetadata());
+  service.record("quality", "memory:active-2", {}, makeMetadata());
+
+  assert.ok(service.getStats().total <= 1);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -28,7 +28,7 @@ function createSecurityHarness(prefix: string): {
       id: "task-command-security",
       parentId: null,
       rootId: "task-command-security",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Command security test",
       status: "in_progress",
       source: "user",

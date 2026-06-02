@@ -174,7 +174,7 @@ test("AgentExecutor creates execution record with correct initial state", () => 
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Test task",
         status: "in_progress",
         source: "user",
@@ -239,7 +239,7 @@ test("AuthoritativeTaskStore tracks workflow state for execution", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Workflow test task",
         status: "in_progress",
         source: "user",
@@ -286,7 +286,7 @@ test("AuthoritativeTaskStore tracks workflow state for execution", () => {
 
     ctx.store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",

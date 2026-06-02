@@ -19,7 +19,6 @@ import type { ExecutionTicketRecord } from "../../contracts/types/domain.js";
 import type { ExecutionStatus } from "../../contracts/types/status.js";
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { ExecutionDispatchService } from "./execution-dispatch-service.js";
 import { buildWorkerSnapshotRefreshInput, removeExecutionId } from "../lease/utils.js";
@@ -33,6 +32,30 @@ const logger = new StructuredLogger({ retentionLimit: 100 });
  * Issue #1910 P1: scan() without pagination can cause OOM when scanning all tickets.
  */
 const DEFAULT_RECONCILIATION_PAGE_SIZE = 100;
+const DEFAULT_CLOCK_SKEW_SAFETY_MARGIN_MS = 5_000;
+
+interface DispatchReconciliationStore {
+  readonly worker: {
+    listExecutionTicketsByStatuses(statuses: ExecutionTicketRecord["status"][]): ExecutionTicketRecord[];
+    getExecutionTicket(ticketId: string): ExecutionTicketRecord | null | undefined;
+    getActiveExecutionLease(executionId: string): { readonly id: string; readonly workerId: string; readonly expiresAt: string } | null | undefined;
+    invalidateExecutionTicket(input: { ticketId: string; status: string; invalidatedAt: string }): void;
+    insertExecutionTicket(ticket: ExecutionTicketRecord): void;
+    getWorkerSnapshot?: (workerId: string) => unknown;
+  };
+  readonly dispatch: {
+    getExecution(executionId: string): { readonly id: string; readonly taskId: string; readonly status: ExecutionStatus; readonly traceId?: string | null } | null | undefined;
+  };
+  readonly event: {
+    insertEvent(event: unknown): void;
+  };
+}
+
+interface DispatchReconciliationDependencies {
+  readonly dispatch?: ExecutionDispatchService;
+  readonly workers?: WorkerRegistryService;
+  readonly clockSkewSafetyMarginMs?: number;
+}
 
 export interface DispatchReconciliationIssue {
   issueType: "orphan_queue_claim" | "terminal_execution_ticket";
@@ -54,7 +77,7 @@ export interface DispatchReconciliationRepairResult {
   replacementTicketId: string | null;
 }
 
-function parseJsonArray(value: string | null | undefined): string[] {
+function parseJsonArray(value: string | null | undefined): string[] | null {
   if (value == null || value.length === 0) {
     return [];
   }
@@ -67,7 +90,7 @@ function parseJsonArray(value: string | null | undefined): string[] {
       message: "Failed to parse JSON array",
       data: { error: err instanceof Error ? err.message : String(err), value: value.substring(0, 100) },
     });
-    return [];
+    return null;
   }
 }
 
@@ -78,13 +101,16 @@ function isTerminalExecutionStatus(status: ExecutionStatus): boolean {
 export class ExecutionDispatchReconciliationService {
   private readonly dispatch: ExecutionDispatchService;
   private readonly workers: WorkerRegistryService;
+  private readonly clockSkewSafetyMarginMs: number;
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
-    private readonly store: AuthoritativeTaskStore,
+    private readonly store: DispatchReconciliationStore,
+    deps: DispatchReconciliationDependencies = {},
   ) {
-    this.dispatch = new ExecutionDispatchService(db, store);
-    this.workers = new WorkerRegistryService(store);
+    this.dispatch = deps.dispatch ?? new ExecutionDispatchService(db, store as never);
+    this.workers = deps.workers ?? new WorkerRegistryService(store as never);
+    this.clockSkewSafetyMarginMs = Math.max(0, Math.trunc(deps.clockSkewSafetyMarginMs ?? DEFAULT_CLOCK_SKEW_SAFETY_MARGIN_MS));
   }
 
   public scan(now: string = nowIso()): DispatchReconciliationIssue[] {
@@ -97,29 +123,17 @@ export class ExecutionDispatchReconciliationService {
    */
   public scanPaginated(pageSize: number = DEFAULT_RECONCILIATION_PAGE_SIZE, now: string = nowIso()): DispatchReconciliationIssue[] {
     const issues: DispatchReconciliationIssue[] = [];
-    let offset = 0;
-    while (true) {
-      const tickets = this.getTicketsPage(pageSize, offset);
-      if (tickets.length === 0) {
-        break;
-      }
+    const allTickets = this.store.worker.listExecutionTicketsByStatuses(["pending", "claimed"]);
+    for (let offset = 0; offset < allTickets.length; offset += pageSize) {
+      const tickets = allTickets.slice(offset, offset + pageSize);
       for (const ticket of tickets) {
         const issue = this.findIssueForTicket(ticket, now);
         if (issue) {
           issues.push(issue);
         }
       }
-      if (tickets.length < pageSize) {
-        break;
-      }
-      offset += pageSize;
     }
     return issues;
-  }
-
-  private getTicketsPage(pageSize: number, offset: number): ExecutionTicketRecord[] {
-    const allTickets = this.store.worker.listExecutionTicketsByStatuses(["pending", "claimed"]);
-    return allTickets.slice(offset, offset + pageSize);
   }
 
   public findIssueByTicketId(ticketId: string, now: string = nowIso()): DispatchReconciliationIssue | null {
@@ -184,7 +198,13 @@ export class ExecutionDispatchReconciliationService {
       };
     }
 
-    if (Date.parse(activeLease.expiresAt) < Date.parse(now)) {
+    const leaseExpiry = Date.parse(activeLease.expiresAt);
+    const evaluationTime = Date.parse(now);
+    if (
+      Number.isFinite(leaseExpiry)
+      && Number.isFinite(evaluationTime)
+      && leaseExpiry + this.clockSkewSafetyMarginMs < evaluationTime
+    ) {
       return {
         issueType: "orphan_queue_claim",
         resolutionAction: "requeue_ticket",
@@ -284,6 +304,7 @@ export class ExecutionDispatchReconciliationService {
   }
 
   private createReplacementTicketRecord(ticket: ExecutionTicketRecord, occurredAt: string): ExecutionTicketRecord {
+    const nextAttempt = this.resolveNextTicketAttempt(ticket.executionId, ticket.attempt);
     const replacement: ExecutionTicketRecord = {
       id: newId("ticket"),
       executionId: ticket.executionId,
@@ -293,7 +314,7 @@ export class ExecutionDispatchReconciliationService {
       queueName: ticket.queueName,
       requiredCapabilitiesJson: ticket.requiredCapabilitiesJson,
       dispatchAfter: ticket.dispatchAfter,
-      attempt: ticket.attempt,
+      attempt: nextAttempt,
       status: "pending",
       assignedWorkerId: null,
       leaseId: null,
@@ -315,13 +336,29 @@ export class ExecutionDispatchReconciliationService {
     return replacement;
   }
 
+  private resolveNextTicketAttempt(executionId: string, fallbackAttempt: number): number {
+    const attempts = this.store.worker
+      .listExecutionTicketsByStatuses(["pending", "claimed", "consumed", "expired", "cancelled", "invalidated"])
+      .filter((ticket) => ticket.executionId === executionId)
+      .map((ticket) => ticket.attempt)
+      .filter((attempt): attempt is number => Number.isInteger(attempt));
+    if (attempts.length === 0) {
+      return fallbackAttempt + 1;
+    }
+    return Math.max(...attempts) + 1;
+  }
+
   private releaseWorkerExecutionReference(ticket: ExecutionTicketRecord, occurredAt: string): void {
     if (ticket.assignedWorkerId == null) {
       return;
     }
 
     const workerStore = this.store.worker as {
-      getWorkerSnapshot?: (workerId: string) => ReturnType<AuthoritativeTaskStore["worker"]["getWorkerSnapshot"]>;
+      getWorkerSnapshot?: (workerId: string) => {
+        readonly runningExecutionsJson: string;
+        readonly currentStepId: string | null;
+        readonly lastProgressAt: string;
+      } | null;
     };
     if (typeof workerStore.getWorkerSnapshot !== "function") {
       return;
@@ -332,7 +369,11 @@ export class ExecutionDispatchReconciliationService {
       return;
     }
 
-    const nextExecutionIds = removeExecutionId(parseJsonArray(snapshot.runningExecutionsJson), ticket.executionId);
+    const runningExecutionIds = parseJsonArray(snapshot.runningExecutionsJson);
+    if (runningExecutionIds == null) {
+      return;
+    }
+    const nextExecutionIds = removeExecutionId(runningExecutionIds, ticket.executionId);
     const nextActiveLeaseCount = Math.max(0, nextExecutionIds.length);
     this.workers.recordHeartbeat({
       ...buildWorkerSnapshotRefreshInput(snapshot, nextExecutionIds, occurredAt, logger),

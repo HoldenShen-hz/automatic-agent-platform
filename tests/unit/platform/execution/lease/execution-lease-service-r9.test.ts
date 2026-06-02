@@ -60,6 +60,17 @@ function createMockStore(state: MockStoreState = {
           state.activeLeaseByExecution.set(lease.executionId, lease);
         }
       },
+      insertExecutionLeaseAllocatingFencingToken(lease: Omit<ExecutionLeaseRecord, "fencingToken">): number {
+        const previous = state.latestLeaseByExecution.get(lease.executionId);
+        const fencingToken = (previous?.fencingToken ?? 0) + 1;
+        const hydratedLease = { ...lease, fencingToken };
+        state.leases.set(hydratedLease.id, hydratedLease);
+        state.latestLeaseByExecution.set(hydratedLease.executionId, hydratedLease);
+        if (hydratedLease.status === "active") {
+          state.activeLeaseByExecution.set(hydratedLease.executionId, hydratedLease);
+        }
+        return fencingToken;
+      },
       closeExecutionLease(input: {
         leaseId: string;
         status: ExecutionLeaseRecord["status"];
@@ -75,12 +86,60 @@ function createMockStore(state: MockStoreState = {
           }
         }
       },
+      closeExecutionLeaseCas(input: {
+        leaseId: string;
+        workerId: string;
+        fencingToken: number;
+        expectedStatus: ExecutionLeaseRecord["status"];
+        status: ExecutionLeaseRecord["status"];
+        releasedAt: string;
+        reasonCode: string | null;
+      }): boolean {
+        const lease = state.leases.get(input.leaseId);
+        if (
+          !lease
+          || lease.workerId !== input.workerId
+          || lease.fencingToken !== input.fencingToken
+          || lease.status !== input.expectedStatus
+        ) {
+          return false;
+        }
+        const updated = { ...lease, status: input.status, releasedAt: input.releasedAt, reasonCode: input.reasonCode };
+        state.leases.set(input.leaseId, updated);
+        if (input.status !== "active") {
+          state.activeLeaseByExecution.delete(lease.executionId);
+        }
+        return true;
+      },
       renewExecutionLease(leaseId: string, expiresAt: string, lastHeartbeatAt: string): void {
         const lease = state.leases.get(leaseId);
         if (lease) {
           const updated = { ...lease, expiresAt, lastHeartbeatAt };
           state.leases.set(leaseId, updated);
         }
+      },
+      renewExecutionLeaseCas(input: {
+        leaseId: string;
+        workerId: string;
+        fencingToken: number;
+        expectedStatus: ExecutionLeaseRecord["status"];
+        expiresAt: string;
+        lastHeartbeatAt: string;
+      }): boolean {
+        const lease = state.leases.get(input.leaseId);
+        if (
+          !lease
+          || lease.workerId !== input.workerId
+          || lease.fencingToken !== input.fencingToken
+          || lease.status !== input.expectedStatus
+        ) {
+          return false;
+        }
+        const updated = { ...lease, expiresAt: input.expiresAt, lastHeartbeatAt: input.lastHeartbeatAt };
+        state.leases.set(input.leaseId, updated);
+        state.activeLeaseByExecution.set(lease.executionId, updated);
+        state.latestLeaseByExecution.set(lease.executionId, updated);
+        return true;
       },
       insertLeaseAudit(audit: LeaseAuditRecord): void {
         state.audits.push(audit);
@@ -449,6 +508,7 @@ test("releaseLease blocks when lease already released (double-release prevention
   const result = service.releaseLease({
     leaseId: "lease-1",
     workerId: "worker-1",
+    fencingToken: releasedLease.fencingToken,
   });
 
   assert.equal(result.outcome, "blocked");
@@ -481,6 +541,7 @@ test("releaseLease blocks when trying to release expired lease [execution-lease-
   const result = service.releaseLease({
     leaseId: "lease-1",
     workerId: "worker-1",
+    fencingToken: expiredLease.fencingToken,
   });
 
   assert.equal(result.outcome, "blocked");

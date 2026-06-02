@@ -11,6 +11,8 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { validateBusinessPackManifest, type BusinessPackManifest } from "../pack-sdk/pack-manifest.js";
 import { createApiClient, type ApiClientConfig } from "../client-sdk/api-client.js";
+import { readCliProcessEnv, type CliEnv } from "./cli-env.js";
+import { readGuardedJsonFile, readGuardedTextFile } from "./cli-file-guards.js";
 import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 
 const PACK_PUBLISH_MAX_ATTEMPTS = 4;
@@ -21,11 +23,11 @@ interface PackPublishOptions {
   registryUrl?: string;
   apiVersion?: string;
   bearerToken?: string;
+  bearerTokenFile?: string;
   dryRun?: boolean;
 }
 
-function parseArgs(): PackPublishOptions {
-  const args = process.argv.slice(2);
+function parseArgsFromValues(args: readonly string[]): PackPublishOptions {
   const opts: PackPublishOptions = { manifest: "", dryRun: false };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -42,11 +44,18 @@ function parseArgs(): PackPublishOptions {
     } else if (arg === "--bearer-token" && next !== undefined) {
       opts.bearerToken = next;
       i++;
+    } else if (arg === "--bearer-token-file" && next !== undefined) {
+      opts.bearerTokenFile = next;
+      i++;
     } else if (arg === "--dry-run") {
       opts.dryRun = true;
     }
   }
   return opts;
+}
+
+function parseArgs(): PackPublishOptions {
+  return parseArgsFromValues(process.argv.slice(2));
 }
 
 interface PublishResult {
@@ -89,44 +98,30 @@ function shouldRetryPublishError(error: unknown): boolean {
     || message.includes("socket");
 }
 
-function resolveRegistryUrl(opts: PackPublishOptions): string {
-  const registryUrl = opts.registryUrl ?? process.env["AA_REGISTRY_URL"] ?? "";
+function resolveRegistryUrl(opts: PackPublishOptions, env: CliEnv): string {
+  const registryUrl = opts.registryUrl ?? env["AA_REGISTRY_URL"] ?? "";
   if (registryUrl.trim().length === 0) {
     throw new Error("missing_registry_url:set AA_REGISTRY_URL or pass --registry-url");
   }
   return registryUrl;
 }
 
-function parseArgsFromValues(args: readonly string[]): PackPublishOptions {
-  const opts: PackPublishOptions = { manifest: "", dryRun: false };
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    const next = args[i + 1];
-    if (arg === "--manifest" && next !== undefined) {
-      opts.manifest = next;
-      i++;
-    } else if (arg === "--registry-url" && next !== undefined) {
-      opts.registryUrl = next;
-      i++;
-    } else if (arg === "--api-version" && next !== undefined) {
-      opts.apiVersion = next;
-      i++;
-    } else if (arg === "--bearer-token" && next !== undefined) {
-      opts.bearerToken = next;
-      i++;
-    } else if (arg === "--dry-run") {
-      opts.dryRun = true;
-    }
+function resolveBearerToken(opts: PackPublishOptions, env: CliEnv): string {
+  if (opts.bearerTokenFile) {
+    return readGuardedTextFile(opts.bearerTokenFile, "Bearer token file", 16 * 1024).trim();
   }
-  return opts;
+  return opts.bearerToken ?? env["AA_BEARER_TOKEN"] ?? "";
 }
 
-export async function publishPack(args = process.argv.slice(2)): Promise<PublishResult> {
+export async function publishPack(
+  args = process.argv.slice(2),
+  env: CliEnv = readCliProcessEnv(),
+): Promise<PublishResult> {
   const opts = parseArgsFromValues(args);
   const result: PublishResult = { published: false, packId: "", version: "", errors: [], dryRun: opts.dryRun ?? false };
 
   try {
-    const content = readFileSync(opts.manifest, "utf-8");
+    const content = readGuardedJsonFile(opts.manifest, "Pack manifest");
     const manifest: BusinessPackManifest = JSON.parse(content);
     const validated = validateBusinessPackManifest(manifest);
 
@@ -138,12 +133,12 @@ export async function publishPack(args = process.argv.slice(2)): Promise<Publish
       return result;
     }
 
-    const registryUrl = resolveRegistryUrl(opts);
+    const registryUrl = resolveRegistryUrl(opts, env);
     const apiVersion = opts.apiVersion ?? "v1";
-    const bearerToken = opts.bearerToken ?? process.env["AA_BEARER_TOKEN"] ?? "";
+    const bearerToken = resolveBearerToken(opts, env);
 
     if (!bearerToken) {
-      result.errors.push("missing_bearer_token:set AA_BEARER_TOKEN or pass --bearer-token");
+      result.errors.push("missing_bearer_token:set AA_BEARER_TOKEN, pass --bearer-token, or use --bearer-token-file");
       return result;
     }
 
@@ -168,13 +163,15 @@ export async function publishPack(args = process.argv.slice(2)): Promise<Publish
         }
         lastStatus = response.status;
         if (!shouldRetryPublishStatus(response.status) || attempt === PACK_PUBLISH_MAX_ATTEMPTS) {
-          result.errors.push(`http_error:status=${response.status}`);
+          result.errors.push(`http_error:status=${response.status}:attempt=${attempt}`);
           return result;
         }
+        result.errors.push(`retryable_http_error:status=${response.status}:attempt=${attempt}`);
       } catch (error) {
         if (!shouldRetryPublishError(error) || attempt === PACK_PUBLISH_MAX_ATTEMPTS) {
           throw error;
         }
+        result.errors.push(`retryable_network_error:attempt=${attempt}`);
       }
       const backoffMs = Math.min(
         PACK_PUBLISH_INITIAL_BACKOFF_MS * (2 ** (attempt - 1)),

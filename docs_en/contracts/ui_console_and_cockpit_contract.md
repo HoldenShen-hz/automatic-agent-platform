@@ -2,33 +2,33 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Mapping
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage loop:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: signal collection and aggregation
+- **Assess**: pre-execution evaluation and risk judgement
+- **Plan**: task decomposition and DAG construction
+- **Execute**: step execution and fault tolerance
+- **Feedback**: signal collection and preprocessing
+- **Learn**: pattern detection and knowledge extraction
+- **Improve**: improvement candidate evaluation and rollout
+- **Release**: controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines Automatic Agent 的 Web Console、Task Cockpit、Workflow Cockpit、Approval Center、Stability Panel 和 Admin Takeover Console 的最小界面边界。
+This contract defines the minimum UI boundaries of the Automatic Agent's Web Console, Task Cockpit, Workflow Cockpit, Approval Center, Stability Panel, and Admin Takeover Console.
 
-它回答的Issueis：
+The questions it answers are:
 
-- UI 首先服务什么对象
-- 首页先展示什么
-- 任务、审批、稳定性和接管页面至少要具备什么能力
-- 页面data truth source 如何分层，避免每页each拼事实源
+- What objects the UI primarily serves
+- What the home page should display first
+- What capabilities the task, approval, stability, and takeover pages must at least have
+- How the page data truth source is layered, to avoid each page stitching its own source of truth
 
-相关文档：
+Related documents:
 
 - `admin_console_and_human_takeover_contract.md`
 - `debug_inspect_health_backpressure_contract.md`
@@ -37,26 +37,26 @@
 - `hitl_experience_and_explainability_contract.md`
 - `api_surface_contract.md`
 
-## 2. UI 总体principle
+## 2. UI Overall Principles
 
-前端不is聊天窗口集合，而is：
+The front-end is not a collection of chat windows, but:
 
-- 任务工作台
-- 审批vs治理工作台
-- 稳定性vs运维工作台
-- manage员接管工作台
+- A task workbench
+- An approval and governance workbench
+- A stability and operations workbench
+- An admin takeover workbench
 
-最小principle：
+Minimum principles:
 
-1. 人class优先via `task / approval / inspect / takeover` 进入系统，不应directly对任意 agent 自由下指令。
-2. 首页必须先回答“系统isno健康、当前在做什么、卡在哪里”。
-3. 关键页面必须能下钻到 evidence、timeline、inspect，而不is只显示 summary。
-4. 高风险动作必须展示风险等级、策略来源、审批链和接管入口。
-5. UI 展示Status不得反向defines HarnessRun、PlanGraph 或 NodeRun 的 authoritative 事实。
+1. Humans should preferably enter the system through `task / approval / inspect / takeover`, and should not directly issue arbitrary instructions to any agent.
+2. The home page must first answer "is the system healthy, what is currently being done, where is it stuck".
+3. Key pages must be able to drill down to evidence, timeline, inspect, and not just show a summary.
+4. High-risk actions must display the risk level, policy source, approval chain, and takeover entry.
+5. The UI display status must not reversely define the authoritative fact of `HarnessRun`, `PlanGraph`, or `NodeRun`.
 
-## 3. Console 信息Architecture
+## 3. Console Information Architecture
 
-推荐最小信息Architecture：
+Recommended minimum information architecture:
 
 - `Mission Control`
   - `Dashboard`
@@ -82,34 +82,34 @@
   - `Feature Flags`
   - `Capability / Entitlement`
 
-规则：
+Rules:
 
-- 当前阶段不要求一iterations性铺满所有页面。
-- 但导航分组应从一开始按能力域组织，而不is页面墙式平铺。
+- The current phase does not require rolling out all pages at once.
+- But navigation grouping should be organized by capability domain from the start, rather than as a flat wall of pages.
 
-## 4. 首页排序规则
+## 4. Home Page Ordering Rules
 
-Console 首页应按以下优先级组织：
+The Console home page should be organized with the following priority:
 
-1. 顶部先展示：
+1. Top of page first displays:
    - `system status`
    - `current focus`
    - `active alerts`
-2. 第一屏展示：
-   - 当前活跃 task / workflow
-   - runtime / queue / approval isno健康
-   - 当前 backlog 派发到了哪
-3. 第二屏展示：
+2. First screen displays:
+   - Currently active task / workflow
+   - Whether runtime / queue / approval is healthy
+   - Where the current backlog is dispatched
+3. Second screen displays:
    - blocked reason
-   - stale / recovery / retry 摘要
-   - 近期高风险 decision / approval
-4. 原始日志、长 trace、原始事件尾部只能作为下钻视图，不得占据首页主视觉。
+   - stale / recovery / retry summary
+   - recent high-risk decision / approval
+4. Raw logs, long traces, and raw event tails can only be used as drill-down views, and must not occupy the main view of the home page.
 
-## 5. 核心页面
+## 5. Core Pages
 
 ### 5.1 `TaskCockpit`
 
-最小字段：
+Minimum fields:
 
 - `task_projection_ref`
 - `harness_run_id`
@@ -120,17 +120,17 @@ Console 首页应按以下优先级组织：
 - `latest_decision?`
 - `artifact_refs`
 
-最小动作：
+Minimum actions:
 
-- 打开 inspect
-- 查看 timeline
-- 查看 artifacts
-- 取消任务
-- 进入人工接管
+- Open inspect
+- View timeline
+- View artifacts
+- Cancel task
+- Enter manual takeover
 
 ### 5.2 `RunCockpit`
 
-最小字段：
+Minimum fields:
 
 - `plan_graph_id`
 - `harness_run_id`
@@ -141,16 +141,16 @@ Console 首页应按以下优先级组织：
 - `approval_nodes`
 - `evidence_refs`
 
-最小动作：
+Minimum actions:
 
-- 查看 step output
-- 查看 dependency / blocked state
-- 打开 recovery history
-- 查看 compensation / replay 证据
+- View step output
+- View dependency / blocked state
+- Open recovery history
+- View compensation / replay evidence
 
 ### 5.3 `ApprovalCenter`
 
-最小字段：
+Minimum fields:
 
 - `approval_id`
 - `harness_run_id`
@@ -161,7 +161,7 @@ Console 首页应按以下优先级组织：
 - `deadline?`
 - `policy_source`
 
-最小动作：
+Minimum actions:
 
 - approve
 - reject
@@ -170,7 +170,7 @@ Console 首页应按以下优先级组织：
 
 ### 5.4 `StabilityPanel`
 
-最小字段：
+Minimum fields:
 
 - `active_tasks`
 - `queued_tasks`
@@ -181,7 +181,7 @@ Console 首页应按以下优先级组织：
 - `event_backlog`
 - `worker_health`
 
-最小动作：
+Minimum actions:
 
 - drill into stuck task
 - inspect backlog
@@ -190,7 +190,7 @@ Console 首页应按以下优先级组织：
 
 ### 5.5 `AdminTakeoverConsole`
 
-最小字段：
+Minimum fields:
 
 - `task scope`
 - `tenant / workspace scope`
@@ -200,7 +200,7 @@ Console 首页应按以下优先级组织：
 - `current model / prompt / policy version`
 - `current capability / entitlement limit`
 
-最小动作：
+Minimum actions:
 
 - `retry_step`
 - `skip_step`
@@ -209,17 +209,17 @@ Console 首页应按以下优先级组织：
 - `manual_cancel`
 - `mark_unrecoverable`
 
-## 6. 页面data truth source 分层
+## 6. Page Data Truth Source Layering
 
 ### 6.1 `shared_snapshot`
 
-适used for：
+Applicable to:
 
-- 顶部系统Status条
-- Dashboard 首页摘要
-- 稳定性总览头部
+- Top system status bar
+- Dashboard home page summary
+- Stability overview header
 
-最小内容：
+Minimum content:
 
 - overall health
 - queue depth
@@ -229,20 +229,20 @@ Console 首页应按以下优先级组织：
 
 ### 6.2 `shared_query`
 
-适used for：
+Applicable to:
 
 - Dashboard
 - Stability
 - Approval Center
-- Admin Console 概览
+- Admin Console overview
 
-规则：
+Rules:
 
-- 跨域聚合页面应优先复用共享 query，而不is每页each拉散 API。
+- Cross-domain aggregated pages should prefer reusing shared queries, rather than each page pulling scattered APIs.
 
 ### 6.3 `page_local_api`
 
-适used for：
+Applicable to:
 
 - task inspect
 - workflow inspect
@@ -250,16 +250,16 @@ Console 首页应按以下优先级组织：
 - worker details
 - artifact details
 
-规则：
+Rules:
 
-- domain-specific drill-down 可以有独立 API。
-- 但页面不得私自拼 authoritative Status，应优先uses inspect / resource API。
+- Domain-specific drill-down can have independent APIs.
+- But the page must not privately stitch the authoritative status, and should prefer using inspect / resource APIs.
 
 ## 7. Task-Flow Cockpit Drill-Down
 
-Task / Workflow cockpit 至少supported 5 级下钻：
+Task / Workflow cockpit must at least support 5 levels of drill-down:
 
-| 级别 | 展示内容 |
+| Level | Displayed Content |
 | --- | --- |
 | `L1` | task list + status |
 | `L2` | task details + workflow state |
@@ -267,42 +267,42 @@ Task / Workflow cockpit 至少supported 5 级下钻：
 | `L4` | approval / decision / evidence chain |
 | `L5` | trace / replay / recovery timeline |
 
-规则：
+Rules:
 
-- `completed` 不得只显示 summary，必须能进入 evidence。
-- `blocked` 不得只显示“等待中”，必须显示 blocked reason 和 source。
-- `failed` 不得只显示错误文本，必须能进入 error code、last step 和 recovery history。
+- `completed` must not only show the summary, and must allow entering evidence.
+- `blocked` must not only show "waiting", and must display the blocked reason and source.
+- `failed` must not only show the error text, and must allow entering the error code, last step, and recovery history.
 
-## 8. UI vs gateway / streaming 的关系
+## 8. Relationship between UI and Gateway / Streaming
 
-- Web UI 流式展示应遵守 `gateway_streaming_contract.md`。
-- 显示层若需要做 chunk commit、catch-up 或 backlog drain，应按队列压力和消息年龄自适应，而不is按上游来源hardcodes特殊逻辑。
-- 显示层 catch-up 不得打乱消息顺序，也不应via单帧暴力 flush 破坏可读性。
-- 非流式控制台视图可以读聚合Status，但不得替代 stream 事实。
-- UI 侧Status命名必须和 `debug_inspect_health_backpressure_contract.md` vs `api_surface_contract.md` 保持一致。
+- Web UI streaming display should follow `gateway_streaming_contract.md`.
+- If the display layer needs to do chunk commit, catch-up, or backlog drain, it should adapt to queue pressure and message age, rather than hard-coding special logic based on the upstream source.
+- Display layer catch-up must not disrupt message order, nor should it destroy readability by force-flushing a single frame.
+- Non-streaming console views can read aggregated status, but must not replace stream fact.
+- UI-side status names must be consistent with `debug_inspect_health_backpressure_contract.md` and `api_surface_contract.md`.
 
-## 9. 当前明确不做
+## 9. What Is Explicitly Not Done
 
-当前不directly采用：
+Currently not directly adopted:
 
-- 重型 Canvas / A2UI package rendering 平台
-- 大规模业务域工作台铺设
-- 业务页面墙
-- 在前端directly维护 capability / policy 真相
+- Heavy Canvas / A2UI package rendering platform
+- Large-scale business domain workbench rollout
+- Business page wall
+- Maintaining capability / policy truth directly at the front-end
 
-原因：
+Reasons:
 
-- 当前阶段的核心目标is先把 Stable Core 跑稳。
-- 过早references入重型 UI 包运lines时，会放大前后端边界复杂度。
-- Automatic Agent 当前更需要 task、workflow、stability、takeover 四class工作台，而不is业务域页面扩张。
+- The core goal of the current phase is to first run the Stable Core stably.
+- Introducing a heavy UI package runtime too early will amplify the front-end / back-end boundary complexity.
+- The Automatic Agent currently needs task, workflow, stability, and takeover workbenches, not business domain page expansion.
 
-## 10. 收口Conclusion
+## 10. Closure Conclusion
 
-Automatic Agent 的 UI 不应首先长成“另一个聊天应用”。
+The Automatic Agent's UI should not first grow into "another chat application".
 
-更合理的基线is：
+A more reasonable baseline is:
 
-- 一个能看健康Status的 Console
-- 一个能下钻 evidence 的 Task / Workflow Cockpit
-- 一个能handle审批vs解释的 Approval Center
-- 一个能接管和止损的 Admin Console
+- A Console that can view health status
+- A Task / Workflow Cockpit that can drill down into evidence
+- An Approval Center that can handle approvals and explanations
+- An Admin Console that can take over and stop the bleeding

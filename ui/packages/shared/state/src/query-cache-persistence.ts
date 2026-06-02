@@ -197,13 +197,10 @@ function shouldPersistQueryKey(queryKey: readonly unknown[]): boolean {
   const prefix = String(queryKey[0] ?? "");
   return new Set([
     "dashboard",
-    "tasks",
-    "approvals",
     "workflows",
     "agents",
     "analytics",
     "queues",
-    "incidents",
     "feature-flags",
     "domain-configs",
   ]).has(prefix);

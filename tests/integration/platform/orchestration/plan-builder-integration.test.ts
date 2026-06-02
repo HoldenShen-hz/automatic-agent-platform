@@ -59,7 +59,7 @@ function createTestAssessment(taskId: string, situationRef: string): ReturnType<
       factors: ["multi_step", "review_required"],
     },
     routingDecision: {
-      division: "general_ops",
+      division: "general-ops",
       workflow: "single_division_multi_step_orchestration",
       rationale: "test routing",
     },
@@ -169,7 +169,7 @@ test("PlanBuilder assigns correct strategy based on complexity", () => {
       complexity: "trivial",
       risk: "low",
       riskAssessment: { level: "low", factors: [] },
-      routingDecision: { division: "general_ops", workflow: "single_agent_minimal", rationale: "simple" },
+      routingDecision: { division: "general-ops", workflow: "single_agent_minimal", rationale: "simple" },
       resourceAllocation: { modelClass: "claude-haiku", maxTokens: 1000, timeoutMs: 30_000 },
       approvalPolicy: { required: false },
       executionMode: "auto",

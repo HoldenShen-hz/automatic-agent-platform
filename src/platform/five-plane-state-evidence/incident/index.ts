@@ -1,5 +1,7 @@
 import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 
 export type IncidentSeverity = "low" | "medium" | "high" | "critical";
 export type IncidentStatus = "open" | "acknowledged" | "triaged" | "mitigating" | "reviewed" | "resolved" | "closed";
@@ -20,6 +22,12 @@ export interface IncidentCase {
 export class IncidentCaseService {
   private readonly incidents = new Map<string, IncidentCase>();
   private readonly incidentOrder = new Map<string, bigint>();
+  private readonly persistencePath: string;
+
+  public constructor(options: { persistencePath?: string } = {}) {
+    this.persistencePath = resolve(options.persistencePath ?? "data/runtime/incidents.json");
+    this.hydrate();
+  }
 
   private encodeCursor(incident: IncidentCase): string {
     return Buffer.from(JSON.stringify({
@@ -217,13 +225,45 @@ export class IncidentCaseService {
   private getRequired(incidentId: string, tenantId?: string | null): IncidentCase {
     const incident = this.getIncident(incidentId, tenantId);
     if (incident == null) {
-      throw new ValidationError(`incident.not_found:${incidentId}`, `Incident ${incidentId} was not found.`);
+      throw new ValidationError("incident.not_found", "Incident was not found.");
     }
     return incident;
   }
 
   private update(incidentId: string, incident: IncidentCase): IncidentCase {
     this.incidents.set(incidentId, incident);
-    return incident;
+    this.persist();
+    return structuredClone(incident);
+  }
+
+  private hydrate(): void {
+    if (!existsSync(this.persistencePath)) {
+      return;
+    }
+    try {
+      const parsed = JSON.parse(readFileSync(this.persistencePath, "utf8")) as unknown;
+      if (!Array.isArray(parsed)) {
+        return;
+      }
+      for (const item of parsed) {
+        if (item == null || typeof item !== "object") {
+          continue;
+        }
+        const incident = structuredClone(item) as IncidentCase;
+        this.incidents.set(incident.incidentId, incident);
+        this.incidentOrder.set(incident.incidentId, process.hrtime.bigint());
+      }
+    } catch {
+      return;
+    }
+  }
+
+  private persist(): void {
+    mkdirSync(dirname(this.persistencePath), { recursive: true });
+    writeFileSync(
+      this.persistencePath,
+      JSON.stringify([...this.incidents.values()], null, 2),
+      "utf8",
+    );
   }
 }

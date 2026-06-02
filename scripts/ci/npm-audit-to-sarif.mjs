@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
+
+const MAX_AUDIT_REPORT_BYTES = 10 * 1024 * 1024;
 
 const [, , inputPath, outputPath] = process.argv;
 
@@ -8,7 +10,24 @@ if (inputPath == null || outputPath == null) {
   process.exit(1);
 }
 
-const report = JSON.parse(readFileSync(inputPath, "utf8"));
+function readAuditReport(path) {
+  const stats = statSync(path);
+  if (!stats.isFile()) {
+    throw new Error(`npm_audit.input_not_file:${path}`);
+  }
+  if (!Number.isFinite(stats.size) || stats.size <= 0 || stats.size > MAX_AUDIT_REPORT_BYTES) {
+    throw new Error(`npm_audit.input_size_out_of_range:${path}`);
+  }
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    throw new Error(
+      `npm_audit.invalid_json:${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+const report = readAuditReport(inputPath);
 const vulnerabilities = Object.entries(report.vulnerabilities ?? {});
 const severityLevel = {
   critical: "error",
@@ -17,6 +36,22 @@ const severityLevel = {
   low: "note",
   info: "note",
 };
+
+function describeViaEntry(entry) {
+  if (typeof entry === "string") {
+    return entry;
+  }
+  if (typeof entry !== "object" || entry == null) {
+    return "unknown advisory";
+  }
+  const title = typeof entry.title === "string" && entry.title.trim().length > 0
+    ? entry.title.trim()
+    : "untitled advisory";
+  const url = typeof entry.url === "string" && entry.url.trim().length > 0
+    ? entry.url.trim()
+    : "no advisory URL";
+  return `${title} (${url})`;
+}
 
 function collectAdvisories(vulnerability) {
   return Array.isArray(vulnerability.via)
@@ -90,8 +125,8 @@ const sarif = {
               text: `${name} ${vulnerability.severity} vulnerability`,
             },
             fullDescription: {
-              text: vulnerability.via
-                .map((entry) => typeof entry === "string" ? entry : `${entry.title} (${entry.url ?? "no advisory URL"})`)
+              text: (Array.isArray(vulnerability.via) ? vulnerability.via : [])
+                .map((entry) => describeViaEntry(entry))
                 .join("; "),
             },
             properties: {

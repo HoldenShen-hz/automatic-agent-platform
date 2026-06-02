@@ -202,8 +202,49 @@ test("MissionResolver handles explicit, ad hoc, and high-risk fail-closed paths"
   };
 
   assert.equal(resolver.resolve({ ...base, missionRef: { mode: "use_existing", missionId: mission.missionId } }).resolution, "matched_existing");
-  assert.equal(resolver.resolve({ ...base, confirmedTaskSpecId: "ctspec_002", missionRef: { mode: "auto_resolve", allowAdHoc: true, createFormalMissionWhen: "never" } }).resolution, "created_ad_hoc");
+  const created = resolver.resolve({ ...base, confirmedTaskSpecId: "ctspec_002", missionRef: { mode: "auto_resolve", allowAdHoc: true, createFormalMissionWhen: "never" } });
+  assert.equal(created.resolution, "created_ad_hoc");
+  assert.equal(repository.getMission(created.missionId!)?.orgId, null);
   assert.equal(resolver.resolve({ ...base, confirmedTaskSpecId: "ctspec_003", riskClass: "high" }).resolution, "rejected");
+});
+
+test("MissionResolver ignores draft candidates and requires explicit ad hoc permission", () => {
+  const repository = new InMemoryMissionRepository();
+  const lifecycle = new MissionLifecycleService(repository);
+  lifecycle.createMission({
+    missionId: "mis_draft_only",
+    tenantId: "tenant_001",
+    orgId: "org_001",
+    title: "Draft Mission",
+    objective: "Do coding task",
+    successCriteria: ["done"],
+    ownerPrincipalId: principal.principalId,
+    domainId: "coding",
+    createdBy: principal.principalId,
+    traceId: "trace_draft",
+    correlationId: "corr_draft",
+  });
+  const resolver = new MissionResolver(repository, new MissionGovernanceService(repository));
+  const request: MissionResolutionRequest = {
+    tenantId: "tenant_001",
+    confirmedTaskSpecId: "ctspec_draft",
+    principal: { ...principal, roles: [...principal.roles] },
+    goal: "Do coding task",
+    domainId: "coding",
+    riskClass: "low",
+    traceId: "trace_draft",
+    correlationId: "corr_draft",
+  };
+
+  assert.equal(resolver.resolve(request).resolution, "rejected");
+  assert.equal(resolver.resolve({
+    ...request,
+    missionRef: { mode: "auto_resolve", allowAdHoc: false, createFormalMissionWhen: "never" },
+  }).resolution, "rejected");
+  assert.equal(resolver.resolve({
+    ...request,
+    missionRef: { mode: "auto_resolve", allowAdHoc: true, createFormalMissionWhen: "never" },
+  }).resolution, "created_ad_hoc");
 });
 
 test("Mission repository sequences events monotonically", () => {
@@ -766,6 +807,64 @@ test("MissionPlaybookRegistry lists registered playbooks and resolver covers exp
       fallbackPolicy: "manual_selection",
     }),
   );
+});
+
+test("MissionPlaybookResolver normalizes fractional rollout percentages", () => {
+  const registry = new MissionPlaybookRegistry({
+    metricRefs: ["aa.mission.outcome.quality_score"],
+    evidenceKinds: ["claim_evidence", "outcome_report"],
+  });
+  registry.register({
+    ...createResearchPlaybook(),
+    playbookId: "playbook_fractional_canary",
+    version: "1.2.0",
+    status: "validated",
+    compatibility: {
+      minPlatformVersion: "2.0.0",
+      compatibleMissionSchemaVersions: ["1.x"],
+      authorizedTenantIds: ["tenant_fractional"],
+    },
+    rollout: {
+      mode: "canary",
+      percentage: 1,
+      targetTenants: [],
+      rolloutRef: "rollout:fractional",
+    },
+    signature: {
+      signedBy: "platform-architecture",
+      signatureRef: "sig:fractional",
+      signedAt: "2026-05-23T00:00:00.000Z",
+    },
+    rollback: {
+      previousVersion: "1.0.0",
+      rollbackAllowed: true,
+      rollbackRef: "rollback:fractional",
+    },
+    signatureRef: "sig:fractional",
+    rollbackRef: "rollback:fractional",
+    compatibilityRef: "compat:fractional",
+    createdAt: "2026-05-23T00:00:00.000Z",
+    updatedAt: "2026-05-23T00:00:00.000Z",
+  });
+  registry.transitionStatus({
+    playbookId: "playbook_fractional_canary",
+    version: "1.2.0",
+    targetStatus: "canary",
+    actorId: principal.principalId,
+    auditRef: "audit:playbook:fractional",
+  });
+
+  const resolver = new MissionPlaybookResolver(registry);
+  const resolved = resolver.resolve({
+    missionType: "formal",
+    tenantId: "tenant_fractional",
+    allowCanary: true,
+    tenantOverrideAllowed: false,
+    fallbackPolicy: "fail_closed",
+  });
+
+  assert.equal(resolved.resolutionReason, "canary_rollout");
+  assert.equal(resolved.playbookId, "playbook_fractional_canary");
 });
 
 test("StageExitGateService evaluates immutable snapshots, requires HITL for guarded edge, and appends evidence event", () => {

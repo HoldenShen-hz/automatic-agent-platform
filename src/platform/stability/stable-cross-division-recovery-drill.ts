@@ -173,7 +173,7 @@ async function seedCrossDivisionRecoveryDataset(dbPath: string): Promise<void> {
   seedExecution(db, store, {
     taskId: "task-general-stale-drill",
     executionId: "exec-general-stale-drill",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "single_agent_minimal",
     roleId: "general_executor",
     agentId: "agent-general-drill",
@@ -191,7 +191,7 @@ async function seedCrossDivisionRecoveryDataset(dbPath: string): Promise<void> {
   seedExecution(db, store, {
     taskId: "task-engineering-blocked-drill",
     executionId: "exec-engineering-blocked-drill",
-    divisionId: "engineering_ops",
+    divisionId: "engineering-ops",
     workflowId: "engineering_single_agent_minimal",
     roleId: "engineer",
     agentId: "agent-engineering-drill",
@@ -221,7 +221,7 @@ async function seedCrossDivisionRecoveryDataset(dbPath: string): Promise<void> {
   seedExecution(db, store, {
     taskId: "task-engineering-dead-letter-drill",
     executionId: "exec-engineering-dead-letter-drill",
-    divisionId: "engineering_ops",
+    divisionId: "engineering-ops",
     workflowId: "engineering_single_agent_minimal",
     roleId: "engineer",
     agentId: "agent-engineering-drill",
@@ -267,14 +267,14 @@ async function runCrossDivisionOverviewScenario(
         overview.length === 2 &&
         overview.some(
           (item) =>
-            item.divisionId === "engineering_ops" &&
+            item.divisionId === "engineering-ops" &&
             item.activeCandidateCount === 1 &&
             item.blockedApprovalCount === 1 &&
             item.staleExecutionCount === 0,
         ) &&
         overview.some(
           (item) =>
-            item.divisionId === "general_ops" &&
+            item.divisionId === "general-ops" &&
             item.activeCandidateCount === 1 &&
             item.blockedApprovalCount === 0 &&
             item.staleExecutionCount === 1,

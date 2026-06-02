@@ -23,12 +23,12 @@ function seedProtectedGovernanceTree(workspace: string): {
   createFile(join(configRoot, "workflows/default.json"), JSON.stringify({ defaultWorkflowId: "single_agent_minimal", allowCrossDivisionDag: false }));
 
   createFile(
-    join(divisionsRoot, "general_ops/division.yaml"),
-    ["id: general_ops", "version: 1", "name: General Operations", "default_workflow: single_agent_minimal", "roles:", "  - id: general_executor", "    prompt: roles/general_executor.prompt.md", "    model: balanced", "    tools: [read, bash]"].join("\n"),
+    join(divisionsRoot, "general-ops/division.yaml"),
+    ["id: general-ops", "version: 1", "name: General Operations", "default_workflow: single_agent_minimal", "roles:", "  - id: general_executor", "    prompt: roles/general_executor.prompt.md", "    model: balanced", "    tools: [read, bash]"].join("\n"),
   );
-  createFile(join(divisionsRoot, "general_ops/roles/general_executor.prompt.md"), "# general executor\n");
+  createFile(join(divisionsRoot, "general-ops/roles/general_executor.prompt.md"), "# general executor\n");
   createFile(
-    join(divisionsRoot, "general_ops/schemas/minimal-output.json"),
+    join(divisionsRoot, "general-ops/schemas/minimal-output.json"),
     JSON.stringify({
       type: "object",
       required: ["summary", "result"],
@@ -40,8 +40,8 @@ function seedProtectedGovernanceTree(workspace: string): {
     }),
   );
   createFile(
-    join(divisionsRoot, "general_ops/workflows/minimal.yaml"),
-    ["id: single_agent_minimal", "division_id: general_ops", "steps:", "  - step_id: analyze_request", "    role_id: general_executor", "    output_key: analysis", "    output_schema: schemas/minimal-output.json", "    timeout_ms: 120000", "    max_attempts: 1"].join("\n"),
+    join(divisionsRoot, "general-ops/workflows/minimal.yaml"),
+    ["id: single_agent_minimal", "division_id: general-ops", "steps:", "  - step_id: analyze_request", "    role_id: general_executor", "    output_key: analysis", "    output_schema: schemas/minimal-output.json", "    timeout_ms: 120000", "    max_attempts: 1"].join("\n"),
   );
 
   createFile(

@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DataLineageService, type DataLineageEdge } from "../../../../../src/platform/compliance/lineage/index.js";
+import { cleanupPath, createTempWorkspace } from "../../../../../src/testing/index.js";
+import {
+  DataLineageService,
+  JsonFileDataLineagePersistenceStore,
+  type DataLineageEdge,
+} from "../../../../../src/platform/compliance/lineage/index.js";
 
 test("DataLineageService records edge and returns it with generated ID", () => {
   const service = new DataLineageService();
@@ -19,6 +24,7 @@ test("DataLineageService records edge and returns it with generated ID", () => {
   assert.equal(edge.actorRef, "agent:ops");
   assert.equal(edge.policyRef, null);
   assert.ok(edge.createdAt);
+  assert.ok(edge.integritySignature);
   assert.deepEqual(edge.metadata, {});
 });
 
@@ -288,4 +294,83 @@ test("DataLineageService chain uses prevHash chaining for integrity", () => {
 
   // Hashes should be different
   assert.notEqual(edge1.integrityHash, edge2.integrityHash);
+});
+
+test("DataLineageService persists and restores a verified chain", () => {
+  const workspace = createTempWorkspace("lineage-persist-");
+  try {
+    const filePath = `${workspace}/lineage.json`;
+    const persistenceStore = new JsonFileDataLineagePersistenceStore(filePath);
+    const writer = new DataLineageService({
+      hmacKey: "test-lineage-hmac",
+      persistenceStore,
+      edgeIdFactory: (() => {
+        let id = 0;
+        return () => `lineage_${++id}`;
+      })(),
+      now: (() => {
+        let tick = 0;
+        return () => `2026-06-02T00:00:0${tick++}.000Z`;
+      })(),
+    });
+
+    writer.recordEdge({
+      sourceRef: "task:1",
+      targetRef: "artifact:1",
+      kind: "derived_from",
+      actorRef: "agent:1",
+      metadata: { nested: { risk: "high" } },
+    });
+    writer.recordEdge({
+      sourceRef: "artifact:1",
+      targetRef: "artifact:2",
+      kind: "released_as",
+      actorRef: "agent:2",
+    });
+
+    const reader = new DataLineageService({
+      hmacKey: "test-lineage-hmac",
+      persistenceStore,
+    });
+    const edges = reader.listEdges();
+
+    assert.equal(edges.length, 2);
+    assert.equal(reader.verifyChain().valid, true);
+    assert.equal(edges[1]?.prevHash, edges[0]?.integrityHash);
+    assert.ok(edges[0]?.integritySignature);
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("DataLineageService rejects persisted chain tampering", () => {
+  const workspace = createTempWorkspace("lineage-tamper-");
+  try {
+    const filePath = `${workspace}/lineage.json`;
+    const persistenceStore = new JsonFileDataLineagePersistenceStore(filePath);
+    const service = new DataLineageService({
+      hmacKey: "test-lineage-hmac",
+      persistenceStore,
+    });
+
+    service.recordEdge({
+      sourceRef: "task:1",
+      targetRef: "artifact:1",
+      kind: "derived_from",
+      actorRef: "agent:1",
+    });
+
+    const raw = persistenceStore.loadChain();
+    const tampered = raw.map((edge, index) => (index === 0
+      ? { ...edge, metadata: { tampered: true } }
+      : edge));
+    persistenceStore.replaceChain(tampered);
+
+    assert.throws(
+      () => new DataLineageService({ hmacKey: "test-lineage-hmac", persistenceStore }),
+      /data_lineage\.invalid_persisted_chain/,
+    );
+  } finally {
+    cleanupPath(workspace);
+  }
 });

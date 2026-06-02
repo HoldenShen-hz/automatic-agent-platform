@@ -41,6 +41,13 @@ export interface SemanticVectorStore {
 
 const DEFAULT_LIMIT = 12;
 const DEFAULT_MIN_SIMILARITY = 0.18;
+const DEFAULT_MAX_LOCAL_HASH_RECORDS = 2_048;
+
+export interface LocalHashSemanticVectorStoreOptions {
+  defaultLimit?: number;
+  defaultMinSimilarity?: number;
+  maxRecords?: number;
+}
 
 export function resolveSemanticVectorBackend(env: NodeJS.ProcessEnv = process.env): SemanticVectorBackend {
   const raw = env.AA_KNOWLEDGE_VECTOR_BACKEND?.trim() ?? env.AA_KNOWLEDGE_SEMANTIC_BACKEND?.trim() ?? "";
@@ -63,16 +70,28 @@ export function resolveSemanticVectorBackend(env: NodeJS.ProcessEnv = process.en
 export class LocalHashSemanticVectorStore implements SemanticVectorStore {
   public readonly backend = "local_hash" as const;
   private readonly records = new Map<string, SemanticVectorChunkRecord>();
+  private readonly defaultLimit: number;
+  private readonly defaultMinSimilarity: number;
+  private readonly maxRecords: number;
+  private skippedUnsupportedEmbeddings = 0;
+
+  public constructor(options: LocalHashSemanticVectorStoreOptions = {}) {
+    this.defaultLimit = Math.max(1, options.defaultLimit ?? DEFAULT_LIMIT);
+    this.defaultMinSimilarity = Math.max(0, options.defaultMinSimilarity ?? DEFAULT_MIN_SIMILARITY);
+    this.maxRecords = Math.max(1, options.maxRecords ?? DEFAULT_MAX_LOCAL_HASH_RECORDS);
+  }
 
   public async upsertChunks(records: readonly SemanticVectorChunkRecord[]): Promise<void> {
     for (const record of records) {
       if (!isSupportedEmbedding(record.embedding)) {
+        this.skippedUnsupportedEmbeddings += 1;
         continue;
       }
       this.records.set(record.knowledgeRef, {
         ...record,
         embedding: [...record.embedding],
       });
+      this.enforceCapacity();
     }
   }
 
@@ -93,9 +112,14 @@ export class LocalHashSemanticVectorStore implements SemanticVectorStore {
         namespace: record.namespace,
         similarity: cosineSimilarity(record.embedding, embedding),
       }))
-      .filter((candidate) => candidate.similarity >= (input.minSimilarity ?? DEFAULT_MIN_SIMILARITY))
-      .sort((left, right) => right.similarity - left.similarity)
-      .slice(0, input.limit ?? DEFAULT_LIMIT);
+      .filter((candidate) => candidate.similarity >= (input.minSimilarity ?? this.defaultMinSimilarity))
+      .sort((left, right) => {
+        if (right.similarity === left.similarity) {
+          return left.knowledgeRef.localeCompare(right.knowledgeRef);
+        }
+        return right.similarity - left.similarity;
+      })
+      .slice(0, input.limit ?? this.defaultLimit);
   }
 
   public inspect(): SemanticVectorStoreProfile {
@@ -104,8 +128,27 @@ export class LocalHashSemanticVectorStore implements SemanticVectorStore {
       ready: true,
       details: {
         recordCount: this.records.size,
+        maxRecords: this.maxRecords,
+        skippedUnsupportedEmbeddings: this.skippedUnsupportedEmbeddings,
       },
     };
+  }
+
+  private enforceCapacity(): void {
+    if (this.records.size <= this.maxRecords) {
+      return;
+    }
+    const oldest = [...this.records.values()]
+      .sort((left, right) => {
+        if (left.updatedAt === right.updatedAt) {
+          return left.knowledgeRef.localeCompare(right.knowledgeRef);
+        }
+        return left.updatedAt.localeCompare(right.updatedAt);
+      })
+      .slice(0, this.records.size - this.maxRecords);
+    for (const record of oldest) {
+      this.records.delete(record.knowledgeRef);
+    }
   }
 }
 

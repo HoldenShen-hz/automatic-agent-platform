@@ -9,8 +9,27 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { AuditExportService, AUDIT_EXPORT_DDL } from "../../../../../src/platform/five-plane-control-plane/audit-export/audit-export-service.js";
 import { createAuditIntegrityRepository } from "../../../../../src/platform/five-plane-control-plane/iam/audit-integrity-repository.js";
+import {
+  configureAuditIntegrity,
+  computeTier1AuditChainHash,
+  computeTier1AuditEventChecksum,
+  __dangerousResetAuditIntegrityConfigForTests,
+} from "../../../../../src/platform/five-plane-control-plane/iam/audit-event-integrity.js";
 import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { Tier1AuditIntegrityRecord } from "../../../../../src/platform/five-plane-control-plane/iam/audit-event-integrity.js";
+import type { EventRecord } from "../../../../../src/platform/contracts/types/domain.js";
+
+test.beforeEach(() => {
+  __dangerousResetAuditIntegrityConfigForTests();
+  configureAuditIntegrity({
+    hmacKey: "audit-integrity-secret-key-32-bytes!",
+    isProduction: false,
+  });
+});
+
+test.afterEach(() => {
+  __dangerousResetAuditIntegrityConfigForTests();
+});
 
 function createMockDatabase(): AuthoritativeSqlDatabase {
   const auditExports: Map<string, Record<string, unknown>> = new Map();
@@ -85,6 +104,15 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
           get: (...args: unknown[]) => {
             if (sql.includes("FROM audit_exports WHERE id = ?")) {
               return auditExports.get(args[0] as string);
+            } else if (sql.includes("WHERE framework = ? AND format = ?")) {
+              return Array.from(auditExports.values()).find((record) =>
+                record.framework === args[0]
+                && record.format === args[1]
+                && record.window_start === args[2]
+                && record.window_end === args[3]
+                && record.requested_by === args[4]
+                && record.metadata === args[6],
+              );
             } else if (sql.includes("COUNT") && sql.includes("FROM events")) {
               const rows = Array.from(events.values()).filter((e) => {
                 const createdAt = e.created_at as string;
@@ -203,6 +231,31 @@ function seedEvents(db: AuthoritativeSqlDatabase, events: Array<{ id: string; ev
       .prepare("INSERT INTO events (id, event_type, event_tier, created_at) VALUES (?, ?, ?, ?)")
       .run(evt.id, evt.event_type, evt.event_tier, evt.created_at);
   }
+}
+
+function toAuditEventRecord(event: { id: string; event_type: string; event_tier: string; created_at: string }): EventRecord {
+  return {
+    id: event.id,
+    taskId: null,
+    sessionId: null,
+    executionId: null,
+    eventType: event.event_type,
+    eventTier: event.event_tier as EventRecord["eventTier"],
+    payloadJson: "{}",
+    traceId: null,
+    createdAt: event.created_at,
+    schemaVersion: "v4.3",
+    aggregateId: event.id,
+    runId: event.id,
+    sequence: 1,
+    causationId: null,
+    correlationId: event.id,
+    payloadHash: "sha256:audit",
+    idempotencyKey: `idem_${event.id}`,
+    replayBehavior: "replay_as_fact",
+    principal: "system:test",
+    evidenceRefs: [],
+  };
 }
 
 test("AuditExportService.requestExport with all compliance frameworks", () => {
@@ -417,15 +470,30 @@ test("AuditExportService.verifyIntegrity with multiple chain breaks", () => {
   ]);
 
   // Insert integrity records with multiple chain breaks
-  integrityRepo.insertIntegrityRecord("evt-1", 1, "task:created", "2026-04-10T00:00:00.000Z", "checksum-1", null, "hash-1");
-  integrityRepo.insertIntegrityRecord("evt-2", 2, "task:started", "2026-04-15T00:00:00.000Z", "checksum-2", "wrong-hash", "hash-2");
-  integrityRepo.insertIntegrityRecord("evt-3", 3, "task:completed", "2026-04-20T00:00:00.000Z", "checksum-3", "wrong-hash-2", "hash-3");
+  integrityRepo.insertIntegrityRecord("evt-1", 1, "task:created", "2026-04-10T00:00:00.000Z", computeTier1AuditEventChecksum(toAuditEventRecord({
+    id: "evt-1",
+    event_type: "task:created",
+    event_tier: "tier_1",
+    created_at: "2026-04-10T00:00:00.000Z",
+  })), null, "hash-1");
+  integrityRepo.insertIntegrityRecord("evt-2", 2, "task:started", "2026-04-15T00:00:00.000Z", computeTier1AuditEventChecksum(toAuditEventRecord({
+    id: "evt-2",
+    event_type: "task:started",
+    event_tier: "tier_1",
+    created_at: "2026-04-15T00:00:00.000Z",
+  })), "wrong-hash", "hash-2");
+  integrityRepo.insertIntegrityRecord("evt-3", 3, "task:completed", "2026-04-20T00:00:00.000Z", computeTier1AuditEventChecksum(toAuditEventRecord({
+    id: "evt-3",
+    event_type: "task:completed",
+    event_tier: "tier_1",
+    created_at: "2026-04-20T00:00:00.000Z",
+  })), "wrong-hash-2", "hash-3");
 
   const result = service.verifyIntegrity("2026-04-01T00:00:00.000Z", "2026-04-30T23:59:59.999Z");
 
   assert.equal(result.valid, false);
   assert.ok(result.chainBreaks >= 1);
-  assert.ok(result.details.includes("chain_breaks_detected"));
+  assert.ok(result.details.includes("audit_chain_prev_hash_mismatch"));
 });
 
 test("AuditExportService.verifyIntegrity with single integrity record", () => {
@@ -438,7 +506,20 @@ test("AuditExportService.verifyIntegrity with single integrity record", () => {
   ]);
 
   // Single record - no previous hash to compare
-  integrityRepo.insertIntegrityRecord("evt-1", 1, "task:created", "2026-04-10T00:00:00.000Z", "checksum-1", null, "hash-1");
+  const event = toAuditEventRecord({
+    id: "evt-1",
+    event_type: "task:created",
+    event_tier: "tier_1",
+    created_at: "2026-04-10T00:00:00.000Z",
+  });
+  const checksum = computeTier1AuditEventChecksum(event);
+  const chainHash = computeTier1AuditChainHash({
+    chainPosition: 1,
+    previousChainHash: null,
+    eventChecksum: checksum,
+    eventId: event.id,
+  });
+  integrityRepo.insertIntegrityRecord("evt-1", 1, "task:created", "2026-04-10T00:00:00.000Z", checksum, null, chainHash);
 
   const result = service.verifyIntegrity("2026-04-01T00:00:00.000Z", "2026-04-30T23:59:59.999Z");
 
@@ -531,7 +612,7 @@ test("AuditExportService.listExports with default limit", () => {
       format: "json",
       windowStart: "2026-04-01T00:00:00.000Z",
       windowEnd: "2026-04-30T23:59:59.999Z",
-      requestedBy: "user:admin",
+      requestedBy: `user:admin:${i}`,
     });
   }
 
@@ -571,7 +652,7 @@ test("AuditExportService requestExport produces unique IDs", () => {
       format: "json",
       windowStart: "2026-04-01T00:00:00.000Z",
       windowEnd: "2026-04-30T23:59:59.999Z",
-      requestedBy: "user:admin",
+      requestedBy: `user:admin:${i}`,
     });
     ids.add(record.id);
   }
@@ -634,10 +715,22 @@ test("AuditExportService verifyIntegrity with records spanning multiple chain po
     { id: "evt-4", event_type: "task:approved", event_tier: "tier_1", created_at: "2026-04-25T00:00:00.000Z" },
   ]);
 
-  integrityRepo.insertIntegrityRecord("evt-1", 1, "task:created", "2026-04-10T00:00:00.000Z", "c1", null, "h1");
-  integrityRepo.insertIntegrityRecord("evt-2", 2, "task:started", "2026-04-15T00:00:00.000Z", "c2", "h1", "h2");
-  integrityRepo.insertIntegrityRecord("evt-3", 3, "task:completed", "2026-04-20T00:00:00.000Z", "c3", "h2", "h3");
-  integrityRepo.insertIntegrityRecord("evt-4", 4, "task:approved", "2026-04-25T00:00:00.000Z", "c4", "h3", "h4");
+  const evt1 = toAuditEventRecord({ id: "evt-1", event_type: "task:created", event_tier: "tier_1", created_at: "2026-04-10T00:00:00.000Z" });
+  const evt2 = toAuditEventRecord({ id: "evt-2", event_type: "task:started", event_tier: "tier_1", created_at: "2026-04-15T00:00:00.000Z" });
+  const evt3 = toAuditEventRecord({ id: "evt-3", event_type: "task:completed", event_tier: "tier_1", created_at: "2026-04-20T00:00:00.000Z" });
+  const evt4 = toAuditEventRecord({ id: "evt-4", event_type: "task:approved", event_tier: "tier_1", created_at: "2026-04-25T00:00:00.000Z" });
+  const c1 = computeTier1AuditEventChecksum(evt1);
+  const h1 = computeTier1AuditChainHash({ chainPosition: 1, previousChainHash: null, eventChecksum: c1, eventId: evt1.id });
+  const c2 = computeTier1AuditEventChecksum(evt2);
+  const h2 = computeTier1AuditChainHash({ chainPosition: 2, previousChainHash: h1, eventChecksum: c2, eventId: evt2.id });
+  const c3 = computeTier1AuditEventChecksum(evt3);
+  const h3 = computeTier1AuditChainHash({ chainPosition: 3, previousChainHash: h2, eventChecksum: c3, eventId: evt3.id });
+  const c4 = computeTier1AuditEventChecksum(evt4);
+  const h4 = computeTier1AuditChainHash({ chainPosition: 4, previousChainHash: h3, eventChecksum: c4, eventId: evt4.id });
+  integrityRepo.insertIntegrityRecord("evt-1", 1, "task:created", "2026-04-10T00:00:00.000Z", c1, null, h1);
+  integrityRepo.insertIntegrityRecord("evt-2", 2, "task:started", "2026-04-15T00:00:00.000Z", c2, h1, h2);
+  integrityRepo.insertIntegrityRecord("evt-3", 3, "task:completed", "2026-04-20T00:00:00.000Z", c3, h2, h3);
+  integrityRepo.insertIntegrityRecord("evt-4", 4, "task:approved", "2026-04-25T00:00:00.000Z", c4, h3, h4);
 
   const result = service.verifyIntegrity("2026-04-01T00:00:00.000Z", "2026-04-30T23:59:59.999Z");
 
@@ -717,7 +810,20 @@ test("AuditExportService with custom integrity repository uses provided one", ()
     { id: "evt-1", event_type: "task:created", event_tier: "tier_1", created_at: "2026-04-10T00:00:00.000Z" },
   ]);
 
-  integrityRepo.insertIntegrityRecord("evt-1", 1, "task:created", "2026-04-10T00:00:00.000Z", "checksum-1", null, "hash-1");
+  const customEvent = toAuditEventRecord({
+    id: "evt-1",
+    event_type: "task:created",
+    event_tier: "tier_1",
+    created_at: "2026-04-10T00:00:00.000Z",
+  });
+  const customChecksum = computeTier1AuditEventChecksum(customEvent);
+  const customChainHash = computeTier1AuditChainHash({
+    chainPosition: 1,
+    previousChainHash: null,
+    eventChecksum: customChecksum,
+    eventId: customEvent.id,
+  });
+  integrityRepo.insertIntegrityRecord("evt-1", 1, "task:created", "2026-04-10T00:00:00.000Z", customChecksum, null, customChainHash);
 
   const result = service.verifyIntegrity("2026-04-01T00:00:00.000Z", "2026-04-30T23:59:59.999Z");
 

@@ -18,6 +18,7 @@ import {
   type RecoveryWorker,
 } from "../../contracts/types/recovery-cadence.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type {
   HaLevel,
   HaLevelConfig,
@@ -27,6 +28,7 @@ import type {
 } from "./types.js";
 import { HA_LEVEL_CONFIGS, type CoordinatorNode, type FailoverDecision } from "./types.js";
 import type { HaCoordinatorService } from "./ha-coordinator-service-inner.js";
+import { mapLease } from "./mappers.js";
 
 // ── Logger ─────────────────────────────────────────────────────────
 
@@ -87,7 +89,7 @@ export class LeaseReclaimerService implements RecoveryWorker {
 
     // Determine node ID from coordinator (we need a node ID for the reclaimer itself)
     // The reclaimer operates at the coordinator level, not as a node
-    this.nodeId = options.reclaimerId ?? `lease-reclaimer-${nowIso()}`;
+    this.nodeId = options.reclaimerId ?? "lease-reclaimer";
 
     // Build config with defaults
     const haLevel = options.haLevel ?? "HA_2";
@@ -334,19 +336,17 @@ export class LeaseReclaimerService implements RecoveryWorker {
             continue;
           }
 
+          const expiredNode = this.coordinator.getNode(lease.nodeId);
           // Mark lease as expired
           await this.expireLease(lease);
 
-          // Get the node for logging
-          const node = this.coordinator.getNode(lease.nodeId);
-
           // Notify callback
-          this.onLeaseReclaimed?.(lease, node);
+          this.onLeaseReclaimed?.(lease, expiredNode);
 
           result.reclaimedCount++;
 
           // Check if this was the leader's lease
-          if (node?.isLeader) {
+          if (expiredNode?.isLeader) {
             logger.log({
               level: "warn",
               message: "lease_reclaimer.leader_lease_expired",
@@ -432,19 +432,21 @@ export class LeaseReclaimerService implements RecoveryWorker {
    * Gets expired leases from the coordinator.
    */
   private getExpiredLeases(): LeaderLease[] {
-    // Use the coordinator's method to detect expired leadership
-    const leadership = this.coordinator.queryLeadership();
-    if (leadership.isExpired && leadership.leaderNodeId) {
-      // The current lease is expired - get the active lease which should be null
-      const activeLease = this.coordinator.getActiveLease();
-      if (!activeLease) {
-        // No active lease means the leader's lease is expired
-        // Return empty - actual implementation would query DB for expired leases
-        return [];
-      }
-      return [activeLease];
+    const db = this.getCoordinatorDb();
+    if (db == null) {
+      return [];
     }
-    return [];
+    const now = nowIso();
+    return (db.connection
+      .prepare(
+        `SELECT *
+         FROM leadership_leases
+         WHERE status = 'active'
+           AND expires_at <= ?
+         ORDER BY expires_at ASC, lease_id ASC`,
+      )
+      .all(now) as Record<string, unknown>[])
+      .map((row) => mapLease(row));
   }
 
   /**
@@ -460,8 +462,22 @@ export class LeaseReclaimerService implements RecoveryWorker {
    * Expires a specific lease.
    */
   private async expireLease(lease: LeaderLease): Promise<void> {
-    // Update lease status to expired
-    // This would call the repository directly in a full implementation
+    const db = this.getCoordinatorDb();
+    if (db == null) {
+      return;
+    }
+    const now = nowIso();
+    db.transaction(() => {
+      db.connection
+        .prepare(`UPDATE leadership_leases SET status = 'expired' WHERE lease_id = ? AND status = 'active'`)
+        .run(lease.leaseId);
+      db.connection
+        .prepare(`UPDATE coordinator_nodes SET is_leader = 0 WHERE node_id = ?`)
+        .run(lease.nodeId);
+      db.connection
+        .prepare(`UPDATE leadership_epochs SET ended_at = ?, cause = 'expired' WHERE epoch = ? AND ended_at IS NULL`)
+        .run(now, lease.epoch);
+    });
     logger.log({
       level: "debug",
       message: "lease_reclaimer.expiring_lease",
@@ -477,6 +493,22 @@ export class LeaseReclaimerService implements RecoveryWorker {
    * Expires the lease for a specific node.
    */
   private async expireLeaseForNode(nodeId: string): Promise<void> {
+    const db = this.getCoordinatorDb();
+    if (db == null) {
+      return;
+    }
+    const now = nowIso();
+    db.transaction(() => {
+      db.connection
+        .prepare(`UPDATE leadership_leases SET status = 'expired' WHERE node_id = ? AND status = 'active'`)
+        .run(nodeId);
+      db.connection
+        .prepare(`UPDATE coordinator_nodes SET is_leader = 0 WHERE node_id = ?`)
+        .run(nodeId);
+      db.connection
+        .prepare(`UPDATE leadership_epochs SET ended_at = ?, cause = 'expired' WHERE leader_node_id = ? AND ended_at IS NULL`)
+        .run(now, nodeId);
+    });
     logger.log({
       level: "debug",
       message: "lease_reclaimer.expiring_lease_for_node",
@@ -509,7 +541,12 @@ export class LeaseReclaimerService implements RecoveryWorker {
   }
 
   private optionsCompatibleId(): string {
-    return this.nodeId.startsWith("lease-reclaimer-") ? "lease-reclaimer" : this.nodeId;
+    return this.nodeId;
+  }
+
+  private getCoordinatorDb(): AuthoritativeSqlDatabase | null {
+    const candidate = this.coordinator as HaCoordinatorService & { db?: AuthoritativeSqlDatabase };
+    return candidate.db ?? null;
   }
 }
 

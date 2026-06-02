@@ -182,7 +182,7 @@ function seedDispatchPreemptionScenario(
 
   store.insertWorkflowState({
     taskId: input.lowTaskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     workflowId: "single_division_multi_step_orchestration",
     currentStepIndex: 1,
     status: "running",

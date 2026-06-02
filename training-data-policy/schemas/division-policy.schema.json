@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aa://training-data-policy/division-policy.schema.json",
+  "type": "object",
+  "required": [
+    "$schema",
+    "divisionId",
+    "policyMode",
+    "policyModeRef",
+    "allowedSources",
+    "forbiddenSources"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "training-data-policy/schemas/division-policy.schema.json"
+    },
+    "divisionId": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "policyMode": {
+      "type": "string",
+      "enum": ["redacted_only", "restricted"]
+    },
+    "policyModeRef": {
+      "type": "string",
+      "const": "training-data-policy/policy-modes.md"
+    },
+    "allowedSources": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "forbiddenSources": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "additionalProperties": false
+}

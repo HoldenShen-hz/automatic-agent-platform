@@ -23,9 +23,13 @@ export interface LearningObjectValidationResult {
   warnings?: string[];
 }
 
+export interface LearningObjectValidatorOptions {
+  readonly maxKnownObjects?: number;
+}
+
 const PII_PATTERNS = [
   /\b\d{3}-\d{2}-\d{4}\b/, // SSN
-  /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/, // Email
+  /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/, // Email
   /\b\d{16}\b/, // Credit card
   /password\s*[=:]\s*\S+/i,
   /api[_-]?key\s*[=:]\s*\S+/i,
@@ -44,7 +48,7 @@ function scanForPiiAndSecrets(text: string): PiiScanResult {
   const secretTypes: string[] = [];
 
   if (/\b\d{3}-\d{2}-\d{4}\b/.test(text)) piiTypes.push("ssn");
-  if (/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/.test(text)) piiTypes.push("email");
+  if (/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/.test(text)) piiTypes.push("email");
   if (/\b\d{16}\b/.test(text)) piiTypes.push("credit_card");
 
   const lowerText = text.toLowerCase();
@@ -119,7 +123,14 @@ function minimumConfidenceFor(type: LearningObject["learningType"]): number {
 }
 
 export class LearningObjectValidator {
+  private static readonly DEFAULT_MAX_KNOWN_OBJECTS = 256;
+
   private knownObjects: LearningObject[] = [];
+  private readonly maxKnownObjects: number;
+
+  public constructor(options: LearningObjectValidatorOptions = {}) {
+    this.maxKnownObjects = Math.max(0, options.maxKnownObjects ?? LearningObjectValidator.DEFAULT_MAX_KNOWN_OBJECTS);
+  }
 
   public validate(input: LearningObject): LearningObjectValidationResult {
     const learningObject = parseLearningObject(input);
@@ -134,9 +145,7 @@ export class LearningObjectValidator {
     };
 
     // R13-02: PII scan
-    const piiResult = scanForPiiAndSecrets(
-      `${candidate.title} ${candidate.summary} ${candidate.recommendation}`,
-    );
+    const piiResult = scanForPiiAndSecrets(buildScanCorpus(candidate));
     if (piiResult.containsPii) {
       return {
         valid: false,
@@ -224,7 +233,7 @@ export class LearningObjectValidator {
   }
 
   public validateMany(inputs: readonly LearningObject[]): LearningObject[] {
-    const priorKnownObjects = [...this.knownObjects];
+    const priorKnownObjects = this.knownObjects.slice(-this.maxKnownObjects);
     const validObjects: LearningObject[] = [];
 
     this.knownObjects = priorKnownObjects;
@@ -236,7 +245,29 @@ export class LearningObjectValidator {
       validObjects.push(result.learningObject);
     }
 
-    this.knownObjects = [...priorKnownObjects, ...validObjects];
+    this.knownObjects = [...priorKnownObjects, ...validObjects].slice(-this.maxKnownObjects);
     return validObjects;
+  }
+}
+
+function buildScanCorpus(candidate: LearningObject): string {
+  return [
+    candidate.title,
+    candidate.summary,
+    candidate.recommendation,
+    candidate.content.title,
+    candidate.content.summary,
+    candidate.content.recommendation,
+    ...candidate.evidenceRefs,
+    ...candidate.sourceSignalIds,
+    stableSerialize(candidate.content),
+  ].join(" ");
+}
+
+function stableSerialize(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "";
   }
 }

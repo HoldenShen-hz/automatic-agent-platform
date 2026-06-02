@@ -14,6 +14,7 @@ function createMockStore(overrides: {
   operations?: {
     listRecoverableExecutingRuns?: () => RuntimeRecoveryRecord[];
     listStaleRuns?: () => RuntimeRecoveryRecord[];
+    listRuntimeRecoveryRecords?: (whereClause: string, params: string[]) => RuntimeRecoveryRecord[];
     listRuntimeRecoveryOverviewRecords?: () => Array<RuntimeRecoveryRecord & {
       isBlockedAwaitingApproval: boolean;
       isStale: boolean;
@@ -39,6 +40,7 @@ function createMockStore(overrides: {
     operations: {
       listRecoverableExecutingRuns: overrides.operations?.listRecoverableExecutingRuns ?? (() => []),
       listStaleRuns: overrides.operations?.listStaleRuns ?? (() => []),
+      listRuntimeRecoveryRecords: overrides.operations?.listRuntimeRecoveryRecords ?? (() => []),
       listRuntimeRecoveryOverviewRecords: overrides.operations?.listRuntimeRecoveryOverviewRecords,
       buildRuntimeRecoveryView: overrides.operations?.buildRuntimeRecoveryView ?? (() => []),
     },
@@ -146,6 +148,33 @@ test("RuntimeRecoveryService.findStaleExecuting computes staleBefore in the past
   const staleBeforeMs = new Date(capturedStaleBefore!).getTime();
   assert.ok(staleBeforeMs <= now - 55_000, `expected staleBefore in the past, got ${capturedStaleBefore}`);
   assert.ok(staleBeforeMs >= now - 65_000, `expected staleBefore close to threshold, got ${capturedStaleBefore}`);
+});
+
+test("RuntimeRecoveryService.findRecoveryCandidates forwards tenant scope to repository filters [runtime-recovery-service]", () => {
+  let capturedWhereClause = "";
+  let capturedParams: string[] = [];
+  const record = makeRecoveryRecord({ executionId: "exec-tenant", taskId: "task-tenant" });
+  const store = createMockStore({
+    operations: {
+      listRuntimeRecoveryRecords: (whereClause: string, params: string[]) => {
+        capturedWhereClause = whereClause;
+        capturedParams = params;
+        return [record];
+      },
+    },
+  });
+  const service = new RuntimeRecoveryService(store);
+
+  const [candidate] = service.findRecoveryCandidates({
+    tenantId: "tenant-42",
+    divisionId: "division-42",
+    includeStatuses: ["executing"],
+  });
+
+  assert.equal(candidate?.executionId, "exec-tenant");
+  assert.match(capturedWhereClause, /t\.tenant_id = \?/);
+  assert.match(capturedWhereClause, /t\.division_id = \?/);
+  assert.deepEqual(capturedParams, ["executing", "tenant-42", "division-42"]);
 });
 
 test("RuntimeRecoveryService.listBlockedRunsAwaitingApproval returns candidates [runtime-recovery-service]", () => {
@@ -317,11 +346,13 @@ test("RuntimeRecoveryService.listDivisionRecoveryOverview tracks stale and block
 test("RuntimeRecoveryService.listDivisionRecoveryOverview uses aggregated store query when available [runtime-recovery-service]", () => {
   let aggregatedCalls = 0;
   let fallbackCalls = 0;
+  let capturedNow = "";
   const activeRecord = makeRecoveryRecord({ executionId: "exec-agg", taskId: "task-agg", divisionId: "div-agg" });
   const store = createMockStore({
     operations: {
-      listRuntimeRecoveryOverviewRecords: () => {
+      listRuntimeRecoveryOverviewRecords: (now: string) => {
         aggregatedCalls += 1;
+        capturedNow = now;
         return [{ ...activeRecord, isBlockedAwaitingApproval: true, isStale: true }];
       },
       listRecoverableExecutingRuns: () => {
@@ -344,6 +375,7 @@ test("RuntimeRecoveryService.listDivisionRecoveryOverview uses aggregated store 
 
   assert.equal(aggregatedCalls, 1);
   assert.equal(fallbackCalls, 0);
+  assert.notEqual(capturedNow, "9999-12-31T23:59:59.999Z");
   assert.equal(overview.length, 1);
   assert.equal(overview[0]!.blockedApprovalCount, 1);
   assert.equal(overview[0]!.staleExecutionCount, 1);
@@ -583,4 +615,155 @@ test("RuntimeRecoveryService.buildCompensationPlan resolves task via execution l
   assert.equal(plan?.executionId, "exec-1");
   assert.equal(plan?.actions.length, 3);
   assert.equal(plan?.actions[0]?.actionType, "release_budget_reservation");
+});
+
+test("RuntimeRecoveryService.buildCompensationPlan skips duplicate dead-letter compensation when DLQ already exists [runtime-recovery-service]", () => {
+  const record = makeRecoveryRecord({
+    executionId: "exec-1",
+    taskId: "task-1",
+    status: "failed",
+    latestErrorCode: "runtime.failed",
+  });
+  const store = createMockStore({
+    operations: {
+      buildRuntimeRecoveryView: () => [record],
+    },
+    dispatch: {
+      getExecution: () => ({ id: "exec-1", taskId: "task-1" }),
+      listDeadLettersByTask: () => [{
+        id: "dlq-1",
+        executionId: "exec-1",
+        taskId: "task-1",
+        finalReasonCode: "runtime.failed",
+        retryCount: 2,
+        lastErrorMessage: "already dead lettered",
+        movedAt: "2026-01-01T00:00:00.000Z",
+      }],
+    },
+  });
+  const service = new RuntimeRecoveryService(store);
+
+  const plan = service.buildCompensationPlan("exec-1");
+
+  assert.ok(plan);
+  assert.deepEqual(plan?.actions.map((action) => action.actionType), ["emit_recovery_event"]);
+});
+
+test("RuntimeRecoveryService.findRecoveryCandidates preserves configured suggestedAction instead of legacy fallback override [runtime-recovery-service]", () => {
+  const record = makeRecoveryRecord({
+    executionId: "exec-escalate",
+    taskId: "task-escalate",
+    status: "executing",
+    attempt: 1,
+    latestErrorCode: "E7_LOCKED",
+  });
+  const config = {
+    recoveryStrategyTable: {
+      byExceptionType: {
+        validation_error: { retryable: false, action: "cancel", maxRetries: 0 },
+        policy_denied: { retryable: false, action: "cancel", maxRetries: 0 },
+        auth_error: { retryable: false, action: "cancel", maxRetries: 0 },
+        transient_external_error: { retryable: true, action: "retry_new_ticket", maxRetries: 3 },
+        permanent_external_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        provider_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        tool_execution_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        sandbox_error: { retryable: false, action: "cancel", maxRetries: 0 },
+        storage_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        workflow_state_error: { retryable: false, action: "escalate_takeover", maxRetries: 0 },
+        tenant_boundary_error: { retryable: false, action: "cancel", maxRetries: 0 },
+        monetization_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        internal_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        locking_error: { retryable: false, action: "escalate_takeover", maxRetries: 0 },
+        memory_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        runtime_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        unknown_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+      },
+      byRiskLevel: {
+        low: { autoRecover: true, notifyOnFailure: false },
+        medium: { autoRecover: true, notifyOnFailure: true },
+        high: { autoRecover: false, notifyOnFailure: true },
+        critical: { autoRecover: false, notifyOnFailure: true },
+      },
+      byAttemptThreshold: {
+        resumeSameWorkerMaxAttempts: 2,
+        retryNewTicketMaxAttempts: 3,
+        escalateTakeoverMinAttempts: 2,
+        moveToDeadLetterMinAttempts: 2,
+      },
+    },
+    defaultAction: "move_dead_letter",
+    staleExecutionThresholdMs: 60_000,
+    heartbeatTimeoutMs: 30_000,
+  } as const;
+  const store = createMockStore({
+    operations: {
+      listRuntimeRecoveryRecords: () => [record],
+    },
+  });
+  const service = new RuntimeRecoveryService(store, config);
+
+  const [candidate] = service.findRecoveryCandidates({
+    includeStatuses: ["executing"],
+  });
+
+  assert.equal(candidate?.errorClassification, "E7");
+  assert.equal(candidate?.suggestedAction, "escalate_takeover");
+});
+
+test("RuntimeRecoveryService resolves exception types with exact matching instead of substring matching [runtime-recovery-service]", () => {
+  const record = makeRecoveryRecord({
+    executionId: "exec-substring",
+    taskId: "task-substring",
+    status: "failed",
+    latestErrorCode: "ValidationErrorWrapper",
+  });
+  const config = {
+    recoveryStrategyTable: {
+      byExceptionType: {
+        validation_error: { retryable: false, action: "cancel", maxRetries: 0 },
+        policy_denied: { retryable: false, action: "cancel", maxRetries: 0 },
+        auth_error: { retryable: false, action: "cancel", maxRetries: 0 },
+        transient_external_error: { retryable: true, action: "retry_new_ticket", maxRetries: 3 },
+        permanent_external_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        provider_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        tool_execution_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        sandbox_error: { retryable: false, action: "cancel", maxRetries: 0 },
+        storage_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        workflow_state_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        tenant_boundary_error: { retryable: false, action: "cancel", maxRetries: 0 },
+        monetization_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        internal_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        locking_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        memory_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        runtime_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+        unknown_error: { retryable: false, action: "move_dead_letter", maxRetries: 0 },
+      },
+      byRiskLevel: {
+        low: { autoRecover: true, notifyOnFailure: false },
+        medium: { autoRecover: true, notifyOnFailure: true },
+        high: { autoRecover: false, notifyOnFailure: true },
+        critical: { autoRecover: false, notifyOnFailure: true },
+      },
+      byAttemptThreshold: {
+        resumeSameWorkerMaxAttempts: 2,
+        retryNewTicketMaxAttempts: 3,
+        escalateTakeoverMinAttempts: 2,
+        moveToDeadLetterMinAttempts: 2,
+      },
+    },
+    defaultAction: "move_dead_letter",
+    staleExecutionThresholdMs: 60_000,
+    heartbeatTimeoutMs: 30_000,
+  } as const;
+  const store = createMockStore({
+    tasks: [{ id: "task-substring", divisionId: "div-1", status: "failed" }],
+    operations: {
+      buildRuntimeRecoveryView: () => [record],
+    },
+  });
+  const service = new RuntimeRecoveryService(store, config);
+
+  const view = service.buildRuntimeRecoveryView("task-substring");
+
+  assert.equal(view.candidates[0]?.suggestedAction, "move_dead_letter");
 });

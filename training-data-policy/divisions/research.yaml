@@ -1,5 +1,7 @@
+$schema: training-data-policy/schemas/division-policy.schema.json
 divisionId: research
 policyMode: restricted
+policyModeRef: training-data-policy/policy-modes.md
 allowedSources:
   - public_research
   - redacted_internal_notes

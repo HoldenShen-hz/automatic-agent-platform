@@ -20,7 +20,7 @@ test("CompensationModel accepts all valid values", () => {
 test("MinimalWorkflowStep structure is correct", () => {
   const step: MinimalWorkflowStep = {
     stepId: "step_1",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     roleId: "executor",
     inputKeys: ["input1", "input2"],
     outputKey: "result",
@@ -102,7 +102,7 @@ test("MinimalWorkflowStep compensationModel accepts all values", () => {
 test("MinimalWorkflowDefinition structure is correct", () => {
   const definition: MinimalWorkflowDefinition = {
     workflowId: "workflow_123",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: [
       {
         stepId: "step_1",
@@ -129,7 +129,7 @@ test("MinimalWorkflowDefinition structure is correct", () => {
 test("MinimalWorkflowDefinition allows empty steps", () => {
   const definition: MinimalWorkflowDefinition = {
     workflowId: "empty_workflow",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: [],
   };
   assert.equal(definition.steps.length, 0);
@@ -138,7 +138,7 @@ test("MinimalWorkflowDefinition allows empty steps", () => {
 test("MinimalWorkflowDefinition steps are readonly", () => {
   const definition: MinimalWorkflowDefinition = {
     workflowId: "readonly_steps",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     steps: [
       {
         stepId: "step_1",

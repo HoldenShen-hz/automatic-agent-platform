@@ -34,7 +34,7 @@ function insertTask(db: SqliteDatabase, id: string, status: string = "pending"):
       id,
       null,
       id,
-      "general_ops",
+      "general-ops",
       `Task ${id}`,
       status,
       "user",

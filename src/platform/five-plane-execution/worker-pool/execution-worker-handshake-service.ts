@@ -40,6 +40,8 @@ export class ExecutionWorkerHandshakeService {
   private readonly leases: ExecutionLeaseService;
   private readonly workers: WorkerRegistryService;
   private readonly resourceCeilingGuard: ExecutionResourceCeilingGuard;
+  private readonly rejectedClaimEventDedupTtlMs: number;
+  private readonly recentRejectedClaims = new Map<string, number>();
 
   /**
    * Creates a new ExecutionWorkerHandshakeService instance.
@@ -51,9 +53,10 @@ export class ExecutionWorkerHandshakeService {
     private readonly store: AuthoritativeTaskStore,
     options: ExecutionWorkerHandshakeServiceOptions = {},
   ) {
-    this.leases = new ExecutionLeaseService(db, store);
-    this.workers = new WorkerRegistryService(store);
+    this.leases = options.leases ?? new ExecutionLeaseService(db, store);
+    this.workers = options.workers ?? new WorkerRegistryService(store);
     this.resourceCeilingGuard = options.resourceCeilingGuard ?? new ExecutionResourceCeilingGuard();
+    this.rejectedClaimEventDedupTtlMs = Math.max(1_000, options.rejectedClaimEventDedupTtlMs ?? 30_000);
   }
 
   /**
@@ -89,11 +92,10 @@ export class ExecutionWorkerHandshakeService {
 
     const workerSnapshot = this.store.worker.getWorkerSnapshot(input.workerId);
     if (!workerSnapshot) {
-      recordRejectedEvent(this.store, "worker:claim_rejected", ticket.taskId, ticket.executionId, occurredAt, {
+      this.recordClaimRejectedEvent(ticket, occurredAt, "worker_not_registered", {
         ticketId: input.ticketId,
         workerId: input.workerId,
         leaseId: input.leaseId,
-        reasonCode: "worker_not_registered",
       });
       return {
         accepted: false,
@@ -104,11 +106,10 @@ export class ExecutionWorkerHandshakeService {
       };
     }
     if ((workerSnapshot.placement ?? "local") === "remote" && workerSnapshot.registrationVerifiedAt == null) {
-      recordRejectedEvent(this.store, "worker:claim_rejected", ticket.taskId, ticket.executionId, occurredAt, {
+      this.recordClaimRejectedEvent(ticket, occurredAt, "worker_not_trusted", {
         ticketId: input.ticketId,
         workerId: input.workerId,
         leaseId: input.leaseId,
-        reasonCode: "worker_not_trusted",
       });
       return {
         accepted: false,
@@ -120,11 +121,10 @@ export class ExecutionWorkerHandshakeService {
     }
 
     if (ticket.status !== "claimed") {
-      recordRejectedEvent(this.store, "worker:claim_rejected", ticket.taskId, ticket.executionId, occurredAt, {
+      this.recordClaimRejectedEvent(ticket, occurredAt, "ticket_not_claimed", {
         ticketId: input.ticketId,
         workerId: input.workerId,
         leaseId: input.leaseId,
-        reasonCode: "ticket_not_claimed",
       });
       return {
         accepted: false,
@@ -136,11 +136,10 @@ export class ExecutionWorkerHandshakeService {
     }
 
     if (ticket.assignedWorkerId !== input.workerId) {
-      recordRejectedEvent(this.store, "worker:claim_rejected", ticket.taskId, ticket.executionId, occurredAt, {
+      this.recordClaimRejectedEvent(ticket, occurredAt, "worker_mismatch", {
         ticketId: input.ticketId,
         workerId: input.workerId,
         leaseId: input.leaseId,
-        reasonCode: "worker_mismatch",
       });
       return {
         accepted: false,
@@ -152,38 +151,14 @@ export class ExecutionWorkerHandshakeService {
     }
 
     if (ticket.leaseId !== input.leaseId) {
-      recordRejectedEvent(this.store, "worker:claim_rejected", ticket.taskId, ticket.executionId, occurredAt, {
+      this.recordClaimRejectedEvent(ticket, occurredAt, "lease_mismatch", {
         ticketId: input.ticketId,
         workerId: input.workerId,
         leaseId: input.leaseId,
-        reasonCode: "lease_mismatch",
       });
       return {
         accepted: false,
         reasonCode: "lease_mismatch",
-        executionId: ticket.executionId,
-        ticketId: ticket.id,
-        leaseId: input.leaseId,
-      };
-    }
-
-    const validation = this.leases.validateWriteAccess({
-      executionId: ticket.executionId,
-      workerId: input.workerId,
-      fencingToken: input.fencingToken,
-      leaseId: input.leaseId,
-      occurredAt,
-    });
-    if (!validation.allowed) {
-      recordRejectedEvent(this.store, "worker:claim_rejected", ticket.taskId, ticket.executionId, occurredAt, {
-        ticketId: input.ticketId,
-        workerId: input.workerId,
-        leaseId: input.leaseId,
-        reasonCode: validation.reasonCode,
-      });
-      return {
-        accepted: false,
-        reasonCode: validation.reasonCode,
         executionId: ticket.executionId,
         ticketId: ticket.id,
         leaseId: input.leaseId,
@@ -206,7 +181,7 @@ export class ExecutionWorkerHandshakeService {
         input.workspaceSyncStatus === undefined ? (workerSnapshot.workspaceSyncStatus ?? null) : input.workspaceSyncStatus,
     });
     if (remoteAuthorityBlockReason) {
-      recordRejectedEvent(this.store, "worker:claim_rejected", ticket.taskId, ticket.executionId, occurredAt, {
+      this.recordClaimRejectedEvent(ticket, occurredAt, remoteAuthorityBlockReason, {
         ticketId: input.ticketId,
         workerId: input.workerId,
         leaseId: input.leaseId,
@@ -222,11 +197,32 @@ export class ExecutionWorkerHandshakeService {
             : input.sessionConsistencyCheckStatus,
         workspaceSyncStatus:
           input.workspaceSyncStatus === undefined ? (workerSnapshot.workspaceSyncStatus ?? null) : input.workspaceSyncStatus,
-        reasonCode: remoteAuthorityBlockReason,
       });
       return {
         accepted: false,
         reasonCode: remoteAuthorityBlockReason,
+        executionId: ticket.executionId,
+        ticketId: ticket.id,
+        leaseId: input.leaseId,
+      };
+    }
+
+    const validation = this.leases.validateWriteAccess({
+      executionId: ticket.executionId,
+      workerId: input.workerId,
+      fencingToken: input.fencingToken,
+      leaseId: input.leaseId,
+      occurredAt,
+    });
+    if (!validation.allowed) {
+      this.recordClaimRejectedEvent(ticket, occurredAt, validation.reasonCode, {
+        ticketId: input.ticketId,
+        workerId: input.workerId,
+        leaseId: input.leaseId,
+      });
+      return {
+        accepted: false,
+        reasonCode: validation.reasonCode,
         executionId: ticket.executionId,
         ticketId: ticket.id,
         leaseId: input.leaseId,
@@ -256,7 +252,7 @@ export class ExecutionWorkerHandshakeService {
       now: occurredAt,
     });
     if (claimResourceFinding) {
-      recordRejectedEvent(this.store, "worker:claim_rejected", ticket.taskId, ticket.executionId, occurredAt, {
+      this.recordClaimRejectedEvent(ticket, occurredAt, "resource_limit_exceeded", {
         ticketId: input.ticketId,
         workerId: input.workerId,
         leaseId: input.leaseId,
@@ -763,6 +759,35 @@ export class ExecutionWorkerHandshakeService {
    * @param occurredAt - Timestamp of the rejection
    * @param payload - Details about the rejection including worker, ticket, and reason
    */
+  private recordClaimRejectedEvent(
+    ticket: { id: string; taskId: string; executionId: string },
+    occurredAt: string,
+    reasonCode: WorkerHandshakeDecision["reasonCode"],
+    payload: Record<string, unknown>,
+  ): void {
+    const dedupeKey = `${ticket.id}:${reasonCode ?? "unknown"}`;
+    const nowMs = Date.parse(occurredAt);
+    const currentMs = Number.isFinite(nowMs) ? nowMs : Date.now();
+    this.pruneRejectedClaimCache(currentMs);
+    const previousMs = this.recentRejectedClaims.get(dedupeKey);
+    if (previousMs != null && currentMs - previousMs < this.rejectedClaimEventDedupTtlMs) {
+      return;
+    }
+    this.recentRejectedClaims.set(dedupeKey, currentMs);
+    recordRejectedEvent(this.store, "worker:claim_rejected", ticket.taskId, ticket.executionId, occurredAt, {
+      ...payload,
+      reasonCode,
+    });
+  }
+
+  private pruneRejectedClaimCache(currentMs: number): void {
+    for (const [key, seenAtMs] of this.recentRejectedClaims) {
+      if (currentMs - seenAtMs >= this.rejectedClaimEventDedupTtlMs) {
+        this.recentRejectedClaims.delete(key);
+      }
+    }
+  }
+
   private upsertAgentExecutionRecord(
     execution: NonNullable<ReturnType<AuthoritativeTaskStore["getExecution"]>>,
     occurredAt: string,

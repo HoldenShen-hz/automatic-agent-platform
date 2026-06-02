@@ -165,7 +165,7 @@ test("budget-allocation: Execution budget limits are enforced", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Budget limit test",
         status: "queued",
@@ -294,7 +294,7 @@ test("budget-allocation: Reservation and settlement flow", () => {
     ctx.db.transaction(() => {
       ctx.store.insertWorkflowState({
         taskId: "task-budget-reservation-001",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",

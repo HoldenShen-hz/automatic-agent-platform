@@ -1,554 +1,554 @@
-## 一、`src/` Issue
+## 1. `src/` Issues
 
-> Status约定：已闭环项显式标记为 `done`；未标记 `done` 的条目统一按 `todo` handle。
+> Status convention: closed items are explicitly marked as `done`; items not marked `done` are uniformly treated as `todo`.
 
-### 1.1 占位 / 未实现 / 运lines时风险
+### 1.1 Placeholder / Unimplemented / Runtime Risk
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 1 | `done` `src/core/runtime/index.ts` 已移除 `WorkflowStepCheckpoint` 字符串占位，改为显式 re-export checkpoint class型vsfunction，不再vs真实 interface conflicts。 |
-| 2 | `done` 合同文件中的 `docs.example.com` / `https://api.example.com` 占位链接已改为现lines `docs_zh/contracts/README.md`。 |
-| 3 | `done` `src/sdk/cli/pack-publish.ts` 已移除假defaults to registry，现要求显式提供 `AA_REGISTRY_URL` 或 `--registry-url`。 |
-| 4 | `done` 已复核：`plugin-executor.service.ts` 当前抛出的is `ValidationError("plugin_executor.action_not_implemented", ...)`，belongs to显式 fail-closed 校验路径，不is旧 review 所述“未实现即directly 500”。 |
+| 1 | `done` `src/core/runtime/index.ts` removed the `WorkflowStepCheckpoint` string placeholder, switching to explicit re-exports of the checkpoint type and function so it no longer conflicts with the real interface. |
+| 2 | `done` Placeholder links such as `docs.example.com` / `https://api.example.com` in contract files have been replaced with the current `docs_zh/contracts/README.md`. |
+| 3 | `done` `src/sdk/cli/pack-publish.ts` removed the fake default registry; it now requires an explicit `AA_REGISTRY_URL` or `--registry-url`. |
+| 4 | `done` Re-verified: `plugin-executor.service.ts` now throws `ValidationError("plugin_executor.action_not_implemented", ...)`, which is an explicit fail-closed validation path rather than the "unimplemented returns 500 directly" behavior described in the older review. |
 
-### 1.2 `as any` / `@ts-expect-error` 抑制class型检查
+### 1.2 `as any` / `@ts-expect-error` Suppressing Type Checks
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 5 | `done` `src/sdk/harness-sdk/index.ts` 中 5 occurrences `@ts-expect-error` 已删除；兼容 facade 改为显式 helper 构造 canonical `paused/running/cancelled` Status和 receipt input。 |
-| 6 | `done` `src/ops-maturity/explainability/explanation-pipeline-service.ts` 已改为条件 spread 构造 `StageRationale`，删除 `exactOptionalPropertyTypes` 压制。 |
-| 7 | `done` `src/scale-ecosystem/multi-region/noisy-neighbor-protection.ts` 已按真实 `UsageRecord` 形状构造窗口record，不再靠comment压制。 |
-| 8 | `done` `src/ops-maturity/compliance-reporter/template-registry/index.ts` 已改为显式 normalize/coerce registry 输入并返回规范化模板，移除两occurrences `@ts-expect-error`。 |
-| 9 | `done` `src/interaction/nl-gateway/index.ts` 已补 `IntentParserPort -> ModelIntentParserPort` 适配器，并对扩展 intent 做收敛映射。 |
-| 10 | `done` `RuntimeRepository` / `RuntimeTruthRepository` 已补 `appendEvidenceRecord(...)` 约束vs实现，`harness-decision-manager.ts` 不再relies oncomment假设。 |
-| 11 | `done` `system.health.changed` 已补入事件注册中心vs `TypedEventPayloadMap`，`dashboard-projection-service.ts` 的 `@ts-expect-error` 已删除。 |
+| 5 | `done` The 5 `@ts-expect-error` occurrences in `src/sdk/harness-sdk/index.ts` have been removed; the compat facade now uses explicit helpers to construct canonical `paused/running/cancelled` states and receipt inputs. |
+| 6 | `done` `src/ops-maturity/explainability/explanation-pipeline-service.ts` switched to conditional spread construction of `StageRationale`, removing the `exactOptionalPropertyTypes` suppression. |
+| 7 | `done` `src/scale-ecosystem/multi-region/noisy-neighbor-protection.ts` now constructs window records using the real `UsageRecord` shape instead of relying on comment-based suppressions. |
+| 8 | `done` `src/ops-maturity/compliance-reporter/template-registry/index.ts` now explicitly normalizes/coerces registry input and returns normalized templates, removing two `@ts-expect-error` occurrences. |
+| 9 | `done` `src/interaction/nl-gateway/index.ts` added an `IntentParserPort -> ModelIntentParserPort` adapter and performs a convergent mapping for extended intents. |
+| 10 | `done` `RuntimeRepository` / `RuntimeTruthRepository` now include the `appendEvidenceRecord(...)` constraint and implementation; `harness-decision-manager.ts` no longer relies on comment-based assumptions. |
+| 11 | `done` `system.health.changed` is now part of the event registration center and `TypedEventPayloadMap`; the `@ts-expect-error` in `dashboard-projection-service.ts` has been removed. |
 
-### 1.3 兼容 shim vs `src/platform/` 的repeats / 矛盾
+### 1.3 Compat Shim and `src/platform/` Duplication / Contradictions
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 12 | `done` `src/core/runtime/index.ts` 已收紧为 thin compat shim，不再references入额外字符串constant。 |
-| 13 | `done` `src/runtime/agent-runtime/index.ts` 这一未暴露且no消费者的 compat shim 已删除。 |
-| 14 | `done` 已复核：`src/platform/agent-delegation/index.ts` is现lines仍被测试vs兼容入口消费的 facade，原“零references用/多余双入口”Conclusion不成立。 |
-| 15 | `done` `src/platform/ops-maturity/index.ts` 这一未暴露的单lines compat 入口已删除。 |
-| 16 | `done` 已复核：AGENTS.md 对 `src/platform/` 的table述允许 `shared contracts, gateway, prompt, stability, and cross-plane support` 等 sibling 目录，原“onlyauthorization少数目录”Conclusion过窄。 |
+| 12 | `done` `src/core/runtime/index.ts` has been tightened into a thin compat shim, no longer introducing additional string constants. |
+| 13 | `done` The unexposed, consumer-less compat shim `src/runtime/agent-runtime/index.ts` has been removed. |
+| 14 | `done` Re-verified: `src/platform/agent-delegation/index.ts` is a facade still consumed by tests and the compat entry point, so the previous "zero references / duplicate entry point" conclusion does not hold. |
+| 15 | `done` The unexposed single-line compat entry `src/platform/ops-maturity/index.ts` has been removed. |
+| 16 | `done` Re-verified: AGENTS.md allows `src/platform/` to contain sibling directories such as `shared contracts, gateway, prompt, stability, and cross-plane support`; the previous "only a few directories are authorized" conclusion was too narrow. |
 
-### 1.4 五面Architecture边界违规
+### 1.4 Five-Plane Architecture Boundary Violations
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 17 | `done` 已复核：这些relies on位于同一 `src/platform/` 族内的 durability / migration 支撑实现，现lines边界治理relies on `lint:architecture-boundary` 持续审计；旧 review 将 sibling infrastructure 误判成“跨产品私有越界”。 |
-| 18 | `done` 已复核：`human-takeover-*` 对 `minimal-workflow` 的读取isControl Planeuses编排defines的只读 seam，不is运lines时反向控制流；原审计table述过度。 |
-| 19 | `done` 已复核：Execution Plane对 IAM / resource ceiling / model metadata / runtime env 的directlyrelies onbelongs to现lines shared policy seam；同时旧条目中的 `skill-execution-{cache,core,support,service}-methods.ts` 路径已过期。 |
-| 20 | `done` 已复核：`src/core/runtime/index.ts` 作为 compat facade 继续暴露执lines/Status迁移原语belongs to当前兼容面设计，原“越界”Conclusion不再按缺陷跟踪。 |
+| 17 | `done` Re-verified: these dependencies are durability / migration support implementations within the same `src/platform/` family; current boundary governance relies on `lint:architecture-boundary` for continuous auditing. The old review mis-classified sibling infrastructure as "cross-product private boundary violation." |
+| 18 | `done` Re-verified: `human-takeover-*` reading `minimal-workflow` is a read-only seam where the control plane uses orchestration definitions; it is not a runtime reverse control flow, and the original audit wording was overstated. |
+| 19 | `done` Re-verified: the execution plane's direct dependencies on IAM / resource ceiling / model metadata / runtime env fall under the current shared policy seam; the `skill-execution-{cache,core,support,service}-methods.ts` paths cited in the old entry are obsolete. |
+| 20 | `done` Re-verified: `src/core/runtime/index.ts` continuing to expose execution / state-transition primitives as a compat facade aligns with the current compat surface design, and the original "boundary violation" conclusion is no longer tracked as a defect. |
 
-### 1.5 过大文件 / 应拆分
+### 1.5 Oversized Files / Should Be Split
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 21 | `done` 已复核：大文件Issue已由 `audit:review-large-sources` 持续治理，单条 point-in-time lines数告警不再作为未闭环缺陷保留在该 review。 |
-| 22 | `done` 已复核：这些 1000+ LOC 候选现统一纳入大文件审计清单持续追踪，原静态名单不再单独挂账。 |
+| 21 | `done` Re-verified: the large-file issue is now governed continuously by `audit:review-large-sources`; one-off point-in-time line-count alerts are no longer retained as unclosed defects in this review. |
+| 22 | `done` Re-verified: these 1000+ LOC candidates are now uniformly tracked via the large-file audit list; the original static list is no longer carried as a separate entry. |
 
-### 1.6 仓库/文档 URL 占位混乱（同时存在 5 套）
+### 1.6 Repo / Doc URL Placeholder Chaos (Five Coexisting Sets)
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 23 | `done` `src/` 内 JSDoc / `@see` 仓库链接已统一到 `https://github.com/automatic-agent/automatic-agent-platform`，混用的 5 套旧 URL 已清理。 |
+| 23 | `done` JSDoc / `@see` repository links in `src/` have been unified to `https://github.com/automatic-agent/automatic-agent-platform`, and the five mixed legacy URL sets have been cleaned up. |
 
-### 1.7 hardcodes外部 URL
+### 1.7 Hardcoded External URLs
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 24 | `done` `provider-defaults.ts` 已改为via `parseSafeOutboundUrl(...)` defines和校验外部 provider defaults to URL，不再裸露hardcodesconstant。 |
-| 25 | `done` `src/sdk/cli/release-pipeline.ts` 当前已抽出 `GITHUB_ACTION_RUN_URL_PREFIX` vs `buildGithubActionRunUrl()`，原硬拼repeats字符串Issue已关闭。 |
-| 26 | `done` `PackSecurityService` 已把defaults to OSV 端点抽为via `parseSafeOutboundUrl(...)` 校验的constant。 |
-| 27 | `done` cited plugin adapters 已统一走 outbound URL 校验 helper；GitHub / CRM base URL 也补了 fail-closed 校验。 |
+| 24 | `done` `provider-defaults.ts` now defines and validates external provider default URLs via `parseSafeOutboundUrl(...)` instead of exposing raw hardcoded constants. |
+| 25 | `done` `src/sdk/cli/release-pipeline.ts` now extracts `GITHUB_ACTION_RUN_URL_PREFIX` and `buildGithubActionRunUrl()`; the original hardcoded repeated string issue is closed. |
+| 26 | `done` `PackSecurityService` has extracted the default OSV endpoint into a constant validated via `parseSafeOutboundUrl(...)`. |
+| 27 | `done` The cited plugin adapters now uniformly go through the outbound URL validation helper; the GitHub / CRM base URLs also added fail-closed validation. |
 
-### 1.8 console.* 出现在非 CLI 路径
+### 1.8 `console.*` Appears in Non-CLI Paths
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 28 | `done` `plugin-runtime-child.ts` 现only在真实子进程入口上下文安装 console 重定向，不再污染宿主进程。 |
-| 29 | `done` `plugin-runtime-child.ts` 的 protocol error 路径已改为结构化 logger 输出，不再直写 `console.error(...)`。 |
+| 28 | `done` `plugin-runtime-child.ts` now installs console redirection only inside the real child-process entry context, no longer polluting the host process. |
+| 29 | `done` The protocol error path in `plugin-runtime-child.ts` now uses structured logger output instead of writing `console.error(...)` directly. |
 
-### 1.9 静默吞错
+### 1.9 Silent Error Swallowing
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 30 | `done` `src/platform/structure/index.ts` 已移除静默吞错和 Deno fallback，当前directlyuses Node `readdirSync()` 并explicitly throws出failed。 |
+| 30 | `done` `src/platform/structure/index.ts` has removed silent error swallowing and the Deno fallback, now using Node's `readdirSync()` directly and throwing explicitly on failure. |
 
-### 1.10 其他
+### 1.10 Other
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 31 | `done` `src/index.ts` 已改为via `./platform/index.js` 统一references入 `requireValidStartupEnv`、`runSingleTaskExecution`、`buildFivePlaneRuntimeCatalog` 等公共入口。 |
-| 32 | `done` 已复核：`WorkflowStepCheckpoint` conflictsconstant已在前序清理中移除，当前 `src/core/runtime/index.ts` 不再存在该条声称的实质性 ambiguous re-export conflicts；旧 review table述过期。 |
-| 33 | `done` `src/runtime/agent-runtime/index.ts` 已删除，原 wildcard 泄漏路径已消失。 |
-| 34 | `done` `src/sdk/cli/release-pipeline.ts` 已统一走共享 URL builder，原repeats字面量Issue已关闭。 |
+| 31 | `done` `src/index.ts` now uses `./platform/index.js` to uniformly import public entry points such as `requireValidStartupEnv`, `runSingleTaskExecution`, and `buildFivePlaneRuntimeCatalog`. |
+| 32 | `done` Re-verified: the conflicting `WorkflowStepCheckpoint` constant was removed in prior cleanup; `src/core/runtime/index.ts` no longer exhibits the substantive ambiguous re-export conflict described in the old review, so that wording is obsolete. |
+| 33 | `done` `src/runtime/agent-runtime/index.ts` has been removed, and the original wildcard-leak path no longer exists. |
+| 34 | `done` `src/sdk/cli/release-pipeline.ts` now uniformly uses the shared URL builder; the original duplicate literal issue is closed. |
 
-## 二、文档（`docs_zh/` + `docs_en/`）Issue
+## 2. Documentation (`docs_zh/` + `docs_en/`) Issues
 
-### 2.1 根级文档vsconfigure矛盾
+### 2.1 Root-Level Documentation and Configuration Contradictions
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 35 | `done` `CONTRIBUTING.md` 已vs `README.md`、`package.json#engines` 收敛到 Node 22 基线。 |
-| 36 | `done` `docs_zh/operations/dependency-upgrade-plan.md` vs `docs_en/operations/dependency-upgrade-plan.md` 当前已按 `node >=22 <23` 口径维护。 |
-| 37 | `done` `docs_zh/operations/operations-checklist.md`、`docs_zh/quality/00-full-coverage-test-manual.md`、`docs_en/operations/operations-checklist.md` 已统一到 Node 22 CI 基线。 |
-| 38 | `done` 已复核：`npm run lint` vs “No formatter is enforced” 不再conflicts，前者is静态检查，后者指仓库未mandatory formatter。 |
-| 39 | `done` 已复核：`src/platform/five-plane-state-evidence/artifacts/` 当前实际存在，原Issue已过期。 |
-| 40 | `done` `CLAUDE.md` 已移除对已删除 `src/runtime/agent-runtime/` compat shim 的旧Description。 |
+| 35 | `done` `CONTRIBUTING.md` has converged with `README.md` and `package.json#engines` to the Node 22 baseline. |
+| 36 | `done` `docs_zh/operations/dependency-upgrade-plan.md` and `docs_en/operations/dependency-upgrade-plan.md` are now maintained with the `node >=22 <23` baseline. |
+| 37 | `done` `docs_zh/operations/operations-checklist.md`, `docs_zh/quality/00-full-coverage-test-manual.md`, and `docs_en/operations/operations-checklist.md` are now unified on the Node 22 CI baseline. |
+| 38 | `done` Re-verified: `npm run lint` no longer conflicts with "No formatter is enforced" — the former is a static check, the latter states the repo does not enforce a formatter. |
+| 39 | `done` Re-verified: `src/platform/five-plane-state-evidence/artifacts/` actually exists now, so the original issue is obsolete. |
+| 40 | `done` `CLAUDE.md` has removed the stale note about the deleted `src/runtime/agent-runtime/` compat shim. |
 
-### 2.2 `docs_zh/` vs `docs_en/` 结构不对称
+### 2.2 `docs_zh/` and `docs_en/` Structural Asymmetry
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 41 | `done` `docs_en/architecture/v3.0-domain-research.md` 已改为英文索references入口；`docs_en/domains/README.md`、`docs_en/migrations/*`、`docs_en/reviews/architecture-remaining-plan.md` 当前已有对应 zh 镜像；`docs_en/quality/00-full-coverage-test-manual-append.md` 也已补齐 zh 别名镜像。 |
-| 42 | `done` `docs_zh/reviews/extract-issues.mjs` 已移出文档目录；`docs_zh/quality/test-exclusion-audit.md` 当前也已有英文镜像，原不对称Issue已关闭。 |
+| 41 | `done` `docs_en/architecture/v3.0-domain-research.md` is now an English index entry; `docs_en/domains/README.md`, `docs_en/migrations/*`, and `docs_en/reviews/architecture-remaining-plan.md` now have corresponding zh mirrors; `docs_en/quality/00-full-coverage-test-manual-append.md` also has the zh alias mirror. |
+| 42 | `done` `docs_zh/reviews/extract-issues.mjs` has been moved out of the docs directory; `docs_zh/quality/test-exclusion-audit.md` now has its English mirror, so the original asymmetry is closed. |
 
-### 2.3 私人绝对路径泄露 / 死链
+### 2.3 Personal Absolute Path Leakage / Dead Links
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 43 | `done` `docs_zh/CHANGELOG.md` vs `docs_en/CHANGELOG.md` 已改为相对链接 `../../CHANGELOG.md`。 |
-| 44 | `done` `docs_zh/architecture/archive/00-platform-architecture-monolith-2026-05-14.md` 当前已no个人绝对路径。 |
-| 45 | `done` `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round.md` 当前已改为相对链接。 |
-| 46 | `done` 已复核：`docs_zh/reviews/issues-table.md` vs `docs_en/reviews/issues-table.md` 当前证据列不再uses个人绝对路径。 |
-| 47 | `done` 已复核：`docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` 及英文版当前已uses相对 contract 链接。 |
-| 48 | `done` `docs_zh/reviews/temp-cache-cleanup.md`、`docs_zh/reviews/full-cleanup-review.md`、`docs_en/reviews/full-cleanup-review.md` 当前已改为相对路径命令。 |
+| 43 | `done` `docs_zh/CHANGELOG.md` and `docs_en/CHANGELOG.md` now use the relative link `../../CHANGELOG.md`. |
+| 44 | `done` `docs_zh/architecture/archive/00-platform-architecture-monolith-2026-05-14.md` no longer contains personal absolute paths. |
+| 45 | `done` `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round.md` now uses relative links. |
+| 46 | `done` Re-verified: the evidence columns in `docs_zh/reviews/issues-table.md` and `docs_en/reviews/issues-table.md` no longer use personal absolute paths. |
+| 47 | `done` Re-verified: `docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md` and its English counterpart now use relative contract links. |
+| 48 | `done` `docs_zh/reviews/temp-cache-cleanup.md`, `docs_zh/reviews/full-cleanup-review.md`, and `docs_en/reviews/full-cleanup-review.md` now use relative-path commands. |
 
-### 2.4 docs_en 翻译质量
+### 2.4 docs_en Translation Quality
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 49 | `done` 已复核：`docs_en/reviews/issues-table.md` vs `platform-architecture-implementation-consistency-audit_round_reaudit.md` 当前已no `5-plane-*` 误翻残留。 |
-| 50 | `done` 已复核：上述英文 review 当前已no `&#39;` 实体化反references号残留，markdown code格式已恢复。 |
+| 49 | `done` Re-verified: `docs_en/reviews/issues-table.md` and `platform-architecture-implementation-consistency-audit_round_reaudit.md` no longer contain leftover `5-plane-*` mistranslations. |
+| 50 | `done` Re-verified: the above English reviews no longer contain leftover `&#39;` entity-escaped backticks; markdown code formatting is restored. |
 
-### 2.5 ADR / 文档references用已non-existent src 目录
+### 2.5 ADR / Doc References to Non-Existent `src` Directories
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 51 | `done` `docs_zh/adr/020-memory-six-plane-model.md` vs `docs_en/adr/020-memory-six-plane-model.md` 已回写到 `src/platform/five-plane-state-evidence/memory/`。 |
-| 52 | `done` `docs_zh/adr/017-knowledge-architecture-refactor.md` vs `docs_en/adr/017-knowledge-architecture-refactor.md` 已回写到 `five-plane-state-evidence/knowledge/`。 |
-| 53 | `done` `docs_zh/adr/078-knowledge-plane-architecture.md` vs `docs_en/adr/078-knowledge-plane-architecture.md` 已改为 `five-plane-state-evidence/knowledge/` 模块。 |
-| 54 | `done` `docs_zh/adr/019-agent-handoff-four-layer-protocol.md` vs `docs_en/adr/019-agent-handoff-four-layer-protocol.md` 已改为现lines handoff 模块路径。 |
-| 55 | `done` `docs_zh/migration/00-migration-guideline.md`、`docs_en/migration/00-migration-guideline.md`、`docs_en/migration/README.md` 已改为 `authoritative-task-store` 拆分后的现lines路径。 |
-| 56 | `done` 已复核：`docs_zh/architecture/04-runtime-sequence.md` vs `docs_en/architecture/04-runtime-sequence.md` 当前references用的 `ui/packages/shared/api-client/src/endpoints.ts` is现lines真实路径。 |
-| 57 | `done` 已复核：`src/platform/five-plane-state-evidence/artifacts/` 当前实际存在，相关 contract 路径不再失效。 |
-| 58 | `done` 已复核：该条belongs to旧 review Descriptionreferences用 `.js` 扩展的过期文本，不再代table当前源码Status。 |
-| 59 | `done` 已复核：该条belongs to旧 review lines文Issue，现lines contract README 已明确 legacy alias only为 deprecated/兼容语义。 |
+| 51 | `done` `docs_zh/adr/020-memory-six-plane-model.md` and `docs_en/adr/020-memory-six-plane-model.md` have been rewritten to point at `src/platform/five-plane-state-evidence/memory/`. |
+| 52 | `done` `docs_zh/adr/017-knowledge-architecture-refactor.md` and `docs_en/adr/017-knowledge-architecture-refactor.md` have been rewritten to point at `five-plane-state-evidence/knowledge/`. |
+| 53 | `done` `docs_zh/adr/078-knowledge-plane-architecture.md` and `docs_en/adr/078-knowledge-plane-architecture.md` have been updated to reference the `five-plane-state-evidence/knowledge/` module. |
+| 54 | `done` `docs_zh/adr/019-agent-handoff-four-layer-protocol.md` and `docs_en/adr/019-agent-handoff-four-layer-protocol.md` have been updated to current handoff module paths. |
+| 55 | `done` `docs_zh/migration/00-migration-guideline.md`, `docs_en/migration/00-migration-guideline.md`, and `docs_en/migration/README.md` have been updated to the current paths after the `authoritative-task-store` split. |
+| 56 | `done` Re-verified: `docs_zh/architecture/04-runtime-sequence.md` and `docs_en/architecture/04-runtime-sequence.md` now reference the current real path `ui/packages/shared/api-client/src/endpoints.ts`. |
+| 57 | `done` Re-verified: `src/platform/five-plane-state-evidence/artifacts/` actually exists, so the related contract paths are no longer broken. |
+| 58 | `done` Re-verified: this item is an old review wording referencing obsolete `.js` extension text and no longer reflects the current source state. |
+| 59 | `done` Re-verified: this item is an old review wording issue; the current contract README clearly states that legacy aliases are deprecated/compat only. |
 
-### 2.6 文档references用non-existent脚本
+### 2.6 Doc References to Non-Existent Scripts
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 60 | `done` 已复核：`docs_zh/guides/quickstart.md` vs `docs_en/guides/quickstart.md` 当前已uses `npm run docs:markdown-render`，不再references用non-existent `docs:lint`。 |
+| 60 | `done` Re-verified: `docs_zh/guides/quickstart.md` and `docs_en/guides/quickstart.md` now use `npm run docs:markdown-render` and no longer reference the non-existent `docs:lint`. |
 
-### 2.7 reviews 内容空洞 / 占位 / 过时
+### 2.7 Reviews: Hollow / Placeholder / Outdated
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 61 | `done` `docs_zh/reviews/architecture-design-vs-implementation-review.md` 已重写为当前Architecture入口、实现一致性证据和回归命令索references。 |
-| 62 | `done` `docs_zh/reviews/architecture-code-cross-review.md` 已补当前证据tablevs维护规则，不再isno证据占位。 |
-| 63 | `done` `docs_zh/reviews/ui-design-vs-implementation-review.md` 已回写 GAP-01/02/03 的源码证据vs回归命令。 |
-| 64 | `done` `docs_zh/reviews/temp-cache-cleanup.md` 已改为当前治理口径文档，移除旧机器视角和个人路径。 |
-| 65 | `done` `docs_zh/reviews/full-cleanup-review.md` 已改为当前治理边界Description，移除过期一iterations性扫描和绝对路径。 |
-| 66 | `done` `docs_zh/reviews/README.md` vs `docs_zh/operations/review-closure-board.md` 已补 `platforme-full-review-b.md` 入口。 |
+| 61 | `done` `docs_zh/reviews/architecture-design-vs-implementation-review.md` has been rewritten as the current architecture entry, with implementation-consistency evidence and regression command index. |
+| 62 | `done` `docs_zh/reviews/architecture-code-cross-review.md` now includes the current evidence table and maintenance rules, no longer an unevidenced placeholder. |
+| 63 | `done` `docs_zh/reviews/ui-design-vs-implementation-review.md` has been rewritten with source-code evidence and regression commands for GAP-01/02/03. |
+| 64 | `done` `docs_zh/reviews/temp-cache-cleanup.md` has been rewritten to the current governance baseline, removing the old machine perspective and personal paths. |
+| 65 | `done` `docs_zh/reviews/full-cleanup-review.md` has been rewritten as the current governance boundary note, removing the obsolete one-off scan and absolute paths. |
+| 66 | `done` `docs_zh/reviews/README.md` and `docs_zh/operations/review-closure-board.md` now include the `platforme-full-review-b.md` entry. |
 
-### 2.8 operations 跟踪器陈旧 / 矛盾
+### 2.8 Operations Trackers Stale / Contradictory
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 67 | `done` `docs_zh/operations/operations-tracker.md` 已更新到 2026-05-27，并补充最新 review 入口。 |
-| 68 | `done` `docs_zh/operations/project_progress_tracker.md` 已改为vs `current_todo_list.md` 一致的“历史批iterations归档 + 当前入口”口径。 |
-| 69 | `done` `docs_zh/operations/release-versioning.md` 已回链 `operations-checklist.md` 的 `Pre-Launch Top 20 Hard Checklist`。 |
+| 67 | `done` `docs_zh/operations/operations-tracker.md` has been updated to 2026-05-27 and supplemented with the latest review entries. |
+| 68 | `done` `docs_zh/operations/project_progress_tracker.md` now follows the same "historical batch archive + current entry" convention as `current_todo_list.md`. |
+| 69 | `done` `docs_zh/operations/release-versioning.md` now links back to the `Pre-Launch Top 20 Hard Checklist` in `operations-checklist.md`. |
 
-### 2.9 文档自身声明矛盾
+### 2.9 Internal Doc Statement Contradictions
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 70 | `done` `docs_zh/CHANGELOG.md` 当前已改为 `当前发布基线：Unreleased`，vs根 `CHANGELOG.md` 口径一致。 |
-| 71 | `done` `docs_zh/operations/current_todo_list.md` 已补归档后新增治理资产Description，`sync-async-service-pairs.md` 不再occurrences于no对账Status。 |
-| 72 | `done` 已复核：AGENTS.md only界定该目录承载 harness-facing SDK code，并未要求必须拆成多文件包；当前单入口 façade 不再作为文档矛盾项保留。 |
+| 70 | `done` `docs_zh/CHANGELOG.md` now reads `Current Release Baseline: Unreleased`, consistent with the root `CHANGELOG.md`. |
+| 71 | `done` `docs_zh/operations/current_todo_list.md` has been updated with notes on the new governance assets added after archival; `sync-async-service-pairs.md` is no longer left unreconciled. |
+| 72 | `done` Re-verified: AGENTS.md only defines the directory as housing harness-facing SDK code and does not require splitting it into multiple packages; the current single-entry facade is no longer retained as a doc contradiction. |
 
-### 2.10 其他
+### 2.10 Other
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 73 | `done` `docs_zh/operations/npm-scripts.md` 已改为中文维护规范。 |
-| 74 | `done` `docs_zh/operations/test_coverage_baseline_gate.md` 已改为中文Description。 |
-| 75 | `done` 已复核：`docs_zh/contracts/README.md` 当前已扩展为 4.0-4.12 分组索references，覆盖全目录骨架。 |
+| 73 | `done` `docs_zh/operations/npm-scripts.md` is now maintained as a Chinese maintenance spec. |
+| 74 | `done` `docs_zh/operations/test_coverage_baseline_gate.md` is now maintained in Chinese. |
+| 75 | `done` Re-verified: `docs_zh/contracts/README.md` has been extended into a 4.0-4.12 grouped index, covering the full directory skeleton. |
 
-## 三、UI（`ui/`）Issue
+## 3. UI (`ui/`) Issues
 
-### 3.1 占位 / Mock / 缺少 API 集成
+### 3.1 Placeholder / Mock / Missing API Integration
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 76 | `done` `ui/packages/features/feature-flags/src/web/index.tsx` 现已消费 `useFeatureFlagsVm()` 并渲染 `FeatureWorkbenchPanel`，不再is静态占位。 |
-| 77 | `done` `ui/packages/features/feature-flags/src/hooks/index.ts` 已移除 `{} as never` / Promise 双重断言，hook 已被页面消费。 |
-| 78 | `done` cited UI 特性中仍未接后端的模块已统一降为 `Planned`，不再对外宣称 `Implemented/Contracted` / `Implemented/Internal`。 |
-| 79 | `done` cited workbench actions 已补 `onTrigger`，并via `buildWorkbenchActionHandler(...)` 执lines真实副作用（deep-link / clipboard / custom event），不再只写假 activity。 |
-| 80 | `done` `ui/packages/features/workflow-builder/src/web/index.tsx` 已改为消费 `vm.nodes / vm.edges`，不再把 DAG 节点和边hardcodes在视图层。 |
-| 81 | `done` `ui/packages/features/task-cockpit/src/hooks/index.ts` 已移除based on `evidenceCount` 的前端伪造证据链，改为only展示后端未接线前的汇总占位。 |
-| 82 | `done` `ui/packages/features/workflow-debugger/src/mobile/index.ts` 已移除 “Awaiting backend debugger seam” 占位文案。 |
-| 83 | `done` `ui/apps/electron-win/src/main.ts` 现优先加载 `ui/apps/web/dist/index.html`，only在 web build 缺失时才 fallback 到本地占位壳。 |
-| 84 | `done` `ui/apps/web/src/app-shell.tsx` 已优先消费运lines时 `authContext`，不再把 `tenant-default` 等静态值hardcoded。 |
+| 76 | `done` `ui/packages/features/feature-flags/src/web/index.tsx` now consumes `useFeatureFlagsVm()` and renders `FeatureWorkbenchPanel`, no longer a static placeholder. |
+| 77 | `done` `ui/packages/features/feature-flags/src/hooks/index.ts` has removed the `{} as never` / Promise double-cast; the hook is now consumed by the page. |
+| 78 | `done` The cited UI features that are still not wired to the backend have been uniformly downgraded to `Planned` and no longer publicly claim `Implemented/Contracted` / `Implemented/Internal`. |
+| 79 | `done` The cited workbench actions now include `onTrigger` and execute real side effects (deep-link / clipboard / custom event) via `buildWorkbenchActionHandler(...)`, no longer only writing fake activity. |
+| 80 | `done` `ui/packages/features/workflow-builder/src/web/index.tsx` now consumes `vm.nodes / vm.edges` and no longer hardcodes DAG nodes and edges in the view layer. |
+| 81 | `done` `ui/packages/features/task-cockpit/src/hooks/index.ts` has removed the frontend-faked evidence chain based on `evidenceCount` and only shows a backend-not-yet-wired aggregate placeholder. |
+| 82 | `done` `ui/packages/features/workflow-debugger/src/mobile/index.ts` has removed the "Awaiting backend debugger seam" placeholder text. |
+| 83 | `done` `ui/apps/electron-win/src/main.ts` now prefers loading `ui/apps/web/dist/index.html` and only falls back to the local placeholder shell when the web build is missing. |
+| 84 | `done` `ui/apps/web/src/app-shell.tsx` now prefers consuming the runtime `authContext` and no longer hardcodes static values like `tenant-default`. |
 
-### 3.2 class型断言bypassing
+### 3.2 Type-Assertion Workarounds
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 85 | `done` 同 77：`feature-flags` hook 的双重class型断言已删除。 |
-| 86 | `done` `ui/packages/features/conversation/src/hooks/index.ts` 已移除 `ConversationClient` 构造occurrences的 `as never`，并在 shared NL client 侧补齐 `initialMessages` class型。 |
-| 87 | `done` `ui/packages/features/task-cockpit/src/hooks/index.ts` 已删除 `useTasksQuery as unknown as` 强转；`useTasksQuery` 现原生supported `refetchInterval` 选项。 |
-| 88 | `done` `ui/apps/web/src/app-shell.tsx` 当前已via `normalizeFeatureModule()` 做显式收敛，不再存在 `features as unknown as readonly WebFeatureModule[]` 强转。 |
+| 85 | `done` Same as 77: the double type-assertion in the `feature-flags` hook has been removed. |
+| 86 | `done` `ui/packages/features/conversation/src/hooks/index.ts` has removed the `as never` in the `ConversationClient` constructor and added `initialMessages` typing on the shared NL client side. |
+| 87 | `done` `ui/packages/features/task-cockpit/src/hooks/index.ts` has removed the `useTasksQuery as unknown as` cast; `useTasksQuery` now natively supports the `refetchInterval` option. |
+| 88 | `done` `ui/apps/web/src/app-shell.tsx` now uses `normalizeFeatureModule()` for explicit convergence; the `features as unknown as readonly WebFeatureModule[]` cast no longer exists. |
 
-### 3.3 console / 错误handle
+### 3.3 console / Error Handling
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 89 | `done` `ui/apps/web/src/app-shell.tsx` 的 `Report Issue` 已改为 `reportUiError(...)`，不再只写 `console.error`。 |
-| 90 | `done` `ui/apps/web/src/global-error-boundary.tsx` 已接入 `reportUiError(...)`，不再only打印控制台。 |
-| 91 | `done` `ui/apps/web/src/main.tsx` 现对 `registerWebServiceWorker()` 显式 `.catch(...)` 并上报failed。 |
-| 92 | `done` `ui/apps/electron-win/src/main.ts` 当前已移除对synchronous `showPlatformNotification()` 的错误 `void` 用法，并把窗口 `loadFile()` failed路径收敛到统一 fail-closed handle。 |
-| 93 | `done` `ui/apps/web/src/app-shell.tsx` 的 `FeatureErrorBoundary` 已实现 `componentDidCatch()` 并上报组件栈。 |
-| 94 | `done` `ui/apps/web/src/app-shell.tsx` 已把相关 `useMemo` 提前到条件返回之前，Hooks 顺序违规已消除。 |
+| 89 | `done` `Report Issue` in `ui/apps/web/src/app-shell.tsx` now uses `reportUiError(...)` and no longer only writes `console.error`. |
+| 90 | `done` `ui/apps/web/src/global-error-boundary.tsx` is now wired to `reportUiError(...)` and no longer only prints to the console. |
+| 91 | `done` `ui/apps/web/src/main.tsx` now explicitly `.catch(...)` `registerWebServiceWorker()` and reports failures. |
+| 92 | `done` `ui/apps/electron-win/src/main.ts` has removed the `void` error usage on the synchronous `showPlatformNotification()` and converged the `loadFile()` failure path to a unified fail-closed handler. |
+| 93 | `done` `FeatureErrorBoundary` in `ui/apps/web/src/app-shell.tsx` now implements `componentDidCatch()` and reports the component stack. |
+| 94 | `done` `ui/apps/web/src/app-shell.tsx` has hoisted the relevant `useMemo` before the conditional return, eliminating the Hooks-order violation. |
 
-### 3.4 hardcodes颜色 / 偏离 design tokens
+### 3.4 Hardcoded Colors / Deviating from Design Tokens
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 95 | `done` `ui/apps/web/src/app-shell.tsx` 的 startup banner 当前已改用 `designTokens`/`withAlpha(...)`，原 `#12201a` hardcodes已消失。 |
-| 96 | `done` `ui/packages/features/approval/src/web/index.tsx` 当前已统一走 `designTokens` 颜色，不再hardcoded `#12201a / #334155`。 |
-| 97 | `done` `ui/packages/features/workflow-cockpit/src/web/index.tsx` 当前已统一走 `designTokens` 颜色。 |
-| 98 | `done` `ui/packages/features/workflow-builder/src/web/index.tsx` 已改为 `designTokens.color.border`，不再hardcodes `#334155`。 |
-| 99 | `done` 已复核：`ui/packages/features/conversation/src/web/index.tsx` 当前不再含 `#334155` hardcodes。 |
-| 100 | `done` 已复核：`ui/packages/features/hitl/src/web/index.tsx` 当前不再含 `#334155` hardcodes。 |
-| 101 | `done` `ui/packages/features/workflow-cockpit/src/web/dag-viewer.tsx` 当前已统一走 `designTokens` 色板。 |
-| 102 | `done` `ui/apps/mobile/src/App.tsx` 已改为references用 `mobileDesignTokens`，不再directly写 `#F7F8FA / #4B5563`。 |
-| 103 | `done` `ui/packages/ui-mobile/src/components/index.tsx` 已抽出 `mobileDesignTokens`，移除大批散落的十六进制hardcodes。 |
-| 104 | `done` `ui/packages/features/governance-compliance/src/web/index.tsx` 当前已uses `var(--aa-color-text)`，原错误 CSS variable名已关闭。 |
+| 95 | `done` The startup banner in `ui/apps/web/src/app-shell.tsx` now uses `designTokens` / `withAlpha(...)`; the original hardcoded `#12201a` is gone. |
+| 96 | `done` `ui/packages/features/approval/src/web/index.tsx` now uniformly uses `designTokens` colors and no longer hardcodes `#12201a / #334155`. |
+| 97 | `done` `ui/packages/features/workflow-cockpit/src/web/index.tsx` now uniformly uses `designTokens` colors. |
+| 98 | `done` `ui/packages/features/workflow-builder/src/web/index.tsx` now uses `designTokens.color.border` and no longer hardcodes `#334155`. |
+| 99 | `done` Re-verified: `ui/packages/features/conversation/src/web/index.tsx` no longer contains the hardcoded `#334155`. |
+| 100 | `done` Re-verified: `ui/packages/features/hitl/src/web/index.tsx` no longer contains the hardcoded `#334155`. |
+| 101 | `done` `ui/packages/features/workflow-cockpit/src/web/dag-viewer.tsx` now uniformly uses the `designTokens` palette. |
+| 102 | `done` `ui/apps/mobile/src/App.tsx` now references `mobileDesignTokens` and no longer writes `#F7F8FA / #4B5563` directly. |
+| 103 | `done` `ui/packages/ui-mobile/src/components/index.tsx` has extracted `mobileDesignTokens`, removing many scattered hex hardcodes. |
+| 104 | `done` `ui/packages/features/governance-compliance/src/web/index.tsx` now uses `var(--aa-color-text)`; the original wrong CSS variable name is closed. |
 
-### 3.5 死 CSS / 死code
+### 3.5 Dead CSS / Dead Code
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 105 | `done` `ui/packages/ui-core/src/design-tokens/tokens.css` 已由 `ui/apps/web/src/main.tsx` 显式加载，不再is死 CSS。 |
-| 106 | `done` `ui/apps/web/src/feature-registry.ts` 已删除误导性的 `LazyFeatureDashboard` 别名，相关测试也已回写。 |
+| 105 | `done` `ui/packages/ui-core/src/design-tokens/tokens.css` is now explicitly loaded by `ui/apps/web/src/main.tsx` and is no longer dead CSS. |
+| 106 | `done` `ui/apps/web/src/feature-registry.ts` has removed the misleading `LazyFeatureDashboard` alias; the related tests have been rewritten accordingly. |
 
-### 3.6 命名 / 结构inconsistent
+### 3.6 Naming / Structural Inconsistency
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 107 | `done` `ui/apps/web/src/feature-registry.ts` 已统一走 `@aa/feature-*` 别名，原四个特性不再uses三级相对路径。 |
-| 108 | `done` `ui/apps/web/src/app-shell.tsx` 当前只在本地归一化 `subPages`，不再relies on `as unknown as` 强转修补 `FeatureModule` class型。 |
-| 109 | `done` `ui/apps/web/src/feature-registry.ts` 已移除未消费的 `missionControlFeatureContracts` 残留export。 |
-| 110 | `done` `createFeatureModule()` 当前已统一根据 `status` 推导 `kind` defaults to值；`analytics/workflow-builder` vs `release-console/trace-explorer` 的Status字段风格已收敛。 |
-| 111 | `done` `ui/apps/web/index.html` vs `ui/apps/electron-win/index.html` 当前已改为 `lang="zh-CN"`，vs现lines中文壳层文案一致。 |
-| 112 | `done` `ui/apps/web/src/app-shell.tsx` 当前user可见文案已统一走 `translateMessage(...)`。 |
-| 113 | `done` `workflow-cockpit`、`approval`、`task-cockpit` 现均已把 cited 按钮/提示文案接到 i18n。 |
-| 114 | `done` `workflow-debugger` mobile cards、`workflow-builder` hook、`compliance` hook 已统一文案语言，不再中英混排。 |
+| 107 | `done` `ui/apps/web/src/feature-registry.ts` now uniformly uses `@aa/feature-*` aliases; the four cited features no longer use three-level relative paths. |
+| 108 | `done` `ui/apps/web/src/app-shell.tsx` now only normalizes `subPages` locally and no longer relies on `as unknown as` casts to patch the `FeatureModule` type. |
+| 109 | `done` `ui/apps/web/src/feature-registry.ts` has removed the unused `missionControlFeatureContracts` residual export. |
+| 110 | `done` `createFeatureModule()` now uniformly derives the `kind` default from `status`; the status field style of `analytics/workflow-builder` and `release-console/trace-explorer` is now converged. |
+| 111 | `done` `ui/apps/web/index.html` and `ui/apps/electron-win/index.html` now use `lang="zh-CN"`, consistent with the current Chinese shell text. |
+| 112 | `done` All user-visible text in `ui/apps/web/src/app-shell.tsx` now goes through `translateMessage(...)`. |
+| 113 | `done` The cited button/tooltip text in `workflow-cockpit`, `approval`, and `task-cockpit` is now wired to i18n. |
+| 114 | `done` The text language in `workflow-debugger` mobile cards, `workflow-builder` hook, and `compliance` hook is now unified and no longer mixed Chinese/English. |
 
-### 3.8 可访问性
+### 3.8 Accessibility
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 115 | `done` `ui/packages/features/task-cockpit/src/web/index.tsx` 的输入框已补 `aria-label` 和 `name`。 |
-| 116 | `done` `ui/apps/web/index.html` 已补 `meta description`、`favicon` vs根节点回退文案。 |
-| 117 | `done` `ui/apps/web/src/app-shell.tsx` 已为 AccessDenied 增加defaults to原因文案，`reason` 为空时不再渲染空段落。 |
-| 118 | `done` `ui/apps/electron-win/index.html` 当前根节点回退文案已改为正式加载提示，不再directly暴露旧占位标题。 |
+| 115 | `done` Input fields in `ui/packages/features/task-cockpit/src/web/index.tsx` now include `aria-label` and `name`. |
+| 116 | `done` `ui/apps/web/index.html` now includes `meta description`, `favicon`, and root-node fallback text. |
+| 117 | `done` `ui/apps/web/src/app-shell.tsx` has added default reason text to AccessDenied; when `reason` is empty, an empty paragraph is no longer rendered. |
+| 118 | `done` `ui/apps/electron-win/index.html` now uses formal loading text in the root-node fallback, no longer directly exposing the old placeholder title. |
 
-### 3.9 hardcodes URL / port
+### 3.9 Hardcoded URLs / Ports
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 119 | `done` cited UI tooling 入口当前已统一收敛到 `ui/test-target.json` / env 覆盖，不再在各文件散落hardcodes `127.0.0.1:4173`。 |
+| 119 | `done` The cited UI tooling entries are now uniformly converged to `ui/test-target.json` / env overrides and no longer scatter hardcoded `127.0.0.1:4173` across files. |
 
-### 3.10 其他
+### 3.10 Other
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 120 | `done` `ui/packages/features/dashboard/src/web/index.tsx` 已改为 `translateMessage("ui.dashboard.validationDrilldown")`。 |
-| 121 | `done` `ui/apps/web/src/app-shell.tsx` 的 `LoadingFallback` 已走 `translateMessage("ui.shell.loading")`，不再ishardcodes英文 loading 文案。 |
-| 122 | `done` `ui/apps/web/src/feature-registry.ts` 已把import名改为 `workflowDebuggerFeature`，避免vs `debugger` 语义混淆。 |
-| 123 | `done` 根 `package.json` 的 `test:ui-p1-features` 当前已覆盖 `compliance/feature-i18n/flows/mission-control-wiring` 等现存 P1 测试入口。 |
-| 124 | `done` `ui/package.json` 的 `lint` 现已显式覆盖 `tools/**/*.{ts,mjs}` vs测试目录。 |
-| 125 | `done` `ui/package.json` 的 `lint` 当前也覆盖 `scripts/**/*.mjs`，`bundle-analysis.mjs` 不再occurrences于 ESLint 盲区。 |
+| 120 | `done` `ui/packages/features/dashboard/src/web/index.tsx` now uses `translateMessage("ui.dashboard.validationDrilldown")`. |
+| 121 | `done` `LoadingFallback` in `ui/apps/web/src/app-shell.tsx` now uses `translateMessage("ui.shell.loading")` and is no longer hardcoded English loading text. |
+| 122 | `done` `ui/apps/web/src/feature-registry.ts` now uses the import name `workflowDebuggerFeature` to avoid semantic confusion with `debugger`. |
+| 123 | `done` The root `package.json` script `test:ui-p1-features` now covers existing P1 test entries such as `compliance/feature-i18n/flows/mission-control-wiring`. |
+| 124 | `done` The `lint` script in `ui/package.json` now explicitly covers `tools/**/*.{ts,mjs}` and the test directory. |
+| 125 | `done` The `lint` script in `ui/package.json` also covers `scripts/**/*.mjs`; `bundle-analysis.mjs` is no longer in the ESLint blind spot. |
 
-## 四、`tests/` vs测试基础设施Issue
+## 4. `tests/` and Test Infrastructure Issues
 
-### 4.1 空文件 / no断言测试
+### 4.1 Empty Files / No-Assertion Tests
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 126 | `done` `tests/unit/platform/shared/cache/cache-metrics-collector.test.ts` 当前已有实际断言覆盖 `snapshot/reset` lines为。 |
-| 127 | `done` `tests/unit/domains/onboarding/index.test.ts` 当前已contains真实 barrel 暴露断言，不再只is空转发。 |
-| 128 | `done` `tests/unit/testing/test-cleanup.test.ts` 已补 `assert.doesNotThrow` vs返回值断言。 |
-| 129 | `done` `tests/integration/testing/process-guard.test.ts` 当前各用例都已contains显式断言。 |
+| 126 | `done` `tests/unit/platform/shared/cache/cache-metrics-collector.test.ts` now has actual assertions covering `snapshot/reset` behavior. |
+| 127 | `done` `tests/unit/domains/onboarding/index.test.ts` now contains real barrel-exposure assertions, no longer just empty forwarding. |
+| 128 | `done` `tests/unit/testing/test-cleanup.test.ts` has been supplemented with `assert.doesNotThrow` and return-value assertions. |
+| 129 | `done` Each test case in `tests/integration/testing/process-guard.test.ts` now contains explicit assertions. |
 
-### 4.2 package.json references用non-existent测试
+### 4.2 package.json References Non-Existent Tests
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 130 | `done` `package.json` 的 `test:pg-integration` 已改为现存 PG 集成测试路径。 |
-| 131 | `done` `package.json` 的 `test:secret-providers` 已改为现lines `tests/integration/platform/security/...` 路径。 |
-| 132 | `done` `package.json` 的 `artifact:integrity` 已改为现存测试入口 `tests/unit/platform/state-evidence/artifacts.test.ts`。 |
+| 130 | `done` `test:pg-integration` in `package.json` now points to the existing PG integration test path. |
+| 131 | `done` `test:secret-providers` in `package.json` now points to the current `tests/integration/platform/security/...` path. |
+| 132 | `done` `artifact:integrity` in `package.json` now points to the existing test entry `tests/unit/platform/state-evidence/artifacts.test.ts`. |
 
-### 4.3 测试中遗留 console.*
+### 4.3 Residual `console.*` in Tests
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 133 | `done` 已复核：`tests/integration/platform/structure/structure-validation.integration.test.ts` 当前已no残留 `console.log`。 |
-| 134 | `done` 已复核：`tests/integration/sdk/admin-sdk-integration.test.ts` 当前已no `console.warn("Unhandled fetch...")`。 |
-| 135 | `done` `tests/performance/platform/state-evidence/event-bus.perf.test.ts` 当前已改用 `t.diagnostic(...)`，no临时 `console.log`。 |
+| 133 | `done` Re-verified: `tests/integration/platform/structure/structure-validation.integration.test.ts` no longer contains residual `console.log`. |
+| 134 | `done` Re-verified: `tests/integration/sdk/admin-sdk-integration.test.ts` no longer contains `console.warn("Unhandled fetch...")`. |
+| 135 | `done` `tests/performance/platform/state-evidence/event-bus.perf.test.ts` now uses `t.diagnostic(...)` and contains no temporary `console.log`. |
 
-### 4.4 抖动（based on固定 setTimeout）
+### 4.4 Flakiness (Based on Fixed `setTimeout`)
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 136 | `done` `concurrency-invocation.test.ts` 中原 1.6s 硬等待已去除，现只保留短轮询/最小等待。 |
-| 137 | `done` `takeover-escalation-manager-integration.test.ts` 已no原 500ms 硬等待。 |
-| 138 | `done` `process-guard.test.ts` 已迁到 integration 层，且原 600ms 固定等待已移除。 |
-| 139 | `done` `process-tracker-sandbox.test.ts` 已no原 100/200/500ms 固定等待。 |
-| 140 | `done` `durable-event-bus*` 集成测试已去除原 150ms/50ms 级别的固定等待；剩余synchronous让步only为 `setImmediate`。 |
-| 141 | `done` `distributed-rate-limiter` / `sli-slo` / `circuit-breaker` 三组测试中的原固定等待已清理。 |
-| 142 | `done` `core/runtime/bootstrap.test.ts` 中原 100ms 固定等待已移除。 |
+| 136 | `done` The original 1.6s hard wait in `concurrency-invocation.test.ts` has been removed; only short polling / minimum waits remain. |
+| 137 | `done` `takeover-escalation-manager-integration.test.ts` no longer has the original 500ms hard wait. |
+| 138 | `done` `process-guard.test.ts` has moved to the integration layer, and the original 600ms fixed wait has been removed. |
+| 139 | `done` `process-tracker-sandbox.test.ts` no longer has the original 100/200/500ms fixed waits. |
+| 140 | `done` `durable-event-bus*` integration tests have removed the original 150ms/50ms-level fixed waits; the remaining sync yield is only `setImmediate`. |
+| 141 | `done` Fixed waits in the `distributed-rate-limiter` / `sli-slo` / `circuit-breaker` test groups have been cleaned up. |
+| 142 | `done` The original 100ms fixed wait in `core/runtime/bootstrap.test.ts` has been removed. |
 
-### 4.5 hardcodes localhost / port
+### 4.5 Hardcoded localhost / Ports
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 143 | `done` `tests/unit/sdk/cli/oauth-pkce-login-flow.test.ts` 当前已统一复用 `OAUTH_CALLBACK_URL` constant。 |
-| 144 | `done` `tests/unit/sdk/cli/api-server.test.ts` 当前已统一复用 `OTEL_TEST_ENDPOINT / API_SERVER_TEST_BASE_URL / API_SERVER_TEST_PORT` constant。 |
-| 145 | `done` `tests/unit/scale-ecosystem/integration/invoke-callback.test.ts` vs `integration-index.test.ts` 当前已统一复用 `UNREACHABLE_LOOPBACK_BASE_URL` constant，不再散落 `localhost:9999/80`。 |
-| 146 | `done` `tests/integration/sdk/migrate-sqlite-to-pg.test.ts` 当前已改为复用测试 DSN constant，不再内嵌旧的明文示例密码串。 |
-| 147 | `done` `tests/integration/platform/security/http-api-server.test.ts` 当前已复用 `OTEL_TEST_ENDPOINT` constant。 |
+| 143 | `done` `tests/unit/sdk/cli/oauth-pkce-login-flow.test.ts` now uniformly reuses the `OAUTH_CALLBACK_URL` constant. |
+| 144 | `done` `tests/unit/sdk/cli/api-server.test.ts` now uniformly reuses the `OTEL_TEST_ENDPOINT / API_SERVER_TEST_BASE_URL / API_SERVER_TEST_PORT` constants. |
+| 145 | `done` `tests/unit/scale-ecosystem/integration/invoke-callback.test.ts` and `integration-index.test.ts` now uniformly reuse the `UNREACHABLE_LOOPBACK_BASE_URL` constant, no longer scattering `localhost:9999/80`. |
+| 146 | `done` `tests/integration/sdk/migrate-sqlite-to-pg.test.ts` now reuses the test DSN constant and no longer embeds the old plaintext sample password string. |
+| 147 | `done` `tests/integration/platform/security/http-api-server.test.ts` now reuses the `OTEL_TEST_ENDPOINT` constant. |
 
-### 4.6 测试位于错误的层
+### 4.6 Tests in the Wrong Layer
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 148 | `done` `full-coverage-{operational-,}real-paths.test.ts` 已迁到 `tests/integration/quality/`。 |
-| 149 | `done` 相关脚本测试已迁到 `tests/integration/scripts/`。 |
-| 150 | `done` `process-guard.test.ts` 已迁到 `tests/integration/platform/shared/stability/`。 |
-| 151 | `done` `marketplace-balance-ratchet.test.ts` 已迁到 `tests/integration/scale-ecosystem/`；其余 cited `pack-security*` 文件已复核，只有静态源码字符串夹具，并未真实 spawn 子进程，原table述过度。 |
-| 152 | `done` 三个 `incident-control` CLI 测试已迁到 `tests/integration/platform/control-plane/incident-control/`。 |
-| 153 | `done` `migration-fixtures.test.ts` 已迁到 `tests/integration/platform/state-evidence/truth/`。 |
+| 148 | `done` `full-coverage-{operational-,}real-paths.test.ts` has moved to `tests/integration/quality/`. |
+| 149 | `done` Related script tests have moved to `tests/integration/scripts/`. |
+| 150 | `done` `process-guard.test.ts` has moved to `tests/integration/platform/shared/stability/`. |
+| 151 | `done` `marketplace-balance-ratchet.test.ts` has moved to `tests/integration/scale-ecosystem/`; the other cited `pack-security*` files have been re-verified to only contain static source-string fixtures, not real child-process spawn, so the original wording was overstated. |
+| 152 | `done` The three `incident-control` CLI tests have moved to `tests/integration/platform/control-plane/incident-control/`. |
+| 153 | `done` `migration-fixtures.test.ts` has moved to `tests/integration/platform/state-evidence/truth/`. |
 
-### 4.7 重名测试用例（屏蔽风险）
+### 4.7 Duplicate Test Case Names (Hiding Risk)
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 154 | `done` 相关 rehearsal tests 已为用例标题追加文件级后缀，`"report outputDir matches options"` 不再跨文件重名。 |
-| 155 | `done` 同上，`"report contains valid startedAt and finishedAt timestamps"` 已批量加文件级后缀。 |
-| 156 | `done` `parseJsonArray` 系列用例标题已在 runtime / platform execution 平lines目录中追加文件级后缀。 |
-| 157 | `done` `toWorkerStatus` / `normalizeLeaseReason` / `choosePreemptionVictim` 等高频重名用例已统一追加文件级后缀，不再被测试输出混淆。 |
-| 158 | `done` 平lines目录中的测试标题vsconstant命名conflicts已via批量命名收敛；原“重构未删除旧目录”的Conclusion不再单独挂账。 |
+| 154 | `done` The related rehearsal tests have been suffixed with file-level suffixes for their case titles; `"report outputDir matches options"` no longer collides across files. |
+| 155 | `done` Same as above, `"report contains valid startedAt and finishedAt timestamps"` has been batch-suffixed with file-level suffixes. |
+| 156 | `done` `parseJsonArray` case titles have been suffixed in the parallel runtime / platform execution directories. |
+| 157 | `done` High-frequency duplicate cases such as `toWorkerStatus` / `normalizeLeaseReason` / `choosePreemptionVictim` have been uniformly suffixed with file-level suffixes and are no longer confused in test output. |
+| 158 | `done` Title and constant naming collisions in parallel directories have been converged through batch renaming; the original "refactor did not delete the old directory" conclusion is no longer tracked separately. |
 
-### 4.8 测试via相对路径directly import `src/`，vs dist 执lines约定矛盾
+### 4.8 Tests Directly Import `src/` via Relative Paths, Contradicting the `dist` Execution Convention
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 159 | `done` 已复核：根 `package.json` 已切到 `node --import tsx --test` vs layered test runner，旧 review 所述 `dist/tests/...js` 约定已过期；当前directlyreferences用 `src/` 的测试执lines方式vs脚本一致。 |
+| 159 | `done` Re-verified: the root `package.json` has switched to `node --import tsx --test` with a layered test runner; the `dist/tests/...js` convention cited in the old review is obsolete. The current test execution style that directly references `src/` is consistent with the scripts. |
 
-### 4.9 多余 / 失synchronous fixtures
+### 4.9 Redundant / Out-of-Sync Fixtures
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 160 | `done` 已复核：这些 pack fixtures 现在被 pack / prompt / marketplace 等测试directlyreferences用，原“only命中自身 README”Conclusion已过期；同时 fixture 内误抓测试文件已清除。 |
-| 161 | `done` `tests/fixtures/packs/test-pack/tests/` 下的占位测试已删除。 |
-| 162 | `done` 活跃测试已迁出 `fixtures/`；`generate-snapshots.ts` vs `snapshots/manifest.json` only保留为迁移夹具工件。 |
+| 160 | `done` Re-verified: these pack fixtures are now directly referenced by pack / prompt / marketplace tests, so the "only hit their own README" conclusion is obsolete; the accidentally-included test files in the fixtures have also been cleaned. |
+| 161 | `done` Placeholder tests under `tests/fixtures/packs/test-pack/tests/` have been removed. |
+| 162 | `done` Active tests have been moved out of `fixtures/`; `generate-snapshots.ts` and `snapshots/manifest.json` are retained only as migration fixture artifacts. |
 
-### 4.10 未references用的 golden 快照
+### 4.10 Unreferenced Golden Snapshots
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 163 | `done` `audit-golden-snapshots.mjs` 已补反向 orphan 校验，且noreferences用 golden 快照已清理。 |
+| 163 | `done` `audit-golden-snapshots.mjs` has been supplemented with reverse-orphan validation, and unreferenced golden snapshots have been cleaned up. |
 
-### 4.11 自实现 skip 通道
+### 4.11 Self-Implemented Skip Channels
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 164 | `done` `ops-cli.test.ts` 的 `serialTest(...)` 已收紧为onlyaccepts `node:test` 兼容形状。 |
-| 165 | `done` 迁移夹具中的 skip-budget 兼容通道已删除。 |
+| 164 | `done` `serialTest(...)` in `ops-cli.test.ts` has been tightened to accept only `node:test`-compatible shapes. |
+| 165 | `done` The skip-budget compatibility channel in the migration fixtures has been removed. |
 
-### 4.12 其他可疑实现
+### 4.12 Other Suspicious Implementations
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 166 | `done` `tests/unit/plugins/plugin-runtime-host.test.ts` 当前已via `t.after(...)` 恢复原始 `process.execArgv`。 |
-| 167 | `done` `http-api-server-architecture-regressions.test.ts` 已no原 40ms 固定等待。 |
-| 168 | `done` `http-api-server.test.ts` 已改为uses随机化测试port，不再hardcodes `43123`。 |
+| 166 | `done` `tests/unit/plugins/plugin-runtime-host.test.ts` now restores the original `process.execArgv` via `t.after(...)`. |
+| 167 | `done` `http-api-server-architecture-regressions.test.ts` no longer has the original 40ms fixed wait. |
+| 168 | `done` `http-api-server.test.ts` now uses a randomized test port and no longer hardcodes `43123`. |
 
-## 五、configure / 构建 / 部署 / 脚本Issue
+## 5. Configuration / Build / Deployment / Script Issues
 
-### 5.1 package.json 脚本 / path is wrong
+### 5.1 package.json Scripts / Path Errors
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 169 | `done` `package.json` 的 `artifact:integrity` 已切到现lines存在的测试文件，不再references用don't exist路径。 |
-| 170 | `done` `package.json` 的 `test:pg-integration` 已改为点名现存测试文件，不再为空匹配。 |
-| 171 | `done` `package.json` 的 `test:secret-providers` 已改为现lines集成测试路径。 |
-| 172 | `done` `test:pg-integration` / `test:secret-providers` 已directly走 `node --import tsx --test`，不再relies on不会产出 `dist/tests/**` 的 `build:test`。 |
-| 173 | `done` `test:e2e:stage-exit` 已改为点名 `tests/e2e/checkpoint-artifact-flow.test.ts`，命名vs目录契约一致。 |
-| 174 | `done` 已复核：相关脚本当前不再hardcodes `--test-concurrency=1`。 |
-| 175 | `done` `package.json` 223-235 段已恢复统一缩进。 |
+| 169 | `done` `artifact:integrity` in `package.json` has switched to the currently existing test file and no longer references a non-existent path. |
+| 170 | `done` `test:pg-integration` in `package.json` now points to the existing test file and no longer has an empty match. |
+| 171 | `done` `test:secret-providers` in `package.json` now points to the current integration test path. |
+| 172 | `done` `test:pg-integration` / `test:secret-providers` now go directly through `node --import tsx --test` and no longer depend on `build:test`, which does not produce `dist/tests/**`. |
+| 173 | `done` `test:e2e:stage-exit` now points to `tests/e2e/checkpoint-artifact-flow.test.ts`, consistent with the directory contract. |
+| 174 | `done` Re-verified: the related scripts no longer hardcode `--test-concurrency=1`. |
+| 175 | `done` The 223-235 range of `package.json` has been restored to consistent indentation. |
 
-### 5.2 tsconfig 矩阵
+### 5.2 tsconfig Matrix
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 176 | `done` `tsconfig.build-test.json` 已移除，原死configureIssue已关闭。 |
-| 177 | `done` `tsconfig.json` 当前已contains `helpers/**/*.ts`，vs lint 范围一致。 |
-| 178 | `done` 已复核：根 `tsconfig.json` 当前承担的is作者态 typecheck 矩阵，而 package scripts 的测试入口明确走 `node --import tsx --test` / layered runner；二者职责已分离，不再按“脚本conflicts”挂账。 |
-| 179 | `done` `tsconfig.scripts.json` 当前已覆盖 `scripts/**/*.ts`，验证脚本已纳入 typecheck。 |
+| 176 | `done` `tsconfig.build-test.json` has been removed; the dead config issue is closed. |
+| 177 | `done` `tsconfig.json` now includes `helpers/**/*.ts`, consistent with the lint scope. |
+| 178 | `done` Re-verified: the root `tsconfig.json` now carries the author-time typecheck matrix, while the package-script test entries explicitly use `node --import tsx --test` / layered runner; their responsibilities are separated and no longer tracked as a "script conflict." |
+| 179 | `done` `tsconfig.scripts.json` now covers `scripts/**/*.ts`, and validation scripts are part of the typecheck. |
 
-### 5.3 ESLint configure
+### 5.3 ESLint Configuration
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 180 | `done` `eslint.config.js` 当前已补 `projectService` / `tsconfigRootDir`，type-aware 规则具备class型上下文。 |
-| 181 | `done` `eslint.config.js` 已移除non-existent `deploy/**/*.mjs` 范围。 |
-| 182 | `done` `package.json` 当前 `lint` 已改为 `eslint .`，`.tsx` 覆盖由 flat config `files` 显式声明。 |
+| 180 | `done` `eslint.config.js` now includes `projectService` / `tsconfigRootDir`, and type-aware rules have type context. |
+| 181 | `done` `eslint.config.js` has removed the non-existent `deploy/**/*.mjs` scope. |
+| 182 | `done` `lint` in `package.json` is now `eslint .`, and the `.tsx` coverage is explicitly declared via the flat config `files`. |
 
-### 5.4 容器vs部署
+### 5.4 Container and Deployment
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 183 | `done` `Dockerfile` 当前已复制 `package-lock.json` 和 `ui/tsconfig.json`，可解析根 TS project references。 |
-| 184 | `done` `docker-compose.yml` vs `.env.example` 当前已统一以 `AA_STORAGE_POSTGRES_DSN` 为主。 |
-| 185 | `done` `docker-compose.yml` 卷名vs `.env.example` defaults to SQLite 路径已去除 `phase1a` 遗留。 |
-| 186 | `done` `.env.example` 已为 `POSTGRES_PASSWORD` 提供显式本地占位值和Description。 |
-| 187 | `done` `.env.example` 已补 `AA_OPENAI_API_KEY`、`AA_MINIMAX_API_KEY`，并按现lines读取顺序列出 PG DSN variable。 |
-| 188 | `done` `deploy/kubernetes/manifests/automatic-agent-smoke.yaml` 已改为 `ghcr.io/automatic-agent/automatic-agent-platform:latest`，并统一应用名标签。 |
-| 189 | `done` `deploy/helm/automatic-agent/Chart.yaml` 已改为 `automatic-agent-platform`，vs包名和镜像仓库一致。 |
+| 183 | `done` The `Dockerfile` now copies `package-lock.json` and `ui/tsconfig.json`, allowing it to resolve the root TS project references. |
+| 184 | `done` `docker-compose.yml` and `.env.example` are now unified with `AA_STORAGE_POSTGRES_DSN` as the primary. |
+| 185 | `done` The volume name in `docker-compose.yml` and the default SQLite path in `.env.example` have removed the `phase1a` legacy. |
+| 186 | `done` `.env.example` now provides an explicit local placeholder and explanation for `POSTGRES_PASSWORD`. |
+| 187 | `done` `.env.example` now includes `AA_OPENAI_API_KEY` and `AA_MINIMAX_API_KEY`, and lists the PG DSN variables in the current read order. |
+| 188 | `done` `deploy/kubernetes/manifests/automatic-agent-smoke.yaml` now uses `ghcr.io/automatic-agent/automatic-agent-platform:latest`, and application-name labels are unified. |
+| 189 | `done` `deploy/helm/automatic-agent/Chart.yaml` is now `automatic-agent-platform`, consistent with the package name and image registry. |
 
-### 5.5 Division catalog
+### 5.5 Division Catalog
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 190 | `done` `config/quality/division-catalog.json` 已补齐当前 `divisions/` 目录的full登记，`docs_zh/reference/division-catalog.md` 也已synchronousDescription覆盖principle。 |
+| 190 | `done` `config/quality/division-catalog.json` now contains the full registration of the current `divisions/` directory; `docs_zh/reference/division-catalog.md` has also been updated to explain the coverage principle. |
 
-### 5.6 版本
+### 5.6 Versioning
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 191 | `done` 版本基线已提升到 `0.2.0`，并synchronous回写 `CHANGELOG.md`、`README.md`、`docs_zh/CHANGELOG.md`、`docs_en/CHANGELOG.md`。 |
-| 192 | `done` 当前发布Description已从 `0.1.0` 累积漂移Status收敛到 `0.2.0` 版本节点。 |
+| 191 | `done` The version baseline has been promoted to `0.2.0`, and `CHANGELOG.md`, `README.md`, `docs_zh/CHANGELOG.md`, and `docs_en/CHANGELOG.md` have been updated accordingly. |
+| 192 | `done` The current release notes have converged the cumulative drift from `0.1.0` into the `0.2.0` version node. |
 
-### 5.7 .gitignore vs提交内容
+### 5.7 `.gitignore` and Committed Content
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 193 | `done` 被误追踪的 `.audit/*` 已删除，`.test-db/*.db-shm/.db-wal` 也已清出提交面，ignore 目录不再继续携带生成工件。 |
-| 194 | `done` `.gitignore` 已删除 `data/` 之下的repeats子目录忽略项，保留顶层 `data/` 递归规则。 |
-| 195 | `done` `.gitignore` 已移除冗余/不规范的 `dist_temp`、`dist_test` 变体，只保留必要规则。 |
-| 196 | `done` `.gitignore` 已移除 `src/platform/*` legacy 兼容面的忽略项，compat surface 恢复可审计。 |
+| 193 | `done` The accidentally-tracked `.audit/*` has been removed; `.test-db/*.db-shm/.db-wal` has also been removed from the commit surface, so the ignore directory no longer carries generated artifacts. |
+| 194 | `done` `.gitignore` has removed the redundant subdirectory ignore entries under `data/`, keeping only the top-level recursive `data/` rule. |
+| 195 | `done` `.gitignore` has removed the redundant/non-compliant `dist_temp` and `dist_test` variants, keeping only the necessary rules. |
+| 196 | `done` `.gitignore` has removed the `src/platform/*` legacy compat-surface ignore entries, restoring auditability of the compat surface. |
 
 ### 5.8 Stryker
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 197 | `done` `stryker.config.mjs` 已移除原宽泛 `**` 白名单式忽略模式。 |
-| 198 | `done` Stryker 现改用独立 `tsconfig.stryker.json`，不再directly绑定带 UI references 的根 `tsconfig.json`。 |
+| 197 | `done` `stryker.config.mjs` has removed the original broad `**` whitelist-style ignore patterns. |
+| 198 | `done` Stryker now uses a separate `tsconfig.stryker.json` and is no longer directly bound to the root `tsconfig.json` that includes UI references. |
 
-### 5.9 孤儿脚本
+### 5.9 Orphan Scripts
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 199 | `done` noreferences用的 `scripts/` 孤儿脚本已清理。 |
-| 200 | `done` noreferences用的 `scripts/ci/` 孤儿 audit 脚本已清理。 |
+| 199 | `done` Unreferenced orphan scripts in `scripts/` have been cleaned up. |
+| 200 | `done` Unreferenced orphan audit scripts in `scripts/ci/` have been cleaned up. |
 
 ### 5.10 translate_docs.py
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 201 | `done` 仓库根已新增 `requirements.txt`，显式声明 `translate_docs.py` relies on的 `translators` 包。 |
-| 202 | `done` `translate_docs.py` 已重写 markdown/code fence 分段逻辑，去掉code块前后的repeats换lines拼接。 |
-| 203 | `done` `translate_docs.py` 已为 `translate_text()` 增加重试vs指数退避，避免大批量翻译directly裸打外部服务。 |
+| 201 | `done` The repo root now contains `requirements.txt`, explicitly declaring the `translators` package that `translate_docs.py` depends on. |
+| 202 | `done` `translate_docs.py` has rewritten the markdown/code-fence segmentation logic, removing the duplicate newline concatenation before and after code blocks. |
+| 203 | `done` `translate_docs.py` has added retries and exponential backoff to `translate_text()`, preventing large-volume translation from hitting the external service directly. |
 
 ### 5.11 GitHub Actions
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 204 | `done` `.github/workflows/ci.yml` vs `tests/helpers/pg-test-helper.ts` 已统一桥接 `AA_TEST_PG_DSN / AA_STORAGE_POSTGRES_DSN / AA_PG_DSN / DATABASE_URL`，PG 集成测试和运lines时 DSN 命名已收敛。 |
-| 205 | `done` `.github/workflows/ci.yml` 的 Trivy 扫描已改为uses `${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}:${IMAGE_TAG}` 全限定镜像名，vs发布命名面保持一致。 |
+| 204 | `done` `.github/workflows/ci.yml` and `tests/helpers/pg-test-helper.ts` are now uniformly bridged via `AA_TEST_PG_DSN / AA_STORAGE_POSTGRES_DSN / AA_PG_DSN / DATABASE_URL`, converging PG integration test and runtime DSN naming. |
+| 205 | `done` The Trivy scan in `.github/workflows/ci.yml` now uses the fully-qualified image name `${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}:${IMAGE_TAG}`, consistent with the release-naming surface. |
 
-## 第二轮补充（vs前 205 条不repeats）
+## Round 2 Supplement (No Overlap with the Previous 205 Items)
 
-### 6.1 `src/` security / data正确性
+### 6.1 `src/` Security / Data Correctness
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 206 | `done` `migrate-sqlite-to-pg.ts` 已为table名/列名增加 SQL 标识符白名单校验。 |
-| 207 | `done` 现lines实现已迁到 `src/platform/five-plane-interface/api/middleware/idempotency-key-storage.ts`，at construction timevia `validateSqlIdentifier(...)` 校验 `tableName`。 |
-| 208 | `done` 现lines实现已迁到 `src/platform/five-plane-state-evidence/knowledge/semantic-vector-store.ts`，标识符校验已补齐，旧 review 指向路径已过期。 |
-| 209 | `done` `checkpoint-gc-service.ts` 已改为 `lstat` + `open(O_NOFOLLOW)` + `fstat` + `unlink` 的更security删除路径。 |
-| 210 | `done` `shadow-snapshot-service.ts` 的原子writes已uses `O_NOFOLLOW|O_EXCL`、目标校验vs清理逻辑收敛 symlink swap time窗。 |
-| 211 | `done` `src/platform/five-plane-control-plane/config-center/api-server-env.ts` 现同时supported `AA_API_KEYS_JSON` 和 legacy `AA_API_KEYS`。 |
-| 212 | `done` `src/platform/five-plane-control-plane/config-center/startup-env-schema.ts` 已要求configure API keys 时必须提供 `AA_API_JWT_SECRET`。 |
+| 206 | `done` `migrate-sqlite-to-pg.ts` has added SQL identifier whitelist validation for table names / column names. |
+| 207 | `done` The current implementation has moved to `src/platform/five-plane-interface/api/middleware/idempotency-key-storage.ts`, where `tableName` is validated via `validateSqlIdentifier(...)` at construction time. |
+| 208 | `done` The current implementation has moved to `src/platform/five-plane-state-evidence/knowledge/semantic-vector-store.ts`, where identifier validation is in place; the path cited in the old review is obsolete. |
+| 209 | `done` `checkpoint-gc-service.ts` now uses the safer `lstat` + `open(O_NOFOLLOW)` + `fstat` + `unlink` deletion path. |
+| 210 | `done` Atomic writes in `shadow-snapshot-service.ts` now use `O_NOFOLLOW|O_EXCL`, target validation, and cleanup logic, closing the symlink-swap time window. |
+| 211 | `done` `src/platform/five-plane-control-plane/config-center/api-server-env.ts` now supports both `AA_API_KEYS_JSON` and the legacy `AA_API_KEYS`. |
+| 212 | `done` `src/platform/five-plane-control-plane/config-center/startup-env-schema.ts` now requires `AA_API_JWT_SECRET` to be provided when configuring API keys. |
 
-### 6.2 `src/` concurrent / 资源泄漏
+### 6.2 `src/` Concurrency / Resource Leaks
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 213 | `done` `src/sdk/client-sdk/api-client.ts` 的 `parseRetryAfterDelayMs()` 已同时supported delta-seconds vs RFC 7231 HTTP-date，并在重试前等待解析结果。 |
-| 214 | `done` `src/scale-ecosystem/multi-region/region-health-check-service.ts` 现已directly concatenates caller `AbortSignal` vs timeout signal 合并传入 `fetch`。 |
-| 215 | `done` 现lines graceful shutdown 实现已在退出前 flush `stdout/stderr`，不再directly截断日志。 |
-| 216 | `done` `src/platform/shared/observability/slo-alerting-channels.ts` 已移除在 `queueMicrotask` 中执linessynchronous I/O 的实现。 |
-| 217 | `done` `src/platform/five-plane-execution/distributed-lock/pg-advisory-lock-adapter.ts` 已补 `finally` 清理，在取锁success但后续记账抛错时做 best-effort `pg_advisory_unlock`。 |
+| 213 | `done` `parseRetryAfterDelayMs()` in `src/sdk/client-sdk/api-client.ts` now supports both delta-seconds and RFC 7231 HTTP-date, and waits for the parse result before retrying. |
+| 214 | `done` `src/scale-ecosystem/multi-region/region-health-check-service.ts` now merges the caller `AbortSignal` with the timeout signal and passes them to `fetch`. |
+| 215 | `done` The current graceful-shutdown implementation now flushes `stdout/stderr` before exiting, no longer truncating logs directly. |
+| 216 | `done` `src/platform/shared/observability/slo-alerting-channels.ts` has removed the implementation that performs synchronous I/O inside `queueMicrotask`. |
+| 217 | `done` `src/platform/five-plane-execution/distributed-lock/pg-advisory-lock-adapter.ts` now has a `finally` cleanup that performs a best-effort `pg_advisory_unlock` if the lock is acquired but a subsequent bookkeeping step throws. |
 
-### 6.3 `src/` repeats / 死code
+### 6.3 `src/` Duplication / Dead Code
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 218 | `done` `src/sdk/cli/release-pipeline.ts` 现已统一via共享constant和 builder 生成 GitHub Actions run URL。 |
-| 219 | `done` 已复核：旧 review references用的 `skill-execution-{cache,core,support,service}-methods.ts` 路径已过期；当前实现为 `skill-execution-service.ts` + `cache/core` method slices + shared support 模块，don't exist该条声称的循环relies on。 |
-| 220 | `done` 已复核：`src/runtime/agent-runtime/index.ts` vs `src/platform/ops-maturity/index.ts` 已删除；`src/platform/agent-delegation/index.ts` 仍有现lines消费者，原“三者均为零references用死code”Conclusion不成立。 |
+| 218 | `done` `src/sdk/cli/release-pipeline.ts` now uniformly generates GitHub Actions run URLs via shared constants and builder. |
+| 219 | `done` Re-verified: the `skill-execution-{cache,core,support,service}-methods.ts` paths cited in the old review are obsolete; the current implementation uses `skill-execution-service.ts` + `cache/core` method slices + shared support modules, and the alleged circular dependency does not exist. |
+| 220 | `done` Re-verified: `src/runtime/agent-runtime/index.ts` and `src/platform/ops-maturity/index.ts` have been removed; `src/platform/agent-delegation/index.ts` still has current consumers, so the original "all three are zero-reference dead code" conclusion does not hold. |
 
-### 6.4 `docs_zh/` ADR / contracts 二iterations发现
+### 6.4 `docs_zh/` ADR / Contracts Second Pass
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 221 | `done` `docs_zh/adr/README.md` 已回写 ADR-001 / ADR-033 / ADR-034 / ADR-069 / ADR-072 的现linesStatus。 |
-| 222 | `done` `docs_zh/contracts/release_rollout_and_rollback_contract.md` 已明确 ADR-075 为执lines依据，ADR-018 only作历史Background。 |
-| 223 | `done` `docs_zh/architecture/00-platform-architecture.md` 已改为带权威矩阵的正式入口索references，不再is 21 lines stub。 |
-| 224 | `done` 已复核：`docs_zh/architecture/03-module-diagrams.md` 当前为分节正文references用，don't exist失效 markdown 内部锚点。 |
-| 225 | `done` `docs_zh/quality/buglist.md` 已刷新为 2026-05-27 的当前追踪索references。 |
-| 226 | `done` `docs_zh/migration/01-migration-scope.md` 已更新为 151 份 contracts / 120 份 ADR。 |
-| 227 | `done` 已复核：`docs_zh/contracts/README.md` 当前已具备完整目录骨架vs分组#风格。 |
+| 221 | `done` `docs_zh/adr/README.md` has been rewritten with the current status of ADR-001 / ADR-033 / ADR-034 / ADR-069 / ADR-072. |
+| 222 | `done` `docs_zh/contracts/release_rollout_and_rollback_contract.md` now makes ADR-075 the execution basis and ADR-018 is treated as historical context only. |
+| 223 | `done` `docs_zh/architecture/00-platform-architecture.md` is now a formal entry index with an authoritative matrix, no longer a 21-line stub. |
+| 224 | `done` Re-verified: `docs_zh/architecture/03-module-diagrams.md` is now a sectioned body reference and has no broken internal markdown anchors. |
+| 225 | `done` `docs_zh/quality/buglist.md` has been refreshed to the 2026-05-27 current tracking index. |
+| 226 | `done` `docs_zh/migration/01-migration-scope.md` has been updated to 151 contracts / 120 ADRs. |
+| 227 | `done` Re-verified: `docs_zh/contracts/README.md` now has a complete directory skeleton and grouped numbering style. |
 
-### 6.5 UI 二iterations发现
+### 6.5 UI Second Pass
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 228 | `done` `ui/apps/web/src/feature-registry.ts` 已统一走 `@aa/feature-*` 别名，`ui/tsconfig.json` 也已补齐映射。 |
-| 229 | `done` `ui/package.json` 已contains `packages/features/*`，特性包不再relies on隐式 hoisting。 |
-| 230 | `done` `ui/apps/web/package.json` 当前已显式声明 `@aa/shared-*` vs `@aa/ui-core` relies on，review 中“only靠 hoist”Conclusion已过期。 |
-| 231 | `done` `ui/apps/electron-win/package.json` 已把non-existent `electron@^42.1.0` 调整为可解析的 `^31.0.0`。 |
-| 232 | `done` `ui/apps/web/src/app-shell.tsx` 已把 `GuardedFeatureRoute` 的 `useMemo` 提前到条件返回之前，Hooks 顺序违规已消除。 |
-| 233 | `done` `ui/packages/features/governance-compliance/src/index.tsx` vs `ui/packages/features/analytics/src/index.tsx` 当前不再声明未实现的 `subPages` 路由清单。 |
+| 228 | `done` `ui/apps/web/src/feature-registry.ts` now uniformly uses `@aa/feature-*` aliases; `ui/tsconfig.json` has also been supplemented with the mapping. |
+| 229 | `done` `ui/package.json` now includes `packages/features/*`; feature packages no longer rely on implicit hoisting. |
+| 230 | `done` `ui/apps/web/package.json` now explicitly declares `@aa/shared-*` and `@aa/ui-core` dependencies; the "relies only on hoist" conclusion in the review is obsolete. |
+| 231 | `done` `ui/apps/electron-win/package.json` has adjusted the non-existent `electron@^42.1.0` to the resolvable `^31.0.0`. |
+| 232 | `done` `ui/apps/web/src/app-shell.tsx` has hoisted the `useMemo` in `GuardedFeatureRoute` before the conditional return, eliminating the Hooks-order violation. |
+| 233 | `done` `ui/packages/features/governance-compliance/src/index.tsx` and `ui/packages/features/analytics/src/index.tsx` no longer declare unimplemented `subPages` route lists. |
 
-### 6.6 tests 二iterations发现
+### 6.6 tests Second Pass
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 234 | `done` `tests/performance/**/*.perf.test.ts` 当前已统一via `createTempWorkspace / cleanupPath` 做测试目录清理，不再based on `process.cwd()` + 相对路径越界删除。 |
-| 235 | `done` `tests/integration/sdk/cli/ops-cli.test.ts` 中的 `serialTest` 现onlyacceptsfunction或 `{ skip?: true } + fn` 形状，不再容忍非 `node:test` 兼容call。 |
-| 236 | `done` 已删除 43 份noreferences用 golden 快照，并在 `scripts/ci/audit-golden-snapshots.mjs` 增加反向 orphan 校验。 |
+| 234 | `done` `tests/performance/**/*.perf.test.ts` now uniformly uses `createTempWorkspace / cleanupPath` for test directory cleanup, no longer relying on `process.cwd()` + relative-path out-of-bounds deletion. |
+| 235 | `done` `serialTest` in `tests/integration/sdk/cli/ops-cli.test.ts` now accepts only function or `{ skip?: true } + fn` shapes, no longer tolerating non-`node:test`-compatible calls. |
+| 236 | `done` 43 unreferenced golden snapshots have been removed, and reverse-orphan validation has been added to `scripts/ci/audit-golden-snapshots.mjs`. |
 
-### 6.7 config / scripts / deploy 二iterations发现
+### 6.7 config / scripts / deploy Second Pass
 
-| # | Issue |
+| No. | Issue |
 |---|---|
-| 237 | `done` `.claude/scheduled_tasks.json` 中的conflicts标记已清除。 |
-| 238 | `done` `.github/workflows/ci.yml` 已移除空 `workflow_call` 合约，避免repeats触发。 |
-| 239 | `done` `.github/workflows/ci.yml` 已补 `build` 步骤，满足下游脚本对 `dist/` 产物的relies on。 |
-| 240 | `done` `.github/workflows/ci.yml` 的工件上传已补 `retention-days`，并增加工件完整性 manifest。 |
-| 241 | `done` `.github/workflows/ci.yml` 的 Trivy action 已 pin 到完整 commit SHA `ed142fd0673e97e23eac54620cfb913e5ce36c25`。 |
-| 242 | `done` `.github/workflows/deploy-environment.yml` 已改为 `--set-string` 传递敏感 Helm 值，避免 `:` 被解析成 map。 |
-| 243 | `done` `.github/workflows/deploy-environment.yml` Promote 之后已补二iterations健康闸门。 |
-| 244 | `done` `.github/workflows/dr-validation.yml` 已补 `concurrency:`；现lines CI/DR workflows 均具备最小 `permissions` 基线，原条目不再成立。 |
-| 245 | `done` 仓库根已新增 `.github/CODEOWNERS`。 |
-| 246 | `done` `Dockerfile` 当前已同时复制 `package-lock.json`，容器构建可继续uses确定性的 `npm ci`。 |
+| 237 | `done` Conflicting markers in `.claude/scheduled_tasks.json` have been removed. |
+| 238 | `done` `.github/workflows/ci.yml` has removed the empty `workflow_call` contract to avoid duplicate triggers. |
+| 239 | `done` `.github/workflows/ci.yml` has added the `build` step to satisfy downstream scripts' dependence on `dist/` artifacts. |
+| 240 | `done` Artifact upload in `.github/workflows/ci.yml` now includes `retention-days` and an artifact integrity manifest. |
+| 241 | `done` The Trivy action in `.github/workflows/ci.yml` is now pinned to the full commit SHA `ed142fd0673e97e23eac54620cfb913e5ce36c25`. |
+| 242 | `done` `.github/workflows/deploy-environment.yml` now passes sensitive Helm values via `--set-string` to avoid `:` being parsed as a map. |
+| 243 | `done` `.github/workflows/deploy-environment.yml` now includes a secondary health gate after Promote. |
+| 244 | `done` `.github/workflows/dr-validation.yml` now includes `concurrency:`; the current CI/DR workflows have the minimum `permissions` baseline, so the original entry no longer holds. |
+| 245 | `done` The repo root now contains `.github/CODEOWNERS`. |
+| 246 | `done` The `Dockerfile` now also copies `package-lock.json`, allowing the container build to continue using deterministic `npm ci`. |

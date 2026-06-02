@@ -257,7 +257,7 @@ export class ExecutionPriorityPreemptionService {
         causationId: null,
         correlationId: null,
         payloadHash: null,
-        idempotencyKey: newId("idem"),
+        idempotencyKey: buildPreemptionEventIdempotencyKey("dispatch:ticket_requeued", input.ticket.id, candidate.execution.id),
         replayBehavior: "replay_as_fact",
         principal: "system",
         evidenceRefs: [] as readonly string[],
@@ -289,7 +289,7 @@ export class ExecutionPriorityPreemptionService {
         causationId: null,
         correlationId: null,
         payloadHash: null,
-        idempotencyKey: newId("idem"),
+        idempotencyKey: buildPreemptionEventIdempotencyKey("dispatch:execution_preempted", input.ticket.id, candidate.execution.id),
         replayBehavior: "replay_as_fact",
         principal: "system",
         evidenceRefs: [] as readonly string[],
@@ -412,11 +412,22 @@ export class ExecutionPriorityPreemptionService {
     const task = this.store.task.getTask(execution.taskId);
     const workflow = this.store.workflow.getWorkflowState(execution.taskId);
     const activeLease = this.store.worker.getActiveExecutionLease(execution.id);
+    const latestLease = this.store.worker.getLatestExecutionLease?.(execution.id) ?? null;
     if (!task || !workflow || workflow.status !== "running" || !activeLease || activeLease.workerId !== worker.workerId) {
       return null;
     }
+    const sourceTenantId = input.ticket.tenantId ?? null;
+    if (sourceTenantId != null && task.tenantId !== sourceTenantId) {
+      return null;
+    }
+    if (latestLease != null && latestLease.fencingToken !== activeLease.fencingToken) {
+      return null;
+    }
 
-    const latestTicket = this.store.worker.listExecutionTicketsByExecution(execution.id).at(-1) ?? null;
+    const latestTicket = this.store.worker
+      .listExecutionTicketsByExecution(execution.id)
+      .filter((ticket) => ticket.attempt === execution.attempt)
+      .at(-1) ?? null;
     const candidatePriority = resolveCandidatePriority(task.priority, latestTicket);
     if (candidatePriority === "urgent") {
       return null;
@@ -458,6 +469,7 @@ export class ExecutionPriorityPreemptionService {
     const requiredCapabilitiesJson =
       candidate.latestTicket?.requiredCapabilitiesJson
       ?? JSON.stringify([]);
+    const nextAttempt = this.resolveNextTicketAttempt(candidate.execution.id, candidate.execution.attempt);
     const ticket: ExecutionTicketRecord = {
       id: newId("ticket"),
       executionId: candidate.execution.id,
@@ -470,7 +482,7 @@ export class ExecutionPriorityPreemptionService {
       requiredRepoVersion: candidate.latestTicket?.requiredRepoVersion ?? null,
       requiredCapabilitiesJson,
       dispatchAfter: candidate.latestTicket?.dispatchAfter ?? null,
-      attempt: candidate.execution.attempt,
+      attempt: nextAttempt,
       status: "pending",
       assignedWorkerId: null,
       leaseId: null,
@@ -482,6 +494,17 @@ export class ExecutionPriorityPreemptionService {
     };
     this.store.worker.insertExecutionTicket(ticket);
     return ticket;
+  }
+
+  private resolveNextTicketAttempt(executionId: string, fallbackAttempt: number): number {
+    const attempts = this.store.worker
+      .listExecutionTicketsByExecution(executionId)
+      .map((ticket) => ticket.attempt)
+      .filter((attempt): attempt is number => Number.isInteger(attempt));
+    if (attempts.length === 0) {
+      return fallbackAttempt + 1;
+    }
+    return Math.max(...attempts) + 1;
   }
 
   /**
@@ -557,4 +580,12 @@ export class ExecutionPriorityPreemptionService {
       reasonCode,
     };
   }
+}
+
+function buildPreemptionEventIdempotencyKey(
+  eventType: "dispatch:ticket_requeued" | "dispatch:execution_preempted",
+  sourceTicketId: string,
+  preemptedExecutionId: string,
+): string {
+  return `idem:${eventType}:${sourceTicketId}:${preemptedExecutionId}`;
 }

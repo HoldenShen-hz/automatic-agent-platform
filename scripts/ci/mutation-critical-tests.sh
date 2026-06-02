@@ -6,13 +6,29 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 cd "${REPO_ROOT}"
 
-TEST_FILES=(
-  tests/unit/platform/interface/api/http-server/auth-routes.test.ts
-  tests/unit/platform/interface/api/http-server/billing-routes.test.ts
-  tests/unit/platform/interface/api/http-server/approval-routes.test.ts
-  tests/unit/platform/interface/api/http-server/gateway-routes.test.ts
-  tests/unit/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.test.ts
-  tests/unit/platform/shared/utils/redis-client-options.test.ts
+MANIFEST_PATH="config/quality/mutation-critical-tests.json"
+
+if [ ! -f "${MANIFEST_PATH}" ]; then
+  echo "Missing mutation-critical manifest: ${MANIFEST_PATH}" >&2
+  exit 1
+fi
+
+mapfile -t TEST_FILES < <(
+  node -e '
+    const fs = require("node:fs");
+    const manifest = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+    if (!Array.isArray(manifest.testFiles) || manifest.testFiles.length === 0) {
+      console.error(`mutation_critical.invalid_manifest:${process.argv[1]}`);
+      process.exit(1);
+    }
+    for (const file of manifest.testFiles) {
+      if (typeof file !== "string" || file.trim().length === 0) {
+        console.error(`mutation_critical.invalid_test_file:${String(file)}`);
+        process.exit(1);
+      }
+      process.stdout.write(`${file}\n`);
+    }
+  ' "${MANIFEST_PATH}"
 )
 
 for file in "${TEST_FILES[@]}"; do

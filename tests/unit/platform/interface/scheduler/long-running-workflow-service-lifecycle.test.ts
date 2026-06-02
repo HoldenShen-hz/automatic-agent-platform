@@ -31,7 +31,7 @@ test("LongRunningWorkflowService complete lifecycle: suspend -> markDue -> resum
 
     h.store.insertWorkflowState({
       taskId: "task_lifecycle",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_lifecycle",
       currentStepIndex: 3,
       status: "running",
@@ -106,7 +106,7 @@ test("LongRunningWorkflowService suspend with no resumeAfter and no expiresAt", 
 
     h.store.insertWorkflowState({
       taskId: "task_no_dates",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_no_dates",
       currentStepIndex: 1,
       status: "running",
@@ -162,7 +162,7 @@ test("LongRunningWorkflowService resume with exact expiresAt timestamp", () => {
 
     h.store.insertWorkflowState({
       taskId: "task_exact",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_exact",
       currentStepIndex: 1,
       status: "running",
@@ -209,7 +209,7 @@ test("LongRunningWorkflowService multiple suspensions for same task", () => {
 
     h.store.insertWorkflowState({
       taskId: "task_multi",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_multi",
       currentStepIndex: 5,
       status: "running",
@@ -279,7 +279,7 @@ test("LongRunningWorkflowService outputsJson is correctly merged on suspend", ()
 
     h.store.insertWorkflowState({
       taskId: "task_outputs",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_outputs",
       currentStepIndex: 2,
       status: "running",
@@ -329,7 +329,7 @@ test("LongRunningWorkflowService sweepExpired with mixed suspension states", () 
     // First workflow: active and expired
     h.store.insertWorkflowState({
       taskId: "task_mixed_1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_mixed_1",
       currentStepIndex: 1,
       status: "running",
@@ -344,7 +344,7 @@ test("LongRunningWorkflowService sweepExpired with mixed suspension states", () 
     // Second workflow: active but not expired
     h.store.insertWorkflowState({
       taskId: "task_mixed_2",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_mixed_2",
       currentStepIndex: 1,
       status: "running",
@@ -359,7 +359,7 @@ test("LongRunningWorkflowService sweepExpired with mixed suspension states", () 
     // Third workflow: already resumable
     h.store.insertWorkflowState({
       taskId: "task_mixed_3",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_mixed_3",
       currentStepIndex: 1,
       status: "running",
@@ -433,7 +433,7 @@ test("LongRunningWorkflowService buildResumeWindow with due suspension", () => {
 
     h.store.insertWorkflowState({
       taskId: "task_win_due",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_win_due",
       currentStepIndex: 1,
       status: "running",
@@ -496,7 +496,7 @@ test("LongRunningWorkflowService requireSuspension throws for invalid id", () =>
     seedTaskAndExecution(h.db, h.store, { taskId: "task_req", executionId: "exec_req" });
     h.store.insertWorkflowState({
       taskId: "task_req",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_req",
       currentStepIndex: 1,
       status: "running",
@@ -536,7 +536,7 @@ test("LongRunningWorkflowService requireWorkflow throws for unknown task", () =>
     seedTaskAndExecution(h.db, h.store, { taskId: "task_known", executionId: "exec_known" });
     h.store.insertWorkflowState({
       taskId: "task_known",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_known",
       currentStepIndex: 1,
       status: "running",
@@ -575,7 +575,7 @@ test("LongRunningWorkflowService suspend preserves metadata correctly", () => {
 
     h.store.insertWorkflowState({
       taskId: "task_meta",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_meta",
       currentStepIndex: 1,
       status: "running",
@@ -641,7 +641,7 @@ test("LongRunningWorkflowService suspend with undefined metadata", () => {
 
     h.store.insertWorkflowState({
       taskId: "task_undef",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_undef",
       currentStepIndex: 1,
       status: "running",

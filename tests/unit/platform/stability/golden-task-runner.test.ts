@@ -56,6 +56,7 @@ test("SINGLE_TASK_GOLDEN_TASKS expected has correct status values", () => {
     assert.equal(task.expected.sessionStatus, "completed");
     assert.ok(Array.isArray(task.expected.eventTypes));
     assert.ok(typeof task.expected.stepOutputs === "number");
+    assert.ok(typeof task.expected.taskOutputResult === "string");
   }
 });
 
@@ -226,4 +227,10 @@ test("SINGLE_TASK_GOLDEN_TASKS event types array is non-empty", () => {
   for (const task of SINGLE_TASK_GOLDEN_TASKS) {
     assert.ok(task.expected.eventTypes.length > 0);
   }
+});
+
+test("SINGLE_TASK_GOLDEN_TASKS do not share output markers across cases", () => {
+  const markers = SINGLE_TASK_GOLDEN_TASKS.map((task) => task.expected.taskOutputResult);
+
+  assert.equal(new Set(markers).size, SINGLE_TASK_GOLDEN_TASKS.length);
 });

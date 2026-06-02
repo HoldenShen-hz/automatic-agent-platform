@@ -55,6 +55,37 @@ export const DEFAULT_IDEMPOTENCY_KEY_CONFIG: IdempotencyKeyConfig = {
 
 const MAX_CACHED_RESPONSE_BYTES = 512 * 1024;
 
+function serializeCachedResponseBody(responseBody: unknown): string | null {
+  if (responseBody == null) {
+    return null;
+  }
+  try {
+    const serialized = JSON.stringify(responseBody);
+    if (serialized == null) {
+      return null;
+    }
+    if (Buffer.byteLength(serialized, "utf8") > MAX_CACHED_RESPONSE_BYTES) {
+      throw new AppError("api.idempotency_response_too_large", "Idempotent response exceeds maximum cache size.", {
+        statusCode: 413,
+        category: "validation",
+        source: "runtime",
+        retryable: false,
+      });
+    }
+    return serialized;
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    throw new AppError("api.idempotency_response_unserializable", "Idempotent response cannot be serialized safely.", {
+      statusCode: 500,
+      category: "internal",
+      source: "runtime",
+      retryable: false,
+    });
+  }
+}
+
 /**
  * Idempotency key enforcement decision.
  */
@@ -280,13 +311,13 @@ export class IdempotencyKeyMiddleware {
   }): Promise<void> {
     const { method, idempotencyKey, tenantId, statusCode, responseBody } = options;
     const storageKey = this.generateStorageKey(idempotencyKey, tenantId);
-    const existing = await this.storage.get(storageKey);
-    let bodyStr: string | null = null;
-    if (responseBody != null) {
-      bodyStr = JSON.stringify(responseBody);
+    if (statusCode >= 500) {
+      await this.storage.delete(storageKey);
+      return;
     }
+    const bodyStr = serializeCachedResponseBody(responseBody);
     await this.storage.set(storageKey, {
-      method: method ?? existing?.method ?? "POST",
+      method: method ?? "POST",
       statusCode,
       responseBody: bodyStr,
       requestHash: null,
@@ -360,14 +391,37 @@ export function createIdempotencyKeyMiddleware(
  * Global idempotency key middleware instance.
  */
 const globalIdempotencyKeyMiddleware = createGlobalSingletonSlot<IdempotencyKeyMiddleware>();
+let globalIdempotencyKeyMiddlewareFactory: (() => IdempotencyKeyMiddleware) | null = null;
+
+export function configureGlobalIdempotencyKeyMiddleware(
+  factory: (() => IdempotencyKeyMiddleware) | IdempotencyKeyMiddleware,
+): void {
+  globalIdempotencyKeyMiddlewareFactory =
+    typeof factory === "function"
+      ? factory
+      : () => factory;
+  resetGlobalSingleton(globalIdempotencyKeyMiddleware);
+}
 
 /**
  * Get or create the global idempotency key middleware.
  */
 export function getGlobalIdempotencyKeyMiddleware(): IdempotencyKeyMiddleware {
+  if (globalIdempotencyKeyMiddlewareFactory == null) {
+    throw new AppError(
+      "api.idempotency_shared_storage_required",
+      "Global idempotency middleware requires explicit shared storage configuration.",
+      {
+        statusCode: 500,
+        category: "configuration",
+        source: "runtime",
+        retryable: false,
+      },
+    );
+  }
   return getOrCreateGlobalSingleton(
     globalIdempotencyKeyMiddleware,
-    () => createIdempotencyKeyMiddleware(),
+    () => globalIdempotencyKeyMiddlewareFactory!(),
     { name: "idempotency-key-middleware" },
   );
 }
@@ -376,6 +430,7 @@ export function getGlobalIdempotencyKeyMiddleware(): IdempotencyKeyMiddleware {
  * Reset the global idempotency key middleware.
  */
 export function resetGlobalIdempotencyKeyMiddleware(): void {
+  globalIdempotencyKeyMiddlewareFactory = null;
   resetGlobalSingleton(globalIdempotencyKeyMiddleware);
 }
 
@@ -394,23 +449,8 @@ export function extractIdempotencyKey(
   if (typeof value === "string" && value.length > 0) {
     return value;
   }
-  return readIdempotencyKeyFromEnvelope(body);
-}
-
-function readIdempotencyKeyFromEnvelope(body: string | null | undefined): string | undefined {
-  if (typeof body !== "string" || body.trim().length === 0) {
-    return undefined;
-  }
-  try {
-    const parsed = JSON.parse(body) as unknown;
-    if (parsed == null || typeof parsed !== "object") {
-      return undefined;
-    }
-    const candidate = (parsed as { idempotencyKey?: unknown }).idempotencyKey;
-    return typeof candidate === "string" && candidate.trim().length > 0 ? candidate.trim() : undefined;
-  } catch {
-    return undefined;
-  }
+  void body;
+  return undefined;
 }
 
 /**

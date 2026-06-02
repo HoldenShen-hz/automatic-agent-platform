@@ -206,7 +206,7 @@ test("ReplanningService replans when feedback has correction category signal", (
       signals: [
         {
           signalId: "sig_correction",
-          source: "user",
+          source: "validation",
           taskId: "task_6",
           category: "correction",
           severity: "warning",

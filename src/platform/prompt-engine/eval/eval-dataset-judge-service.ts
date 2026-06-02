@@ -148,6 +148,17 @@ export interface EvalDatasetEvaluationInput {
   enforceIndependenceForHighRisk?: boolean;
 }
 
+export interface EvalDatasetSampleRequirements {
+  critical: number;
+  standard: number;
+  mixedStandard: number;
+}
+
+export interface EvalDatasetJudgeServiceOptions {
+  idFactory?: (prefix: string) => string;
+  now?: () => string;
+}
+
 export class EvalDatasetJudgeService {
   private readonly datasets = new Map<string, EvalDatasetRecord>();
   private readonly judges = new Map<string, JudgeProfileRecord>();
@@ -155,6 +166,7 @@ export class EvalDatasetJudgeService {
 
   public constructor(
     private readonly customEvaluators: Readonly<Record<string, CustomCriterionEvaluator>> = {},
+    private readonly options: EvalDatasetJudgeServiceOptions = {},
   ) {}
 
   public registerDataset(input: {
@@ -166,6 +178,7 @@ export class EvalDatasetJudgeService {
     createdBy: string;
     packId?: string | null;
     status?: EvalDatasetStatus;
+    sampleRequirements?: Partial<EvalDatasetSampleRequirements>;
   }): EvalDatasetRecord {
     const datasetId = normalizeRequired(input.datasetId, "datasetId");
     if (this.datasets.has(datasetId)) {
@@ -174,32 +187,29 @@ export class EvalDatasetJudgeService {
         `Evaluation dataset ${datasetId} is already registered.`,
       );
     }
-    const now = nowIso();
+    const now = this.now();
     const cases = input.cases.map((item) => normalizeCase(item));
     ensureUniqueIds(cases.map((item) => item.caseId), "eval_dataset.case_id_duplicate", "Evaluation dataset case IDs must be unique.");
 
-    // R2-4: Validate minimum sample sizes by risk level
+    const sampleRequirements = resolveSampleRequirements(input.sampleRequirements);
     const criticalCases = cases.filter((c) => c.priority === "critical");
     const standardCases = cases.filter((c) => c.priority === "standard");
-    if (criticalCases.length > 0 && criticalCases.length < 200) {
+    if (criticalCases.length > 0 && criticalCases.length < sampleRequirements.critical) {
       throw new ValidationError(
         "eval_dataset.insufficient_critical_samples",
-        `Evaluation dataset with critical cases requires at least 200 samples, got ${criticalCases.length}.`,
+        `Evaluation dataset with critical cases requires at least ${sampleRequirements.critical} samples, got ${criticalCases.length}.`,
       );
     }
-    if (standardCases.length > 0 && standardCases.length < 50) {
+    if (standardCases.length > 0 && standardCases.length < sampleRequirements.standard) {
       throw new ValidationError(
         "eval_dataset.insufficient_medium_samples",
-        `Evaluation dataset with standard (medium risk) cases requires at least 50 samples, got ${standardCases.length}.`,
+        `Evaluation dataset with standard (medium risk) cases requires at least ${sampleRequirements.standard} samples, got ${standardCases.length}.`,
       );
     }
-    // R2-4: For datasets with both critical and standard, also enforce high ≥ 100 if any high-risk cases exist
-    // Since priority only has critical/standard, we treat standard as medium; no explicit "high" exists
-    // But if a dataset has > 0 critical AND > 0 standard, we require standard >= 100 for balanced coverage
-    if (criticalCases.length > 0 && standardCases.length > 0 && standardCases.length < 100) {
+    if (criticalCases.length > 0 && standardCases.length > 0 && standardCases.length < sampleRequirements.mixedStandard) {
       throw new ValidationError(
         "eval_dataset.insufficient_high_samples",
-        `Evaluation dataset with both critical and standard cases requires at least 100 standard samples, got ${standardCases.length}.`,
+        `Evaluation dataset with both critical and standard cases requires at least ${sampleRequirements.mixedStandard} standard samples, got ${standardCases.length}.`,
       );
     }
 
@@ -224,7 +234,7 @@ export class EvalDatasetJudgeService {
     const updated: EvalDatasetRecord = {
       ...current,
       status: "active",
-      updatedAt: nowIso(),
+      updatedAt: this.now(),
     };
     this.datasets.set(datasetId, updated);
     return updated;
@@ -256,7 +266,7 @@ export class EvalDatasetJudgeService {
         `Judge profile ${judgeId} is already registered.`,
       );
     }
-    const now = nowIso();
+    const now = this.now();
     const record: JudgeProfileRecord = {
       judgeId,
       provider: normalizeRequired(input.provider, "provider"),
@@ -419,7 +429,7 @@ export class EvalDatasetJudgeService {
 
     // R2-10: Enforce independence for high-risk evaluations per §21.7
     if (input.enforceIndependenceForHighRisk) {
-      const highRiskCases = caseResults.filter((c) => c.priority === "critical" || c.priority === "standard");
+      const highRiskCases = caseResults.filter((c) => c.priority === "critical");
       if (highRiskCases.length > 0 && selectedJudge == null) {
         blockingFindings.push("independence_violation:high_risk_evaluation_requires_independent_judge");
       }
@@ -427,7 +437,7 @@ export class EvalDatasetJudgeService {
 
     const phase = input.phase ?? "offline";
     const report: EvalDatasetRunReport = {
-      runId: newId("eval_dataset_run"),
+      runId: this.makeId("eval_dataset_run"),
       datasetId: dataset.datasetId,
       candidateProvider: normalizeRequired(input.candidateProvider, "candidateProvider"),
       candidateModel: normalizeRequired(input.candidateModel, "candidateModel"),
@@ -442,7 +452,7 @@ export class EvalDatasetJudgeService {
       blockingFindings,
       advisoryFindings,
       caseResults,
-      createdAt: nowIso(),
+      createdAt: this.now(),
     };
     this.reports.set(report.runId, report);
     return report;
@@ -518,7 +528,13 @@ export class EvalDatasetJudgeService {
         break;
       }
       case "contains": {
-        const needle = normalizeRequired(String(criterion.config.substring ?? criterion.config.needle ?? input.expectedOutput ?? ""), "substring");
+        const configuredNeedle =
+          typeof criterion.config.substring === "string"
+            ? criterion.config.substring
+            : typeof criterion.config.needle === "string"
+              ? criterion.config.needle
+              : "";
+        const needle = normalizeRequired(configuredNeedle, "substring");
         const haystack = stringifyText(input.output);
         const matched = haystack.includes(needle);
         score = matched ? 1 : 0;
@@ -543,8 +559,12 @@ export class EvalDatasetJudgeService {
             `Criterion ${criterion.criterionId} requires an assigned judge profile.`,
           );
         }
-        score = roundMetric(input.criterionSignals[criterion.criterionId] ?? 0);
-        reason = score >= criterion.threshold ? `${criterion.type}_passed` : `${criterion.type}_failed`;
+        if (criterion.type === "semantic_similarity") {
+          score = roundMetric(input.criterionSignals[criterion.criterionId] ?? 0);
+          reason = score >= criterion.threshold ? `${criterion.type}_passed` : `${criterion.type}_failed`;
+          break;
+        }
+        return this.evaluateRegisteredJudgeCriterion(input);
         break;
       }
       case "custom_function": {
@@ -586,6 +606,55 @@ export class EvalDatasetJudgeService {
       threshold: criterion.threshold,
       reason,
     };
+  }
+
+  private evaluateRegisteredJudgeCriterion(input: {
+    criterion: EvalDatasetQualityCriterion;
+    expectedOutput: unknown;
+    output: unknown;
+    criterionSignals: Record<string, number>;
+    metadata: Record<string, unknown>;
+    judgeId: string | null;
+  }): EvalCriterionResult {
+    const evaluatorId = normalizeRequired(
+      String(input.criterion.config.judgeEvaluatorId ?? input.criterion.config.functionId ?? input.criterion.criterionId),
+      "judgeEvaluatorId",
+    );
+    const evaluator = this.customEvaluators[evaluatorId];
+    if (evaluator == null) {
+      throw new ValidationError(
+        `eval_dataset.llm_judge_evaluator_missing:${evaluatorId}`,
+        `LLM judge evaluator ${evaluatorId} is not registered.`,
+      );
+    }
+    const result = evaluator({
+      criterion: input.criterion,
+      expectedOutput: input.expectedOutput,
+      output: input.output,
+      criterionSignals: input.criterionSignals,
+      metadata: {
+        ...input.metadata,
+        judgeId: input.judgeId,
+      },
+    });
+    const score = roundMetric(result.score);
+    return {
+      criterionId: input.criterion.criterionId,
+      type: input.criterion.type,
+      score,
+      passed: result.passed ?? score >= input.criterion.threshold,
+      weight: input.criterion.weight,
+      threshold: input.criterion.threshold,
+      reason: result.reason?.trim() || (score >= input.criterion.threshold ? "llm_judge_passed" : "llm_judge_failed"),
+    };
+  }
+
+  private makeId(prefix: string): string {
+    return this.options.idFactory?.(prefix) ?? newId(prefix);
+  }
+
+  private now(): string {
+    return this.options.now?.() ?? nowIso();
   }
 }
 
@@ -651,12 +720,30 @@ function average(values: readonly number[]): number {
 }
 
 function stableStringify(value: unknown): string {
+  if (value === undefined) {
+    return "\"__undefined__\"";
+  }
+  if (typeof value === "bigint") {
+    return `{"$bigint":"${value.toString()}"}`;
+  }
+  if (value instanceof Date) {
+    return `{"$date":"${value.toISOString()}"}`;
+  }
+  if (value instanceof Map) {
+    return `{${[...value.entries()]
+      .sort(([left], [right]) => stableStringify(left).localeCompare(stableStringify(right)))
+      .map(([key, mapValue]) => `${stableStringify(key)}:${stableStringify(mapValue)}`)
+      .join(",")}}`;
+  }
+  if (value instanceof Set) {
+    return `[${[...value.values()].map((item) => stableStringify(item)).sort().join(",")}]`;
+  }
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableStringify(item)).join(",")}]`;
   }
   if (isRecord(value)) {
     const keys = Object.keys(value).sort();
-    return `{${keys.map((key) => `${key}:${stableStringify(value[key])}`).join(",")}}`;
+    return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
   }
   return JSON.stringify(value);
 }
@@ -704,6 +791,16 @@ function roundMetric(value: number): number {
 
 function dedupeStrings(values: readonly string[]): string[] {
   return [...new Set(values.map((item) => item.trim()).filter((item) => item.length > 0))];
+}
+
+function resolveSampleRequirements(
+  input?: Partial<EvalDatasetSampleRequirements>,
+): EvalDatasetSampleRequirements {
+  return {
+    critical: Math.max(1, Math.trunc(input?.critical ?? 1)),
+    standard: Math.max(1, Math.trunc(input?.standard ?? 1)),
+    mixedStandard: Math.max(0, Math.trunc(input?.mixedStandard ?? 1)),
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

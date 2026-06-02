@@ -18,7 +18,7 @@ import type {
 import type { TaskBoardItem } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { SystemSituation } from "../../../../src/platform/shared/observability/system-situation-model.js";
 
-function makeTask(taskId: string, taskStatus: TaskBoardItem["taskStatus"], divisionId = "general_ops"): TaskBoardItem {
+function makeTask(taskId: string, taskStatus: TaskBoardItem["taskStatus"], divisionId = "general-ops"): TaskBoardItem {
   return {
     taskId,
     title: `Task ${taskId}`,
@@ -115,9 +115,9 @@ test("buildOperatorDashboard returns attention queue sorted by priority", () => 
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_1", "failed", "general_ops"),
-        makeTask("task_2", "failed", "general_ops"),
-        makeTask("task_3", "pending", "general_ops"),
+        makeTask("task_1", "failed", "general-ops"),
+        makeTask("task_2", "failed", "general-ops"),
+        makeTask("task_3", "pending", "general-ops"),
       ],
     },
     systemSource: {
@@ -163,9 +163,9 @@ test("buildOperatorDashboard returns agent health cards grouped by division", ()
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_1", "done", "engineering_ops"),
-        makeTask("task_2", "done", "engineering_ops"),
-        makeTask("task_3", "failed", "engineering_ops"),
+        makeTask("task_1", "done", "engineering-ops"),
+        makeTask("task_2", "done", "engineering-ops"),
+        makeTask("task_3", "failed", "engineering-ops"),
         makeTask("task_4", "done", "finance"),
       ],
     },
@@ -178,7 +178,7 @@ test("buildOperatorDashboard returns agent health cards grouped by division", ()
 
   assert.ok(dashboard.agentHealthCards.length > 0);
   // Cards should be grouped by divisionId
-  const engOpsCard = dashboard.agentHealthCards.find((card) => card.domainId === "engineering_ops");
+  const engOpsCard = dashboard.agentHealthCards.find((card) => card.domainId === "engineering-ops");
   assert.ok(engOpsCard);
   assert.equal(engOpsCard!.tasksToday, 3);
 });
@@ -341,8 +341,8 @@ test("buildDomainAdminDashboard filters tasks by domainId", () => {
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_1", "done", "engineering_ops"),
-        makeTask("task_2", "pending", "engineering_ops"),
+        makeTask("task_1", "done", "engineering-ops"),
+        makeTask("task_2", "pending", "engineering-ops"),
         makeTask("task_3", "done", "finance"),
       ],
     },
@@ -351,9 +351,9 @@ test("buildDomainAdminDashboard filters tasks by domainId", () => {
     },
   });
 
-  const dashboard = service.buildDomainAdminDashboard("engineering_ops");
+  const dashboard = service.buildDomainAdminDashboard("engineering-ops");
 
-  assert.equal(dashboard.domainId, "engineering_ops");
+  assert.equal(dashboard.domainId, "engineering-ops");
   assert.equal(dashboard.activeWorkflows.length, 1); // only pending
   assert.equal(dashboard.agentInventory.length, 1); // one group
 });
@@ -362,9 +362,9 @@ test("buildDomainAdminDashboard returns pending approvals for approval_needed it
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_1", "pending", "engineering_ops"),
-        makeTask("task_2", "pending", "engineering_ops"),
-        makeTask("task_3", "done", "engineering_ops"),
+        makeTask("task_1", "pending", "engineering-ops"),
+        makeTask("task_2", "pending", "engineering-ops"),
+        makeTask("task_3", "done", "engineering-ops"),
       ],
     },
     systemSource: {
@@ -372,7 +372,7 @@ test("buildDomainAdminDashboard returns pending approvals for approval_needed it
     },
   });
 
-  const dashboard = service.buildDomainAdminDashboard("engineering_ops");
+  const dashboard = service.buildDomainAdminDashboard("engineering-ops");
 
   assert.equal(dashboard.pendingApprovals.length, 2);
   assert.ok(dashboard.pendingApprovals.every((item) => item.itemType === "approval_needed"));
@@ -382,9 +382,9 @@ test("buildDomainAdminDashboard calculates domain budget with USD formatting", (
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_1", "in_progress", "engineering_ops"),
-        makeTask("task_2", "in_progress", "engineering_ops"),
-        makeTask("task_3", "in_progress", "engineering_ops"),
+        makeTask("task_1", "in_progress", "engineering-ops"),
+        makeTask("task_2", "in_progress", "engineering-ops"),
+        makeTask("task_3", "in_progress", "engineering-ops"),
       ],
     },
     systemSource: {
@@ -392,7 +392,7 @@ test("buildDomainAdminDashboard calculates domain budget with USD formatting", (
     },
   });
 
-  const dashboard = service.buildDomainAdminDashboard("engineering_ops");
+  const dashboard = service.buildDomainAdminDashboard("engineering-ops");
 
   // Budget is calculated based on task count
   assert.ok(dashboard.domainBudget.allocated.startsWith("$"));
@@ -619,8 +619,8 @@ test("buildFleetDashboard groups tasks by department", () => {
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_1", "done", "engineering_ops"),
-        makeTask("task_2", "in_progress", "engineering_ops"),
+        makeTask("task_1", "done", "engineering-ops"),
+        makeTask("task_2", "in_progress", "engineering-ops"),
         makeTask("task_3", "pending", "finance"),
         makeTask("task_4", "failed", "finance"),
       ],
@@ -633,7 +633,7 @@ test("buildFleetDashboard groups tasks by department", () => {
   const dashboard = service.buildFleetDashboard();
 
   assert.equal(dashboard.departmentOverview.length, 2);
-  const engOps = dashboard.departmentOverview.find((d) => d.departmentId === "engineering_ops");
+  const engOps = dashboard.departmentOverview.find((d) => d.departmentId === "engineering-ops");
   const finance = dashboard.departmentOverview.find((d) => d.departmentId === "finance");
   assert.ok(engOps);
   assert.ok(finance);
@@ -643,9 +643,9 @@ test("buildFleetDashboard calculates agent count per department", () => {
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
-        makeTask("task_1", "done", "engineering_ops"),
-        makeTask("task_2", "in_progress", "engineering_ops"),
-        makeTask("task_3", "done", "engineering_ops"),
+        makeTask("task_1", "done", "engineering-ops"),
+        makeTask("task_2", "in_progress", "engineering-ops"),
+        makeTask("task_3", "done", "engineering-ops"),
       ],
     },
     systemSource: {
@@ -654,7 +654,7 @@ test("buildFleetDashboard calculates agent count per department", () => {
   });
 
   const dashboard = service.buildFleetDashboard();
-  const engOps = dashboard.departmentOverview.find((d) => d.departmentId === "engineering_ops");
+  const engOps = dashboard.departmentOverview.find((d) => d.departmentId === "engineering-ops");
 
   // agentCount is based on unique divisionIds
   assert.ok(engOps!.agentCount >= 1);
@@ -743,7 +743,7 @@ test("buildFleetDashboard with no tasks returns empty department overview", () =
   assert.deepEqual(dashboard.departmentOverview, []);
 });
 
-test("buildFleetDashboard uses general_ops for tasks without divisionId", () => {
+test("buildFleetDashboard uses general-ops for tasks without divisionId", () => {
   const service = new DashboardAggregationService({
     taskSource: {
       list: () => [
@@ -758,7 +758,7 @@ test("buildFleetDashboard uses general_ops for tasks without divisionId", () => 
 
   const dashboard = service.buildFleetDashboard();
 
-  const generalOps = dashboard.departmentOverview.find((d) => d.departmentId === "general_ops");
+  const generalOps = dashboard.departmentOverview.find((d) => d.departmentId === "general-ops");
   assert.ok(generalOps);
   assert.equal(generalOps!.agentCount, 1); // only the task without divisionId
 });

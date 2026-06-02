@@ -173,6 +173,20 @@ export class ExecutionLeaseService {
       // Create new lease with incremented fencing token
       // R9-08 fix: Reject TTL out of bounds before enforcement
       if (input.ttlMs < MIN_LEASE_TTL_MS || input.ttlMs > MAX_LEASE_TTL_MS) {
+        this.store.event.insertEvent?.({
+          id: newId("evt"),
+          taskId: execution.taskId,
+          executionId: input.executionId,
+          eventType: "lease:grant_rejected",
+          eventTier: "tier_2",
+          payloadJson: JSON.stringify({
+            workerId: input.workerId,
+            ttlMs: input.ttlMs,
+            reasonCode: "ttl_out_of_bounds",
+          }),
+          traceId: execution.traceId,
+          createdAt: occurredAt,
+        });
         return {
           outcome: "blocked",
           reasonCode: "ttl_out_of_bounds",
@@ -180,13 +194,11 @@ export class ExecutionLeaseService {
         };
       }
       const enforcedTtlMs = Math.min(Math.max(input.ttlMs, MIN_LEASE_TTL_MS), MAX_LEASE_TTL_MS);
-      const lease: ExecutionLeaseRecord = {
+      const leaseBase: Omit<ExecutionLeaseRecord, "fencingToken"> = {
         id: newId("lease"),
         executionId: input.executionId,
         workerId: input.workerId,
         attempt: execution.attempt,
-        // Fencing token prevents split-brain: each grant increments it
-        fencingToken: this.getLatestFencingToken(input.executionId) + 1,
         queueName: input.queueName ?? null,
         status: "active",
         leasedAt: occurredAt,
@@ -195,8 +207,11 @@ export class ExecutionLeaseService {
         releasedAt: null,
         reasonCode: null,
       };
-
-      this.store.worker.insertExecutionLease?.(lease);
+      const fencingToken = this.insertExecutionLeaseAllocatingFencingToken(leaseBase);
+      const lease: ExecutionLeaseRecord = {
+        ...leaseBase,
+        fencingToken,
+      };
       // Record audit trail for debugging lease state changes
       this.insertLeaseAudit({
         executionId: lease.executionId,
@@ -287,7 +302,14 @@ export class ExecutionLeaseService {
 
       // Extend expiration time and record renewal
       const expiresAt = plusMs(occurredAt, input.ttlMs);
-      this.store.worker.renewExecutionLease(lease.id, expiresAt, occurredAt);
+      if (!this.renewExecutionLeaseCas(lease, expiresAt, occurredAt)) {
+        const currentLease = this.store.worker.getExecutionLease(lease.id);
+        return {
+          outcome: "blocked",
+          reasonCode: this.resolveLeaseConflictReason(lease, currentLease),
+          lease: currentLease ?? null,
+        };
+      }
       this.insertLeaseAudit({
         executionId: lease.executionId,
         leaseId: lease.id,
@@ -340,6 +362,14 @@ export class ExecutionLeaseService {
         };
       }
 
+      if (input.fencingToken == null || input.fencingToken !== lease.fencingToken) {
+        return {
+          outcome: "blocked",
+          reasonCode: "stale_fencing_token",
+          lease: lease ?? null,
+        };
+      }
+
       // Can only release active leases
       if (lease.status !== "active") {
         return {
@@ -350,12 +380,14 @@ export class ExecutionLeaseService {
       }
 
       // Close the lease with released status
-      this.store.worker.closeExecutionLease({
-        leaseId: lease.id,
-        status: "released",
-        releasedAt: occurredAt,
-        reasonCode: input.reasonCode ?? null,
-      });
+      if (!this.closeExecutionLeaseCas(lease, "released", occurredAt, input.reasonCode ?? null)) {
+        const currentLease = this.store.worker.getExecutionLease(lease.id);
+        return {
+          outcome: "blocked",
+          reasonCode: this.resolveLeaseConflictReason(lease, currentLease),
+          lease: currentLease ?? null,
+        };
+      }
       this.insertLeaseAudit({
         executionId: lease.executionId,
         leaseId: lease.id,
@@ -508,12 +540,15 @@ export class ExecutionLeaseService {
 
       const handoverReason = input.reasonCode ?? "lease_handover";
       assertLeaseTtlWithinBounds(input.ttlMs);
-      this.store.worker.closeExecutionLease({
-        leaseId: previousLease.id,
-        status: "released",
-        releasedAt: occurredAt,
-        reasonCode: handoverReason,
-      });
+      if (!this.closeExecutionLeaseCas(previousLease, "released", occurredAt, handoverReason)) {
+        const currentLease = this.store.worker.getExecutionLease(previousLease.id);
+        return {
+          outcome: "blocked",
+          reasonCode: this.resolveLeaseConflictReason(previousLease, currentLease),
+          previousLease: currentLease ?? null,
+          lease: null,
+        };
+      }
       this.insertLeaseAudit({
         executionId: previousLease.executionId,
         leaseId: previousLease.id,
@@ -524,12 +559,11 @@ export class ExecutionLeaseService {
         recordedAt: occurredAt,
       });
 
-      const lease: ExecutionLeaseRecord = {
+      const leaseBase: Omit<ExecutionLeaseRecord, "fencingToken"> = {
         id: newId("lease"),
         executionId: previousLease.executionId,
         workerId: input.newWorkerId,
         attempt: execution.attempt,
-        fencingToken: this.getLatestFencingToken(previousLease.executionId) + 1,
         queueName: previousLease.queueName,
         status: "active",
         leasedAt: occurredAt,
@@ -538,7 +572,10 @@ export class ExecutionLeaseService {
         releasedAt: null,
         reasonCode: null,
       };
-      this.store.worker.insertExecutionLease(lease);
+      const lease: ExecutionLeaseRecord = {
+        ...leaseBase,
+        fencingToken: this.insertExecutionLeaseAllocatingFencingToken(leaseBase),
+      };
       this.insertLeaseAudit({
         executionId: lease.executionId,
         leaseId: lease.id,
@@ -619,6 +656,20 @@ export class ExecutionLeaseService {
     reasonCode: string = "lease_reclaimed",
   ): ExecutionLeaseRecord | null {
     return this.db.transaction(() => this.reclaimActiveLeaseInternal(executionId, occurredAt, reasonCode));
+  }
+
+  /**
+   * Reclaims an active lease using the caller's current transaction boundary.
+   *
+   * Recovery repair flows use this to keep lease reclamation atomic with the
+   * execution/task/session state changes that depend on the lease being closed.
+   */
+  public reclaimActiveLeaseWithinTransaction(
+    executionId: string,
+    occurredAt: string = nowIso(),
+    reasonCode: string = "lease_reclaimed",
+  ): ExecutionLeaseRecord | null {
+    return this.reclaimActiveLeaseInternal(executionId, occurredAt, reasonCode);
   }
 
   /**
@@ -933,6 +984,102 @@ export class ExecutionLeaseService {
       return 0;
     }
     return workerStore.getLatestFencingToken(executionId);
+  }
+
+  private insertExecutionLeaseAllocatingFencingToken(lease: Omit<ExecutionLeaseRecord, "fencingToken">): number {
+    const workerStore = this.store.worker as typeof this.store.worker & {
+      insertExecutionLeaseAllocatingFencingToken?: (lease: Omit<ExecutionLeaseRecord, "fencingToken">) => number;
+    };
+    if (typeof workerStore.insertExecutionLeaseAllocatingFencingToken === "function") {
+      return workerStore.insertExecutionLeaseAllocatingFencingToken(lease);
+    }
+    const fallbackLease: ExecutionLeaseRecord = {
+      ...lease,
+      fencingToken: this.getLatestFencingToken(lease.executionId) + 1,
+    };
+    this.store.worker.insertExecutionLease?.(fallbackLease);
+    return fallbackLease.fencingToken;
+  }
+
+  private renewExecutionLeaseCas(lease: ExecutionLeaseRecord, expiresAt: string, occurredAt: string): boolean {
+    const workerStore = this.store.worker as typeof this.store.worker & {
+      renewExecutionLeaseCas?: (input: {
+        leaseId: string;
+        workerId: string;
+        fencingToken: number;
+        expectedStatus: ExecutionLeaseRecord["status"];
+        expiresAt: string;
+        lastHeartbeatAt: string;
+      }) => boolean;
+    };
+    if (typeof workerStore.renewExecutionLeaseCas === "function") {
+      return workerStore.renewExecutionLeaseCas({
+        leaseId: lease.id,
+        workerId: lease.workerId,
+        fencingToken: lease.fencingToken,
+        expectedStatus: "active",
+        expiresAt,
+        lastHeartbeatAt: occurredAt,
+      });
+    }
+    this.store.worker.renewExecutionLease(lease.id, expiresAt, occurredAt);
+    return true;
+  }
+
+  private closeExecutionLeaseCas(
+    lease: ExecutionLeaseRecord,
+    status: ExecutionLeaseRecord["status"],
+    releasedAt: string,
+    reasonCode: string | null,
+  ): boolean {
+    const workerStore = this.store.worker as typeof this.store.worker & {
+      closeExecutionLeaseCas?: (input: {
+        leaseId: string;
+        workerId: string;
+        fencingToken: number;
+        expectedStatus: ExecutionLeaseRecord["status"];
+        status: ExecutionLeaseRecord["status"];
+        releasedAt: string;
+        reasonCode: string | null;
+      }) => boolean;
+    };
+    if (typeof workerStore.closeExecutionLeaseCas === "function") {
+      return workerStore.closeExecutionLeaseCas({
+        leaseId: lease.id,
+        workerId: lease.workerId,
+        fencingToken: lease.fencingToken,
+        expectedStatus: "active",
+        status,
+        releasedAt,
+        reasonCode,
+      });
+    }
+    this.store.worker.closeExecutionLease({
+      leaseId: lease.id,
+      status,
+      releasedAt,
+      reasonCode,
+    });
+    return true;
+  }
+
+  private resolveLeaseConflictReason(
+    expectedLease: ExecutionLeaseRecord,
+    currentLease: ExecutionLeaseRecord | undefined | null,
+  ): ExecutionLeaseDecision["reasonCode"] {
+    if (!currentLease) {
+      return "lease_not_found";
+    }
+    if (currentLease.workerId !== expectedLease.workerId) {
+      return "worker_mismatch";
+    }
+    if (currentLease.status !== "active") {
+      return "lease_not_active";
+    }
+    if (currentLease.fencingToken !== expectedLease.fencingToken) {
+      return "stale_fencing_token";
+    }
+    return "lease_not_active";
   }
 }
 

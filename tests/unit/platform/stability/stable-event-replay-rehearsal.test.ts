@@ -4,6 +4,8 @@ import { rmSync, mkdirSync } from "node:fs";
 
 import { runStableEventReplayRehearsal, writeStableEventReplayRehearsalReport } from "../../../../src/platform/stability/stable-event-replay-rehearsal.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 test("runStableEventReplayRehearsal runs the failed_consumer_ack_replay scenario", async () => {
   const outputDir = "/tmp/stable-event-replay-test";
   rmSync(outputDir, { recursive: true, force: true });

@@ -115,6 +115,11 @@ export interface ProjectionSnapshot {
   staleReason: string | null;
 }
 
+interface EventReplayCursor {
+  readonly createdAt: string;
+  readonly id: string;
+}
+
 export interface ProjectionComparisonResult {
   matches: boolean;
   activeVersionId: string | null;
@@ -164,6 +169,7 @@ export class ProjectionRebuildService {
   private readonly activeSnapshots = new Map<string, ProjectionSnapshot>();
   private readonly previousSnapshots = new Map<string, ProjectionSnapshot>();
   private readonly shadowSnapshots = new Map<string, ProjectionSnapshot>();
+  private readonly invalidPayloadErrors: string[] = [];
 
   public constructor(private readonly eventRepository: EventRepository) {
     this.registry = new ProjectionHandlerRegistry();
@@ -348,28 +354,34 @@ export class ProjectionRebuildService {
     let eventsProcessed = 0;
     let projectionsUpdated = 0;
     let eventsSkipped = 0;
-    const errors: string[] = [];
+    const errors: string[] = [...this.invalidPayloadErrors.splice(0)];
+    const seenEventIds = new Set<string>();
+    let eventStream: EventRecord[];
+    try {
+      eventStream = this.loadEventStream(projectionName, options);
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error));
+      return {
+        rebuildResult: {
+          eventsProcessed,
+          projectionsUpdated,
+          eventsSkipped,
+          durationMs: Date.now() - startTime,
+          errors,
+        },
+        snapshot: null,
+      };
+    }
 
-    // Process events in batches
-    let offset = 0;
-    let hasMore = true;
     let accumulatedState: Record<string, unknown> | null = null;
-
-    while (hasMore) {
-      let events: EventRecord[];
-      try {
-        events = this.fetchEvents(projectionName, options, batchSize, offset);
-      } catch (error) {
-        errors.push(error instanceof Error ? error.message : String(error));
-        break;
-      }
-
-      if (events.length === 0) {
-        hasMore = false;
-        break;
-      }
-
+    for (let offset = 0; offset < eventStream.length; offset += batchSize) {
+      const events = eventStream.slice(offset, offset + batchSize);
       for (const event of events) {
+        if (seenEventIds.has(event.id)) {
+          eventsSkipped += 1;
+          continue;
+        }
+        seenEventIds.add(event.id);
         try {
           const inputEvent = this.toProjectionInputEvent(event);
           accumulatedState = handler(accumulatedState, inputEvent);
@@ -378,13 +390,7 @@ export class ProjectionRebuildService {
           errors.push(`Error processing event ${event.id}: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
-
       projectionsUpdated += events.length;
-      offset += events.length;
-
-      if (events.length < batchSize) {
-        hasMore = false;
-      }
     }
 
     return {
@@ -416,7 +422,7 @@ export class ProjectionRebuildService {
         this.compareShadowProjection(name);
       }
 
-      this.cutoverShadowProjection(name);
+      this.cutoverShadowProjection(name, this.activeSnapshots.get(name)?.versionId ?? null);
       results.set(name, rebuildResult);
     }
 
@@ -446,20 +452,57 @@ export class ProjectionRebuildService {
   /**
    * Fetch events from the event repository
    */
-  private fetchEvents(
+  private loadEventStream(
     projectionName: string,
     options: ProjectionRebuildOptions,
-    limit: number,
-    offset: number,
   ): EventRecord[] {
     try {
-      const events = this.eventRepository.listAllEvents(limit, offset);
-      return events;
+      const fetchBatchSize = Math.max(1, Math.trunc(options.batchSize ?? 1000));
+      const cursorRepository = this.eventRepository as EventRepository & {
+        readonly getLatestEventCursor?: () => EventReplayCursor | null;
+        readonly listEventsUpToCursor?: (
+          limit: number,
+          after?: EventReplayCursor | null,
+          upperBound?: EventReplayCursor | null,
+        ) => EventRecord[];
+      };
+      if (
+        typeof cursorRepository.getLatestEventCursor === "function"
+        && typeof cursorRepository.listEventsUpToCursor === "function"
+      ) {
+        const upperBound = cursorRepository.getLatestEventCursor();
+        if (upperBound == null) {
+          return [];
+        }
+        const events: EventRecord[] = [];
+        let after: EventReplayCursor | null = null;
+        while (true) {
+          const page = cursorRepository.listEventsUpToCursor(fetchBatchSize, after, upperBound);
+          if (page.length === 0) {
+            break;
+          }
+          events.push(...this.applyEventFilters(page, options));
+          const lastEvent = page[page.length - 1]!;
+          after = {
+            createdAt: lastEvent.createdAt,
+            id: lastEvent.id,
+          };
+          if (page.length < fetchBatchSize) {
+            break;
+          }
+        }
+        return events;
+      }
+      if (typeof this.eventRepository.listAllEvents !== "function") {
+        return [];
+      }
+      const events = this.eventRepository.listAllEvents(Number.MAX_SAFE_INTEGER, 0);
+      return this.applyEventFilters(events, options);
     } catch (error) {
       const traceContext = createBackgroundTaskTraceContext("projection_rebuild_fetch", [
         projectionName,
-        offset,
-        limit,
+        "full_scan",
+        "ceiling_snapshot",
       ]);
       projectionLogger.log({
         level: "error",
@@ -468,13 +511,24 @@ export class ProjectionRebuildService {
         correlationId: traceContext.correlationId,
         data: {
           projectionName,
-          offset,
-          limit,
+          filterCount: options.eventTypeFilter?.length ?? 0,
           errorMessage: error instanceof Error ? error.message : String(error),
         },
       });
-      throw new ProjectionRebuildFetchError(projectionName, offset, limit, error);
+      throw new ProjectionRebuildFetchError(projectionName, 0, Number.MAX_SAFE_INTEGER, error);
     }
+  }
+
+  private applyEventFilters(events: EventRecord[], options: ProjectionRebuildOptions): EventRecord[] {
+    return events.filter((event) => {
+      if (options.eventTypeFilter != null && options.eventTypeFilter.length > 0 && !options.eventTypeFilter.includes(event.eventType)) {
+        return false;
+      }
+      if (options.fromTimestamp != null && event.createdAt < options.fromTimestamp) {
+        return false;
+      }
+      return true;
+    });
   }
 
   /**
@@ -704,8 +758,10 @@ export class ProjectionRebuildService {
     try {
       const parsed = JSON.parse(payloadJson);
       return typeof parsed === "object" && parsed !== null ? parsed as Record<string, unknown> : {};
-    } catch {
-      return {};
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.invalidPayloadErrors.push(`projection_rebuild.invalid_payload:${message}`);
+      throw new Error(`projection_rebuild.invalid_payload:${message}`);
     }
   }
 }

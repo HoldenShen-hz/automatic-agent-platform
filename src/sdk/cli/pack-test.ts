@@ -7,13 +7,13 @@
  *   npm run pack-test -- --manifest ./pack.json
  */
 
-import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import {
   requirePackCompatibilityMetadata,
   validateBusinessPackManifest,
   type BusinessPackManifest,
 } from "../pack-sdk/pack-manifest.js";
+import { readGuardedJsonFile, summarizeCliError } from "./cli-file-guards.js";
 import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 
 interface PackTestOptions {
@@ -53,7 +53,7 @@ function main(): number {
   const result: TestResult = { passed: true, checks: [], errors: [] };
 
   try {
-    const content = readFileSync(opts.manifest, "utf-8");
+    const content = readGuardedJsonFile(opts.manifest, "Pack manifest");
     const manifest: BusinessPackManifest = JSON.parse(content);
 
     // Validate manifest structure
@@ -74,7 +74,7 @@ function main(): number {
     }
   } catch (err) {
     result.passed = false;
-    result.errors.push(`parse_error:${err instanceof Error ? err.message : String(err)}`);
+    result.errors.push(`parse_error:${summarizeCliError(err, "pack_test.failed")}`);
   }
 
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

@@ -43,9 +43,10 @@ export class ProjectionRebuildWorker implements RecoveryWorker {
     try {
       const results = this.options.projectionRebuildService.rebuildAll(this.options.rebuildOptions);
       const entries = [...results.entries()];
+      const partialFailure = entries.some(([, result]) => result.errors.length > 0);
       const totals = entries.reduce((accumulator, [, result]) => ({
         eventsProcessed: accumulator.eventsProcessed + result.eventsProcessed,
-        projectionsUpdated: accumulator.projectionsUpdated + result.projectionsUpdated,
+        projectionsUpdated: accumulator.projectionsUpdated + (result.errors.length === 0 ? result.projectionsUpdated : 0),
         errors: accumulator.errors.concat(result.errors),
       }), { eventsProcessed: 0, projectionsUpdated: 0, errors: [] as string[] });
 
@@ -62,6 +63,7 @@ export class ProjectionRebuildWorker implements RecoveryWorker {
           message,
         })),
         metadata: {
+          partialFailure,
           projectionCount: entries.length,
           projections: Object.fromEntries(entries.map(([name, result]: [string, ProjectionRebuildResult]) => [
             name,
@@ -69,6 +71,7 @@ export class ProjectionRebuildWorker implements RecoveryWorker {
               eventsProcessed: result.eventsProcessed,
               projectionsUpdated: result.projectionsUpdated,
               eventsSkipped: result.eventsSkipped,
+              errors: result.errors,
             },
           ])),
         },

@@ -7,7 +7,7 @@
  * @see docs_zh/architecture/00-platform-architecture.md §52
  */
 
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHmac, hkdfSync, randomBytes, timingSafeEqual } from "node:crypto";
 
 /**
  * Encryption algorithm
@@ -104,8 +104,8 @@ export class PerTenantEncryptionService {
     const iv = randomBytes(this.getIvLength(keyInfo.algorithm));
     const plaintextBuffer = typeof plaintext === "string" ? Buffer.from(plaintext, "utf8") : plaintext;
 
-    if (keyInfo.algorithm === "aes-256-gcm") {
-      const cipher = createCipheriv("aes-256-gcm", key, iv);
+    if (keyInfo.algorithm === "aes-256-gcm" || keyInfo.algorithm === "aes-128-gcm") {
+      const cipher = createCipheriv(keyInfo.algorithm, key, iv);
       const encrypted = Buffer.concat([cipher.update(plaintextBuffer), cipher.final()]);
       const authTag = cipher.getAuthTag();
 
@@ -117,14 +117,15 @@ export class PerTenantEncryptionService {
         algorithm: keyInfo.algorithm,
       };
     } else {
-      // aes-256-cbc
+      // CBC remains legacy-only and is protected with an HMAC over IV+ciphertext.
       const cipher = createCipheriv("aes-256-cbc", key, iv);
       const encrypted = Buffer.concat([cipher.update(plaintextBuffer), cipher.final()]);
+      const authTag = createHmac("sha256", key).update(iv).update(encrypted).digest();
 
       return {
         ciphertext: encrypted.toString("base64"),
         iv: iv.toString("base64"),
-        authTag: null,
+        authTag: authTag.toString("base64"),
         keyId: keyInfo.keyId,
         algorithm: keyInfo.algorithm,
       };
@@ -148,14 +149,18 @@ export class PerTenantEncryptionService {
     const iv = Buffer.from(record.iv, "base64");
     const ciphertext = Buffer.from(record.ciphertext, "base64");
 
-    if (record.algorithm === "aes-256-gcm") {
-      const decipher = createDecipheriv("aes-256-gcm", key, iv);
+    if (record.algorithm === "aes-256-gcm" || record.algorithm === "aes-128-gcm") {
+      const decipher = createDecipheriv(record.algorithm, key, iv);
       if (record.authTag) {
         decipher.setAuthTag(Buffer.from(record.authTag, "base64"));
       }
       return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
     } else {
-      // aes-256-cbc
+      const expectedTag = createHmac("sha256", key).update(iv).update(ciphertext).digest();
+      const providedTag = record.authTag == null ? null : Buffer.from(record.authTag, "base64");
+      if (providedTag == null || providedTag.length !== expectedTag.length || !timingSafeEqual(providedTag, expectedTag)) {
+        throw new Error(`tenant_encryption.invalid_auth_tag:${record.keyId}`);
+      }
       const decipher = createDecipheriv("aes-256-cbc", key, iv);
       return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
     }
@@ -186,6 +191,7 @@ export class PerTenantEncryptionService {
         const updated: TenantEncryptionKey = { ...key, isActive: false };
         const idx = currentKeys.indexOf(key);
         currentKeys[idx] = updated;
+        this.keyStorage.get(key.keyId)?.fill(0);
       }
     }
 
@@ -247,6 +253,7 @@ export class PerTenantEncryptionService {
   public removeTenantKeys(tenantId: string): void {
     const keys = this.tenantKeys.get(tenantId) ?? [];
     for (const key of keys) {
+      this.keyStorage.get(key.keyId)?.fill(0);
       this.keyStorage.delete(key.keyId);
     }
     this.tenantKeys.delete(tenantId);
@@ -277,9 +284,8 @@ export function deriveTenantKey(
   tenantId: string,
   algorithm: EncryptionAlgorithm,
 ): Buffer {
-  const salt = createHash("sha256").update(tenantId).digest();
   const keyLength = algorithm === "aes-128-gcm" ? 16 : 32;
-  return createHash("sha256").update(Buffer.concat([masterKey, salt])).digest().slice(0, keyLength);
+  return Buffer.from(hkdfSync("sha256", masterKey, Buffer.from(tenantId, "utf8"), Buffer.from("tenant-key", "utf8"), keyLength));
 }
 
 /**

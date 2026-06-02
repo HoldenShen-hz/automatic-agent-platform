@@ -1,4 +1,5 @@
 import { ValidationError } from "../../contracts/errors.js";
+import { posix as pathPosix } from "node:path";
 import { nowIso } from "../../contracts/types/ids.js";
 import {
   normalizeUnifiedRuntimeMode,
@@ -104,6 +105,54 @@ const MUTATING_ACTIONS: readonly PolicyAction[] = [
   "promote_memory_layer",
 ];
 
+const DEFAULT_ALLOWED_ACTIONS_BY_SUBJECT_TYPE: Record<PolicySubjectType, readonly PolicyAction[]> = {
+  user: [
+    "invoke_model",
+    "invoke_tool",
+    "write_file",
+    "network_access",
+    "exec_command",
+    "org_change",
+    "install_extension",
+    "dispatch_execution",
+    "set_isolation_level",
+    "promote_improvement",
+    "advance_rollout",
+    "modify_knowledge_trust",
+    "promote_memory_layer",
+  ],
+  agent: [
+    "invoke_model",
+    "invoke_tool",
+    "write_file",
+    "network_access",
+    "exec_command",
+    "org_change",
+    "install_extension",
+    "dispatch_execution",
+    "set_isolation_level",
+    "promote_improvement",
+    "advance_rollout",
+    "modify_knowledge_trust",
+    "promote_memory_layer",
+  ],
+  system: [
+    "invoke_model",
+    "invoke_tool",
+    "write_file",
+    "exec_command",
+    "network_access",
+    "install_extension",
+    "org_change",
+    "dispatch_execution",
+    "set_isolation_level",
+    "promote_improvement",
+    "advance_rollout",
+    "modify_knowledge_trust",
+    "promote_memory_layer",
+  ],
+};
+
 export class PolicyCenterService {
   private readonly options: Required<Omit<PolicyCenterOptions, "maxEstimatedCostUsd" | "budgetWarningCostUsd">> & {
     maxEstimatedCostUsd: number | null;
@@ -176,7 +225,7 @@ export class PolicyCenterService {
     const roles = this.options.subjectRoles[input.subjectId] ?? [];
     const rolePolicyEntries = Object.entries(this.options.allowedActionsByRole);
     if (rolePolicyEntries.length === 0) {
-      return true;
+      return DEFAULT_ALLOWED_ACTIONS_BY_SUBJECT_TYPE[input.subjectType].includes(input.action);
     }
     return roles.some((role) => this.options.allowedActionsByRole[role]?.includes(input.action) === true);
   }
@@ -213,17 +262,18 @@ export class PolicyCenterService {
       requiresApproval = true;
     }
     if (input.action === "write_file" && this.options.allowedPathPrefixes.length > 0) {
-      const resourceRef = input.resourceRef ?? "";
-      if (!this.options.allowedPathPrefixes.some((prefix) => resourceRef.startsWith(prefix))) {
+      const resourceRef = normalizeScopedPath(input.resourceRef ?? "");
+      const allowedPrefixes = this.options.allowedPathPrefixes.map((prefix) => normalizeScopedPath(prefix));
+      if (!allowedPrefixes.some((prefix) => pathScopeMatches(resourceRef, prefix))) {
         return {
-          constraints: { allowedPathPrefixes: this.options.allowedPathPrefixes },
+          constraints: { allowedPathPrefixes: allowedPrefixes },
           denyReason: "policy.path_scope_denied",
           requiresApproval: false,
           matchedRuleRefs: ["sandbox.path_scope"],
           explainSummary: "Resource path is outside the allowed path scope.",
         };
       }
-      constraints.allowedPathPrefixes = this.options.allowedPathPrefixes;
+      constraints.allowedPathPrefixes = allowedPrefixes;
       matchedRuleRefs.push("sandbox.path_scope");
     }
     if (input.action === "network_access" && this.options.allowedNetworkHosts.length > 0) {
@@ -511,8 +561,21 @@ function parseHost(resourceRef: string | null | undefined): string | null {
   try {
     return new URL(resourceRef).host;
   } catch {
-    return resourceRef;
+    return resourceRef.trim();
   }
+}
+
+function normalizeScopedPath(value: string): string {
+  const normalized = pathPosix.normalize(value.replace(/\\/g, "/"));
+  return normalized.startsWith("/") ? normalized : `/${normalized}`;
+}
+
+function pathScopeMatches(resourcePath: string, allowedPrefix: string): boolean {
+  const normalizedPrefix = allowedPrefix.replace(/\/+$/, "");
+  if (resourcePath === normalizedPrefix) {
+    return true;
+  }
+  return resourcePath.startsWith(`${normalizedPrefix}/`);
 }
 
 function normalizePolicyCenterMode(mode: PolicyMode): UnifiedRuntimeMode {

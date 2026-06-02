@@ -1,12 +1,13 @@
 {
   "blockers": [],
-  "generatedAt": "2026-06-01T01:00:45.161Z",
+  "generatedAt": "2026-06-01T23:44:48.788Z",
   "inventorySummary": {
     "blockedDivisions": 35,
     "orphanSourceModules": 23,
     "p0Divisions": 5,
+    "roiTrackedDivisions": 5,
     "totalDivisions": 56
   },
-  "mode": "production-ready",
+  "mode": "warning",
   "warnings": []
 }

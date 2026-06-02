@@ -23,7 +23,7 @@ class MockLlmPlanGenerator implements LlmPlanGenerator {
     const tasks = [
       {
         taskId: `${goal.goalId}:llm:1`,
-        domainId: "general_ops",
+        domainId: "general-ops",
         description: "Analyze goal requirements and constraints",
         inputs: {
           goalDescription: goal.description,
@@ -51,7 +51,7 @@ class MockLlmPlanGenerator implements LlmPlanGenerator {
       },
       {
         taskId: `${goal.goalId}:llm:2`,
-        domainId: "general_ops",
+        domainId: "general-ops",
         description: "Execute main task and produce results",
         inputs: {
           goalDescription: goal.description,

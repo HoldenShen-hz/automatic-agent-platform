@@ -4,8 +4,12 @@ import { z } from "zod";
  * Parse and compare semantic versions
  */
 function parseSemver(version: string): { major: number; minor: number; patch: number } {
-  const parts = version.split(".").map((p) => parseInt(p, 10) || 0);
-  return { major: parts[0] ?? 0, minor: parts[1] ?? 0, patch: parts[2] ?? 0 };
+  const trimmed = version.trim();
+  if (!/^\d+\.\d+\.\d+$/u.test(trimmed)) {
+    throw new Error(`marketplace.invalid_semver:${version}`);
+  }
+  const parts = trimmed.split(".").map((p) => Number.parseInt(p, 10));
+  return { major: parts[0]!, minor: parts[1]!, patch: parts[2]! };
 }
 
 function compareSemver(a: string, b: string): number {
@@ -25,11 +29,13 @@ function satisfiesVersionRange(version: string, range: string): boolean {
   // Parse range (simplified - supports ^, ~, exact)
   if (range.startsWith("^")) {
     const min = parseSemver(range.slice(1));
-    return v.major === min.major && v.minor >= min.minor && v.patch >= min.patch;
+    const maxExclusive = `${min.major + 1}.0.0`;
+    return compareSemver(version, range.slice(1)) >= 0 && compareSemver(version, maxExclusive) < 0;
   }
   if (range.startsWith("~")) {
     const min = parseSemver(range.slice(1));
-    return v.major === min.major && v.minor === min.minor && v.patch >= min.patch;
+    const maxExclusive = `${min.major}.${min.minor + 1}.0`;
+    return compareSemver(version, range.slice(1)) >= 0 && compareSemver(version, maxExclusive) < 0;
   }
   if (range.startsWith(">=")) {
     return compareSemver(version, range.slice(2)) >= 0;
@@ -132,6 +138,9 @@ function calculateUpgradePath(
   currentVersion: string,
   targetVersion: string,
 ): readonly string[] {
+  if (compareSemver(targetVersion, currentVersion) < 0) {
+    throw new Error(`marketplace.downgrade_not_allowed:${currentVersion}->${targetVersion}`);
+  }
   const upgrades: string[] = [];
   const current = parseSemver(currentVersion);
   const target = parseSemver(targetVersion);
@@ -198,6 +207,16 @@ export const MarketplaceCatalogEntrySchema = z.object({
       message: "entryId or listingId is required",
       path: ["entryId"],
     });
+  }
+  for (const field of ["entryId", "listingId", "packId"] as const) {
+    const fieldValue = value[field];
+    if (typeof fieldValue === "string" && fieldValue.includes("@")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${field} must not contain @`,
+        path: [field],
+      });
+    }
   }
 }).transform((value) => {
   const entryId = value.entryId ?? value.listingId!;

@@ -1,50 +1,50 @@
 # Quality Engineering And Chaos Testing Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines正式test matrix、回归基准库和混沌工程范围。
+This contract defines the formal test matrix, regression baseline library, and chaos engineering scope.
 
-相关文档：
+Related documents:
 
 - `testing_singleton_reset_contract.md`
 - `vcr_and_fixture_testing_contract.md`
 - `startup_consistency_and_recovery_drill_contract.md`
 - `slo_alerting_and_runbook_contract.md`
 
-## 2. 目标
+## 2. Goals
 
-- 让质量工程从“测试class型列table”升级为“覆盖矩阵”。
-- 建立跨运lines模式、跨storage、跨租户的回归基线。
-- via混沌演练验证恢复、告警和止损逻辑。
+- Upgrade quality engineering from a "list of test types" to a "coverage matrix".
+- Establish a regression baseline across runtime modes, storage backends, and tenants.
+- Validate recovery, alerting, and damage-control logic through chaos drills.
 
-## 3. 正式test matrix
+## 3. Formal Test Matrix
 
-至少覆盖以下维度交叉：
+Must cover at least the following dimensional cross-products:
 
-- 单机 / 分布式
+- Single-machine / distributed
 - SQLite / PostgreSQL
 - supervised / auto / full-auto
-- 单租户 / 多租户
-- 本地工具 / MCP 工具 / 远程 worker
-- 小上下文 / exceeds长上下文 / 恶意输入
-- OAPEFLIR 闭环阶段 / rollout / feedback / learning
+- Single-tenant / multi-tenant
+- Local tools / MCP tools / remote workers
+- Small context / ultra-long context / malicious input
+- OAPEFLIR loop stages / rollout / feedback / learning
 
-## 4. 回归基准库
+## 4. Regression Baseline Library
 
-固定任务集至少contains：
+The fixed task set must include at least:
 
-- 编程class
-- 研究class
-- 内容class
-- dataclass
-- 跨事业部class
-- 高风险审批class
-- 崩溃恢复class
-- OAPEFLIR 闭环class
-- rollout / rollback class
-- Observe-compatible 产品链路class
+- Programming
+- Research
+- Content
+- Data
+- Cross-division
+- High-risk approval
+- Crash recovery
+- OAPEFLIR loop
+- Rollout / rollback
+- Observe-compatible product line
 
-每个基准任务至少record：
+Each baseline task must at least record:
 
 - expected class
 - success criteria
@@ -53,11 +53,11 @@
 - approval expectation
 - recovery expectation
 
-## 5. 可测试性设计要求
+## 5. Testability Design Requirements
 
-关键运lines链应优先暴露窄relies on注入面，而不isrelies onglobally patch 或module-level monkey patch。
+Critical runtime chains should prioritize exposing narrow dependency injection surfaces rather than relying on global patches or module-level monkey patches.
 
-至少适used for：
+At least applicable to:
 
 - query / model call
 - compaction
@@ -65,34 +65,34 @@
 - event dispatcher
 - recovery drill
 
-规则：
+Rules:
 
-- relies on注入面应尽量窄，只覆盖高频变化点。
-- 生产实现和测试假实现应复用同一签名，避免测试专用旁路接口。
-- 若某模块只能viagloballyStatus替换来测试，应被视为质量债务并进入治理台账。
+- The dependency injection surface should be as narrow as possible, covering only high-frequency change points.
+- Production implementations and test fakes should reuse the same signatures, avoiding test-specific bypass interfaces.
+- If a module can only be tested by global state replacement, it should be considered quality debt and entered into the governance ledger.
 
-## 6. 混沌工程范围
+## 6. Chaos Engineering Scope
 
-成熟工业平台至少演练：
+A mature industrial platform must at least drill:
 
-- 随机 kill worker
-- 随机 provider 429 / 500
-- 随机 DB 锁conflicts
-- 随机 queue delay
-- 随机事件repeats / 丢失
-- 随机 MCP timeout
-- 随机 OAPEFLIR stage 中断
-- 随机 rollout gate 阻断
+- Random worker kill
+- Random provider 429 / 500
+- Random DB lock conflict
+- Random queue delay
+- Random event duplication / loss
+- Random MCP timeout
+- Random OAPEFLIR stage interruption
+- Random rollout gate blocking
 
-### 6.1 混沌场景清单vs fallback profile
+### 6.1 Chaos Scenario Catalog and Fallback Profile
 
-- `deploy/chaos/catalog.json` is仓库内混沌场景清单的权威索references。
-- 每个场景都必须映射一个 scheduler 可识别的 fallback profile。
-- defaults to fallback profile 由 `src/ops-maturity/chaos/chaos-experiment-types.ts` 中的 `DEFAULT_CHAOS_FALLBACK_PROFILES` 维护。
+- `deploy/chaos/catalog.json` is the authoritative index of chaos scenario catalogs in the repository.
+- Each scenario must map to a fallback profile that the scheduler can recognize.
+- The default fallback profile is maintained by `DEFAULT_CHAOS_FALLBACK_PROFILES` in `src/ops-maturity/chaos/chaos-experiment-types.ts`.
 
-## 7. 发布门禁
+## 7. Release Gate
 
-发布前必须有：
+A release must have the following before it goes out:
 
 - regression baseline pass
 - fixture / VCR pass
@@ -102,7 +102,7 @@
 - OAPEFLIR loop regression pass
 - rollout / rollback regression pass
 
-## 8. 测试工件
+## 8. Test Artifacts
 
 - `RegressionSuite`
 - `ScenarioMatrix`
@@ -112,46 +112,46 @@
 - `ContractSuite`
 - `InventoryBaseline`
 
-## 8.1 Registry-backed contract suite
+## 8.1 Registry-backed Contract Suite
 
-对稳定注册table或生态边界，优先建立共享 contract suite，而不is为每个接入面repeats写零散断言。
+For stable registry or ecosystem boundaries, prefer to build a shared contract suite rather than writing scattered assertions for each integration surface.
 
-适用对象includes：
+Applicable objects include:
 
 - gateway / channel registry
 - plugin / extension registry
 - workflow / division registry
 - session binding / policy fallback registry
 
-规则：
+Rules:
 
-- 共享 contract suite 应验证“isno已注册、字段isno对齐、fallback isno符合预期、排序/输出isno稳定”。
-- 对长期稳定的边界，允许保留 inventory baseline，并在变更时显式审查差异。
+- A shared contract suite should verify "is it registered, do fields align, does the fallback match expectations, is the ordering / output stable".
+- For long-term stable boundaries, an inventory baseline is allowed and differences should be explicitly reviewed on change.
 
-## 8.2 Hook / lifecycle event contract suite
+## 8.2 Hook / Lifecycle Event Contract Suite
 
-对 hook、lifecycle callback、integration event 这class边界，优先uses正式事件枚举vs contract suite，而不is自由字符串。
+For boundaries such as hooks, lifecycle callbacks, and integration events, prefer formal event enums and contract suites over free-form strings.
 
-适用对象includes：
+Applicable objects include:
 
 - pre/post tool use
 - session / execution start
 - user input submit
 - graceful stop / cancellation
 
-规则：
+Rules:
 
-- hook 事件名应集中defines并版本化。
-- 不允许各插件、各集成层随意创造语义相近但名称不同的事件字符串。
-- 相关测试应验证：事件名合法、顺序合法、缺失关键事件时有明确failed语义。
+- Hook event names should be centrally defined and versioned.
+- Plugins and integration layers are not allowed to freely create event strings that are semantically similar but differently named.
+- Related tests should verify: event names are valid, ordering is valid, and missing key events result in clear failure semantics.
 
-## 9. 收口Conclusion
+## 9. Closure Conclusion
 
-工业级质量工程不is“写几class测试”。
+Industrial-grade quality engineering is not "write a few types of tests".
 
-它必须回答：
+It must answer:
 
-- 哪些场景被覆盖了
-- 哪些环境组合被验证了
-- 哪些故障被注入过
-- failed后系统isno能恢复和止损
+- Which scenarios are covered
+- Which environment combinations are verified
+- Which faults have been injected
+- Whether the system can recover and stop the bleeding after a failure

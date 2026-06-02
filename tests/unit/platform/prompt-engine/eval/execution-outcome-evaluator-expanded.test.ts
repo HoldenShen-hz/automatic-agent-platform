@@ -48,6 +48,21 @@ const plan = createPlanGraphBundle({
   createdAt: "2026-05-24T00:00:00.000Z",
 });
 
+const planWithWorstPath = createPlanGraphBundle({
+  ...plan,
+  planGraphBundleId: "plan-bundle-worst-path",
+  validationReport: {
+    valid: true,
+    findings: [],
+    worstPath: {
+      pathNodeIds: ["node-1"],
+      riskClass: "medium",
+      estimatedBudgetAmount: 0.1,
+      timeoutMs: 1_000,
+    },
+  },
+});
+
 // Issue #1961: Weights that sum > 1.0 should still work but with potential resolution loss
 test("ExecutionOutcomeEvaluator handles weights that sum greater than 1.0", () => {
   const config: QualityGateConfig = {
@@ -412,6 +427,24 @@ test("ExecutionOutcomeEvaluator budget adherence with actual cost", () => {
   assert.ok(typeof result.budgetAdherence.adherent === "boolean");
 });
 
+test("ExecutionOutcomeEvaluator derives planned budget from worst-path budget", () => {
+  const evaluator = new ExecutionOutcomeEvaluator();
+
+  const result = evaluator.evaluate(planWithWorstPath, {
+    feedbackId: "fb_budget_worst_path",
+    taskId: "task_budget_worst_path",
+    executionId: null,
+    planId: "plan_budget_worst_path",
+    outcome: "completed",
+    signals: [],
+    emittedAt: Date.now(),
+  }, undefined, 0.25);
+
+  assert.equal(result.budgetAdherence.plannedBudget, 0.1);
+  assert.equal(result.budgetAdherence.adherent, false);
+  assert.ok(result.budgetAdherence.variancePercent > 100);
+});
+
 test("ExecutionOutcomeEvaluator timing SLO with actual duration", () => {
   const evaluator = new ExecutionOutcomeEvaluator();
 
@@ -428,4 +461,71 @@ test("ExecutionOutcomeEvaluator timing SLO with actual duration", () => {
   // Should have timing SLO result
   assert.ok(result.timingSlo !== undefined);
   assert.ok(typeof result.timingSlo.withinSlo === "boolean");
+});
+
+test("ExecutionOutcomeEvaluator derives timing SLO from worst-path timeout", () => {
+  const evaluator = new ExecutionOutcomeEvaluator();
+
+  const result = evaluator.evaluate(planWithWorstPath, {
+    feedbackId: "fb_timing_worst_path",
+    taskId: "task_timing_worst_path",
+    executionId: null,
+    planId: "plan_timing_worst_path",
+    outcome: "completed",
+    signals: [],
+    emittedAt: Date.now(),
+  }, 2_500);
+
+  assert.equal(result.timingSlo.plannedDurationMs, 1_000);
+  assert.equal(result.timingSlo.withinSlo, false);
+  assert.ok(result.timingSlo.variancePercent >= 150);
+});
+
+test("ExecutionOutcomeEvaluator preserves failure penalties even when success signals saturate", () => {
+  const evaluator = new ExecutionOutcomeEvaluator();
+
+  const result = evaluator.evaluate(plan, {
+    feedbackId: "fb_saturation",
+    taskId: "task_saturation",
+    executionId: null,
+    planId: "plan_saturation",
+    outcome: "completed",
+    signals: [
+      { signalId: "sig_s1", source: "execution", taskId: "task_saturation", category: "success", severity: "info", payload: { summary: "s1" }, stepOutputRefs: [], timestamp: Date.now() },
+      { signalId: "sig_s2", source: "execution", taskId: "task_saturation", category: "success", severity: "info", payload: { summary: "s2" }, stepOutputRefs: [], timestamp: Date.now() },
+      { signalId: "sig_s3", source: "execution", taskId: "task_saturation", category: "success", severity: "info", payload: { summary: "s3" }, stepOutputRefs: [], timestamp: Date.now() },
+      { signalId: "sig_s4", source: "execution", taskId: "task_saturation", category: "success", severity: "info", payload: { summary: "s4" }, stepOutputRefs: [], timestamp: Date.now() },
+      { signalId: "sig_failure", source: "execution", taskId: "task_saturation", category: "failure", severity: "error", payload: { summary: "failure" }, stepOutputRefs: [], timestamp: Date.now() },
+    ],
+    emittedAt: Date.now(),
+  } as any);
+
+  assert.ok(result.qualityScore < 1);
+  assert.equal(result.qualityScore, 0.8);
+});
+
+test("ExecutionOutcomeEvaluator enforces absolute threshold even when baseline delta passes", () => {
+  const evaluator = new ExecutionOutcomeEvaluator();
+
+  const result = evaluator.evaluate({
+    ...plan,
+    planGraphBundleId: "plan-critical-threshold",
+    riskProfile: {
+      riskClass: "critical",
+      reasons: ["critical-risk"],
+    },
+  }, {
+    feedbackId: "fb_absolute_threshold",
+    taskId: "task_absolute_threshold",
+    executionId: null,
+    planId: "plan_absolute_threshold",
+    outcome: "completed",
+    signals: [
+      { signalId: "sig_success", source: "execution", taskId: "task_absolute_threshold", category: "success", severity: "info", payload: { summary: "ok" }, stepOutputRefs: [], timestamp: Date.now() },
+    ],
+    emittedAt: Date.now(),
+  } as any, undefined, undefined, 0.95);
+
+  assert.equal(result.passed, false);
+  assert.ok(result.reasons.some((item) => item.startsWith("quality_score_below_risk_threshold")));
 });

@@ -24,7 +24,7 @@ test("pmf validation service builds a passing report for the seeded baseline dat
     const report = service.buildReport({
       evaluatedAt: PMF_EVALUATED_AT,
       profileName: "phase3_default",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       windowDays: 14,
     });
 

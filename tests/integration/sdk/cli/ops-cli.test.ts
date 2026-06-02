@@ -66,7 +66,7 @@ function seedWorkflowAndSession(
   db.transaction(() => {
     store.insertWorkflowState({
       taskId: input.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: input.workflowId ?? "single_agent_minimal",
       currentStepIndex: input.currentStepIndex ?? 0,
       status: input.workflowStatus ?? "running",

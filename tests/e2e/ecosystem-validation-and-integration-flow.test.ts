@@ -125,7 +125,7 @@ test("E2E: PMF validation exports scoped reports, persists history, and keeps ar
     const exported = pmf.exportValidation({
       evaluatedAt: PMF_EVALUATED_AT,
       profileName: "phase3_e2e",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
     });
     const latest = pmf.getLatest("phase3_e2e");
     const history = pmf.listHistory(10);

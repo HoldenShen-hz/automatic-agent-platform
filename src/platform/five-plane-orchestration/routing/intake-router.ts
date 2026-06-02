@@ -80,6 +80,7 @@ export class IntakeRouter {
   private readonly skillTaxonomy: SkillTaxonomy;
   private readonly loadBalancing: LoadBalancingStrategy;
   private readonly roundRobinCounters: Map<string, number>;
+  private readonly MAX_ROUND_ROBIN_COUNTERS = 128;
 
   /**
    * Creates a new intake router instance.
@@ -157,14 +158,20 @@ export class IntakeRouter {
     // R6-11: If confidence is below threshold, use LLM-based intent extraction
     // This improves routing accuracy for ambiguous requests
     let finalClassification = classification;
-    if (input.preferredIntent != null && input.preferredIntent.confidence >= CONFIDENCE_THRESHOLD) {
+    const preferredIntent = input.preferredIntent;
+    const canAdoptPreferredIntent = preferredIntent != null
+      && preferredIntent.confidence >= CONFIDENCE_THRESHOLD
+      && preferredIntent.intent === classification.intent;
+    if (canAdoptPreferredIntent) {
       finalClassification = {
-        intent: input.preferredIntent.intent,
+        intent: preferredIntent.intent,
         continuation: classification.continuation,
-        confidence: Number(Math.min(0.99, input.preferredIntent.confidence).toFixed(2)),
+        confidence: Number(Math.min(0.99, preferredIntent.confidence).toFixed(2)),
         matchedRules: classification.matchedRules,
       };
-      routeTrace.push(`preferred_intent:${input.preferredIntent.intent}:${input.preferredIntent.confidence.toFixed(2)}`);
+      routeTrace.push(`preferred_intent:${preferredIntent.intent}:${preferredIntent.confidence.toFixed(2)}`);
+    } else if (preferredIntent != null && preferredIntent.confidence >= CONFIDENCE_THRESHOLD) {
+      routeTrace.push(`preferred_intent_rejected:${preferredIntent.intent}:${preferredIntent.confidence.toFixed(2)}`);
     }
     if (finalClassification === classification && classification.confidence < CONFIDENCE_THRESHOLD) {
       // Use LLM extraction for low-confidence classification
@@ -204,7 +211,10 @@ export class IntakeRouter {
 
     // R9-09 fix: Add capability matching to routing decision
     // First select division via triggers, then try capability-based matching
-    const triggerSelectedDivision = this.selectDivision(normalized, routeTrace);
+    const triggerSelectedDivision = this.selectDivision(normalized, routeTrace, {
+      tenantScope: resolveRoutingTenantScope(input),
+      stableSelectionKey: buildStableSelectionKey(normalized),
+    });
     const capabilityMatchResult = this.matchCapabilities(input.requiredCapabilities ?? [], triggerSelectedDivision, routeTrace);
 
     // Use capability-matched division if available, otherwise use trigger-selected division
@@ -219,7 +229,7 @@ export class IntakeRouter {
       routeTrace.push(`capability_match:${capabilityMatchResult.matched ? "yes" : "no"}`);
       return materializePipelineContext(withOptionalConfirmedTaskSpecId({
         workflowId,
-        divisionId: division?.id ?? "general_ops",
+        divisionId: division?.id ?? "general-ops",
         routeReason: capabilityMatchResult.matched ? "route.capability_match" : "route.multi_step_or_high_context",
         routeTrace,
         requiresOrchestration: true,
@@ -233,8 +243,8 @@ export class IntakeRouter {
     routeTrace.push(`capability_match:${capabilityMatchResult.matched ? "yes" : "no"}`);
     return materializePipelineContext(withOptionalConfirmedTaskSpecId({
       workflowId,
-      divisionId: division?.id ?? "general_ops",
-      agentId: `${division?.id ?? "general_ops"}_agent`,
+      divisionId: division?.id ?? "general-ops",
+      agentId: `${division?.id ?? "general-ops"}_agent`,
       routeReason: capabilityMatchResult.matched ? "route.capability_match" : "route.simple_request",
       routeTrace,
       requiresOrchestration: false,
@@ -307,11 +317,15 @@ export class IntakeRouter {
    * 2. Normalize each trigger alternative
    * 3. Find all triggers that match the input
    * 4. Sort candidates by priority, then by match length, then by ID
-   * 5. Return the best match, or "general_ops" fallback if no matches
+   * 5. Return the best match, or "general-ops" fallback if no matches
    */
   private selectDivision(
     normalizedInput: string,
     routeTrace: string[],
+    routingContext: Readonly<{
+      tenantScope: string;
+      stableSelectionKey: string;
+    }>,
   ): LoadedDivisionDefinition | null {
     const registry = this.divisionRegistry;
     if (!registry) {
@@ -339,10 +353,10 @@ export class IntakeRouter {
         return left.division.id.localeCompare(right.division.id);
       });
 
-    // No divisions matched - use "general_ops" as fallback
+    // No divisions matched - use "general-ops" as fallback
     if (candidates.length === 0) {
       routeTrace.push("matched_divisions:none");
-      return registry.divisions.get("general_ops") ?? null;
+      return registry.divisions.get("general-ops") ?? null;
     }
 
     // Record all candidates for debugging purposes
@@ -351,7 +365,7 @@ export class IntakeRouter {
     );
 
     // Apply load balancing to select among candidates
-    return this.applyLoadBalancing(candidates, routeTrace);
+    return this.applyLoadBalancing(candidates, routeTrace, routingContext);
   }
 
   /**
@@ -360,6 +374,10 @@ export class IntakeRouter {
   private applyLoadBalancing(
     candidates: Array<{ division: LoadedDivisionDefinition; matchedTrigger: string }>,
     routeTrace: string[],
+    routingContext: Readonly<{
+      tenantScope: string;
+      stableSelectionKey: string;
+    }>,
   ): LoadedDivisionDefinition | null {
     if (candidates.length === 0) {
       return null;
@@ -370,15 +388,15 @@ export class IntakeRouter {
 
     switch (this.loadBalancing) {
       case "round-robin":
-        return this.roundRobinSelect(candidates, routeTrace);
+        return this.roundRobinSelect(candidates, routeTrace, routingContext);
       case "least-load":
         return this.leastLoadSelect(candidates, routeTrace);
       case "weighted":
-        return this.weightedSelect(candidates, routeTrace);
+        return this.weightedSelect(candidates, routeTrace, routingContext);
       case "capacity-aware":
-        return this.capacityAwareSelect(candidates, routeTrace);
+        return this.capacityAwareSelect(candidates, routeTrace, routingContext);
       case "random":
-        return this.randomSelect(candidates, routeTrace);
+        return this.randomSelect(candidates, routeTrace, routingContext);
       default:
         // Default to first candidate (highest priority)
         return candidates[0]?.division ?? null;
@@ -392,6 +410,10 @@ export class IntakeRouter {
   private roundRobinSelect<T>(
     candidates: Array<{ division: LoadedDivisionDefinition; matchedTrigger: string }>,
     routeTrace: string[],
+    routingContext: Readonly<{
+      tenantScope: string;
+      stableSelectionKey: string;
+    }>,
   ): LoadedDivisionDefinition {
     const firstCandidate = candidates[0];
     if (firstCandidate == null) {
@@ -399,7 +421,7 @@ export class IntakeRouter {
     }
     // Group candidates by their primary skill category for round-robin tracking
     const skillCategory = this.categorizeForLoadBalancing(firstCandidate.division);
-    const counterKey = `rr_${skillCategory}`;
+    const counterKey = `rr_${routingContext.tenantScope}:${skillCategory}`;
     const currentCount = this.roundRobinCounters.get(counterKey) ?? 0;
     const selectedIndex = currentCount % candidates.length;
     const selectedCandidate = candidates[selectedIndex];
@@ -407,7 +429,7 @@ export class IntakeRouter {
       throw new Error("intake_router.round_robin_selection_missing");
     }
 
-    this.roundRobinCounters.set(counterKey, currentCount + 1);
+    this.setRoundRobinCounter(counterKey, currentCount + 1);
     routeTrace.push(`lb_round_robin:index=${selectedIndex}/${candidates.length}`);
 
     return selectedCandidate.division;
@@ -439,9 +461,13 @@ export class IntakeRouter {
   private weightedSelect(
     candidates: Array<{ division: LoadedDivisionDefinition; matchedTrigger: string }>,
     routeTrace: string[],
+    routingContext: Readonly<{
+      tenantScope: string;
+      stableSelectionKey: string;
+    }>,
   ): LoadedDivisionDefinition {
     const totalWeight = candidates.reduce((sum, c) => sum + c.division.priority, 0);
-    const randomFraction = computeStableSelectionFraction("weighted", candidates, routeTrace);
+    const randomFraction = computeStableSelectionFraction("weighted", candidates, routingContext.stableSelectionKey);
 
     if (totalWeight === 0) {
       const index = Math.floor(randomFraction * candidates.length);
@@ -477,8 +503,12 @@ export class IntakeRouter {
   private randomSelect(
     candidates: Array<{ division: LoadedDivisionDefinition; matchedTrigger: string }>,
     routeTrace: string[],
+    routingContext: Readonly<{
+      tenantScope: string;
+      stableSelectionKey: string;
+    }>,
   ): LoadedDivisionDefinition {
-    const randomFraction = computeStableSelectionFraction("random", candidates, routeTrace);
+    const randomFraction = computeStableSelectionFraction("random", candidates, routingContext.stableSelectionKey);
     const index = Math.floor(randomFraction * candidates.length);
     const selected = candidates[index];
     if (selected == null) {
@@ -496,6 +526,10 @@ export class IntakeRouter {
   private capacityAwareSelect(
     candidates: Array<{ division: LoadedDivisionDefinition; matchedTrigger: string }>,
     routeTrace: string[],
+    routingContext: Readonly<{
+      tenantScope: string;
+      stableSelectionKey: string;
+    }>,
   ): LoadedDivisionDefinition {
     // Calculate total capacity as sum of maxInstances across all roles
     // null maxInstances means unlimited, treat as very high number
@@ -511,7 +545,7 @@ export class IntakeRouter {
 
     const capacities = candidates.map((c) => getCapacity(c.division));
     const totalCapacity = capacities.reduce((sum, cap) => sum + cap, 0);
-    const randomFraction = computeStableSelectionFraction("capacity", candidates, routeTrace);
+    const randomFraction = computeStableSelectionFraction("capacity", candidates, routingContext.stableSelectionKey);
 
     if (totalCapacity === 0) {
       // All capacities are zero or null - fall back to priority-based selection
@@ -557,6 +591,20 @@ export class IntakeRouter {
       return `skill_${firstRole.tools[0]}`;
     }
     return `division_${division.id}`;
+  }
+
+  private setRoundRobinCounter(counterKey: string, value: number): void {
+    if (this.roundRobinCounters.has(counterKey)) {
+      this.roundRobinCounters.delete(counterKey);
+    }
+    this.roundRobinCounters.set(counterKey, value);
+    while (this.roundRobinCounters.size > this.MAX_ROUND_ROBIN_COUNTERS) {
+      const oldestKey = this.roundRobinCounters.keys().next().value;
+      if (typeof oldestKey !== "string") {
+        break;
+      }
+      this.roundRobinCounters.delete(oldestKey);
+    }
   }
 
   /**
@@ -608,7 +656,7 @@ export class IntakeRouter {
 function computeStableSelectionFraction(
   strategy: string,
   candidates: Array<{ division: LoadedDivisionDefinition; matchedTrigger: string }>,
-  routeTrace: readonly string[],
+  stableSelectionKey: string,
 ): number {
   const material = JSON.stringify({
     strategy,
@@ -617,7 +665,7 @@ function computeStableSelectionFraction(
       priority: candidate.division.priority,
       matchedTrigger: candidate.matchedTrigger,
     })),
-    routeTrace,
+    stableSelectionKey,
   });
   let hash = 2166136261;
   for (let index = 0; index < material.length; index += 1) {
@@ -625,6 +673,14 @@ function computeStableSelectionFraction(
     hash = Math.imul(hash, 16777619);
   }
   return (hash >>> 0) / 0x100000000;
+}
+
+function resolveRoutingTenantScope(input: IntakeRouteInput): string {
+  return input.tenantId ?? input.principal?.tenantId ?? "global";
+}
+
+function buildStableSelectionKey(normalizedInput: string): string {
+  return normalizedInput;
 }
 
 function materializePipelineContext(

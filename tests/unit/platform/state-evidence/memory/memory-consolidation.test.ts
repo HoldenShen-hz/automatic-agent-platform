@@ -248,6 +248,35 @@ test("buildMemoryConsolidationSummary handles empty records array", () => {
   assert.ok(!result.summaryText.includes("Highlights"));
 });
 
+test("buildMemoryConsolidationSummary honors configurable snippet and fact limits", () => {
+  const records = [
+    createMemoryRecord({
+      id: "mem_1",
+      contentJson: JSON.stringify({
+        workContext: "one",
+        facts: [{ content: "fact-1", category: "note", confidence: 0.9 }],
+      }),
+    }),
+    createMemoryRecord({
+      id: "mem_2",
+      contentJson: JSON.stringify({
+        workContext: "two",
+        facts: [{ content: "fact-2", category: "note", confidence: 0.9 }],
+      }),
+    }),
+  ];
+
+  const result = buildMemoryConsolidationSummary(records, "layer_5", {
+    maxSnippets: 1,
+    maxFacts: 1,
+    truncationTimestamp: "2026-06-02T00:00:00.000Z",
+  });
+
+  assert.equal(result.lossReport.truncationTimestamp, "2026-06-02T00:00:00.000Z");
+  assert.ok(result.lossReport.droppedContent.some((entry) => entry.reason === "exceeded_max_snippets_limit:1"));
+  assert.ok(result.lossReport.droppedContent.some((entry) => entry.reason === "exceeded_max_facts_limit:1"));
+});
+
 test("buildMemoryConsolidationSummary handles records with whitespace-only content", () => {
   // When all records have content that produces empty snippets after trimming
   // Covers line 60 ternary branch where snippets.length === 0

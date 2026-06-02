@@ -1,3 +1,5 @@
+import { ValidationError } from "../contracts/errors.js";
+
 export interface BudgetReservationSweepRecord {
   readonly reservationId: string;
   readonly runId: string;
@@ -24,7 +26,7 @@ export class BudgetReservationSweeper {
     readonly dbTime: string;
     readonly clockSkewSafetyMarginMs: number;
   }): BudgetReservationSweepResult {
-    const dbNow = Date.parse(input.dbTime);
+    const dbNow = parseSweepDbTime(input.dbTime);
     const releaseReservationIds = input.reservations
       .filter((reservation) => reservation.status === "reserved")
       .filter((reservation) => !input.activeRunIds.has(reservation.runId))
@@ -45,4 +47,15 @@ export class BudgetReservationSweeper {
       },
     };
   }
+}
+
+function parseSweepDbTime(dbTime: string): number {
+  const parsed = Date.parse(dbTime);
+  if (!Number.isFinite(parsed)) {
+    throw new ValidationError(
+      "budget_reservation.invalid_db_time",
+      `budget_reservation.invalid_db_time: dbTime must be a valid timestamp, received ${dbTime}.`,
+    );
+  }
+  return parsed;
 }

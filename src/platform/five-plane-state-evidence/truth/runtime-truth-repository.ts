@@ -65,7 +65,7 @@ export interface RuntimeRepository {
   appendNodeAttemptReceipt(receipt: NodeAttemptReceipt): void;
   appendRunVersionLock(lock: RunVersionLock): void;
   appendEvidenceRecord(record: EvidenceRecord): void;
-  snapshot(): RuntimeTruthRepositorySnapshot;
+  snapshot(options?: RuntimeTruthRepositorySnapshotOptions): RuntimeTruthRepositorySnapshot;
   /**
    * R24-34: Replay events to rebuild aggregate state from event store.
    * This enables event-sourced reconstruction of aggregates from their event history.
@@ -75,6 +75,11 @@ export interface RuntimeRepository {
    * @param events - Sorted list of PlatformFactEvents to replay
    */
   replayEvents(events: readonly PlatformFactEvent[]): void;
+}
+
+export interface RuntimeTruthRepositorySnapshotOptions {
+  readonly createdAt?: string;
+  readonly versionId?: string;
 }
 
 interface RuntimeTruthRepositoryState {
@@ -114,6 +119,7 @@ const RETRYABLE_CONTENTION_CODES = new Set([
   "runtime_state_machine.side_effect_lease_mismatch",
   "runtime_state_machine.side_effect_fencing_token_mismatch",
 ]);
+const ISO_8601_UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 
 function sleepMs(durationMs: number): void {
   if (durationMs <= 0) {
@@ -428,13 +434,27 @@ export class RuntimeTruthRepository implements RuntimeRepository {
         const aggregateType = event.aggregateType as RuntimeStateAggregateType;
         const currentAggregate = this.getAggregate(aggregateType, aggregateId);
         if (currentAggregate == null) {
-          continue;
+          throw new ValidationError(
+            "runtime_truth_repository.replay_aggregate_missing",
+            `runtime_truth_repository.replay_aggregate_missing:${aggregateType}/${aggregateId}`,
+            {
+              retryable: false,
+              details: { aggregateType, aggregateId, eventId: event.eventId },
+            },
+          );
         }
         const payload = asRuntimeEventPayload(event.payload);
         const fromStatus = toRuntimeStatus(payload?.fromStatus);
         const toStatus = toRuntimeStatus(payload?.toStatus);
         if (toStatus == null) {
-          continue;
+          throw new ValidationError(
+            "runtime_truth_repository.replay_invalid_to_status",
+            `runtime_truth_repository.replay_invalid_to_status:${event.eventId}`,
+            {
+              retryable: false,
+              details: { eventId: event.eventId, toStatus: payload?.toStatus ?? null },
+            },
+          );
         }
         const leaseId = readAggregateLeaseId(currentAggregate);
         const fencingToken = readAggregateFencingToken(currentAggregate);
@@ -464,10 +484,11 @@ export class RuntimeTruthRepository implements RuntimeRepository {
     });
   }
 
-  public snapshot(): RuntimeTruthRepositorySnapshot {
+  public snapshot(options: RuntimeTruthRepositorySnapshotOptions = {}): RuntimeTruthRepositorySnapshot {
     const stateHash = this.computeStateHash();
-    const now = new Date().toISOString();
     const version = this.state.snapshotVersion + 1;
+    const createdAt = options.createdAt ?? this.deriveSnapshotCreatedAt();
+    const versionId = options.versionId ?? `snapshot-${version}-${stateHash.slice(0, 16)}`;
     this.state.snapshotVersion = version;
 
     return {
@@ -482,13 +503,13 @@ export class RuntimeTruthRepository implements RuntimeRepository {
       outbox: [...this.state.outbox],
       auditRefs: [...this.state.auditRefs],
       version,
-      createdAt: now,
+      createdAt,
       // R11-12: Include snapshot version metadata
       snapshotVersion: {
-        versionId: `snapshot-${now}`,
+        versionId,
         version,
         stateHash,
-        createdAt: now,
+        createdAt,
       },
     };
   }
@@ -504,13 +525,63 @@ export class RuntimeTruthRepository implements RuntimeRepository {
     try {
       return operation();
     } catch (error) {
+      const rollbackErrors: string[] = [];
       for (let index = context.undoOperations.length - 1; index >= 0; index--) {
-        context.undoOperations[index]?.();
+        try {
+          context.undoOperations[index]?.();
+        } catch (rollbackError) {
+          rollbackErrors.push(rollbackError instanceof Error ? rollbackError.message : String(rollbackError));
+        }
+      }
+      if (rollbackErrors.length > 0) {
+        throw new ValidationError(
+          "runtime_truth_repository.rollback_failed",
+          "runtime_truth_repository.rollback_failed",
+          {
+            retryable: false,
+            details: {
+              rollbackErrors,
+            },
+            cause: error instanceof Error ? error : undefined,
+          },
+        );
       }
       throw error;
     } finally {
       this.activeTransaction = null;
     }
+  }
+
+  private deriveSnapshotCreatedAt(): string {
+    const timestamps: string[] = [];
+    const visit = (value: unknown): void => {
+      if (typeof value === "string" && ISO_8601_UTC_TIMESTAMP.test(value)) {
+        timestamps.push(value);
+        return;
+      }
+      if (Array.isArray(value)) {
+        for (const entry of value) {
+          visit(entry);
+        }
+        return;
+      }
+      if (value != null && typeof value === "object") {
+        for (const nested of Object.values(value as Record<string, unknown>)) {
+          visit(nested);
+        }
+      }
+    };
+
+    visit([...this.state.harnessRuns.values()]);
+    visit([...this.state.nodeRuns.values()]);
+    visit([...this.state.sideEffects.values()]);
+    visit([...this.state.budgetLedgers.values()]);
+    visit([...this.state.budgetReservations.values()]);
+    visit([...this.state.nodeAttemptReceipts.values()]);
+    visit([...this.state.runVersionLocks.values()]);
+    visit(this.state.events);
+
+    return timestamps.sort((left, right) => left.localeCompare(right)).at(-1) ?? "1970-01-01T00:00:00.000Z";
   }
 
   private getRequiredAggregate(

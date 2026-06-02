@@ -29,7 +29,7 @@ test("TagBuilder.model creates correct tag", () => {
 });
 
 test("TagBuilder.division creates correct tag", () => {
-  assert.equal(tagBuilder.division("engineering_ops"), "division:engineering_ops");
+  assert.equal(tagBuilder.division("engineering-ops"), "division:engineering-ops");
 });
 
 test("TagBuilder.toolContext creates tags for tool name only", () => {

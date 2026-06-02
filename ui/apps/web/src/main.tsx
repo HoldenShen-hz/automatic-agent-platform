@@ -20,12 +20,12 @@ if (rootElement == null) {
 }
 
 function RuntimeBootstrap(): React.ReactElement {
-  const runtimeConfig = createWebRuntimeConfig(import.meta.env);
-  const authToken = readBootstrapAuthToken();
-  const runtime = createWebRuntimeClients({
+  const [runtimeConfig] = React.useState(() => createWebRuntimeConfig(import.meta.env));
+  const [authToken] = React.useState(() => readBootstrapAuthToken());
+  const [runtime] = React.useState(() => createWebRuntimeClients({
     ...runtimeConfig,
     ...(authToken == null ? {} : { authToken }),
-  });
+  }));
 
   React.useEffect(() => {
     const telemetry = startWebRuntimeTelemetry(runtimeConfig);

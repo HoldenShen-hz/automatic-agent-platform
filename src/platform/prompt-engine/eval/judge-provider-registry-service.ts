@@ -1,4 +1,5 @@
 import type { JudgeProfileRecord, JudgeProfileStatus } from "./eval-dataset-judge-service.js";
+import { DEFAULT_MODEL_METADATA_REGISTRY } from "../../five-plane-control-plane/config-center/model-metadata-registry.js";
 
 export type JudgeIsolationLevel = "cross_provider_required" | "cross_family_preferred" | "same_provider_allowed";
 
@@ -15,8 +16,57 @@ export interface JudgeProviderDescriptor {
   readonly status: JudgeProfileStatus;
 }
 
+interface JudgeProviderCatalogEntry {
+  readonly providerId: string;
+  readonly provider: string;
+  readonly providerFamily: string;
+  readonly modelId: string;
+  readonly supportedCapabilities: readonly string[];
+  readonly maxCostUsd: number;
+  readonly trustScore: number;
+  readonly latencyTier: JudgeProviderDescriptor["latencyTier"];
+  readonly isolationLevel: JudgeIsolationLevel;
+}
+
+const DEFAULT_JUDGE_PROVIDER_CATALOG: readonly JudgeProviderCatalogEntry[] = [
+  {
+    providerId: "judge.openai.gpt-5.4-mini",
+    provider: "openai",
+    providerFamily: "openai",
+    modelId: "gpt-5.4-mini",
+    supportedCapabilities: ["llm_judge", "pairwise_rank", "policy_audit"],
+    maxCostUsd: 0.15,
+    trustScore: 0.92,
+    latencyTier: "low",
+    isolationLevel: "cross_provider_required",
+  },
+  {
+    providerId: "judge.anthropic.claude-sonnet-4-20250514",
+    provider: "anthropic",
+    providerFamily: "anthropic",
+    modelId: "claude-sonnet-4-20250514",
+    supportedCapabilities: ["llm_judge", "safety_review"],
+    maxCostUsd: 0.18,
+    trustScore: 0.9,
+    latencyTier: "medium",
+    isolationLevel: "cross_provider_required",
+  },
+  {
+    providerId: "judge.minimax.MiniMax-M1",
+    provider: "minimax",
+    providerFamily: "minimax",
+    modelId: DEFAULT_MODEL_METADATA_REGISTRY.profiles.balanced?.modelId ?? "MiniMax-M1",
+    supportedCapabilities: ["llm_judge", "regional_eval"],
+    maxCostUsd: 0.1,
+    trustScore: 0.82,
+    latencyTier: "medium",
+    isolationLevel: "cross_family_preferred",
+  },
+] as const;
+
 export class JudgeProviderRegistryService {
   private readonly descriptors = new Map<string, JudgeProviderDescriptor>();
+  private readonly recentSelectionsByCapability = new Map<string, readonly Pick<JudgeProviderDescriptor, "providerId" | "providerFamily">[]>();
 
   public registerDescriptor(descriptor: JudgeProviderDescriptor): JudgeProviderDescriptor {
     this.descriptors.set(descriptor.providerId, descriptor);
@@ -42,44 +92,10 @@ export class JudgeProviderRegistryService {
   }
 
   public registerDefaults(): JudgeProviderDescriptor[] {
-    return [
-      this.registerDescriptor({
-        providerId: "judge.openai.gpt-5.4-mini",
-        provider: "openai",
-        providerFamily: "openai",
-        modelId: "gpt-5.4-mini",
-        supportedCapabilities: ["llm_judge", "pairwise_rank", "policy_audit"],
-        maxCostUsd: 0.15,
-        trustScore: 0.92,
-        latencyTier: "low",
-        isolationLevel: "cross_provider_required",
-        status: "ready",
-      }),
-      this.registerDescriptor({
-        providerId: "judge.anthropic.claude-sonnet",
-        provider: "anthropic",
-        providerFamily: "anthropic",
-        modelId: "claude-sonnet",
-        supportedCapabilities: ["llm_judge", "safety_review"],
-        maxCostUsd: 0.18,
-        trustScore: 0.9,
-        latencyTier: "medium",
-        isolationLevel: "cross_provider_required",
-        status: "ready",
-      }),
-      this.registerDescriptor({
-        providerId: "judge.minimax.m1",
-        provider: "minimax",
-        providerFamily: "minimax",
-        modelId: "m1",
-        supportedCapabilities: ["llm_judge", "regional_eval"],
-        maxCostUsd: 0.1,
-        trustScore: 0.82,
-        latencyTier: "medium",
-        isolationLevel: "cross_family_preferred",
-        status: "ready",
-      }),
-    ];
+    return DEFAULT_JUDGE_PROVIDER_CATALOG.map((entry) => this.registerDescriptor({
+      ...entry,
+      status: this.resolveDefaultStatus(entry.provider),
+    }));
   }
 
   public listDescriptors(status?: JudgeProfileStatus): JudgeProviderDescriptor[] {
@@ -95,7 +111,7 @@ export class JudgeProviderRegistryService {
     requireIsolation?: boolean;
   }): JudgeProviderDescriptor | null {
     const requireIsolation = input.requireIsolation ?? true;
-    return this.listDescriptors("ready").find((descriptor) => {
+    const candidates = this.listDescriptors("ready").filter((descriptor) => {
       if (!descriptor.supportedCapabilities.includes(input.capability)) {
         return false;
       }
@@ -109,6 +125,61 @@ export class JudgeProviderRegistryService {
         return true;
       }
       return descriptor.isolationLevel === "same_provider_allowed";
-    }) ?? null;
+    });
+    if (candidates.length === 0) {
+      return null;
+    }
+    const recentSelections = this.recentSelectionsByCapability.get(input.capability) ?? [];
+    const repeatedFamilyExists = candidates.some(
+      (candidate) => recentSelections.some((recent) => recent.providerFamily === candidate.providerFamily),
+    );
+    const repeatedProviderExists = candidates.some(
+      (candidate) => recentSelections.some((recent) => recent.providerId === candidate.providerId),
+    );
+    const sortedCandidates = [...candidates].sort((left, right) => {
+      const leftPenalty = this.computeSelectionPenalty(left, recentSelections, repeatedFamilyExists, repeatedProviderExists);
+      const rightPenalty = this.computeSelectionPenalty(right, recentSelections, repeatedFamilyExists, repeatedProviderExists);
+      return leftPenalty - rightPenalty
+        || right.trustScore - left.trustScore
+        || left.maxCostUsd - right.maxCostUsd
+        || left.providerId.localeCompare(right.providerId);
+    });
+    const selected = sortedCandidates[0] ?? null;
+    if (selected != null) {
+      this.rememberSelection(input.capability, selected);
+    }
+    return selected;
+  }
+
+  private resolveDefaultStatus(provider: string): JudgeProfileStatus {
+    const providerStatus = DEFAULT_MODEL_METADATA_REGISTRY.providers[provider]?.status;
+    return providerStatus === "disabled" || providerStatus === "deprecated" ? "disabled" : "ready";
+  }
+
+  private computeSelectionPenalty(
+    descriptor: JudgeProviderDescriptor,
+    recentSelections: readonly Pick<JudgeProviderDescriptor, "providerId" | "providerFamily">[],
+    repeatedFamilyExists: boolean,
+    repeatedProviderExists: boolean,
+  ): number {
+    let penalty = 0;
+    if (repeatedFamilyExists && recentSelections.some((recent) => recent.providerFamily === descriptor.providerFamily)) {
+      penalty += 100;
+    }
+    if (repeatedProviderExists && recentSelections.some((recent) => recent.providerId === descriptor.providerId)) {
+      penalty += 25;
+    }
+    return penalty;
+  }
+
+  private rememberSelection(capability: string, descriptor: JudgeProviderDescriptor): void {
+    const current = this.recentSelectionsByCapability.get(capability) ?? [];
+    this.recentSelectionsByCapability.set(
+      capability,
+      [
+        { providerId: descriptor.providerId, providerFamily: descriptor.providerFamily },
+        ...current.filter((entry) => entry.providerId !== descriptor.providerId),
+      ].slice(0, 4),
+    );
   }
 }

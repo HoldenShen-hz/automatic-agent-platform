@@ -59,7 +59,7 @@ export class PolicyRolloutService {
     if (candidate.status !== "approved" && normalizeRolloutLevel(strategyVersion.releaseLevel) !== "L0_off") {
       return {
         allowed: false,
-        releaseLevel: strategyVersion.releaseLevel === "shadow" ? "suggest" : "off",
+        releaseLevel: "off",
         reasonCode: "improvement.candidate_not_approved",
         reasonCodes: ["improvement.candidate_not_approved"],
       };
@@ -149,15 +149,9 @@ export class PolicyRolloutService {
     // R23-44 fix: Always evaluate rollback decision regardless of target status.
     // Rollback should be triggered for any status if metrics indicate problems.
     if (!metrics) {
-      // If no metrics provided, allow promotion but don't trigger rollback
-      if (PROGRESSIVE_STATUSES.has(targetStatus)) {
-        return {
-          allowed: false,
-          rollback: false,
-          reasonCodes: ["rollout.metrics_required"],
-        };
-      }
-      return { allowed: true, rollback: false, reasonCodes: [] };
+      return targetStatus === "evaluation_enabled"
+        ? { allowed: true, rollback: false, reasonCodes: ["rollout.metrics_deferred_for_evaluation"] }
+        : { allowed: false, rollback: false, reasonCodes: ["rollout.metrics_required"] };
     }
 
     // R23-44 fix: Evaluate auto-rollback even for non-progressive statuses

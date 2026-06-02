@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync, readlinkSync, existsSync } from "node:fs";
+import { readFileSync, readlinkSync, existsSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -94,7 +94,7 @@ test("createSymlink creates a symbolic link", () => {
     );
     assert.equal(
       readlinkSync(linkPath),
-      targetPath,
+      realpathSync(targetPath),
       "symlink should point to target"
     );
   } finally {
@@ -144,7 +144,7 @@ test("cleanupPath removes directory recursively", () => {
 });
 
 test("cleanupPath handles non-existent path gracefully", () => {
-  const nonExistentPath = "/tmp/non-existent-path-test-12345";
+  const nonExistentPath = join(tmpdir(), "non-existent-path-test-12345");
   cleanupPath(nonExistentPath);
   assert.equal(existsSync(nonExistentPath), false, "cleanupPath should leave non-existent path absent");
 });

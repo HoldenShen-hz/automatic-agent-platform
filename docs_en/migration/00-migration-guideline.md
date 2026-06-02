@@ -73,7 +73,7 @@ Layer 1 │ Infrastructure Layer (five-plane, stability, risk, security, recover
 | Technical Analysis Documents (docs_zh/analysis/) | 3 | 0 | 2 | 0 | 0 |
 | Architecture and Sequence Diagrams | 4 | 0 | 3 | 1 | 0 |
 | Contract Documents (docs_zh/contracts/) | 113 | 22 | 38 | 20 | 10 |
-| ADR (docs_zh/adr/) | 38 | 15 | 8 | 3 | 2 |
+| ADR (docs_zh/adr/) | 38 at assessment time; current repo has 124 tracked ADR files / placeholders | 15 | 8 | 3 | 2 |
 | Operations Documents (docs_zh/operations/) | 16 | 5 | 10 | 8 | 7+ |
 | Review Documents (docs_zh/reviews/) | 1 | 0 | 3 | 12 | 6 |
 | Governance Documents (docs_zh/governance/) | 7 | 4 | 3 | 1 | 0 |

@@ -10,8 +10,11 @@ import {
 import { NetworkEgressPolicyService } from "../../../../src/platform/five-plane-control-plane/iam/network-egress-policy.js";
 
 type GithubExecutionEnvelope = Awaited<ReturnType<ReturnType<typeof createGithubAdapterPlugin>["execute"]>> & {
-  endpoint: string;
-  payload?: Record<string, unknown>;
+  requestSummary: {
+    endpointHost: string;
+    endpointTemplate: string;
+    payloadKeys: string[];
+  };
 };
 
 function createMockFetch(responseBody: unknown = { ok: true }) {
@@ -72,11 +75,10 @@ test("github adapter execute returns current endpoint, payload, and idempotency 
   }) as GithubExecutionEnvelope;
 
   assert.equal(issue.action, "create_issue");
-  assert.ok(issue.endpoint.includes("/repos/owner/repo/issues"));
-  assert.deepEqual(issue.payload, {
-    title: "Test Issue",
-    body: "Issue body",
-    labels: ["bug"],
+  assert.deepEqual(issue.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/issues",
+    payloadKeys: ["body", "labels", "title"],
   });
   assert.equal(issue.status, 200);
   assert.deepEqual(issue.data, { issueId: 1 });
@@ -84,9 +86,12 @@ test("github adapter execute returns current endpoint, payload, and idempotency 
   assert.equal(issue.rateLimitPerMinute, 30);
   assert.equal(typeof issue.idempotencyKey, "string");
   assert.equal(file.action, "get_file");
-  assert.ok(file.endpoint.includes("/contents/README.md"));
+  assert.deepEqual(file.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/contents/{path}",
+    payloadKeys: [],
+  });
   assert.equal("idempotencyKey" in file, false);
-  assert.equal("payload" in file, false);
 });
 
 test("github adapter execute sanitizes workflow inputs and enforces repository validation", async () => {
@@ -108,15 +113,10 @@ test("github adapter execute sanitizes workflow inputs and enforces repository v
     },
   }) as GithubExecutionEnvelope;
 
-  assert.ok(workflow.endpoint.includes("/actions/workflows/build.yml/dispatches"));
-  assert.deepEqual(workflow.payload, {
-    ref: "main",
-    inputs: {
-      environment: "prod",
-      retries: "3",
-      dryRun: "false",
-      nullable: "",
-    },
+  assert.deepEqual(workflow.requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/actions/workflows/{workflowId}/dispatches",
+    payloadKeys: ["inputs", "ref"],
   });
 
   await assert.rejects(
@@ -183,8 +183,13 @@ test("github adapter rejects unauthenticated, policy-denied, and unsupported act
 
 test("github adapter plugin signature helpers use current hashing contract", () => {
   const pluginId = "plugin.shared.github_adapter";
-  const manifest = { version: "1.0.0", capabilities: ["external.github"] };
+  const manifest = { version: "1.0.0", capabilities: ["external.github"], nested: { b: 2, a: 1 } };
   const manifestHash = createPluginManifestHash(pluginId, manifest);
+  const reorderedHash = createPluginManifestHash(pluginId, {
+    nested: { a: 1, b: 2 },
+    capabilities: ["external.github"],
+    version: "1.0.0",
+  });
   const secretKey = "super-secret";
   const signature = createHmac("sha256", secretKey)
     .update(`${pluginId}:${manifestHash}`)
@@ -194,6 +199,7 @@ test("github adapter plugin signature helpers use current hashing contract", () 
   const rejected = verifyPluginSignature(pluginId, manifestHash, "00", secretKey);
 
   assert.equal(manifestHash.length, 64);
+  assert.equal(reorderedHash, manifestHash);
   assert.equal(verified.valid, true);
   assert.equal(rejected.valid, false);
   assert.equal(rejected.error, "plugin_signature.invalid");

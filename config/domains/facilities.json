@@ -1,7 +1,7 @@
 {
   "domainId": "facilities",
   "phase": "9e",
-  "divisionId": "general_ops",
+  "divisionId": "general-ops",
   "latencyTier": "near_realtime",
   "workflowProfile": {
     "workflowId": "facilities.primary",

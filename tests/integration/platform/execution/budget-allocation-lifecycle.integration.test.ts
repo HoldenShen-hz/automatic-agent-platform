@@ -164,7 +164,7 @@ test("budget-lifecycle: Release phase frees unused budget", () => {
     // Quota policy check: released budget available for new executions
     const quotaPolicy = {
       scope: "tenant" as const,
-      scopeId: "general_ops",
+      scopeId: "general-ops",
       resourceType: "budget" as const,
       hardLimit: 100,
       softLimit: 80,
@@ -247,7 +247,7 @@ test("budget-lifecycle: Full reserve → settle → release cycle", () => {
     // The remainingBudget of $0.97 is now available for new executions
     const quotaPolicy = {
       scope: "tenant" as const,
-      scopeId: "general_ops",
+      scopeId: "general-ops",
       resourceType: "budget" as const,
       hardLimit: 100,
       softLimit: 80,

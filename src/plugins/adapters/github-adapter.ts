@@ -3,7 +3,7 @@ import { PolicyDeniedError } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
 import { parseSafeOutboundUrl } from "../../platform/five-plane-control-plane/iam/outbound-url-policy.js";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { createZeroableCredentialSecret, type ZeroableCredentialSecret } from "./credential-hygiene.js";
+import { buildHashedCredentialFingerprint, createZeroableCredentialSecret, type ZeroableCredentialSecret } from "./credential-hygiene.js";
 
 // R8-25 FIX: Plugin signature verification for secure plugin loading
 
@@ -80,7 +80,7 @@ export function verifyPluginSignature(
  */
 export function createPluginManifestHash(pluginId: string, manifest: Record<string, unknown>): string {
   return createHash("sha256")
-    .update(`${pluginId}:${JSON.stringify(manifest)}`)
+    .update(`${pluginId}:${JSON.stringify(canonicalizeForSignature(manifest))}`)
     .digest("hex");
 }
 
@@ -88,7 +88,11 @@ function requireString(value: unknown, field: string): string {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new Error(`github_adapter.missing_${field}`);
   }
-  return value.trim();
+  const normalized = value.trim();
+  if (/[\r\n]/.test(normalized)) {
+    throw new Error(`github_adapter.invalid_${field}`);
+  }
+  return normalized;
 }
 
 function normalizeApiBaseUrl(value: string | undefined): string {
@@ -104,8 +108,8 @@ function normalizeApiBaseUrl(value: string | undefined): string {
 }
 
 function buildCredentialFingerprint(token: string): string {
-  const prefix = token.startsWith("secret://") ? "secret-ref" : "token";
-  return `${prefix}:${createHash("sha256").update(token).digest("hex").slice(0, 16)}`;
+  const prefix = token.startsWith("secret://") ? "secret_ref" : "token";
+  return buildHashedCredentialFingerprint(prefix, token, 16, "github-adapter");
 }
 
 function requireIssueNumber(value: unknown): string {
@@ -151,6 +155,21 @@ function canonicalizeForHash(value: unknown): unknown {
       Object.keys(objectValue)
         .sort()
         .map((key) => [key, canonicalizeForHash(redactSensitiveValue(key, objectValue[key]))]),
+    );
+  }
+  return value;
+}
+
+function canonicalizeForSignature(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => canonicalizeForSignature(item));
+  }
+  if (value != null && typeof value === "object") {
+    const objectValue = value as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.keys(objectValue)
+        .sort()
+        .map((key) => [key, canonicalizeForSignature(objectValue[key])]),
     );
   }
   return value;
@@ -217,6 +236,7 @@ function assertActionAllowed(capabilityIds: readonly string[] | undefined, actio
 interface GithubRequestDetails {
   readonly method: "GET" | "POST";
   readonly endpoint: string;
+  readonly endpointTemplate: string;
   readonly payload?: Record<string, unknown>;
 }
 
@@ -272,8 +292,9 @@ async function performGithubFetch(params: {
   const controller = new AbortController();
   const timeoutHandle = setTimeout(() => controller.abort(new Error("github_adapter.timeout")), params.defaultTimeoutMs);
   try {
-    const response = await params.credentialSecret.withSecret((token) =>
-      params.fetchImplementation(params.request.endpoint, {
+    const response = await params.credentialSecret.withSecretBytes((tokenBytes) => {
+      const token = tokenBytes.toString("utf8");
+      return params.fetchImplementation(params.request.endpoint, {
         method: params.request.method,
         headers: {
           "Accept": "application/vnd.github+json",
@@ -283,8 +304,8 @@ async function performGithubFetch(params: {
         },
         ...(params.request.payload === undefined ? {} : { body: JSON.stringify(params.request.payload) }),
         signal: controller.signal,
-      }),
-    );
+      });
+    });
     const responseText = await readResponseTextWithLimit(response, params.maxResponseSizeBytes);
     if (!response.ok) {
       throw new Error(`github_adapter.api_error:${response.status}:${responseText || "unknown"}`);
@@ -383,17 +404,19 @@ export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = 
         action,
         repository,
         method: request.method,
-        endpoint: request.endpoint,
-        credentialFingerprint,
         timeoutMs: defaultTimeoutMs,
         rateLimitPerMinute: defaultRateLimitPerMinute,
         retryPolicy: { maxRetries: 3, backoffMs: 250 },
+        requestSummary: {
+          endpointHost: new URL(request.endpoint).host,
+          endpointTemplate: request.endpointTemplate,
+          payloadKeys: request.payload === undefined ? [] : Object.keys(request.payload).sort(),
+        },
         ok: true,
         status: response.status,
         data: response.data,
         latencyMs: Date.now() - startTime,
         ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
-        ...(request.payload === undefined ? {} : { payload: request.payload }),
       };
     },
   };
@@ -416,18 +439,21 @@ function buildRequest(apiBaseUrl: string, action: string, repository: string, pa
       return {
         method: "POST",
         endpoint: `${apiBaseUrl}/repos/${repository}/issues`,
+        endpointTemplate: "/repos/{repository}/issues",
         payload: buildPayload(action, params),
       };
     case "create_pr_comment":
       return {
         method: "POST",
         endpoint: `${apiBaseUrl}/repos/${repository}/issues/${requireIssueNumber(params["issueNumber"])}/comments`,
+        endpointTemplate: "/repos/{repository}/issues/{issueNumber}/comments",
         payload: buildPayload(action, params),
       };
     case "dispatch_workflow":
       return {
         method: "POST",
         endpoint: `${apiBaseUrl}/repos/${repository}/actions/workflows/${encodeURIComponent(requirePathSegment(params["workflowId"], "workflowId"))}/dispatches`,
+        endpointTemplate: "/repos/{repository}/actions/workflows/{workflowId}/dispatches",
         payload: buildPayload(action, params),
       };
     case "get_file": {
@@ -436,6 +462,7 @@ function buildRequest(apiBaseUrl: string, action: string, repository: string, pa
       return {
         method: "GET",
         endpoint: endpoint.toString(),
+        endpointTemplate: "/repos/{repository}/contents/{path}",
       };
     }
     default:

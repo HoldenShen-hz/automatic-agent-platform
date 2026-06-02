@@ -8,7 +8,10 @@
  * an ObservationBundle consumed by the Assess stage.
  */
 
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+
 import { newId } from "../../contracts/types/ids.js";
+import { stableStringify } from "../../shared/cache/utils/stable-stringify.js";
 
 export interface ObservationSignal {
   readonly signalId: string;
@@ -40,17 +43,35 @@ export interface ObservationBundle {
   readonly contextSnapshot: ContextSnapshot;
   readonly assembledAt: number;
   readonly version: string;
+  readonly integrity: ObservationBundleIntegrity;
+}
+
+export interface ObservationBundleIntegrity {
+  readonly algorithm: "HMAC-SHA256";
+  readonly payloadChecksum: string;
+  readonly signature: string;
+}
+
+export interface ObservationBundleVerificationResult {
+  readonly valid: boolean;
+  readonly reasonCode: "integrity.valid" | "integrity.checksum_mismatch" | "integrity.signature_mismatch";
 }
 
 export interface ObserverServiceOptions {
   readonly version?: string;
+  readonly hmacKey?: string;
+  readonly now?: () => number;
 }
 
 export class ObserverService {
   private readonly version: string;
+  private readonly hmacKey: string;
+  private readonly now: () => number;
 
   public constructor(options: ObserverServiceOptions = {}) {
     this.version = options.version ?? "v1";
+    this.hmacKey = options.hmacKey?.trim() || randomBytes(32).toString("hex");
+    this.now = options.now ?? (() => Date.now());
   }
 
   /**
@@ -81,17 +102,29 @@ export class ObserverService {
     parentNodeRunId?: string;
     subgraphNodeIds?: readonly string[];
   }): ObservationBundle {
-    const signals = this.collectSignals(params);
-    const contextSnapshot = this.assembleContextSnapshot(params);
-
-    return {
-      bundleId: newId("obs_bundle"),
+    const issuedTimestamps = createTimestampSequence(this.now());
+    const signals = this.collectSignals(params, issuedTimestamps);
+    const contextSnapshot = this.assembleContextSnapshot(params, issuedTimestamps);
+    const assembledAt = issuedTimestamps();
+    const bundleId = newId("obs_bundle");
+    const integrity = this.buildIntegrity({
+      bundleId,
       taskId: params.taskId,
       signals,
       contextSnapshot,
-      assembledAt: Date.now(),
+      assembledAt,
       version: this.version,
-    };
+    });
+
+    return freezeBundle({
+      bundleId,
+      taskId: params.taskId,
+      signals,
+      contextSnapshot,
+      assembledAt,
+      version: this.version,
+      integrity,
+    });
   }
 
   private collectSignals(params: {
@@ -103,7 +136,7 @@ export class ObserverService {
     knowledgeRefs?: readonly string[];
     parentNodeRunId?: string;
     subgraphNodeIds?: readonly string[];
-  }): readonly ObservationSignal[] {
+  }, nextTimestamp: () => number): readonly ObservationSignal[] {
     const signals: ObservationSignal[] = [];
 
     // Task-level signals
@@ -111,8 +144,11 @@ export class ObserverService {
       signalId: newId("obs_sig"),
       source: "task",
       type: "goal_definition",
-      data: { goal: params.taskGoal, inputs: params.taskInputs },
-      timestamp: Date.now(),
+      data: freezeRecord({
+        goal: params.taskGoal,
+        inputs: cloneRecord(params.taskInputs),
+      }),
+      timestamp: nextTimestamp(),
     });
 
     // R11-02 FIX: Workflow-aware observation - include parent/child relationships
@@ -122,8 +158,8 @@ export class ObserverService {
         signalId: newId("obs_sig"),
         source: "context",
         type: "parent_workflow_context",
-        data: { parentNodeRunId: params.parentNodeRunId },
-        timestamp: Date.now(),
+        data: freezeRecord({ parentNodeRunId: params.parentNodeRunId }),
+        timestamp: nextTimestamp(),
       });
     }
 
@@ -132,8 +168,8 @@ export class ObserverService {
         signalId: newId("obs_sig"),
         source: "context",
         type: "subgraph_nodes",
-        data: { subgraphNodeIds: params.subgraphNodeIds },
-        timestamp: Date.now(),
+        data: freezeRecord({ subgraphNodeIds: [...params.subgraphNodeIds] }),
+        timestamp: nextTimestamp(),
       });
     }
 
@@ -143,8 +179,8 @@ export class ObserverService {
         signalId: newId("obs_sig"),
         source: "environment",
         type: "environment_state",
-        data: params.environmentState,
-        timestamp: Date.now(),
+        data: cloneRecord(params.environmentState),
+        timestamp: nextTimestamp(),
       });
     }
 
@@ -154,8 +190,8 @@ export class ObserverService {
         signalId: newId("obs_sig"),
         source: "history",
         type: "relevant_execution_history",
-        data: { historyRefs: params.relevantHistory },
-        timestamp: Date.now(),
+        data: freezeRecord({ historyRefs: [...params.relevantHistory] }),
+        timestamp: nextTimestamp(),
       });
     }
 
@@ -165,12 +201,12 @@ export class ObserverService {
         signalId: newId("obs_sig"),
         source: "knowledge",
         type: "relevant_knowledge",
-        data: { knowledgeRefs: params.knowledgeRefs },
-        timestamp: Date.now(),
+        data: freezeRecord({ knowledgeRefs: [...params.knowledgeRefs] }),
+        timestamp: nextTimestamp(),
       });
     }
 
-    return signals;
+    return Object.freeze(signals.map((signal) => Object.freeze(signal)));
   }
 
   private assembleContextSnapshot(params: {
@@ -181,7 +217,7 @@ export class ObserverService {
     knowledgeRefs?: readonly string[];
     parentNodeRunId?: string;
     subgraphNodeIds?: readonly string[];
-  }): ContextSnapshot {
+  }, nextTimestamp: () => number): ContextSnapshot {
     // R11-02 FIX: Include workflow hierarchy info in context snapshot
     const workflowContext: Record<string, unknown> = {};
     if (params.parentNodeRunId) {
@@ -191,20 +227,95 @@ export class ObserverService {
       workflowContext.subgraphNodeIds = params.subgraphNodeIds;
     }
 
-    return {
+    return Object.freeze({
       snapshotId: newId("ctx_snap"),
       taskGoal: params.taskGoal,
-      taskInputs: params.taskInputs,
-      environmentState: params.environmentState ?? {},
-      relevantHistory: params.relevantHistory ?? [],
-      knowledgeRefs: params.knowledgeRefs ?? [],
-      capturedAt: Date.now(),
+      taskInputs: cloneRecord(params.taskInputs),
+      environmentState: cloneRecord(params.environmentState ?? {}),
+      relevantHistory: Object.freeze([...(params.relevantHistory ?? [])]),
+      knowledgeRefs: Object.freeze([...(params.knowledgeRefs ?? [])]),
+      capturedAt: nextTimestamp(),
       // R11-02 FIX: Include workflow hierarchy in snapshot data
-      ...(Object.keys(workflowContext).length > 0 && { workflowContext }),
-    };
+      ...(Object.keys(workflowContext).length > 0 && { workflowContext: freezeRecord(workflowContext) }),
+    });
+  }
+
+  public verifyBundle(bundle: ObservationBundle): ObservationBundleVerificationResult {
+    const canonicalPayload = stableStringify(buildIntegrityPayload(bundle));
+    const expectedChecksum = createHash("sha256").update(canonicalPayload, "utf8").digest("hex");
+    if (bundle.integrity.payloadChecksum !== expectedChecksum) {
+      return { valid: false, reasonCode: "integrity.checksum_mismatch" };
+    }
+    const expectedSignature = createHmac("sha256", this.hmacKey).update(canonicalPayload, "utf8").digest("hex");
+    if (!safeHexEqual(bundle.integrity.signature, expectedSignature)) {
+      return { valid: false, reasonCode: "integrity.signature_mismatch" };
+    }
+    return { valid: true, reasonCode: "integrity.valid" };
   }
 
   public getVersion(): string {
     return this.version;
   }
+
+  private buildIntegrity(bundle: Omit<ObservationBundle, "integrity">): ObservationBundleIntegrity {
+    const canonicalPayload = stableStringify(buildIntegrityPayload(bundle));
+    return Object.freeze({
+      algorithm: "HMAC-SHA256",
+      payloadChecksum: createHash("sha256").update(canonicalPayload, "utf8").digest("hex"),
+      signature: createHmac("sha256", this.hmacKey).update(canonicalPayload, "utf8").digest("hex"),
+    });
+  }
+}
+
+function buildIntegrityPayload(bundle: Omit<ObservationBundle, "integrity">): Record<string, unknown> {
+  return {
+    bundleId: bundle.bundleId,
+    taskId: bundle.taskId,
+    signals: bundle.signals,
+    contextSnapshot: bundle.contextSnapshot,
+    assembledAt: bundle.assembledAt,
+    version: bundle.version,
+  };
+}
+
+function createTimestampSequence(baseTimestamp: number): () => number {
+  let offset = 0;
+  return () => baseTimestamp + offset++;
+}
+
+function cloneRecord(record: Record<string, unknown>): Record<string, unknown> {
+  return freezeRecord(structuredClone(record));
+}
+
+function freezeRecord<T extends Record<string, unknown>>(record: T): T {
+  for (const value of Object.values(record)) {
+    deepFreezeValue(value);
+  }
+  return Object.freeze(record);
+}
+
+function deepFreezeValue(value: unknown): void {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      deepFreezeValue(item);
+    }
+    Object.freeze(value);
+    return;
+  }
+  if (value != null && typeof value === "object") {
+    for (const nested of Object.values(value as Record<string, unknown>)) {
+      deepFreezeValue(nested);
+    }
+    Object.freeze(value);
+  }
+}
+
+function freezeBundle(bundle: ObservationBundle): ObservationBundle {
+  return Object.freeze(bundle);
+}
+
+function safeHexEqual(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left, "hex");
+  const rightBuffer = Buffer.from(right, "hex");
+  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }

@@ -9,10 +9,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createHmac, createHash } from "node:crypto";
 import {
+  configureAuditIntegrity,
   computeTier1AuditEventChecksum,
   computeTier1AuditChainHash,
   verifyTier1AuditIntegrity,
   type Tier1AuditIntegrityVerificationEntry,
+  __dangerousResetAuditIntegrityConfigForTests,
 } from "../../../../../src/platform/five-plane-control-plane/iam/audit-event-integrity.js";
 import type { EventRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
@@ -87,6 +89,18 @@ function expectedChainHash(input: {
     eventId: input.eventId,
   }));
 }
+
+test.beforeEach(() => {
+  __dangerousResetAuditIntegrityConfigForTests();
+  configureAuditIntegrity({
+    hmacKey: TEST_HMAC_KEY,
+    isProduction: false,
+  });
+});
+
+test.afterEach(() => {
+  __dangerousResetAuditIntegrityConfigForTests();
+});
 
 test("computeTier1AuditEventChecksum uses HMAC-SHA256 (not plain SHA-256)", () => {
   const event = createAuditEvent("evt-hmac-test-1", "2026-04-07T00:00:00.000Z");

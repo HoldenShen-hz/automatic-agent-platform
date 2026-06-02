@@ -105,6 +105,7 @@ function validateRecordShape(record) {
     "hasEval",
     "hasRedTeam",
     "hasTrainingPolicy",
+    "hasRoiBaseline",
     "hasOwner",
     "blockers",
   ]) {
@@ -137,6 +138,7 @@ function buildSummary(report) {
     `Total divisions: ${report.summary.totalDivisions}`,
     `P0 divisions: ${report.summary.p0Divisions}`,
     `Blocked divisions: ${report.summary.blockedDivisions}`,
+    `ROI tracked divisions: ${report.summary.roiTrackedDivisions}`,
     `Orphan source modules: ${report.summary.orphanSourceModules}`,
     "",
     "| Division | Family | Status | Risk | Blockers |",
@@ -243,6 +245,8 @@ export function buildDivisionInventory(options = {}) {
       const hasRedTeam = existsSync(redTeamPath);
       const trainingPolicyPath = join(platformRoot, "training-data-policy", "divisions", `${divisionId}.yaml`);
       const hasTrainingPolicy = existsSync(trainingPolicyPath);
+      const roiBaselinePath = join(platformRoot, "roi", "divisions", `${divisionId}.yaml`);
+      const hasRoiBaseline = existsSync(roiBaselinePath);
       const hasOwner = typeof divisionYaml.domain_descriptor?.ownerOrgNodeId === "string"
         || typeof coverageCard.owner === "string";
       const riskLevel = typeof coverageCard.riskLevel === "string"
@@ -286,12 +290,14 @@ export function buildDivisionInventory(options = {}) {
         hasEval,
         hasRedTeam,
         hasTrainingPolicy,
+        hasRoiBaseline,
         hasOwner,
         coverageCardPath: hasCoverageCard ? relativeToRoot(platformRoot, coverageCardPath) : null,
         scenarioRefs: scenariosByDivision.get(divisionId) ?? [],
         evalRefs,
         redTeamRefs: hasRedTeam ? [relativeToRoot(platformRoot, redTeamPath)] : [],
         trainingPolicyRefs: hasTrainingPolicy ? [relativeToRoot(platformRoot, trainingPolicyPath)] : [],
+        roiRefs: hasRoiBaseline ? [relativeToRoot(platformRoot, roiBaselinePath)] : [],
         docRefs: docRefIndex.get(divisionId) ?? [],
         testRefs: testRefIndex.get(divisionId) ?? [],
         uiRefs: uiRefIndex.get(divisionId) ?? [],
@@ -323,6 +329,9 @@ export function buildDivisionInventory(options = {}) {
       if (JSON.stringify(previous.blockers ?? []) !== JSON.stringify(record.blockers)) {
         changes.push(`blockers:${(previous.blockers ?? []).join(",")}=>${record.blockers.join(",")}`);
       }
+      if (JSON.stringify(previous.roiRefs ?? []) !== JSON.stringify(record.roiRefs)) {
+        changes.push(`roi:${(previous.roiRefs ?? []).join(",")}=>${record.roiRefs.join(",")}`);
+      }
       return changes.length > 0 ? [{ divisionId: record.divisionId, changes }] : [];
     }),
   };
@@ -339,6 +348,7 @@ export function buildDivisionInventory(options = {}) {
       totalDivisions: records.length,
       p0Divisions: records.filter((record) => ["coding", "knowledge-base", "research", "customer-service", "support"].includes(record.divisionId)).length,
       blockedDivisions: records.filter((record) => record.blockers.length > 0).length,
+      roiTrackedDivisions: records.filter((record) => record.hasRoiBaseline).length,
       orphanSourceModules: orphanSourceModules.length,
     },
     orphans: {

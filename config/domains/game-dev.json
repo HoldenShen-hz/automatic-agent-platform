@@ -1,7 +1,7 @@
 {
   "domainId": "game-dev",
   "phase": "9f",
-  "divisionId": "engineering_ops",
+  "divisionId": "engineering-ops",
   "latencyTier": "near_realtime",
   "workflowProfile": {
     "workflowId": "game-dev.primary",

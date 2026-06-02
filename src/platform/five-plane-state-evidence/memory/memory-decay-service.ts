@@ -130,6 +130,15 @@ export interface DecaySummary {
   }>;
 }
 
+const MAX_HIT_COUNT_FOR_ACCESS_BOOST = 32;
+const DEFAULT_COMPRESSION_SCORE_WEIGHTS = {
+  quality: 0.35,
+  importance: 0.35,
+  freshness: 0.2,
+  hit: 0.1,
+} as const;
+const DEFAULT_HIT_SCORE_DENOMINATOR = 20;
+
 /**
  * Calculates the freshness score for a memory
  *
@@ -166,7 +175,8 @@ export function calculateFreshness(
   }
 
   // Apply access boost (each hit slows decay)
-  const accessBoost = Math.pow(1 + config.accessBoostFactor, memory.hitCount);
+  const boundedHitCount = Math.max(0, Math.min(memory.hitCount, MAX_HIT_COUNT_FOR_ACCESS_BOOST));
+  const accessBoost = Math.pow(1 + config.accessBoostFactor, boundedHitCount);
   freshness = freshness * accessBoost;
 
   // Clamp to minFreshness
@@ -225,7 +235,8 @@ export class MemoryDecayService {
     const decayAmount = Math.max(0, previousFreshness - currentFreshness);
 
     // Calculate access boost
-    const accessBoost = Math.pow(1 + config.accessBoostFactor, memory.hitCount);
+    const boundedHitCount = Math.max(0, Math.min(memory.hitCount, MAX_HIT_COUNT_FOR_ACCESS_BOOST));
+    const accessBoost = Math.pow(1 + config.accessBoostFactor, boundedHitCount);
 
     // Calculate effective decay rate
     const decayRate = config.halfLifeSeconds > 0
@@ -319,14 +330,14 @@ export class MemoryDecayService {
       // Calculate compression score (0-1, higher is better to keep)
       const qualityScore = memory.qualityScore ?? 0.5;
       const importanceScore = memory.importanceScore ?? 0.5;
-      const hitScore = Math.min(1.0, (memory.hitCount ?? 0) / 20);
+      const hitScore = Math.min(1.0, (memory.hitCount ?? 0) / DEFAULT_HIT_SCORE_DENOMINATOR);
 
-      // Weighted combination
+      const weights = DEFAULT_COMPRESSION_SCORE_WEIGHTS;
       const compressionScore = (
-        qualityScore * 0.35 +
-        importanceScore * 0.35 +
-        freshness * 0.2 +
-        hitScore * 0.1
+        qualityScore * weights.quality +
+        importanceScore * weights.importance +
+        freshness * weights.freshness +
+        hitScore * weights.hit
       );
 
       // Determine reason for compression candidate
@@ -347,7 +358,12 @@ export class MemoryDecayService {
     }
 
     // Sort by score (lowest first = highest compression priority)
-    candidates.sort((a, b) => a.compressionScore - b.compressionScore);
+    candidates.sort((a, b) => {
+      if (a.compressionScore !== b.compressionScore) {
+        return a.compressionScore - b.compressionScore;
+      }
+      return a.memory.id.localeCompare(b.memory.id, "en");
+    });
 
     // Apply max limit if specified
     const limitedCandidates = maxCandidates != null

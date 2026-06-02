@@ -26,7 +26,7 @@ test("pmf validation export persists report history and artifact evidence", () =
     const exported = service.exportValidation({
       evaluatedAt: PMF_EVALUATED_AT,
       profileName: "phase3_export",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
     });
 
     assert.equal(exported.report.profileName, "phase3_export");
@@ -66,7 +66,7 @@ test("pmf validation can scope metrics to a single division", () => {
     const scopedReport = service.buildReport({
       evaluatedAt: PMF_EVALUATED_AT,
       profileName: "general_only",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
     });
 
     assert.equal(allReport.metrics.taskCount, 6);

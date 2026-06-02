@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { mkdirSync, rmSync } from "node:fs";
 import test from "node:test";
 
 import { MigrationRunner } from "../../../../../src/platform/five-plane-state-evidence/truth/migration-runner.js";
@@ -57,6 +59,7 @@ test("MigrationRunner up runs storage migrate before reading status", async () =
     asyncSql: {} as never,
     asyncRepos: {} as never,
     postgres: {
+      filePath: "/tmp/aa-migration-runner-postgres.db",
       getSchemaStatus: async () => {
         calls.push("status");
         return {
@@ -101,10 +104,7 @@ test("MigrationRunner down reports fail-closed rollback status", async () => {
     close: () => {},
   } as unknown as AuthoritativeStorageBackendHandle);
 
-  const result = await runner.down();
-  assert.equal(result.action, "down");
-  assert.equal(result.rollbackSupported, false);
-  assert.match(result.rollbackReason ?? "", /not supported/);
+  await assert.rejects(() => runner.down(), /migration_runner\.down_not_supported/);
 });
 
 test("MigrationRunner up does not read schema status when migrate fails", async () => {
@@ -132,6 +132,7 @@ test("MigrationRunner up does not read schema status when migrate fails", async 
     asyncSql: {} as never,
     asyncRepos: {} as never,
     postgres: {
+      filePath: "/tmp/aa-migration-runner-postgres-failure.db",
       getSchemaStatus: async () => {
         calls.push("status");
         return {
@@ -153,4 +154,32 @@ test("MigrationRunner up does not read schema status when migrate fails", async 
 
   await assert.rejects(() => runner.up(), /migration failed/);
   assert.deepEqual(calls, ["migrate"]);
+});
+
+test("MigrationRunner up fails when migration lock is already held", async () => {
+  const runner = new MigrationRunner({
+    driver: "sqlite",
+    runtimeProfile: { driver: "sqlite", environment: "dev", issues: [], postgres: null },
+    sql: {
+      getSchemaStatus: () => ({
+        currentVersion: 1,
+        expectedVersion: 1,
+        upToDate: true,
+        pendingVersions: [],
+        checksumMismatches: [],
+      }),
+    },
+    asyncSql: {} as never,
+    asyncRepos: {} as never,
+    sqlite: { filePath: "/tmp/aa-migration-lock-test.db" } as never,
+    migrate: () => {},
+    close: () => {},
+  } as unknown as AuthoritativeStorageBackendHandle);
+
+  const storageRef = "/tmp/aa-migration-lock-test.db";
+  const lockDir = `/tmp/.aa-schema-migration-lock-${createHash("sha256").update(storageRef).digest("hex")}`;
+  rmSync(lockDir, { recursive: true, force: true });
+  mkdirSync(lockDir, { recursive: true });
+  await assert.rejects(() => runner.up(), /migration_runner\.lock_already_held/);
+  rmSync(lockDir, { recursive: true, force: true });
 });

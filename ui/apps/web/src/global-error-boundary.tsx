@@ -4,13 +4,14 @@ import { reportUiError } from "./ui-telemetry";
 
 interface GlobalErrorBoundaryState {
   readonly hasError: boolean;
+  readonly retryKey: number;
 }
 
 export class GlobalErrorBoundary extends React.Component<React.PropsWithChildren, GlobalErrorBoundaryState> {
-  public state: GlobalErrorBoundaryState = { hasError: false };
+  public state: GlobalErrorBoundaryState = { hasError: false, retryKey: 0 };
 
   public static getDerivedStateFromError(): GlobalErrorBoundaryState {
-    return { hasError: true };
+    return { hasError: true, retryKey: 0 };
   }
 
   public componentDidCatch(error: Error, info: React.ErrorInfo): void {
@@ -27,7 +28,7 @@ export class GlobalErrorBoundary extends React.Component<React.PropsWithChildren
           <p>{translateMessage("ui.globalError.message")}</p>
           <button
             onClick={() => {
-              this.setState({ hasError: false });
+              this.setState((current) => ({ hasError: false, retryKey: current.retryKey + 1 }));
             }}
             type="button"
           >
@@ -36,6 +37,6 @@ export class GlobalErrorBoundary extends React.Component<React.PropsWithChildren
         </main>
       );
     }
-    return this.props.children;
+    return <React.Fragment key={this.state.retryKey}>{this.props.children}</React.Fragment>;
   }
 }

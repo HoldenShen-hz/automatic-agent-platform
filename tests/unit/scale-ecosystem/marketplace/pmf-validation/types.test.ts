@@ -187,13 +187,13 @@ test("PmfValidationRunOptions allows partial thresholds [types]", () => {
 test("SqlFilterClause structure is correct [types]", () => {
   const clause: SqlFilterClause = {
     whereClause: "WHERE tasks.created_at >= ? AND tasks.created_at <= ? AND tasks.division_id = ?",
-    parameters: ["2026-04-01T00:00:00.000Z", "2026-04-14T00:00:00.000Z", "engineering_ops"],
+    parameters: ["2026-04-01T00:00:00.000Z", "2026-04-14T00:00:00.000Z", "engineering-ops"],
   };
 
   assert.ok(clause.whereClause.includes("WHERE"));
   assert.equal(clause.parameters.length, 3);
   assert.equal(clause.parameters[0], "2026-04-01T00:00:00.000Z");
-  assert.equal(clause.parameters[2], "engineering_ops");
+  assert.equal(clause.parameters[2], "engineering-ops");
 });
 
 test("SqlFilterClause allows empty parameters [types]", () => {

@@ -230,3 +230,47 @@ test("ReplayWorker records isolated sandbox replay metadata when explicitly allo
   assert.equal(report.metadata.replayPolicyMode, "isolated_sandbox");
   assert.equal(report.metadata.replaySandboxId, "replay-sandbox-1");
 });
+
+test("ReplayWorker respects maxConcurrent when building replay reports [replay-worker]", async () => {
+  let inFlight = 0;
+  let peak = 0;
+  const worker = new ReplayWorker({
+    replayService: {
+      buildTaskReplayReport: async (taskId: string) => {
+        inFlight++;
+        peak = Math.max(peak, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        inFlight--;
+        return {
+          taskId,
+          outcome: "no_recovery_activity" as const,
+        };
+      },
+    } as never,
+    listTaskIds: () => ["task-1", "task-2", "task-3", "task-4"],
+    cadence: { intervalMs: 60_000, maxConcurrent: 2, priority: "normal" },
+  });
+
+  const report = await worker.runRecoveryCycle();
+
+  assert.equal(report.itemsProcessed, 4);
+  assert.equal(peak, 2);
+});
+
+test("ReplayWorker blocks cancelled and dead-lettered replays outside isolated sandbox [replay-worker]", async () => {
+  const worker = new ReplayWorker({
+    replayService: {
+      buildTaskReplayReport: (taskId: string) => ({
+        taskId,
+        outcome: taskId === "task-1" ? "cancelled" as const : "dead_lettered" as const,
+      }),
+    } as never,
+    listTaskIds: () => ["task-1", "task-2"],
+    now: () => "2024-06-01T12:00:00.000Z",
+  });
+
+  const report = await worker.runRecoveryCycle();
+
+  assert.equal(report.itemsProcessed, 0);
+  assert.equal(report.errors[0]?.code, "replay.real_side_effect_blocked");
+});

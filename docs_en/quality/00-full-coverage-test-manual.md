@@ -2148,7 +2148,7 @@ const task = {
   id: "task-001",
   parentId: null,
   rootId: "task-001",
-  divisionId: "general_ops",
+  divisionId: "general-ops",
   title: "test",
   status: "queued",
   source: "user",

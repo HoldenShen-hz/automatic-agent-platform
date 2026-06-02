@@ -57,10 +57,20 @@ type CoverageLibModule = {
   ) => Record<string, CoverageMetricSet>;
 };
 
+type DivisionCoverageLibModule = {
+  parseLimitedYaml: (raw: string, sourcePath?: string) => unknown;
+  parseCliArgs: (argv: string[], options?: { cwd?: string }) => Record<string, string>;
+  resolvePlatformRoot: (platformRoot?: string) => string;
+};
+
 const coverageLib = await import(
   new URL("../../../scripts/ci/coverage-lib.mjs", import.meta.url).href
 ) as CoverageLibModule;
 const { buildCoverageReport, buildBaseline, compareAgainstBaseline, mergeCoverageSummaries } = coverageLib;
+const divisionCoverageLib = await import(
+  new URL("../../../scripts/ci/division-coverage-lib.mjs", import.meta.url).href
+) as DivisionCoverageLibModule;
+const { parseLimitedYaml, parseCliArgs, resolvePlatformRoot } = divisionCoverageLib;
 
 test("buildCoverageReport aggregates metrics by directory", () => {
   const summary = {
@@ -269,6 +279,45 @@ test("compareAgainstBaseline detects missing coverage", () => {
 
   assert.ok(result.failures.length > 0, "should have failures");
   assert.ok(result.failures.some((f) => f.includes("global lines")));
+});
+
+test("parseLimitedYaml accepts quoted scalars containing colons", () => {
+  const parsed = parseLimitedYaml([
+    "divisionId: coding",
+    "notes: \"contains: colon and path /tmp/example\"",
+    "toolActions:",
+    "  - toolId: github",
+    "    actionId: create_pr_draft",
+  ].join("\n"), "inline.yaml") as {
+    notes?: string;
+    toolActions?: Array<{ actionId?: string }>;
+  };
+
+  assert.equal(parsed.notes, "contains: colon and path /tmp/example");
+  assert.equal(parsed.toolActions?.[0]?.actionId, "create_pr_draft");
+});
+
+test("parseCliArgs rejects unknown flags and roots escaping the working tree", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-division-coverage-cli-"));
+  try {
+    assert.throws(
+      () => parseCliArgs(["--unsupported=true"], { cwd: workspace }),
+      /division_coverage\.unknown_flag/,
+    );
+    assert.throws(
+      () => parseCliArgs(["--root=../../etc"], { cwd: join(workspace, "nested") }),
+      /division_coverage\.invalid_root/,
+    );
+    const parsed = parseCliArgs(["--root=subdir", "--mode=warning"], { cwd: workspace });
+    assert.equal(parsed.root, join(workspace, "subdir"));
+    assert.equal(parsed.mode, "warning");
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("resolvePlatformRoot defaults to the repository root instead of process.cwd", () => {
+  assert.equal(resolvePlatformRoot(), process.cwd());
 });
 
 test("compareAgainstBaseline passes when coverage meets baseline", () => {

@@ -29,7 +29,7 @@ test("LongRunningWorkflowService.getSuspension returns null for unknown id", () 
     seedTaskAndExecution(h.db, h.store, { taskId: "task_get_1", executionId: "exec_get_1" });
     h.store.insertWorkflowState({
       taskId: "task_get_1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_get_1",
       currentStepIndex: 1,
       status: "running",
@@ -56,7 +56,7 @@ test("LongRunningWorkflowService.getSuspension returns suspension after suspend"
     seedTaskAndExecution(h.db, h.store, { taskId: "task_get_2", executionId: "exec_get_2" });
     h.store.insertWorkflowState({
       taskId: "task_get_2",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_get_2",
       currentStepIndex: 2,
       status: "running",
@@ -100,7 +100,7 @@ test("LongRunningWorkflowService.listSuspensions returns all suspensions", () =>
 
     h.store.insertWorkflowState({
       taskId: "task_list_1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_list_1",
       currentStepIndex: 1,
       status: "running",
@@ -114,7 +114,7 @@ test("LongRunningWorkflowService.listSuspensions returns all suspensions", () =>
 
     h.store.insertWorkflowState({
       taskId: "task_list_2",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_list_2",
       currentStepIndex: 1,
       status: "running",
@@ -161,7 +161,7 @@ test("LongRunningWorkflowService.listSuspensions returns empty when no suspensio
     seedTaskAndExecution(h.db, h.store, { taskId: "task_empty", executionId: "exec_empty" });
     h.store.insertWorkflowState({
       taskId: "task_empty",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_empty",
       currentStepIndex: 1,
       status: "running",
@@ -190,7 +190,7 @@ test("LongRunningWorkflowService.suspend throws on terminal workflow with comple
 
     h.store.insertWorkflowState({
       taskId: "task_term_1",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_term_1",
       currentStepIndex: 1,
       status: "completed",
@@ -227,7 +227,7 @@ test("LongRunningWorkflowService.suspend throws on terminal workflow with failed
 
     h.store.insertWorkflowState({
       taskId: "task_term_2",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_term_2",
       currentStepIndex: 1,
       status: "failed",
@@ -262,7 +262,7 @@ test("LongRunningWorkflowService.resume throws for unknown suspension id", () =>
     seedTaskAndExecution(h.db, h.store, { taskId: "task_rnf", executionId: "exec_rnf" });
     h.store.insertWorkflowState({
       taskId: "task_rnf",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_rnf",
       currentStepIndex: 1,
       status: "running",
@@ -292,7 +292,7 @@ test("LongRunningWorkflowService.resume returns not_allowed when resumeAfter is 
 
     h.store.insertWorkflowState({
       taskId: "task_rf",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_rf",
       currentStepIndex: 1,
       status: "running",
@@ -332,7 +332,7 @@ test("LongRunningWorkflowService.sweepExpired does not expire non-expired suspen
 
     h.store.insertWorkflowState({
       taskId: "task_sw_ne",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_sw_ne",
       currentStepIndex: 1,
       status: "running",
@@ -375,7 +375,7 @@ test("LongRunningWorkflowService.sweepExpired with remain_pending does not chang
 
     h.store.insertWorkflowState({
       taskId: "task_sw_rp",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_sw_rp",
       currentStepIndex: 1,
       status: "running",
@@ -422,7 +422,7 @@ test("LongRunningWorkflowService.resume updates suspension status to resumable",
 
     h.store.insertWorkflowState({
       taskId: "task_rs",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_rs",
       currentStepIndex: 1,
       status: "running",
@@ -463,7 +463,7 @@ test("LongRunningWorkflowService.markDue does not mark non-active suspensions", 
 
     h.store.insertWorkflowState({
       taskId: "task_md",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_md",
       currentStepIndex: 1,
       status: "running",
@@ -503,7 +503,7 @@ test("LongRunningWorkflowService.buildSleepLease throws for unknown suspension",
     seedTaskAndExecution(h.db, h.store, { taskId: "task_le", executionId: "exec_le" });
     h.store.insertWorkflowState({
       taskId: "task_le",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_le",
       currentStepIndex: 1,
       status: "running",
@@ -531,7 +531,7 @@ test("LongRunningWorkflowService.buildResumeWindow throws for unknown suspension
     seedTaskAndExecution(h.db, h.store, { taskId: "task_win", executionId: "exec_win" });
     h.store.insertWorkflowState({
       taskId: "task_win",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_win",
       currentStepIndex: 1,
       status: "running",
@@ -561,7 +561,7 @@ test("LongRunningWorkflowService emits workflow:suspended event on suspend", () 
 
     h.store.insertWorkflowState({
       taskId: "task_ev_s",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_ev_s",
       currentStepIndex: 1,
       status: "running",
@@ -601,7 +601,7 @@ test("LongRunningWorkflowService emits workflow:resume_requested event on succes
 
     h.store.insertWorkflowState({
       taskId: "task_ev_r",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_ev_r",
       currentStepIndex: 1,
       status: "running",
@@ -643,7 +643,7 @@ test("LongRunningWorkflowService emits workflow:suspension_expired on sweep expi
 
     h.store.insertWorkflowState({
       taskId: "task_ev_e",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "wf_ev_e",
       currentStepIndex: 1,
       status: "running",

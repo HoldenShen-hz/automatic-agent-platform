@@ -49,6 +49,7 @@ import {
 export {
   HarnessSdkError,
   buildPlanGraphBundle,
+  isIso8601Timestamp,
   validatePlanGraph,
   validatePlanGraphBundle,
 } from "./harness-sdk-support.js";

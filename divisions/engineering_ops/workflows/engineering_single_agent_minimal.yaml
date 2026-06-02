@@ -1,9 +1,0 @@
-id: engineering_single_agent_minimal
-division_id: engineering_ops
-steps:
-  - step_id: implement_request
-    role_id: engineer
-    output_key: implementation
-    output_schema: schemas/minimal-output.json
-    timeout_ms: 120000
-    max_attempts: 1

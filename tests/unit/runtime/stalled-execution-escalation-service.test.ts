@@ -34,7 +34,7 @@ test("stalled execution escalation service builds a missing-heartbeat escalation
     );
     store.insertWorkflowState({
       taskId: "task-stalled-escalation",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",

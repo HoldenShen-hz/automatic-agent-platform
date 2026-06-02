@@ -11,8 +11,8 @@ export function assertIdentifier(value: string, code: string): string {
 }
 
 export function assertPositiveNumber(value: number, code: string): number {
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new ValidationError(code, `${code}: Value must be a positive number, got: ${value}`, {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new ValidationError(code, `${code}: Value must be a non-negative number, got: ${value}`, {
       details: { value },
     });
   }
@@ -20,7 +20,16 @@ export function assertPositiveNumber(value: number, code: string): number {
 }
 
 export function roundCurrency(value: number): number {
-  return Math.round(value * 10_000) / 10_000;
+  const scaled = value * 10_000;
+  const floor = Math.floor(scaled);
+  const delta = scaled - floor;
+  if (delta < 0.5) {
+    return floor / 10_000;
+  }
+  if (delta > 0.5) {
+    return (floor + 1) / 10_000;
+  }
+  return ((floor % 2 === 0 ? floor : floor + 1)) / 10_000;
 }
 
 export function monthWindow(at: string): { start: string; end: string; periodId: string } {

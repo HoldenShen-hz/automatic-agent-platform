@@ -2,6 +2,14 @@ import type { AuthoritativeSqlDatabase } from "../five-plane-state-evidence/trut
 import type {
   CostEstimate,
   CostEstimationConfig,
+  CostEstimationScope,
+  CostEstimationServicePort,
+} from "../contracts/types/cost.js";
+
+export type {
+  CostEstimate,
+  CostEstimationConfig,
+  CostEstimationScope,
   CostEstimationServicePort,
 } from "../contracts/types/cost.js";
 
@@ -21,18 +29,26 @@ export class CostEstimationService implements CostEstimationServicePort {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
-  public estimate(divisionId?: string | null): CostEstimate {
+  public estimate(scope?: string | CostEstimationScope | null, tenantIdOverride?: string | null): CostEstimate {
+    const { divisionId, tenantId } = normalizeScope(scope, tenantIdOverride);
     if (divisionId) {
-      const divisionResult = this.db.connection
-        .prepare(
-          `SELECT AVG(ce.cost_usd) AS avg_cost, COUNT(*) AS sample_count
+      const divisionSql = tenantId == null
+        ? `SELECT AVG(ce.cost_usd) AS avg_cost, COUNT(*) AS sample_count
            FROM cost_events ce
            INNER JOIN tasks t ON ce.task_id = t.id
            WHERE t.division_id = ?
              AND t.status IN ('done', 'failed')
-             AND ce.cost_usd > 0`,
-        )
-        .get(divisionId) as { avg_cost: number | null; sample_count: number } | undefined;
+             AND ce.cost_usd > 0`
+        : `SELECT AVG(ce.cost_usd) AS avg_cost, COUNT(*) AS sample_count
+           FROM cost_events ce
+           INNER JOIN tasks t ON ce.task_id = t.id
+           WHERE t.division_id = ?
+             AND t.tenant_id = ?
+             AND t.status IN ('done', 'failed')
+             AND ce.cost_usd > 0`;
+      const divisionResult = this.db.connection
+        .prepare(divisionSql)
+        .get(...(tenantId == null ? [divisionId] : [divisionId, tenantId])) as { avg_cost: number | null; sample_count: number } | undefined;
 
       if (divisionResult?.avg_cost != null && divisionResult.sample_count > 0) {
         return {
@@ -45,13 +61,24 @@ export class CostEstimationService implements CostEstimationServicePort {
       }
     }
 
-    const globalResult = this.db.connection
-      .prepare(
-        `SELECT AVG(cost_usd) AS avg_cost, COUNT(*) AS sample_count
-         FROM cost_events
-         WHERE cost_usd > 0`,
-      )
-      .get() as { avg_cost: number | null; sample_count: number } | undefined;
+    const globalResult = tenantId == null
+      ? this.db.connection
+        .prepare(
+          `SELECT AVG(cost_usd) AS avg_cost, COUNT(*) AS sample_count
+           FROM cost_events
+           WHERE cost_usd > 0`,
+        )
+        .get() as { avg_cost: number | null; sample_count: number } | undefined
+      : this.db.connection
+        .prepare(
+          `SELECT AVG(ce.cost_usd) AS avg_cost, COUNT(*) AS sample_count
+           FROM cost_events ce
+           INNER JOIN tasks t ON ce.task_id = t.id
+           WHERE t.tenant_id = ?
+             AND t.status IN ('done', 'failed')
+             AND ce.cost_usd > 0`,
+        )
+        .get(tenantId) as { avg_cost: number | null; sample_count: number } | undefined;
 
     if (globalResult?.avg_cost != null && globalResult.sample_count > 0) {
       return {
@@ -81,4 +108,20 @@ export class CostEstimationService implements CostEstimationServicePort {
     }
     return "low";
   }
+}
+
+function normalizeScope(
+  scope?: string | CostEstimationScope | null,
+  tenantIdOverride?: string | null,
+): { divisionId: string | null; tenantId: string | null } {
+  if (typeof scope === "string" || scope == null) {
+    return {
+      divisionId: scope?.trim() ? scope : null,
+      tenantId: tenantIdOverride?.trim() ? tenantIdOverride : null,
+    };
+  }
+  return {
+    divisionId: scope.divisionId?.trim() ? scope.divisionId : null,
+    tenantId: tenantIdOverride?.trim() ? tenantIdOverride : (scope.tenantId?.trim() ? scope.tenantId : null),
+  };
 }

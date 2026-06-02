@@ -51,7 +51,7 @@ test("Goal allows all priority levels", () => {
 test("PlannedTask interface accepts valid structure", () => {
   const task: PlannedTask = {
     taskId: "goal:test-123:engineering:deploy-fe",
-    domainId: "engineering_ops",
+    domainId: "engineering-ops",
     description: "Deploy feature to production",
     inputs: {
       goalDescription: "Deploy the new feature",
@@ -65,14 +65,14 @@ test("PlannedTask interface accepts valid structure", () => {
       estimatedCostUsd: 0.05,
       confidence: "low",
       sampleCount: 5,
-      divisionId: "engineering_ops",
+      divisionId: "engineering-ops",
       basedOn: "historical_avg",
     },
     dependsOn: [],
   };
 
   assert.equal(task.taskId, "goal:test-123:engineering:deploy-fe");
-  assert.equal(task.domainId, "engineering_ops");
+  assert.equal(task.domainId, "engineering-ops");
   assert.equal(task.delegationMode, "auto");
   assert.equal(task.expectedOutputs.length, 2);
 });
@@ -83,7 +83,7 @@ test("PlannedTask delegationMode accepts valid values", () => {
   for (const mode of modes) {
     const task: PlannedTask = {
       taskId: `task:${mode}`,
-      domainId: "general_ops",
+      domainId: "general-ops",
       description: "test",
       inputs: {},
       expectedOutputs: ["output1"],
@@ -190,10 +190,10 @@ test("CapabilityValidationResult valid structure", () => {
 test("CapabilityValidationResult invalid structure with missing capabilities", () => {
   const result: CapabilityValidationResult = {
     valid: false,
-    missingCapabilities: ["engineering_ops:analytics"],
+    missingCapabilities: ["engineering-ops:analytics"],
     unauthorizedPermissions: ["finance:deployment:write"],
-    reasonCodes: ["goal_decomposer.missing_capabilities:engineering_ops:analytics"],
-    validationMessages: ["goal_decomposer.missing_capability:task-1:engineering_ops:analytics"],
+    reasonCodes: ["goal_decomposer.missing_capabilities:engineering-ops:analytics"],
+    validationMessages: ["goal_decomposer.missing_capability:task-1:engineering-ops:analytics"],
   };
 
   assert.equal(result.valid, false);

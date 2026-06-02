@@ -1,61 +1,61 @@
 # Ring Model Contract
 
-> **OAPEFLIR 相关**：本 contract defines OAPEFLIR Improve Hub 的 ring-based 渐进部署机制和 ring promotion criteria，对应 ADR-075 §33 和设计文档 §9。
-> **更新日期**：2026-04-29
+> **OAPEFLIR Related**: This contract defines the ring-based progressive deployment mechanism and ring promotion criteria of the OAPEFLIR Improve Hub, corresponding to ADR-075 §33 and design document §9.
+> **Update Date**: 2026-04-29
 
 ## 1. Scope
 
-本 contract defines六级受控发布（L0-L5）的 ring 模型、ring promotion criteria 和渐进式部署策略。
+This contract defines the ring model, ring promotion criteria, and progressive deployment strategy for the six-level controlled release (L0-L5).
 
 Related documents:
 
 - `release_rollout_and_rollback_contract.md`
-- [ADR-075 六级受控发布](../adr/075-controlled-rollout-release.md)
+- [ADR-075 Six-Level Controlled Release](../adr/075-controlled-rollout-release.md)
 - [ADR-080 Learn Hub](../adr/080-learn-hub-pattern-detection.md)
 
 ## 2. Ring Model Overview
 
-Ring Model 提供渐进式部署机制，via分级流量分配和 promotion criteria 控制来降低生产风险。
+The Ring Model provides a progressive deployment mechanism that reduces production risk through tiered traffic allocation and promotion criteria control.
 
 ### 2.1 Ring Levels
 
-| Ring | Name | Traffic | AI 自主permission | 人class审批 | 典型场景 |
-|------|------|---------|------------|---------|---------|
-| Ring 0 | `off` | 0% | no操作permission，onlyrecord | — | disabled发布 |
-| Ring 1 | `evaluate_0` | 0%（onlyrecord） | candidate evaluation / evidence validation | — | 候选评估 |
-| Ring 2 | `canary_5` | 5% | 参数调整、策略选择 | critical/high 需审批 | 小规模验证 |
-| Ring 3 | `partial_25` | 25% | configureRecommendation | 全部需审批 | 扩大验证 |
-| Ring 4 | `stable_75` | 75% | 执linesconfigure变更 | 全部必须审批 | 接近full |
-| Ring 5 | `stable_100` | 100% | 完全自主（受 guardrail 约束） | only异常升级 | full发布 |
+| Ring | Name | Traffic | AI Autonomy | Human Approval | Typical Scenario |
+| --- | --- | --- | --- | --- | --- |
+| Ring 0 | `off` | 0% | No operation permission, record only | — | Disabled release |
+| Ring 1 | `evaluate_0` | 0% (record only) | Candidate evaluation / evidence validation | — | Candidate evaluation |
+| Ring 2 | `canary_5` | 5% | Parameter tuning, strategy selection | Required for critical / high | Small-scale validation |
+| Ring 3 | `partial_25` | 25% | Configuration suggestion | Required for all | Expanded validation |
+| Ring 4 | `stable_75` | 75% | Execute configuration change | Required for all | Approaching full |
+| Ring 5 | `stable_100` | 100% | Fully autonomous (subject to guardrail constraints) | Only on exception escalation | Full release |
 
 ## 3. Ring Promotion Criteria
 
 ### 3.1 Automatic Promotion Requirements
 
-从当前 ring 升级到下一 ring 必须满足以下 criteria：
+Promoting from the current ring to the next ring must satisfy the following criteria:
 
-| 指标 | threshold | 窗口 | Description |
-|------|------|------|------|
-| 错误率 | < 1% | 连续 5 分钟 | 生产错误率必须低于threshold |
-| P99 delay | < 500ms | 连续 5 分钟 | 端到端delay必须低于threshold |
-| success率 | > 99% | 连续 5 分钟 | success率必须高于threshold |
-| 样本数 | > 100 | 累积 | 最小样本数以确保统计显著性 |
+| Metric | Threshold | Window | Description |
+| --- | --- | --- | --- |
+| Error rate | < 1% | Consecutive 5 minutes | Production error rate must be below threshold |
+| P99 latency | < 500ms | Consecutive 5 minutes | End-to-end latency must be below threshold |
+| Success rate | > 99% | Consecutive 5 minutes | Success rate must be above threshold |
+| Sample count | > 100 | Cumulative | Minimum sample count to ensure statistical significance |
 
 ### 3.2 Manual Promotion Approval
 
-对于 critical/high priority 的改进候选，必须获得人class审批才能从 Ring 2 升级到 Ring 3。
+For critical / high priority improvement candidates, human approval must be obtained before promoting from Ring 2 to Ring 3.
 
 ### 3.3 Auto-Rollback Criteria
 
-如果以下条件触发，系统自动回滚到上一 ring 或 Ring 1：
+If the following conditions are triggered, the system automatically rolls back to the previous ring or Ring 1:
 
-| 条件 | threshold | 窗口 | 动作 |
-|------|------|------|------|
-| 错误率exceeds标 | > 1% | 5 分钟 | L4→L3 |
-| P99 delayexceeds标 | > 500ms | 5 分钟 | L4→L3 |
-| success率不达标 | < 99% | 5 分钟 | L4→L3 |
-| 连续failediterations数 | > 10 | 10 分钟 | directly回滚 L1 |
-| 资源耗尽 | Memory > 90% | 1 分钟 | directly回滚 L1 |
+| Condition | Threshold | Window | Action |
+| --- | --- | --- | --- |
+| Error rate exceeds threshold | > 1% | 5 minutes | L4 -> L3 |
+| P99 latency exceeds threshold | > 500ms | 5 minutes | L4 -> L3 |
+| Success rate not meeting target | < 99% | 5 minutes | L4 -> L3 |
+| Consecutive failure count | > 10 | 10 minutes | Rollback directly to L1 |
+| Resource exhaustion | Memory > 90% | 1 minute | Rollback directly to L1 |
 
 ## 4. Ring Interface
 
@@ -64,11 +64,11 @@ Ring Model 提供渐进式部署机制，via分级流量分配和 promotion crit
 ```typescript
 type RingStatus =
   | "off"           // Ring 0 - disabled
-  | "evaluate_0"   // Ring 1 - only评估
-  | "canary_5"      // Ring 2 - 5% 流量
-  | "partial_25"    // Ring 3 - 25% 流量
-  | "stable_75"     // Ring 4 - 75% 流量
-  | "stable_100";   // Ring 5 - full
+  | "evaluate_0"    // Ring 1 - evaluation only
+  | "canary_5"      // Ring 2 - 5% traffic
+  | "partial_25"    // Ring 3 - 25% traffic
+  | "stable_75"     // Ring 4 - 75% traffic
+  | "stable_100";   // Ring 5 - full traffic
 ```
 
 ### 4.2 RingMetrics
@@ -117,35 +117,35 @@ interface RingPromotionDecision {
 
 ```
 off (R0)
-  ↓ (人工enabled)
+  ↓ (manually enable)
 evaluate_0 (R1)
-  ↓ (自动：满足 criteria)
+  ↓ (automatic: criteria met)
 canary_5 (R2)
-  ↓ (自动：满足 criteria + 人class审批 for critical/high)
+  ↓ (automatic: criteria met + human approval for critical / high)
 partial_25 (R3)
-  ↓ (自动：满足 criteria)
+  ↓ (automatic: criteria met)
 stable_75 (R4)
-  ↓ (自动：满足 criteria)
+  ↓ (automatic: criteria met)
 stable_100 (R5)
-  ↓ (持续 M 天noIssue)
+  ↓ (no issues for M consecutive days)
 released
 ```
 
 ### 5.2 Rollback Transitions
 
-任意 ring 均可回滚到任意更低 ring，回滚来源：
-- 自动回滚（指标触发）
-- 人工回滚（操作员Decision）
+Any ring can roll back to any lower ring. Rollback sources include:
+- Automatic rollback (metric-triggered)
+- Manual rollback (operator decision)
 
 ## 6. Autonomy Boundary per Ring
 
-| Ring | AI 自主permission | 人class审批要求 |
-|------|------------|------------|
-| R0-R1 | 完全自主（onlyrecord） | 不需要 |
-| R2 | 参数调整、策略选择 | 需要 for critical/high |
-| R3 | configure变更Recommendation | 需要 for all |
-| R4 | 执linesconfigure变更 | 必须 for all |
-| R5 | 完全自主（受 guardrail 约束） | only异常升级 |
+| Ring | AI Autonomy | Human Approval Requirement |
+| --- | --- | --- |
+| R0-R1 | Fully autonomous (record only) | Not required |
+| R2 | Parameter tuning, strategy selection | Required for critical / high |
+| R3 | Configuration change suggestion | Required for all |
+| R4 | Execute configuration change | Required for all |
+| R5 | Fully autonomous (subject to guardrail constraints) | Only on exception escalation |
 
 ## 7. Implementation Requirements
 
@@ -153,19 +153,19 @@ released
 
 ```typescript
 interface RingLifecycleManager {
-  // 初始化 ring Status
+  // Initialize ring state
   initializeRing(candidateId: string, initialRing: RingStatus): Promise<void>;
 
-  // request promotion
+  // Request promotion
   requestPromotion(request: RingPromotionRequest): Promise<RingPromotionDecision>;
 
-  // 执lines回滚
+  // Execute rollback
   executeRollback(candidateId: string, targetRing: RingStatus, reason: string): Promise<void>;
 
-  // 获取当前 ring Status
+  // Get current ring state
   getCurrentRing(candidateId: string): Promise<RingStatus>;
 
-  // 获取 ring 历史
+  // Get ring history
   getRingHistory(candidateId: string): Promise<RingPromotionDecision[]>;
 }
 ```
@@ -174,13 +174,13 @@ interface RingLifecycleManager {
 
 ```typescript
 interface RingMetricsCollector {
-  // 收集指定 ring 的指标
+  // Collect metrics for the specified ring
   collectMetrics(candidateId: string, ring: RingStatus): Promise<RingMetrics>;
 
-  // 评估isno满足 promotion criteria
+  // Evaluate whether promotion criteria are met
   evaluatePromotionCriteria(metrics: RingMetrics): PromotionCriteriaResult;
 
-  // 评估isno满足 rollback criteria
+  // Evaluate whether rollback criteria are met
   evaluateRollbackCriteria(metrics: RingMetrics): RollbackCriteriaResult;
 }
 ```
@@ -198,14 +198,14 @@ interface RingMetricsCollector {
 
 - Ring promotion flow end-to-end
 - Auto-rollback trigger and execution
-- Human approval workflow for critical/high priority
+- Human approval workflow for critical / high priority
 
 ### 8.3 Contract Tests
 
-- Ring metrics 必须满足 §33 defines的threshold
-- 未满足 criteria 不得 promote
-- Auto-rollback 必须在指标exceeds标时触发
+- Ring metrics must meet the thresholds defined in §33
+- Promotion must not occur when criteria are not met
+- Auto-rollback must trigger when metrics exceed thresholds
 
 ## 9. Closure Conclusion
 
-Ring Model 不is简单的百分比分割，而iscontains严格 criteria、自动化 gate 和人class审批点的渐进式部署机制。任何一个 ring 的 promotion 都必须via过明确的 criteria 验证，回滚机制确保Issue可以被及时控制。
+The Ring Model is not a simple percentage split, but a progressive deployment mechanism that contains strict criteria, automated gates, and human approval points. The promotion of any ring must pass explicit criteria validation, and the rollback mechanism ensures issues can be controlled in time.

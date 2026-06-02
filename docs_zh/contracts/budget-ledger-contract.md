@@ -21,7 +21,7 @@
 | `reservedAmount` | `number` | 已预留 |
 | `settledAmount` | `number` | 已结算 |
 | `releasedAmount` | `number` | 已释放 |
-| `status` | `open \| soft_cap_reached \| hard_cap_reached \| closed` | 状态 |
+| `status` | `open \| soft_cap_reached \| hard_cap_reached \| closed \| settling \| reserving \| releasing` | 状态 |
 | `version` | `number` | CAS 版本 |
 
 ## 3. BudgetReservation
@@ -33,10 +33,12 @@
 - `harnessRunId`
 - `nodeRunId?`
 - `amount`
-- `resourceKind` (`token | tool_call | api | compute | storage | bandwidth | memory | human | side_effect | other`)
+- `resourceKind` (`token | tool | api | compute | human | side_effect | other`)
 - `status` (`reserved | settled | released | expired | rejected`)
 - `expiresAt`
 - `createdAt`
+- `updatedAt?`
+- `version`
 
 规则：
 
@@ -85,6 +87,6 @@
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-3: 用 "settle" 动词描述预算消费，架构§18统一用 "consume"；resourceKind 枚举仅 token/api_call/compute，架构额外定义 storage/bandwidth/memory。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-3: 早期 remediation 文案把更激进的目标枚举直接写成“已落地 canonical”，但当前 executable contract 仍以 7 个 `resourceKind` 和 7 个 ledger status 为准。修复：本文已对齐实际 executable contract；`storage/bandwidth/memory/tool_call` 仍属于未来扩展，不再表述成当前事实。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

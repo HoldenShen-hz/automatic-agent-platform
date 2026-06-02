@@ -21,6 +21,7 @@ import { existsSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 import { withCliStorage } from "./authoritative-storage.js";
+import { readCliProcessEnv, type CliEnv } from "./cli-env.js";
 import { CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { loadReplayRecoveryCliEnv } from "../../platform/five-plane-control-plane/config-center/ops-cli-env.js";
@@ -43,11 +44,11 @@ function printHelp(): void {
   );
 }
 
-function resolveLegacyReplayOutput(): unknown | null {
+function resolveLegacyReplayOutput(env: CliEnv): unknown | null {
   const action =
-    readTrimmedEnv(process.env, "AA_REPLAY_RECOVERY_ACTION")
-    ?? readTrimmedEnv(process.env, "AA_RECOVERY_ACTION");
-  if (action == null || readTrimmedEnv(process.env, "AA_RECOVERY_REPLAY_KIND") != null) {
+    readTrimmedEnv(env, "AA_REPLAY_RECOVERY_ACTION")
+    ?? readTrimmedEnv(env, "AA_RECOVERY_ACTION");
+  if (action == null || readTrimmedEnv(env, "AA_RECOVERY_REPLAY_KIND") != null) {
     return null;
   }
 
@@ -56,7 +57,7 @@ function resolveLegacyReplayOutput(): unknown | null {
     return { mode: "help" };
   }
 
-  const dbPath = readTrimmedEnv(process.env, "AA_DB_PATH");
+  const dbPath = readTrimmedEnv(env, "AA_DB_PATH");
   if (dbPath == null || !existsSync(dbPath)) {
     throw new ValidationError("replay_recovery.database_not_found", "replay_recovery.database_not_found");
   }
@@ -73,7 +74,7 @@ function resolveLegacyReplayOutput(): unknown | null {
     throw new ValidationError("replay_recovery.invalid_action", "replay_recovery.invalid_action");
   }
 
-  const taskId = readTrimmedEnv(process.env, "AA_REPLAY_TASK_ID") ?? readTrimmedEnv(process.env, "AA_TASK_ID");
+  const taskId = readTrimmedEnv(env, "AA_REPLAY_TASK_ID") ?? readTrimmedEnv(env, "AA_TASK_ID");
   if (taskId == null) {
     throw new ValidationError("missing_env:AA_REPLAY_TASK_ID", "missing_env:AA_REPLAY_TASK_ID");
   }
@@ -85,12 +86,13 @@ function resolveLegacyReplayOutput(): unknown | null {
 }
 
 function main(): number {
+  const env = readCliProcessEnv();
   if (process.argv.includes("--help")) {
     printHelp();
     return CLI_EXIT_SUCCESS;
   }
 
-  const legacyOutput = resolveLegacyReplayOutput();
+  const legacyOutput = resolveLegacyReplayOutput(env);
   if (legacyOutput != null) {
     if ((legacyOutput as { mode?: string }).mode !== "help") {
       process.stdout.write(`${JSON.stringify(legacyOutput, null, 2)}\n`);

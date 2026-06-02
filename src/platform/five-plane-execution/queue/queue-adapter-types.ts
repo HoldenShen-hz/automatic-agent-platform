@@ -6,7 +6,7 @@ import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/t
 import type { RedisConnectionConfig } from "../../shared/utils/redis-client-options.js";
 
 export type QueueBackendKind = "sqlite" | "redis";
-export type QueueJobStatus = "waiting" | "delayed" | "active" | "completed" | "failed" | "dead_letter";
+export type QueueJobStatus = "waiting" | "delayed" | "active" | "completed" | "dead_letter";
 
 export interface QueueJobRecord {
   id: string;
@@ -45,7 +45,6 @@ export interface QueueStats {
   delayed: number;
   active: number;
   completed: number;
-  failed: number;
   deadLetter: number;
 }
 

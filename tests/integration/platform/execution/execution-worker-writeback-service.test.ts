@@ -30,7 +30,7 @@ function seedClaimedExecution(
       id: "task-worker-writeback",
       parentId: null,
       rootId: "task-worker-writeback",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Worker writeback task",
       status: "in_progress",
       source: "user",
@@ -74,7 +74,7 @@ function seedClaimedExecution(
     });
     store.insertWorkflowState({
       taskId: "task-worker-writeback",
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",

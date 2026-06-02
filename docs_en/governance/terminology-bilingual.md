@@ -1,1071 +1,1071 @@
-# Terminology Bilingual Glossary |术语对照表
+# Terminology Bilingual Glossary
 
-## Overview |概述
+## Overview
 
 This document provides a comprehensive Chinese-English bilingual reference for all core terms used in the Automatic Agent Platform. Terms are organized by domain area.
 
-本文档为自动代理平台的全部核心术语提供中文-英文对照参考，按领域分类组织。
+This document is the Chinese-English bilingual reference for all core terminology of the Automatic Agent Platform, organized by domain.
 
 ---
 
-##1. Core Objects |核心对象
+## 1. Core Objects
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| task |任务 | 用户级工作单元，是系统面向用户和业务的最小工作承诺对象 |
-| workflow | 工作流 | task 的结构化执行路径，定义 step、依赖、输入输出和失败路径 |
-| step |步骤 | workflow 中的单个执行步骤 |
-| execution | 执行实例 |某个 task/workflow的一次具体运行尝试 |
-| attempt | 重试计数 | 对同一 execution 或 step 的重试计数/重入序号 |
-| session | 会话 |渠道交互会话，承载用户输入、流式输出和交互上下文 |
-| message |消息 |一次完整消息对象，可包含多个 message part |
-| message part |消息片段 |消息内部的结构化片段，如文本、tool_use、tool_result、summary |
-| artifact |产物/制品 | 文件型或二进制产物，通常通过 artifact store 管理 |
-| output | 输出 | 面向上游步骤或用户的结果，可为结构化数据或文本，不必是文件 |
-| step output |步骤输出 |某个 step 完成后的结构化结果快照 |
-| result envelope | 结果信封 | 对成功、部分成功、失败、warning、artifact 和 metrics 的统一结果封装 |
+| task | 任务 | User-level work unit; the smallest work commitment object the system exposes to users and business |
+| workflow | 工作流 | Structured execution path of a task; defines steps, dependencies, inputs/outputs, and failure paths |
+| step | 步骤 | A single execution step within a workflow |
+| execution | 执行实例 | A specific running attempt of a task/workflow |
+| attempt | 重试计数 | Retry count / re-entry index for the same execution or step |
+| session | 会话 | Channel interaction session that carries user input, streaming output, and interaction context |
+| message | 消息 | A complete message object that may contain multiple message parts |
+| message part | 消息片段 | Structured segment inside a message, such as text, tool_use, tool_result, summary |
+| artifact | 产物/制品 | File or binary artifact, typically managed through the artifact store |
+| output | 输出 | Result for the upstream step or the user; may be structured data or text, not necessarily a file |
+| step output | 步骤输出 | Structured result snapshot after a step completes |
+| result envelope | 结果信封 | Unified result wrapper for success, partial success, failure, warning, artifact, and metrics |
 
 ---
 
-##2. OAPEFLIR Terms | OAPEFLIR术语
+## 2. OAPEFLIR Terms
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| OAPEFLIR | OAPEFLIR | Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release 八阶段闭环 |
-| stage |阶段 | OAPEFLIR闭环中的阶段级状态单元 |
-| loop iteration |闭环迭代 |一次完整或部分闭环迭代的执行轮次 |
-| TaskSituation |任务态势 | Observe输出的事实快照 |
-| UnifiedAssessment |统一评估 | Assess输出的结构化判断 |
-| Plan | 执行计划 | Plan Hub 的显式执行计划 |
-| FeedbackSignal |反馈信号 | Execute之后收集到的结构化反馈信号 |
-| LearningObject | 学习对象 | Learn Hub产出的可复用学习对象 |
-| ImprovementCandidate |改进候选 | Improve Hub产出的改进候选 |
-| RolloutRecord | 发布记录 | Release阶段的受控释放记录 |
+| OAPEFLIR | OAPEFLIR | Eight-stage closed loop: Observe -> Assess -> Plan -> Execute -> Feedback -> Learn -> Improve -> Release |
+| stage | 阶段 | Stage-level state unit within the OAPEFLIR closed loop |
+| loop iteration | 闭环迭代 | One full or partial cycle execution round of the closed loop |
+| TaskSituation | 任务态势 | Fact snapshot output by the Observe stage |
+| UnifiedAssessment | 统一评估 | Structured judgment output by the Assess stage |
+| Plan | 执行计划 | Explicit execution plan from the Plan Hub |
+| FeedbackSignal | 反馈信号 | Structured feedback signal collected after Execute |
+| LearningObject | 学习对象 | Reusable learning object produced by the Learn Hub |
+| ImprovementCandidate | 改进候选 | Improvement candidate produced by the Improve Hub |
+| RolloutRecord | 发布记录 | Controlled release record from the Release stage |
 
 ---
 
-##3. Execution & Recovery | 执行与恢复
+## 3. Execution & Recovery
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| runtime |运行时 | 系统实际执行 task / workflow / agent / tool 的运行层 |
-| execution ticket | 执行票据 |调度层下发给执行层的正式执行单据 |
-| lease |租约 |某次 execution 或 worker dispatch 的临时所有权 |
-| lease owner |租约持有者 | 当前持有执行权的执行实体 |
-| fencing token |隔离令牌 |防止旧执行者回写脏结果的版本令牌 |
-| dispatch |调度分发 | 将任务或执行权分配到某个执行承载体 |
-| worker | 工作器 | 执行承载单元，可为本地或远程 |
-| sub-agent | 子代理 | 在同一任务上下文中协作的次级智能执行单元 |
-| heartbeat | 心跳 |周期性健康/负载上报 |
-| stalled |停滞 |进程未必死亡，但在规定时间内无有效进展 |
-| dead-letter |死信 | 无法自动恢复或不应继续重试的失败落袋记录 |
-| checkpoint | 检查点 | 可恢复边界上的状态快照 |
-| partial result | 部分结果 |任务尚未整体完成，但已有可保留、可审计的阶段性结果 |
-| compensation |补偿 | 对已发生副作用的步骤进行回滚、对账或人工修复的动作 |
+| runtime | 运行时 | The execution layer that actually runs task / workflow / agent / tool |
+| execution ticket | 执行票据 | Formal execution document dispatched from the scheduler to the execution layer |
+| lease | 租约 | Temporary ownership of an execution or worker dispatch |
+| lease owner | 租约持有者 | The execution entity currently holding execution rights |
+| fencing token | 隔离令牌 | Version token that prevents stale executors from writing back dirty results |
+| dispatch | 调度分发 | Assigning a task or execution right to a particular execution carrier |
+| worker | 工作器 | Execution carrier unit, which may be local or remote |
+| sub-agent | 子代理 | Secondary intelligent execution unit that collaborates within the same task context |
+| heartbeat | 心跳 | Periodic health / load report |
+| stalled | 停滞 | Process is not necessarily dead, but has made no effective progress within the specified time |
+| dead-letter | 死信 | Failure landing record that cannot be auto-recovered or should not be retried further |
+| checkpoint | 检查点 | State snapshot at a recoverable boundary |
+| partial result | 部分结果 | The task as a whole is not yet complete, but there is a stage-level result that is retainable and auditable |
+| compensation | 补偿 | Action that rolls back, reconciles, or manually repairs a step that has already produced side effects |
 
 ---
 
-##4. Task Status |任务状态
+## 4. Task Status
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| queued |排队中 | Task pre-execution state，已创建但尚未进入调度 |
-| pending | 待处理 | Task pre-execution state，已创建但尚未进入调度 |
-| in_progress | 进行中 |正在推进主逻辑（Task状态） |
-| awaiting_decision |等待决策 | Task waiting for approval，等待审批决策 |
-| done | 已完成 | Task terminal state，Task成功结束 |
-| failed |失败 | 执行失败且当前尝试终止 |
-| cancelled | 已取消 | 被显式终止，不再继续 |
+| queued | 排队中 | Task pre-execution state: created but not yet entered the scheduler |
+| pending | 待处理 | Task pre-execution state: created but not yet entered the scheduler |
+| in_progress | 进行中 | Main logic is in progress (Task state) |
+| awaiting_decision | 等待决策 | Task is waiting for an approval decision |
+| done | 已完成 | Task terminal state: task ended successfully |
+| failed | 失败 | Execution failed and the current attempt has terminated |
+| cancelled | 已取消 | Explicitly terminated, no further continuation |
 
 ---
 
-##5. Workflow Status | 工作流状态
+## 5. Workflow Status
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| running | 运行中 | Workflow正在推进主逻辑 |
-| paused | 已暂停 | 被显式暂停，可恢复 |
-| resuming |恢复中 | Workflow transition state for resuming from pause，从暂停恢复的过渡状态 |
-| completed | 已完成 | Workflow成功结束 |
-| failed |失败 | Workflow 执行失败 |
-| cancelling |取消中 | Workflow transient state before cancelled，终止前的过渡状态 |
-| cancelled | 已取消 | 被显式终止，不再继续 |
+| running | 运行中 | Workflow is advancing its main logic |
+| paused | 已暂停 | Explicitly paused and resumable |
+| resuming | 恢复中 | Workflow transition state for resuming from pause |
+| completed | 已完成 | Workflow ended successfully |
+| failed | 失败 | Workflow execution failed |
+| cancelling | 取消中 | Workflow transient state before cancelled |
+| cancelled | 已取消 | Explicitly terminated, no further continuation |
 
 ---
 
-##6. Execution Status | 执行实例状态
+## 6. Execution Status
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| created | 已创建 | Execution created state，Execution 已创建 |
-| prechecking |预校验中 | Execution pre-validation phase，执行前校验阶段 |
-| executing | 执行中 |正在推进主逻辑（Execution状态） |
-| blocked |阻塞 | 因依赖未满足、审批、策略或资源原因暂时无法继续 |
-| succeeded |成功 | Execution成功完成 |
-| failed |失败 | Execution 执行失败 |
-| cancelled | 已取消 | 被显式终止，不再继续 |
-| superseded | 已替代 | Execution replaced by newer execution，被新 Execution替代 |
+| created | 已创建 | Execution has been created |
+| prechecking | 预校验中 | Execution pre-validation phase |
+| executing | 执行中 | Main logic is in progress (Execution state) |
+| blocked | 阻塞 | Temporarily unable to continue due to unmet dependencies, approval, policy, or resources |
+| succeeded | 成功 | Execution completed successfully |
+| failed | 失败 | Execution failed |
+| cancelled | 已取消 | Explicitly terminated, no further continuation |
+| superseded | 已替代 | Execution replaced by a newer execution |
 
 ---
 
-##7. Session Status | 会话状态
+## 7. Session Status
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| open |开放 | Session open state，会话处于开放状态 |
-| streaming | 流式输出中 | Session streaming state，会话流式输出中 |
-| awaiting_user |等待用户 |等待人类或外部系统输入（Session状态） |
-| paused | 已暂停 | Session paused，会话被暂停 |
-| completed | 已完成 | Session completed，会话成功结束 |
-| failed |失败 | Session failed，会话失败 |
-| cancelled | 已取消 | Session cancelled，会话被终止 |
+| open | 开放 | Session is in the open state |
+| streaming | 流式输出中 | Session is in the streaming output state |
+| awaiting_user | 等待用户 | Waiting for human or external system input (Session state) |
+| paused | 已暂停 | Session has been paused |
+| completed | 已完成 | Session ended successfully |
+| failed | 失败 | Session failed |
+| cancelled | 已取消 | Session was terminated |
 
 ---
 
-##8. Approval Status |审批状态
+## 8. Approval Status
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| requested | 已请求 | Approval requested，等待人类决策 |
-| approved | 已批准 | Approval granted，审批通过 |
-| rejected | 已拒绝 | Approval denied，审批未通过 |
-| expired | 已过期 | Approval timeout，审批超时 |
-| cancelled | 已取消 | Approval cancelled，审批被撤销 |
+| requested | 已请求 | Approval requested, waiting for human decision |
+| approved | 已批准 | Approval granted |
+| rejected | 已拒绝 | Approval denied |
+| expired | 已过期 | Approval timed out |
+| cancelled | 已取消 | Approval cancelled |
 
 ---
 
-##9. Worker & Dispatch | 工作器与调度
+## 9. Worker & Dispatch
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| worker | 工作器 | 执行承载单元，可为本地或远程 |
-| agent |智能体 |承担角色职责的智能执行实体 |
-| coordinator |协调器 | 管理任务在 worker 之间分发的调度协调服务 |
-| idle |空闲 | Worker 可接受新任务 |
-| busy |忙碌 | Worker正在执行任务 |
-| draining |排空中 | Worker正在完成现有任务但不接受新任务 |
-| degraded |降级 | Worker能力受限但仍可工作 |
-| unavailable |不可用 | Worker 当前无法接受任务 |
-| quarantined |隔离 | Worker 被暂时禁用 |
-| offline |离线 | Worker 连接断开 |
-| local | 本地 | Worker部署在同一进程 |
-| remote |远程 | Worker 通过桥接连接 |
-| execution ticket | 执行票据 |调度层下发给执行层的正式执行单据 |
-| dispatch |调度分发 | 将任务或执行权分配到某个执行承载体 |
+| worker | 工作器 | Execution carrier unit, which may be local or remote |
+| agent | 智能体 | Intelligent execution entity that takes on a role and responsibility |
+| coordinator | 协调器 | Scheduling coordination service that manages task distribution across workers |
+| idle | 空闲 | Worker is ready to accept new tasks |
+| busy | 忙碌 | Worker is executing a task |
+| draining | 排空中 | Worker is finishing existing tasks but is not accepting new ones |
+| degraded | 降级 | Worker capability is limited but still functional |
+| unavailable | 不可用 | Worker cannot accept tasks at the moment |
+| quarantined | 隔离 | Worker is temporarily disabled |
+| offline | 离线 | Worker connection is lost |
+| local | 本地 | Worker is deployed in the same process |
+| remote | 远程 | Worker is connected through a bridge |
+| execution ticket | 执行票据 | Formal execution document dispatched from the scheduler to the execution layer |
+| dispatch | 调度分发 | Assigning a task or execution right to a particular execution carrier |
 
 ---
 
-##10. Lease & Fencing |租约与隔离
+## 10. Lease & Fencing
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| lease |租约 |某次 execution 或 worker dispatch 的临时所有权 |
-| fencing token |隔离令牌 |防止旧执行者回写脏结果的版本令牌 |
-| active |活跃 | Lease 当前有效 |
-| expired | 已过期 | Lease 已超过有效期 |
-| released | 已释放 | Lease 被主动释放 |
-| reclaimed | 已回收 | Lease 被系统回收 |
-| handed_over | 已交接 | Lease 被移交给其他 worker |
-| stale_write_rejected |过期写入拒绝 | 因 fencing token 不匹配而拒绝的旧写入 |
+| lease | 租约 | Temporary ownership of an execution or worker dispatch |
+| fencing token | 隔离令牌 | Version token that prevents stale executors from writing back dirty results |
+| active | 活跃 | Lease is currently in effect |
+| expired | 已过期 | Lease has exceeded its validity period |
+| released | 已释放 | Lease was actively released |
+| reclaimed | 已回收 | Lease was reclaimed by the system |
+| handed_over | 已交接 | Lease was transferred to another worker |
+| stale_write_rejected | 过期写入拒绝 | Stale write rejected because the fencing token did not match |
 
 ---
 
-##11. Message & Event |消息与事件
+## 11. Message & Event
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| message |消息 |一次完整消息对象 |
-| message part |消息片段 |消息内部的结构化片段 |
-| inbound | 入站 |消息方向：用户输入 |
-| outbound | 出站 |消息方向：系统输出 |
-| system | 系统 |消息方向：系统通知 |
-| event |事件 | 系统内部的结构化事实通知 |
-| tier_1 event | 一级事件 | 必须可靠落库、必须可恢复、不可默默丢失的事件 |
-| tier_2 event | 二级事件 |至少一次交付的事件 |
-| tier_3 event | 三级事件 |尽力交付的事件 |
-| ack |确认 |某消费者已确认处理某事件的记录 |
-| replay | 重放 | 从内存缓冲中补发事件 |
-| stream | 流 |面向渠道/UI 的增量输出流 |
-| stream_id | 流标识 |某条展示流的唯一标识 |
+| message | 消息 | A complete message object |
+| message part | 消息片段 | Structured segment inside a message |
+| inbound | 入站 | Message direction: user input |
+| outbound | 出站 | Message direction: system output |
+| system | 系统 | Message direction: system notification |
+| event | 事件 | Structured fact notification inside the system |
+| tier_1 event | 一级事件 | Events that must be reliably persisted, recoverable, and never silently lost |
+| tier_2 event | 二级事件 | At-least-once delivery events |
+| tier_3 event | 三级事件 | Best-effort delivery events |
+| ack | 确认 | Record that a consumer has acknowledged processing of an event |
+| replay | 重放 | Re-sending events from the in-memory buffer |
+| stream | 流 | Incremental output stream for channels / UI |
+| stream_id | 流标识 | Unique identifier of a display stream |
 
 ---
 
-##12. Message Part Types |消息片段类型
+## 12. Message Part Types
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| text |文本 |文本内容片段 |
-| reasoning |推理 |推理过程追踪片段 |
-| tool_use |工具调用 |工具使用请求片段 |
-| tool_result |工具结果 |工具执行结果片段 |
-| summary |摘要 | 内容摘要片段 |
-| artifact_ref |产物引用 |引用 artifact 的片段 |
-| decision_prompt |决策提示 |决策提示词片段 |
-| agent_ref |智能体引用 |引用 agent 的片段 |
-| subtask_ref | 子任务引用 |引用子任务的片段 |
-| retry_record | 重试记录 | 重试历史片段 |
-| step_boundary |步骤边界 |步骤边界标记片段 |
-| compaction_marker |压缩标记 |上下文压缩标记片段 |
-| hook_event |钩子事件 |钩子触发事件片段 |
-| command_execution | 命令执行 | 命令执行片段 |
-| mcp_call | MCP 调用 | Model Context Protocol 调用片段 |
+| text | 文本 | Text content segment |
+| reasoning | 推理 | Reasoning process trace segment |
+| tool_use | 工具调用 | Tool use request segment |
+| tool_result | 工具结果 | Tool execution result segment |
+| summary | 摘要 | Content summary segment |
+| artifact_ref | 产物引用 | Segment that references an artifact |
+| decision_prompt | 决策提示 | Decision prompt segment |
+| agent_ref | 智能体引用 | Segment that references an agent |
+| subtask_ref | 子任务引用 | Segment that references a subtask |
+| retry_record | 重试记录 | Retry history segment |
+| step_boundary | 步骤边界 | Step boundary marker segment |
+| compaction_marker | 压缩标记 | Context compaction marker segment |
+| hook_event | 钩子事件 | Hook-trigger event segment |
+| command_execution | 命令执行 | Command execution segment |
+| mcp_call | MCP 调用 | Model Context Protocol call segment |
 
 ---
 
-##13. Step Output Status |步骤输出状态
+## 13. Step Output Status
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| succeeded |成功 |步骤成功完成 |
-| failed |失败 |步骤执行失败 |
-| partial_success | 部分成功 |步骤部分成功，存在部分结果 |
-| skipped | 已跳过 |步骤被跳过 |
+| succeeded | 成功 | Step completed successfully |
+| failed | 失败 | Step execution failed |
+| partial_success | 部分成功 | Step partially succeeded with partial results |
+| skipped | 已跳过 | Step was skipped |
 
 ---
 
-##14. Memory |记忆系统
+## 14. Memory
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| memory |记忆 | 可检索的记忆单元 |
-| layer_3 | 第三层 | 高频低延迟记忆层 |
-| layer_5 |第五层 | 中频中延迟记忆层 |
-| layer_7 | 第七层 | 低频高延迟记忆层 |
-| general | 一般 | 一般性记忆内容 |
-| fact |事实 |事实性记忆内容 |
-| episode |事件 |事件性记忆内容 |
-| rule |规则 |规则性记忆内容 |
-| decision |决策 |决策性记忆内容 |
-| active |活跃 |记忆当前可用 |
-| archived |归档 |记忆已归档 |
-| superseded | 已替代 |记忆已被新内容替代 |
-| trusted | 可信 | 信息来源可信 |
-| external |外部 | 信息来源为外部 |
-| untrusted |不可信 | 信息来源不可信 |
+| memory | 记忆 | Retrievable memory unit |
+| layer_3 | 第三层 | High-frequency, low-latency memory layer |
+| layer_5 | 第五层 | Medium-frequency, medium-latency memory layer |
+| layer_7 | 第七层 | Low-frequency, high-latency memory layer |
+| general | 一般 | General memory content |
+| fact | 事实 | Factual memory content |
+| episode | 事件 | Episodic memory content |
+| rule | 规则 | Rule-based memory content |
+| decision | 决策 | Decision-based memory content |
+| active | 活跃 | Memory is currently usable |
+| archived | 归档 | Memory has been archived |
+| superseded | 已替代 | Memory has been replaced by newer content |
+| trusted | 可信 | Information source is trusted |
+| external | 外部 | Information source is external |
+| untrusted | 不可信 | Information source is untrusted |
 
 ---
 
-##15. Run Types | 运行类型
+## 15. Run Types
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| task_run |任务运行 |标准的任务执行类型 |
-| tool_call |工具调用 |工具调用执行类型 |
-| approval_resume |审批恢复 |审批通过后恢复执行 |
-| replay | 重放 | 回放执行 |
+| task_run | 任务运行 | Standard task execution type |
+| tool_call | 工具调用 | Tool call execution type |
+| approval_resume | 审批恢复 | Resume execution after approval |
+| replay | 重放 | Replay execution |
 
 ---
 
-##16. Compensation & Checkpoint |补偿与检查点
+## 16. Compensation & Checkpoint
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| compensation |补偿 | 对已发生副作用的步骤进行回滚、对账或人工修复的动作 |
-| idempotent_replay |幂等重放 | 通过重放实现补偿的策略 |
-| compare_and_swap_write | 比较并交换写入 | 通过 CAS写入实现补偿的策略 |
-| compensating_action |补偿动作 | 通过执行补偿动作实现回滚的策略 |
-| manual_reconciliation_required | 需要人工对账 | 需要人工介入进行对账修复 |
-| checkpoint | 检查点 | 可恢复边界上的状态快照 |
-| resume_from_checkpoint | 从检查点恢复 | 从检查点开始恢复执行的策略 |
-| replay_from_start | 从头重放 | 从工作流开始重新执行的策略 |
-| manual_reconciliation |人工对账 | 需要人工介入进行修复的策略 |
+| compensation | 补偿 | Action that rolls back, reconciles, or manually repairs a step that has already produced side effects |
+| idempotent_replay | 幂等重放 | Compensation strategy by replay |
+| compare_and_swap_write | 比较并交换写入 | Compensation strategy via CAS write |
+| compensating_action | 补偿动作 | Compensation strategy by executing a compensating action |
+| manual_reconciliation_required | 需要人工对账 | Manual intervention required for reconciliation and repair |
+| checkpoint | 检查点 | State snapshot at a recoverable boundary |
+| resume_from_checkpoint | 从检查点恢复 | Strategy to resume execution from a checkpoint |
+| replay_from_start | 从头重放 | Strategy to re-execute from the beginning of a workflow |
+| manual_reconciliation | 人工对账 | Strategy that requires manual intervention for repair |
 
 ---
 
-##17. Termination & Error |终止与错误
+## 17. Termination & Error
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| reasonCode |原因码 |终止原因码，以字符串形式记录 |
-| termination_initiator |终止发起者 |触发终止的主体：user / system / policy / admin |
-| termination_scope |终止范围 |终止影响范围：step / workflow / task / session |
-| recoverable | 可恢复 |终止后是否允许走恢复路径 |
-| dead-letter |死信 | 无法自动恢复或不应继续重试的失败落袋记录 |
+| reasonCode | 原因码 | Termination reason code recorded as a string |
+| termination_initiator | 终止发起者 | The subject that triggered the termination: user / system / policy / admin |
+| termination_scope | 终止范围 | The scope affected by the termination: step / workflow / task / session |
+| recoverable | 可恢复 | Whether the recovery path is allowed after termination |
+| dead-letter | 死信 | Failure landing record that cannot be auto-recovered or should not be retried further |
 
 ---
 
-##18. Task Priority & Source |任务优先级与来源
+## 18. Task Priority & Source
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| low | 低 | 低优先级 |
-| normal | 普通 | 普通优先级 |
-| high | 高 | 高优先级 |
-| urgent |紧急 |紧急优先级 |
-| user | 用户 |任务来源：用户直接创建 |
-| perception |感知 |任务来源：系统感知触发 |
-| system | 系统 |任务来源：系统内部创建 |
+| low | 低 | Low priority |
+| normal | 普通 | Normal priority |
+| high | 高 | High priority |
+| urgent | 紧急 | Urgent priority |
+| user | 用户 | Task source: directly created by user |
+| perception | 感知 | Task source: triggered by system perception |
+| system | 系统 | Task source: created internally by the system |
 
 ---
 
-##19. Isolation & Placement |隔离与部署
+## 19. Isolation & Placement
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| standard | 标准 | 标准隔离级别 |
-| hardened | 加固 | 加固隔离级别 |
-| strict |严格 |严格隔离级别 |
-| local | 本地 | 工作器部署在同一进程 |
-| remote |远程 | 工作器通过桥接连接 |
+| standard | 标准 | Standard isolation level |
+| hardened | 加固 | Hardened isolation level |
+| strict | 严格 | Strict isolation level |
+| local | 本地 | Worker is deployed in the same process |
+| remote | 远程 | Worker is connected through a bridge |
 
 ---
 
-##20. Session Consistency | 会话一致性
+## 20. Session Consistency
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| connecting | 连接中 |远程会话正在建立连接 |
-| connected | 已连接 |远程会话已连接 |
-| reconnecting | 重连中 |远程会话正在重连 |
-| degraded |降级 |远程会话能力降级 |
-| failed |失败 |远程会话连接失败 |
-| viewer_only | 仅查看 | 会话处于只读观察状态 |
-| unknown |未知 | 一致性检查状态未知 |
-| passed | 通过 | 一致性检查通过 |
-| mismatch | 不匹配 | 一致性检查发现不匹配 |
-| aligned | 对齐 | 工作区状态已同步 |
-| conflict |冲突 | 工作区状态存在冲突 |
+| connecting | 连接中 | Remote session is establishing a connection |
+| connected | 已连接 | Remote session is connected |
+| reconnecting | 重连中 | Remote session is reconnecting |
+| degraded | 降级 | Remote session capability is degraded |
+| failed | 失败 | Remote session connection failed |
+| viewer_only | 仅查看 | Session is in a read-only observation state |
+| unknown | 未知 | Consistency check status is unknown |
+| passed | 通过 | Consistency check passed |
+| mismatch | 不匹配 | Consistency check found a mismatch |
+| aligned | 对齐 | Workspace state is synchronized |
+| conflict | 冲突 | Workspace state has a conflict |
 
 ---
 
-##21. Lease Audit Events |租约审计事件
+## 21. Lease Audit Events
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| lease_granted |租约授予 |租约被授予 |
-| lease_renewed |租约续期 |租约被续期 |
-| lease_expired |租约过期 |租约自然过期 |
-| lease_reclaimed |租约回收 |租约被系统回收 |
-| stale_write_rejected |过期写入拒绝 | 因令牌不匹配拒绝过期写入 |
-| lease_released |租约释放 |租约被主动释放 |
-| lease_handover |租约交接 |租约被移交给其他执行实体 |
+| lease_granted | 租约授予 | Lease was granted |
+| lease_renewed | 租约续期 | Lease was renewed |
+| lease_expired | 租约过期 | Lease naturally expired |
+| lease_reclaimed | 租约回收 | Lease was reclaimed by the system |
+| stale_write_rejected | 过期写入拒绝 | Stale write rejected because the token did not match |
+| lease_released | 租约释放 | Lease was actively released |
+| lease_handover | 租约交接 | Lease was transferred to another execution entity |
 
 ---
 
-##22. Dispatch Rejection Reasons |调度拒绝原因
+## 22. Dispatch Rejection Reasons
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| worker_unavailable | 工作器不可用 | 工作器当前不可用 |
-| worker_quarantined | 工作器被隔离 | 工作器处于隔离状态 |
-| worker_offline | 工作器离线 | 工作器连接断开 |
-| worker_draining | 工作器排空中 | 工作器正在排空 |
-| worker_degraded_filtered | 工作器降级被过滤 |降级工作器被过滤 |
-| worker_untrusted | 工作器不可信 | 工作器信任检查失败 |
-| worker_capacity_full | 工作器容量满 | 工作器已达最大容量 |
-| queue_affinity_mismatch |队列亲和性不匹配 |队列亲和性要求不满足 |
-| missing_capabilities |缺少能力 | 工作器缺少所需能力 |
-| worker_placement_mismatch | 工作器部署位置不匹配 | 本地/远程部署要求不满足 |
-| worker_isolation_mismatch | 工作器隔离级别不匹配 |隔离级别要求不满足 |
-| worker_repo_version_mismatch | 工作器版本不匹配 | 代码仓库版本要求不满足 |
-| worker_remote_session_unready | 工作器远程会话未就绪 |远程会话未准备好 |
+| worker_unavailable | 工作器不可用 | Worker is currently unavailable |
+| worker_quarantined | 工作器被隔离 | Worker is in the quarantined state |
+| worker_offline | 工作器离线 | Worker connection is lost |
+| worker_draining | 工作器排空中 | Worker is draining |
+| worker_degraded_filtered | 工作器降级被过滤 | Degraded worker was filtered out |
+| worker_untrusted | 工作器不可信 | Worker trust check failed |
+| worker_capacity_full | 工作器容量满 | Worker has reached maximum capacity |
+| queue_affinity_mismatch | 队列亲和性不匹配 | Queue affinity requirements were not met |
+| missing_capabilities | 缺少能力 | Worker is missing required capabilities |
+| worker_placement_mismatch | 工作器部署位置不匹配 | Local/remote placement requirements were not met |
+| worker_isolation_mismatch | 工作器隔离级别不匹配 | Isolation level requirements were not met |
+| worker_repo_version_mismatch | 工作器版本不匹配 | Code repository version requirements were not met |
+| worker_remote_session_unready | 工作器远程会话未就绪 | Remote session is not ready |
 
 ---
 
-##23. Execution Ticket Status | 执行票据状态
+## 23. Execution Ticket Status
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| pending | 待认领 |票据等待被认领 |
-| claimed | 已认领 |票据已被 worker认领 |
-| consumed | 已消费 |票据已被使用 |
-| cancelled | 已取消 |票据已被取消 |
-| expired | 已过期 |票据已过期 |
+| pending | 待认领 | Ticket is waiting to be claimed |
+| claimed | 已认领 | Ticket has been claimed by a worker |
+| consumed | 已消费 | Ticket has been used |
+| cancelled | 已取消 | Ticket has been cancelled |
+| expired | 已过期 | Ticket has expired |
 
 ---
 
-##24. Operator Actions | 操作员动作
+## 24. Operator Actions
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| take_over_task |接管任务 | 操作员接管任务 |
-| modify_input | 修改输入 | 操作员修改任务输入 |
-| retry_execution | 重试执行 | 操作员触发重试 |
-| skip_step |跳过步骤 | 操作员跳过某个步骤 |
-| set_current_step | 设置当前步骤 | 操作员设置当前执行步骤 |
-| switch_worker |切换工作器 | 操作员切换执行工作器 |
-| write_step_output |写入步骤输出 | 操作员写入步骤输出 |
-| complete_task |完成任务 | 操作员手动完成任务 |
+| take_over_task | 接管任务 | Operator takes over a task |
+| modify_input | 修改输入 | Operator modifies task input |
+| retry_execution | 重试执行 | Operator triggers a retry |
+| skip_step | 跳过步骤 | Operator skips a step |
+| set_current_step | 设置当前步骤 | Operator sets the current execution step |
+| switch_worker | 切换工作器 | Operator switches the execution worker |
+| write_step_output | 写入步骤输出 | Operator writes step output |
+| complete_task | 完成任务 | Operator manually completes the task |
 
 ---
 
-##25. Takeover Session |接管会话
+## 25. Takeover Session
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| open |开放 |接管会话处于开放状态 |
-| closed | 已关闭 |接管会话已结束 |
+| open | 开放 | Takeover session is in the open state |
+| closed | 已关闭 | Takeover session has ended |
 
 ---
 
-##26. Evolution & Promotion |演化与晋升
+## 26. Evolution & Promotion
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| pending_approval | 待审批 |提案等待审批 |
-| approved | 已批准 |提案已批准 |
-| rejected | 已拒绝 |提案已拒绝 |
-| applied | 已应用 |提案已应用 |
-| rolled_back | 已回滚 |提案已回滚 |
-| draft |草稿 |草稿状态 |
-| validated | 已验证 | 已通过验证 |
-| promoted | 已推广 | 已推广 |
-| retired | 已退役 | 已停用 |
-| shadow |影子运行 |影子模式运行 |
-| canary_5 |5% 金丝雀 |5%流量金丝雀发布 |
-| partial_25 |25% 分批 |25% 分批发布 |
-| partial_50 |50% 分批 |50% 分批发布 |
-| partial_75 |75% 分批 |75% 分批发布 |
-| stable |稳定 |稳定版本 |
-| shadow_running |影子运行中 |影子模式运行中 |
+| pending_approval | 待审批 | Proposal is waiting for approval |
+| approved | 已批准 | Proposal was approved |
+| rejected | 已拒绝 | Proposal was rejected |
+| applied | 已应用 | Proposal was applied |
+| rolled_back | 已回滚 | Proposal was rolled back |
+| draft | 草稿 | Draft state |
+| validated | 已验证 | Validation passed |
+| promoted | 已推广 | Promoted |
+| retired | 已退役 | Retired |
+| shadow | 影子运行 | Shadow mode run |
+| canary_5 | 5% 金丝雀 | 5% traffic canary release |
+| partial_25 | 25% 分批 | 25% partial release |
+| partial_50 | 50% 分批 | 50% partial release |
+| partial_75 | 75% 分批 | 75% partial release |
+| stable | 稳定 | Stable version |
+| shadow_running | 影子运行中 | Shadow mode is running |
 
 ---
 
-##27. Compaction |上下文压缩
+## 27. Compaction
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| trim |修剪 |移除旧的工具结果 |
-| summarize |摘要 | 将内容压缩为关键洞察 |
+| trim | 修剪 | Remove old tool results |
+| summarize | 摘要 | Compress content into key insights |
 
 ---
 
-##28. Event Consumer Ack |事件消费者确认
+## 28. Event Consumer Ack
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| pending | 待确认 |等待消费者确认 |
-| acked | 已确认 |消费者已确认 |
-| failed |失败 |确认失败 |
-| dead_lettered |死信 | 已移至死信队列 |
+| pending | 待确认 | Waiting for consumer acknowledgement |
+| acked | 已确认 | Consumer acknowledged |
+| failed | 失败 | Acknowledgement failed |
+| dead_lettered | 死信 | Moved to the dead-letter queue |
 
 ---
 
-##29. Remote Log Levels |远程日志级别
+## 29. Remote Log Levels
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| debug |调试 |调试级别日志 |
-| info | 信息 | 信息级别日志 |
-| warn |警告 |警告级别日志 |
-| error |错误 |错误级别日志 |
+| debug | 调试 | Debug level log |
+| info | 信息 | Info level log |
+| warn | 警告 | Warning level log |
+| error | 错误 | Error level log |
 
 ---
 
-##30. Budget Scope |预算范围
+## 30. Budget Scope
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| task_execution |任务执行 |任务执行预算 |
-| compaction |压缩 |上下文压缩预算 |
-| skill_execution |技能执行 |技能执行预算 |
-| recovery_retry |恢复重试 |恢复重试预算 |
-| approval_review |审批审查 |审批审查预算 |
+| task_execution | 任务执行 | Task execution budget |
+| compaction | 压缩 | Context compaction budget |
+| skill_execution | 技能执行 | Skill execution budget |
+| recovery_retry | 恢复重试 | Recovery retry budget |
+| approval_review | 审批审查 | Approval review budget |
 
 ---
 
-##31. Transition |状态转换
+## 31. Transition
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| task |任务 |任务实体类型 |
-| workflow | 工作流 | 工作流实体类型 |
-| session | 会话 | 会话实体类型 |
-| approval |审批 |审批实体类型 |
-| execution | 执行实例 | 执行实例实体类型 |
-| user | 用户 | 用户触发者 |
-| agent |智能体 |智能体触发者 |
-| system | 系统 | 系统触发者 |
-| scheduler |调度器 |调度器触发者 |
-| admin |管理员 |管理员触发者 |
-| webhook | Webhook | Webhook触发者 |
-| recovery |恢复 |恢复触发者 |
+| task | 任务 | Task entity type |
+| workflow | 工作流 | Workflow entity type |
+| session | 会话 | Session entity type |
+| approval | 审批 | Approval entity type |
+| execution | 执行实例 | Execution entity type |
+| user | 用户 | User trigger |
+| agent | 智能体 | Agent trigger |
+| system | 系统 | System trigger |
+| scheduler | 调度器 | Scheduler trigger |
+| admin | 管理员 | Admin trigger |
+| webhook | Webhook | Webhook trigger |
+| recovery | 恢复 | Recovery trigger |
 
 ---
 
-##32. Quick Reference: Commonly Confused Terms |快速参考：易混淆术语
+## 32. Quick Reference: Commonly Confused Terms
 
 ### task vs session
-- **task**:业务工作单元
-- **session**:交互会话
+- **task**: Business work unit
+- **session**: Interaction session
 
 ### workflow vs execution
-- **workflow**: 结构定义
-- **execution**:某次运行尝试
+- **workflow**: Structure definition
+- **execution**: A specific running attempt
 
 ### agent vs worker
-- **agent**:偏职责与智能体
-- **worker**:偏执行承载与资源位
+- **agent**: Emphasizes role and intelligent entity
+- **worker**: Emphasizes execution carrier and resource slot
 
 ### artifact vs output vs step output
-- **artifact**:偏文件产物
-- **output**:偏结果语义
-- **step output**:偏步骤级结构化快照
+- **artifact**: Emphasizes file-type artifact
+- **output**: Emphasizes result semantics
+- **step output**: Emphasizes step-level structured snapshot
 
 ### queued vs blocked
-- **queued**:等待调度分配
-- **blocked**: 因依赖/审批/策略/资源无法继续
+- **queued**: Waiting for scheduler assignment
+- **blocked**: Cannot continue due to dependencies / approval / policy / resources
 
 ### paused vs awaiting_user
-- **paused**: 被显式暂停
-- **awaiting_user**:等待外部输入
+- **paused**: Explicitly paused
+- **awaiting_user**: Waiting for external input
 
 ### stalled vs offline
-- **stalled**: 有进展但超时
-- **offline**: 连接断开
+- **stalled**: Has progress but timed out
+- **offline**: Connection lost
 
 ### failed vs cancelled
-- **failed**: 执行失败终止
-- **cancelled**: 被显式取消
+- **failed**: Execution failed and terminated
+- **cancelled**: Explicitly cancelled
 
 ### done vs completed
-- **done**: Task唯一终端成功状态
-- **completed**: Workflow成功结束状态
+- **done**: The unique terminal success state of Task
+- **completed**: Workflow successful completion state
 
 ---
 
-## Document Info |文档信息
+## Document Info
 
 - Source: `docs_zh/governance/glossary_and_terminology.md` and `src/platform/contracts/types/`
-- Governance Level: 主版本（术语表主版本）
-- Last Updated:2026-04-22
+- Governance Level: Main version (terminology glossary main version)
+- Last Updated: 2026-04-22
 
 ---
 
-##33. Data & Storage | 数据与存储
+## 33. Data & Storage
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| Authoritative Store |权威存储 | 对某类事实拥有最终解释权的存储系统，是数据的最终真相来源，不可与任意缓存混用 |
-| Transaction Store |事务存储 |负责任务、状态、审批、事件等事务性数据的存储；代码中事务性数据存储于 AuthoritativeSqlDatabase |
-| Artifact Store |产物存储 |存储文件型、大体积或导出型产物的存储，与 transaction store性质不同 |
-| Analytics Store | 分析存储 |面向投影和物化视图的存储，非独立的分析报表存储 |
-| Data Plane | 数据平面 |事务层、artifact、analytics、archive、replay 的统一数据平面（当前为规划概念） |
-| Namespace |命名空间 | 数据、artifact 或 tenant边界下的逻辑命名空间，区别于 OS path |
-| Eventual Consistency | 最终一致性 |允许短暂延迟后达到一致的状态，不同于强一致性保证 |
-| Reconciliation | 对账修复 | 对状态、事件、worker、locks 等进行对账和修复的动作 |
-| Migration |迁移 | schema 或存储结构的正式版本迁移，区别于 ad-hoc SQL patch |
-| Storage Backend |存储后端 | 支持 SQLite/PostgreSQL两种驱动的底层存储抽象 |
-| Storage Driver |存储驱动 | SQLite 或 PostgreSQL两种存储引擎驱动类型 |
-| Schema Migration | Schema迁移 | 数据库结构版本的正式升级或降级过程 |
-| Checksum Mismatch |校验和不匹配 |迁移版本校验失败，预期与实际不一致 |
-| Shadow SQLite |影子 SQLite | PostgreSQL 双跑模式下并行运行的 SQLite影子库 |
-| Authoritative Task Store |权威任务存储 | Phase1a 的任务状态权威存储，委托给 sqlite 或 postgres 实现 |
-| Phase1a Store | Phase1a存储 |初始稳定核心阶段的任务存储抽象 |
-| Read-after-write Consistency |写后读一致性 |写入完成后立即读取能获取到写入结果的保证 |
-| Lease |租约 |某次 execution 或 worker dispatch 的临时所有权，不是永久 ownership |
-| Fencing Token |隔离令牌 |防止旧执行者回写脏结果的版本令牌，不是普通 sequence |
-| Dead-letter |死信 | 无法自动恢复或不应继续重试的失败落袋记录 |
-| Partial Result | 部分结果 |任务尚未整体完成，但已有可保留、可审计的阶段性结果 |
-| Checkpoint | 检查点 | 可恢复边界上的状态快照，区别于任意临时变量 |
+| Authoritative Store | 权威存储 | The storage system that has the final interpretation authority over a class of facts; the ultimate source of truth for data; must not be mixed with arbitrary caches |
+| Transaction Store | 事务存储 | Storage responsible for transactional data such as tasks, states, approvals, and events; in code, transactional data is stored in AuthoritativeSqlDatabase |
+| Artifact Store | 产物存储 | Storage for file-type, large-volume, or export-type artifacts; it differs in nature from the transaction store |
+| Analytics Store | 分析存储 | Storage oriented to projections and materialized views; not an independent analytics report store |
+| Data Plane | 数据平面 | Unified data plane of transaction, artifact, analytics, archive, and replay (currently a planned concept) |
+| Namespace | 命名空间 | Logical namespace under data, artifact, or tenant boundaries; distinct from OS path |
+| Eventual Consistency | 最终一致性 | State that is allowed to become consistent after a brief delay, different from strong consistency guarantees |
+| Reconciliation | 对账修复 | Action that reconciles and repairs state, events, workers, locks, etc. |
+| Migration | 迁移 | Formal version migration of schema or storage structure, distinct from ad-hoc SQL patches |
+| Storage Backend | 存储后端 | Underlying storage abstraction supporting both SQLite and PostgreSQL drivers |
+| Storage Driver | 存储驱动 | Either SQLite or PostgreSQL storage engine driver type |
+| Schema Migration | Schema 迁移 | Formal upgrade or downgrade process of the database structure version |
+| Checksum Mismatch | 校验和不匹配 | Migration version check failure; expected and actual values do not match |
+| Shadow SQLite | 影子 SQLite | SQLite shadow database running in parallel under the PostgreSQL dual-run mode |
+| Authoritative Task Store | 权威任务存储 | The authoritative task-state storage in Phase 1a, delegated to sqlite or postgres implementation |
+| Phase 1a Store | Phase 1a 存储 | The task storage abstraction for the initial stable core stage |
+| Read-after-write Consistency | 写后读一致性 | Guarantee that an immediate read after a write can observe the result of that write |
+| Lease | 租约 | Temporary ownership of an execution or worker dispatch; not permanent ownership |
+| Fencing Token | 隔离令牌 | Version token that prevents stale executors from writing back dirty results; not a regular sequence |
+| Dead-letter | 死信 | Failure landing record that cannot be auto-recovered or should not be retried further |
+| Partial Result | 部分结果 | The task as a whole is not yet complete, but there is a stage-level result that is retainable and auditable |
+| Checkpoint | 检查点 | State snapshot at a recoverable boundary; distinct from arbitrary temporary variables |
 
 ---
 
-##34. Configuration & Version | 配置与版本
+## 34. Configuration & Version
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| Config Bundle | 配置包 | 一组一起生效的配置集合，包含 bootstrap、gateways、providers、runtime、security、workflows 等层级 |
-| Config Version | 配置版本 | 配置变更后的版本标识，用于篡改检测和缓存管理 |
-| Config Layer | 配置层级 | 配置的垂直层级结构，如 platform、tenant、pack、task_type |
-| Feature Flag |特性开关 | 控制能力启停或灰度的开关 |
-| Prompt Bundle | Prompt 包 | 一组一起发布、一起版本化的 prompts |
-| Config Diff | 配置差异 | 两个配置包之间的变化条目，用于 drift 检测 |
-| Bundle Hash | 包哈希 |整个配置包的 SHA-256哈希值 |
-| Layer Hash |层级哈希 | 单个配置层的内容哈希，用于变更检测 |
-| Tamper Detection |篡改检测 | 通过版本 ID 比对检测未授权的配置变更 |
-| Config Rollout | 配置发布 | 支持金丝雀策略的配置发布，可分阶段（5%/25%/50%/100%）渐进式推送 |
-| Canary Rollout | 金丝雀发布 | 先小比例试运行再逐步扩大的配置发布策略 |
-| Rollback Point | 回滚点 | 可供恢复的配置版本快照记录 |
-| Config Governance Service | 配置治理服务 |负责加载、验证、完整性检查分层配置bundle的服务 |
-| Sandbox Policy |沙箱策略 | 文件路径访问的安全验证策略，防止目录遍历攻击 |
-| Compatibility Window |兼容性窗口 | 不同 runtime/SDK/protocol/plugin 之间被正式支持的兼容时间区间 |
-| Promote Criteria |晋升标准 |某模块从可用提升到 platform-ready/production-ready 的证据门槛 |
-| Readiness Registry | 就绪注册表 |记录环境或模块 readiness状态的正式注册面 |
-| Evidence Package |证据包 | 用于支撑 promote/signoff/production-ready 判断的一组证据 |
-| Production-ready | 生产就绪 | 已达到生产托底所需的综合门槛 |
-| Phase1a Ready | Phase1a 就绪 |达到 Phase1a稳定核心的最小可用门槛 |
+| Config Bundle | 配置包 | A group of configurations that take effect together; includes bootstrap, gateways, providers, runtime, security, workflows, and other layers |
+| Config Version | 配置版本 | Version identifier after a configuration change; used for tamper detection and cache management |
+| Config Layer | 配置层级 | Vertical layer structure of configurations, such as platform, tenant, pack, task_type |
+| Feature Flag | 特性开关 | Switch that controls capability enablement/disablement or gradual rollout |
+| Prompt Bundle | Prompt 包 | A group of prompts released and versioned together |
+| Config Diff | 配置差异 | The set of changes between two configuration bundles; used for drift detection |
+| Bundle Hash | 包哈希 | SHA-256 hash of the entire configuration bundle |
+| Layer Hash | 层级哈希 | Content hash of a single configuration layer; used for change detection |
+| Tamper Detection | 篡改检测 | Detection of unauthorized configuration changes by comparing version IDs |
+| Config Rollout | 配置发布 | Configuration release that supports canary strategies, with phased (5%/25%/50%/100%) progressive rollout |
+| Canary Rollout | 金丝雀发布 | Configuration release strategy that runs a small proportion first, then gradually expands |
+| Rollback Point | 回滚点 | Configuration version snapshot record available for restoration |
+| Config Governance Service | 配置治理服务 | Service responsible for loading, validating, and integrity-checking layered configuration bundles |
+| Sandbox Policy | 沙箱策略 | Security verification policy for file path access; prevents directory traversal attacks |
+| Compatibility Window | 兼容性窗口 | Formally supported compatibility time interval between different runtime/SDK/protocol/plugin versions |
+| Promote Criteria | 晋升标准 | Evidence threshold required for a module to be elevated from usable to platform-ready / production-ready |
+| Readiness Registry | 就绪注册表 | Formal registry surface that records the readiness state of environments or modules |
+| Evidence Package | 证据包 | A set of evidence used to support promote / signoff / production-ready decisions |
+| Production-ready | 生产就绪 | Has reached the comprehensive threshold required for production safeguards |
+| Phase 1a Ready | Phase 1a 就绪 | Has reached the minimum viable threshold of the Phase 1a stable core |
 
 ---
 
-##35. Prompt & Cache | Prompt 与缓存
+## 35. Prompt & Cache
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| Fixed Prefix |固定前缀 |跨 agent共享的 system prompt固定前缀，默认不参与普通 compaction |
-| Domain Block |领域块 | 同 domain/profile 可复用的 prompt 中间层 |
-| Variable Suffix |变量后缀 | 按任务、角色、plan、memory动态变化的 prompt 后缀 |
-| KV Cache Fixed Prefix | KV缓存固定前缀 | 基于相同 prefix hash 的预填充缓存复用机制 |
+| Fixed Prefix | 固定前缀 | Fixed system prompt prefix shared across agents; not subject to normal compaction by default |
+| Domain Block | 领域块 | Reusable prompt middle layer for the same domain / profile |
+| Variable Suffix | 变量后缀 | Prompt suffix that varies dynamically by task, role, plan, and memory |
+| KV Cache Fixed Prefix | KV 缓存固定前缀 | Prefill cache reuse mechanism based on the same prefix hash |
 
 ---
 
-##36. Storage Operations |存储运行机制
+## 36. Storage Operations
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| Migration Runner |迁移运行器 |负责执行存储后端 schema升级的状态管理服务 |
-| Schema Status | Schema状态 | 当前版本与预期版本的对比状态 |
-| Pending Versions | 待执行版本 |尚未应用的迁移版本列表 |
-| Up-to-date | 最新版本 | 当前存储 schema 已完成所有迁移 |
-| Dual Run | 双跑模式 | 生产环境 PostgreSQL 必须并行运行 SQLite影子库的模式 |
+| Migration Runner | 迁移运行器 | State management service responsible for executing storage backend schema upgrades |
+| Schema Status | Schema 状态 | Comparison status between the current version and the expected version |
+| Pending Versions | 待执行版本 | List of migration versions that have not yet been applied |
+| Up-to-date | 最新版本 | Current storage schema has completed all migrations |
+| Dual Run | 双跑模式 | Mode in which the production PostgreSQL environment must run a SQLite shadow database in parallel |
 
 ---
 
-##37. Security & Governance | 安全与治理
+## 37. Security & Governance
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| Policy Engine |策略引擎 | 对权限、风险、审批、预算和运行约束进行最终裁决的代码级入口，是统一的安全决策中心 |
-| HITL (Human In The Loop) |人工介入 | 需要人类显式参与的决策步骤，高风险操作必须经过人工审批才能继续 |
-| Approval |人工审批 | 工作流中需要人类显式确认才能继续的决策节点 |
-| Break-Glass |紧急放行 | 高风险紧急放行配置标记，critical风险触发 break-glass审批类型，用于紧急绕过标准流程 |
-| Sandbox |沙箱 | 执行隔离边界，将不可信代码或操作限制在受控环境中运行 |
-| Exec Policy | 执行策略 |工具/命令执行的规则集合，定义哪些操作被允许或禁止 |
-| Permission |权限 |某主体可见或可用某能力的授权状态，通过 PolicyEngine隐式实现 |
-| Secret |密钥/凭证 |密钥、token、凭证等敏感机密信息，包括 API Key、OAuth Token、数据库密码等 |
-| Secret Masking |密钥脱敏 | 在日志和展示中遮盖敏感密钥信息的方法，防止凭证泄露 |
-| Data Classification | 数据分级 | 数据敏感度分级规则，包括 public/internal/confidential/restricted四个级别 |
-| Audit Evidence |审计证据 | 可追溯、可验证、不可轻易抵赖的行为证据，用于合规和责任认定 |
-| Field Encryption |字段加密 | 对特定字段进行加密保护，确保敏感数据在存储和传输中的安全 |
-| Network Egress Policy | 出站网络策略 | 控制和审计从系统向外网发起的网络请求策略 |
-| Outbound URL Policy | 出站URL策略 | 对外部 HTTP 请求的目标 URL 进行过滤和限制的规则 |
-| Kill Switch |熔断开关 |紧急情况下全面禁用系统功能的开关，一旦激活所有操作将被拒绝 |
-| Budget Guard |预算防护 |监控和控制任务执行成本的机制，防止超出预算 |
-| Risk Category |风险类别 | PolicyEngine评估的风险类型，包括 destructive/irreversible/prod_affecting 等 |
-| PII (Personally Identifiable Information) | 个人身份信息 | 可识别个人的信息，如邮箱、电话、SSN、信用卡号等 |
-| Secret Lease |密钥租约 |密钥的时间限访问授权，控制密钥的有效期和使用范围 |
-| Secret Rotation |密钥轮换 |定期更新密钥以降低泄露风险的运维实践 |
-| CVE Intelligence | CVE情报 |已知安全漏洞情报服务，追踪和评估系统受漏洞影响程度 |
-| Policy Decision Request |策略决策请求 |包含任务ID、主体ID、动作、风险类别等上下文的策略评估请求 |
-| Policy Decision Result |策略决策结果 |策略引擎返回的决策结果，包括 allow/deny/escalate_for_approval |
-| Data Classification Level | 数据分级级别 | 包括 public/internal/confidential/restricted四个敏感度级别 |
-| Data Handling Dimension | 数据处理维度 | 数据流动的场景维度，包括 prompt/logs/memory/artifact/cross_worker/debug |
-| Handling Decision | 处理决策 | 基于数据分级和处理维度做出的允许/拒绝/脱敏/审计决定 |
-| PII Detection | PII检测 | 使用正则模式识别内容中的个人身份信息 |
-| PII Annotation | PII标注 | 在内容中标记检测到的 PII位置和脱敏形式 |
-| Secret Management Service |密钥管理服务 |统一管理所有密钥生命周期、轮换和访问的服务 |
-| Managed Secret Provider |托管密钥提供者 | 从 Vault/KMS/Secret Manager 等获取密钥的提供者 |
-| Env Secret Provider | 环境变量密钥提供者 | 从环境变量读取密钥的提供者 |
-| External Secret Provider |外部密钥提供者 | 从外部密钥管理系统获取密钥的提供者 |
-| Audit Integrity |审计完整性 | 确保审计记录不被篡改的完整性保护机制 |
-| Network Egress Audit | 出站网络审计 |记录和审查所有对外网络请求的审计机制 |
-| Trusted Context Scanner | 可信上下文扫描器 |扫描和验证可信上下文配置的组件 |
-| File Freshness | 文件新鲜度 | 检查文件是否过期或需要更新的机制 |
-| CVE Intelligence Service | CVE情报服务 |跟踪评估已知安全漏洞影响的情报服务 |
-| Approval Service |审批服务 | 处理人工审批请求和决策的服务 |
-| Approval Request |审批请求 |发送给人工审批者的审批任务 |
-| Approval Decision |审批决策 |审批者做出的批准或拒绝决定 |
-| Idempotent |幂等性 |同一操作重复执行结果一致的特性 |
+| Policy Engine | 策略引擎 | Code-level entry point that makes the final ruling on permissions, risk, approval, budget, and runtime constraints; the unified security decision center |
+| HITL (Human In The Loop) | 人工介入 | Decision steps that require explicit human participation; high-risk operations must go through human approval before continuing |
+| Approval | 人工审批 | Decision node in a workflow that requires explicit human confirmation before continuing |
+| Break-Glass | 紧急放行 | Configuration flag for high-risk emergency override; the critical risk triggers the break-glass approval type for emergency bypass of the standard flow |
+| Sandbox | 沙箱 | Execution isolation boundary that confines untrusted code or operations to a controlled environment |
+| Exec Policy | 执行策略 | Rule set for tool / command execution; defines which operations are allowed or prohibited |
+| Permission | 权限 | Authorization state by which a subject can see or use a capability; implicitly implemented through the PolicyEngine |
+| Secret | 密钥/凭证 | Sensitive confidential information such as keys, tokens, and credentials, including API Key, OAuth Token, database password, etc. |
+| Secret Masking | 密钥脱敏 | Method of masking sensitive secret information in logs and displays to prevent credential leakage |
+| Data Classification | 数据分级 | Data sensitivity classification rules, including four levels: public / internal / confidential / restricted |
+| Audit Evidence | 审计证据 | Behavior evidence that is traceable, verifiable, and hard to deny; used for compliance and accountability |
+| Field Encryption | 字段加密 | Encryption protection for specific fields, ensuring the security of sensitive data during storage and transmission |
+| Network Egress Policy | 出站网络策略 | Policy that controls and audits outbound network requests initiated by the system |
+| Outbound URL Policy | 出站URL策略 | Rules that filter and restrict the target URL of outbound HTTP requests |
+| Kill Switch | 熔断开关 | Switch that fully disables system functionality in an emergency; once activated, all operations are denied |
+| Budget Guard | 预算防护 | Mechanism that monitors and controls task execution cost to prevent overspending |
+| Risk Category | 风险类别 | Risk types evaluated by the PolicyEngine, including destructive / irreversible / prod_affecting etc. |
+| PII (Personally Identifiable Information) | 个人身份信息 | Information that can identify an individual, such as email, phone number, SSN, credit card number, etc. |
+| Secret Lease | 密钥租约 | Time-limited access authorization for a secret; controls the secret's validity period and usage scope |
+| Secret Rotation | 密钥轮换 | Operational practice of regularly updating secrets to reduce the risk of leakage |
+| CVE Intelligence | CVE情报 | Known vulnerability intelligence service that tracks and evaluates the degree to which the system is affected by vulnerabilities |
+| Policy Decision Request | 策略决策请求 | Policy evaluation request containing context such as task ID, subject ID, action, and risk category |
+| Policy Decision Result | 策略决策结果 | Decision result returned by the policy engine, including allow / deny / escalate_for_approval |
+| Data Classification Level | 数据分级级别 | Four sensitivity levels: public / internal / confidential / restricted |
+| Data Handling Dimension | 数据处理维度 | Scenario dimensions of data flow, including prompt / logs / memory / artifact / cross_worker / debug |
+| Handling Decision | 处理决策 | Allow / deny / redact / audit decision based on data classification and handling dimension |
+| PII Detection | PII检测 | Use of regular expression patterns to identify personally identifiable information in content |
+| PII Annotation | PII标注 | Marking the location of detected PII and the redaction form in content |
+| Secret Management Service | 密钥管理服务 | Service that uniformly manages the lifecycle, rotation, and access of all secrets |
+| Managed Secret Provider | 托管密钥提供者 | Provider that obtains secrets from Vault / KMS / Secret Manager |
+| Env Secret Provider | 环境变量密钥提供者 | Provider that reads secrets from environment variables |
+| External Secret Provider | 外部密钥提供者 | Provider that obtains secrets from an external key management system |
+| Audit Integrity | 审计完整性 | Integrity protection mechanism that ensures audit records are not tampered with |
+| Network Egress Audit | 出站网络审计 | Mechanism that records and reviews all outbound network requests |
+| Trusted Context Scanner | 可信上下文扫描器 | Component that scans and validates trusted context configuration |
+| File Freshness | 文件新鲜度 | Mechanism that checks whether a file is outdated or needs to be updated |
+| CVE Intelligence Service | CVE情报服务 | Intelligence service that tracks and evaluates the impact of known vulnerabilities |
+| Approval Service | 审批服务 | Service that handles human approval requests and decisions |
+| Approval Request | 审批请求 | Approval task sent to a human approver |
+| Approval Decision | 审批决策 | Approve or reject decision made by the approver |
+| Idempotent | 幂等性 | Property that repeated execution of the same operation produces consistent results |
 
 ---
 
-##38. Testing & Stabilization | 测试与稳定化
+## 38. Testing & Stabilization
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| Stable Core |稳定核心 | 为先达到可稳定运行而刻意收缩后的最小能力范围，确保核心功能可靠 |
-| Golden Task |黄金任务 | 作为版本回归基线的固定代表任务，用于验证系统基本功能未退化 |
-| Fixture | 测试固件 |预置的固定输入/输出样本，用于稳定测试和 VCR 回放 |
-| VCR (Video Cassette Recorder) | VCR录制回放 | 对外部 LLM 调用做录制/回放的测试机制，实现确定性测试 |
-| Unit Test |单元测试 |面向单函数、单模块、单对象的细粒度测试 |
-| Integration Test |集成测试 |跨模块协同的测试，验证多个组件之间的交互正确性 |
-| E2E (End-to-End) |端到端测试 | 从入口到结果的完整流程测试，覆盖整个系统链路 |
-| Chaos Test |混沌测试 |主动注入故障以验证恢复与韧性的测试，如注入网络延迟、服务宕机 |
-| Soak Test |浸泡测试 |长时间持续运行的稳定性测试，验证系统在长期负载下的表现 |
-| Recovery Drill |恢复演练 | 针对崩溃、断连、锁冲突、重启等场景的恢复能力演练 |
-| Chaos Smoke |混沌冒烟测试 | 在系统启动时验证故障检测和修复能力的快速端到端测试 |
-| Admission Control |准入控制 | 系统在过载前进行拒绝、延迟或降级的保护机制 |
-| Readiness | 就绪度 |某阶段、模块或环境是否达到进入下一动作的准备状态 |
-| Stable Validation |稳定验证 | 运行黄金任务并检查数据库完整性和备份往返的验证流程 |
-| Stable Gate |稳定门禁 | 环境升级到下一阶段必须通过的质量门槛 |
-| Golden Task Inventory |黄金任务清单 | 必须覆盖的任务类别集合，包括 coding/research/content/data 等 |
-| VCR Replay Mode | VCR回放模式 | 包括 fixture_only/vcr_replay/vcr_record 三种模式，控制是否允许实际调用 |
-| Drift Detection |漂移检测 | 对比当前运行结果与基线，检测性能或行为异常 |
-| Regression Detection |回归检测 | 发现新代码导致已有功能退化的测试方法 |
-| Stable Runtime Validator |运行时稳定验证器 | 运行黄金任务并检查数据库完整性和备份有效性的核心模块 |
-| Stable Acceptance Line |稳定验收线 | 环境晋升到生产就绪状态必须达到的质量标准线 |
-| Stable Release Gate | 发布门禁 | 版本发布前必须通过的稳定性和质量检查 |
-| Stable Release Package |稳定发布包 | 经过验证、可用于正式部署的版本产物 |
-| Stable Evidence Campaign |证据收集活动 | 为支撑 promote/signoff 判断而收集的一组证据包 |
-| Stable Evidence Bundle |证据包 |包含测试结果、基线对比、回归分析等支撑发布决策的证据集合 |
-| Stable Evidence Sequence |证据序列 | 按时间顺序组织的稳定性证据记录 |
-| Stable Migration Compatibility Rehearsal |迁移兼容性演练 |验证系统在不同版本间迁移兼容性的排练 |
-| Stable Gray Release Rehearsal |灰度发布演练 |验证灰度发布机制可靠性的排练 |
-| Stable Rolling Upgrade Rehearsal |滚动升级演练 |验证滚动升级过程可靠性的排练 |
-| Stable Concurrency Rehearsal | 并发演练 |验证系统在并发负载下稳定运行能力的排练 |
-| Stable Backup Restore Rehearsal |备份恢复演练 |验证数据备份和恢复流程可靠性的排练 |
-| Stable DB Queue Disconnect Rehearsal | 数据库队列断连演练 |验证数据库与队列连接中断场景下系统行为的排练 |
-| Stable DB Writability Rehearsal | 数据库写入演练 |验证数据库写入能力在故障场景下可恢复的排练 |
-| Stable Dispatch Rehearsal |调度演练 |验证任务调度机制在异常条件下正常工作的排练 |
-| Stable Dispatch Reconciliation Rehearsal |调度对账演练 |验证调度层与执行层状态一致的排练 |
-| Stable Event Replay Rehearsal |事件重放演练 |验证事件重放机制可靠性的排练 |
-| Stable Lease Rehearsal |租约演练 |验证任务租约机制在故障场景下正确释放和续约的排练 |
-| Stable Queue Delivery Rehearsal |队列投递演练 |验证消息队列投递可靠性的排练 |
-| Stable Runtime Soak Runner |运行时浸泡运行器 |长时间持续运行测试以验证稳定性的运行器 |
-| Stable Worker Handshake Rehearsal | Worker握手演练 |验证 Worker 注册和心跳机制可靠性的排练 |
-| Stable Worker Writeback Rehearsal | Worker回写演练 |验证 Worker 结果回写机制可靠性的排练 |
-| Stable Cross-Division Recovery Drill |跨部门恢复演练 | 针对跨部门协作场景的灾难恢复演练 |
-| Stable Maintenance Rehearsal |维护演练 | 系统维护期间可用性保障能力的排练 |
-| Prompt Injection Guard |提示词注入防护 | 检测和阻止恶意提示词注入攻击的防护机制 |
-| Prompt Injection Red Team |提示词注入红队 | 针对提示词注入攻击的安全测试团队 |
-| Environment Readiness | 环境就绪度 | 环境达到可投入生产使用所需满足的条件 |
-| Environment Promotion | 环境晋升 | 环境从当前阶段升级到下一阶段的过程 |
-| Drill Type |演练类型 | 包括 backup_restore/rolling_upgrade/maintenance_drain/tenant_gray_rollout/regional_failover/worker_reassignment/queue_repair 等 |
-| Golden Task Latency Band |黄金任务延迟带 |任务预期的延迟范围，包括 interactive/extended |
-| Golden Task Case |黄金任务用例 |具体的黄金任务定义，包含请求、元数据、预期结果 |
-| Golden Task Run Result |黄金任务运行结果 |黄金任务执行后的实际结果和通过状态 |
-| Golden Task Class |黄金任务类别 | 必须覆盖的任务类型，包括 coding/research/content/data/cross_division/high_risk_approval/crash_recovery |
-| VCR Replay Fixture | VCR回放固件 |录制保存的请求/响应对，用于测试回放 |
-| VCR Request Fingerprint | VCR请求指纹 | 请求的 SHA-256哈希值，用于唯一标识录制 |
+| Stable Core | 稳定核心 | The minimal capability scope intentionally narrowed to achieve stable operation first, ensuring core functionality is reliable |
+| Golden Task | 黄金任务 | Fixed representative task used as a version regression baseline, used to verify that core system functions have not regressed |
+| Fixture | 测试固件 | Pre-set fixed input / output samples for stable testing and VCR replay |
+| VCR (Video Cassette Recorder) | VCR录制回放 | Testing mechanism that records / replays external LLM calls, enabling deterministic tests |
+| Unit Test | 单元测试 | Fine-grained tests targeting a single function, module, or object |
+| Integration Test | 集成测试 | Cross-module collaboration tests, verifying that the interaction between multiple components is correct |
+| E2E (End-to-End) | 端到端测试 | Full-flow test from entry to result, covering the entire system chain |
+| Chaos Test | 混沌测试 | Tests that actively inject failures to verify recovery and resilience, such as injecting network latency or service outages |
+| Soak Test | 浸泡测试 | Long-running stability test that verifies system behavior under sustained load |
+| Recovery Drill | 恢复演练 | Recovery capability drill for scenarios such as crashes, disconnections, lock conflicts, and restarts |
+| Chaos Smoke | 混沌冒烟测试 | Quick end-to-end test that verifies fault detection and repair capabilities at system startup |
+| Admission Control | 准入控制 | Protection mechanism that rejects, delays, or degrades the system before overload |
+| Readiness | 就绪度 | Whether a stage, module, or environment has reached the preparation state required to enter the next action |
+| Stable Validation | 稳定验证 | Validation process that runs golden tasks and checks database integrity and backup round-trips |
+| Stable Gate | 稳定门禁 | Quality threshold that an environment must pass to be promoted to the next stage |
+| Golden Task Inventory | 黄金任务清单 | Required set of task categories, including coding / research / content / data etc. |
+| VCR Replay Mode | VCR回放模式 | Includes three modes: fixture_only / vcr_replay / vcr_record; controls whether actual calls are allowed |
+| Drift Detection | 漂移检测 | Compares current runtime results with a baseline to detect performance or behavior anomalies |
+| Regression Detection | 回归检测 | Testing approach that discovers regressions in existing functionality caused by new code |
+| Stable Runtime Validator | 运行时稳定验证器 | Core module that runs golden tasks and checks database integrity and backup validity |
+| Stable Acceptance Line | 稳定验收线 | Quality standard that an environment must reach to be promoted to a production-ready state |
+| Stable Release Gate | 发布门禁 | Stability and quality checks that must be passed before a version is released |
+| Stable Release Package | 稳定发布包 | Version artifact that has been validated and is available for formal deployment |
+| Stable Evidence Campaign | 证据收集活动 | A set of evidence packages collected to support promote / signoff decisions |
+| Stable Evidence Bundle | 证据包 | A collection of evidence containing test results, baseline comparisons, regression analysis, etc. that supports release decisions |
+| Stable Evidence Sequence | 证据序列 | Stability evidence records organized in chronological order |
+| Stable Migration Compatibility Rehearsal | 迁移兼容性演练 | Rehearsal that verifies migration compatibility between system versions |
+| Stable Gray Release Rehearsal | 灰度发布演练 | Rehearsal that verifies the reliability of the gray release mechanism |
+| Stable Rolling Upgrade Rehearsal | 滚动升级演练 | Rehearsal that verifies the reliability of the rolling upgrade process |
+| Stable Concurrency Rehearsal | 并发演练 | Rehearsal that verifies the system's ability to run stably under concurrent load |
+| Stable Backup Restore Rehearsal | 备份恢复演练 | Rehearsal that verifies the reliability of the data backup and recovery process |
+| Stable DB Queue Disconnect Rehearsal | 数据库队列断连演练 | Rehearsal that verifies system behavior in scenarios where database and queue connections are interrupted |
+| Stable DB Writability Rehearsal | 数据库写入演练 | Rehearsal that verifies that database write capability is recoverable in failure scenarios |
+| Stable Dispatch Rehearsal | 调度演练 | Rehearsal that verifies that the task dispatch mechanism works correctly under abnormal conditions |
+| Stable Dispatch Reconciliation Rehearsal | 调度对账演练 | Rehearsal that verifies state consistency between the scheduler layer and the execution layer |
+| Stable Event Replay Rehearsal | 事件重放演练 | Rehearsal that verifies the reliability of the event replay mechanism |
+| Stable Lease Rehearsal | 租约演练 | Rehearsal that verifies correct release and renewal of task leases in failure scenarios |
+| Stable Queue Delivery Rehearsal | 队列投递演练 | Rehearsal that verifies the reliability of message queue delivery |
+| Stable Runtime Soak Runner | 运行时浸泡运行器 | Runner that performs long-running tests to verify stability |
+| Stable Worker Handshake Rehearsal | Worker握手演练 | Rehearsal that verifies the reliability of worker registration and heartbeat mechanisms |
+| Stable Worker Writeback Rehearsal | Worker回写演练 | Rehearsal that verifies the reliability of worker result writeback |
+| Stable Cross-Division Recovery Drill | 跨部门恢复演练 | Disaster recovery drill for cross-division collaboration scenarios |
+| Stable Maintenance Rehearsal | 维护演练 | Rehearsal that verifies availability protection capabilities during system maintenance |
+| Prompt Injection Guard | 提示词注入防护 | Protection mechanism that detects and blocks malicious prompt injection attacks |
+| Prompt Injection Red Team | 提示词注入红队 | Security testing team that targets prompt injection attacks |
+| Environment Readiness | 环境就绪度 | Conditions that an environment must meet to be ready for production use |
+| Environment Promotion | 环境晋升 | Process of upgrading an environment from its current stage to the next stage |
+| Drill Type | 演练类型 | Includes backup_restore / rolling_upgrade / maintenance_drain / tenant_gray_rollout / regional_failover / worker_reassignment / queue_repair etc. |
+| Golden Task Latency Band | 黄金任务延迟带 | Expected latency range for tasks, including interactive / extended |
+| Golden Task Case | 黄金任务用例 | Specific golden task definition, including request, metadata, and expected result |
+| Golden Task Run Result | 黄金任务运行结果 | Actual result and pass status after a golden task is executed |
+| Golden Task Class | 黄金任务类别 | Required task types, including coding / research / content / data / cross_division / high_risk_approval / crash_recovery |
+| VCR Replay Fixture | VCR回放固件 | Recorded and saved request / response pairs used for test replay |
+| VCR Request Fingerprint | VCR请求指纹 | SHA-256 hash of a request, used to uniquely identify a recording |
 
 ---
 
-##39. Abbreviations |缩写词
+## 39. Abbreviations
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| ADR |架构决策记录 | Architecture Decision Record，记录重要架构决策 |
+| ADR | 架构决策记录 | Architecture Decision Record, documents important architecture decisions |
 | API | 应用编程接口 | Application Programming Interface |
 | SDK | 软件开发工具包 | Software Development Kit |
-| DSL |领域专用语言 | Domain-Specific Language |
+| DSL | 领域专用语言 | Domain-Specific Language |
 | DDL | 数据定义语言 | Data Definition Language |
-| WAL |预写日志 | Write-Ahead Logging |
-| HITL |人工介入 | Human In The Loop |
+| WAL | 预写日志 | Write-Ahead Logging |
+| HITL | 人工介入 | Human In The Loop |
 | PII | 个人身份信息 | Personally Identifiable Information |
-| TTL |生存时间 | Time To Live |
-| DLQ |死信队列 | Dead Letter Queue |
+| TTL | 生存时间 | Time To Live |
+| DLQ | 死信队列 | Dead Letter Queue |
 | HA | 高可用 | High Availability |
-| DR |灾难恢复 | Disaster Recovery |
-| OIDC | OpenID连接 | OpenID Connect，用于身份认证联邦 |
+| DR | 灾难恢复 | Disaster Recovery |
+| OIDC | OpenID连接 | OpenID Connect, used for identity federation authentication |
 | SSO | 单点登录 | Single Sign-On |
 | SCIM | 用户身份同步 | System for Cross-domain Identity Management |
 | RLS | 行级安全 | Row-Level Security |
 | SBOM | 软件物料清单 | Software Bill of Materials |
-| RCA |根因分析 | Root Cause Analysis |
-| VCR |录像回放 | Video Cassette Recorder，借指测试录制回放 |
-| IAM |身份与访问管理 | Identity and Access Management |
+| RCA | 根因分析 | Root Cause Analysis |
+| VCR | 录像回放 | Video Cassette Recorder, figuratively refers to test recording and replay |
+| IAM | 身份与访问管理 | Identity and Access Management |
 | SLA | 服务等级协议 | Service Level Agreement |
 | SLO | 服务目标 | Service Level Objective |
 | SLI | 服务等级指标 | Service Level Indicator |
 
 ---
 
-##37. Protocol, Model & Security Abbreviations |协议、模型与安全缩写
+## 37. Protocol, Model & Security Abbreviations
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| ADR |架构决策记录 | Architecture Decision Record，架构设计决策文档 |
-| API | 应用编程接口 | Application Programming Interface，对外或模块间接口面 |
-| SDK | 软件开发工具包 | Software Development Kit，由 authoritative schema派生 |
-| DSL |领域专用语言 | Domain-Specific Language，如 workflow DSL |
-| DDL | 数据定义语言 | Data Definition Language，建表/索引/约束迁移语句 |
-| WAL |预写日志 | Write-Ahead Logging，SQLite/数据库的持久化机制 |
-| MCP | 模型上下文协议 | Model Context Protocol，外部能力接入协议 |
-| HITL |人工介入 | Human In The Loop，需要人类参与的决策环节 |
-| PII | 个人身份信息 | Personally Identifiable Information，需脱敏处理 |
-| TTL |存活时间 | Time To Live，数据或缓存的有效时长 |
-| DLQ |死信队列 | Dead Letter Queue，承接无法继续处理的消息或任务 |
-| HA | 高可用 | High Availability，系统持续可用性保障 |
-| DR | 容灾恢复 | Disaster Recovery，灾难场景下的业务恢复能力 |
-| OIDC |开放身份连接 | OpenID Connect，用于身份认证联邦 |
-| SSO | 单点登录 | Single Sign-On，一次认证全链路通行 |
-| SCIM |身份同步协议 | System for Cross-domain Identity Management，用户与组织身份同步 |
-| RLS | 行级安全 | Row-Level Security，数据访问层面的行级隔离 |
-| SBOM | 软件物料清单 | Software Bill of Materials，依赖组件清单 |
-| RBAC | 基于角色的访问控制 | Role-Based Access Control，权限管理模型 |
-| PKCE | 代码交换证明 | Proof Key for Code Exchange，OAuth扩展安全机制 |
+| ADR | 架构决策记录 | Architecture Decision Record, documents architecture design decisions |
+| API | 应用编程接口 | Application Programming Interface, the interface surface exposed externally or between modules |
+| SDK | 软件开发工具包 | Software Development Kit, derived from authoritative schema |
+| DSL | 领域专用语言 | Domain-Specific Language, such as workflow DSL |
+| DDL | 数据定义语言 | Data Definition Language, statements for table creation / indexes / constraint migrations |
+| WAL | 预写日志 | Write-Ahead Logging, persistence mechanism for SQLite / databases |
+| MCP | 模型上下文协议 | Model Context Protocol, external capability access protocol |
+| HITL | 人工介入 | Human In The Loop, decision step that requires human participation |
+| PII | 个人身份信息 | Personally Identifiable Information, must be redacted |
+| TTL | 存活时间 | Time To Live, the validity duration of data or cache |
+| DLQ | 死信队列 | Dead Letter Queue, accepts messages or tasks that cannot continue processing |
+| HA | 高可用 | High Availability, ensures continuous system availability |
+| DR | 容灾恢复 | Disaster Recovery, business recovery capability in disaster scenarios |
+| OIDC | 开放身份连接 | OpenID Connect, used for identity federation authentication |
+| SSO | 单点登录 | Single Sign-On, one authentication passes through the whole chain |
+| SCIM | 身份同步协议 | System for Cross-domain Identity Management, user and organization identity synchronization |
+| RLS | 行级安全 | Row-Level Security, row-level isolation in data access |
+| SBOM | 软件物料清单 | Software Bill of Materials, dependency component manifest |
+| RBAC | 基于角色的访问控制 | Role-Based Access Control, permission management model |
+| PKCE | 代码交换证明 | Proof Key for Code Exchange, OAuth extension security mechanism |
 
 ---
 
-##38. Integration & Communication Abbreviations |集成与通信缩写
+## 38. Integration & Communication Abbreviations
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| RPC |远程过程调用 | Remote Procedure Call，服务间通信模式 |
-| REST |表述性状态转移 | Representational State Transfer，Web API风格 |
-| GraphQL | 图查询语言 | Graph Query Language，API 查询语言 |
-| OAuth |开放授权 | Open Authorization，第三方授权协议 |
-| Webhook | Web回调 | Web callback，事件驱动通知机制 |
-| SSE | 服务器推送事件 | Server-Sent Events，客户端接收服务端推送 |
-| TCP |传输控制协议 | Transmission Control Protocol，连接可靠传输 |
-| UDP | 用户数据报协议 | User Datagram Protocol，无连接传输 |
-| HTTP | 超文本传输协议 | HyperText Transfer Protocol，Web通信 |
-| HTTPS | 安全超文本传输协议 | HTTP Secure，TLS加密传输 |
-| DNS |域名系统 | Domain Name System，域名解析 |
-| CDN | 内容分发网络 | Content Delivery Network，静态资源加速 |
-| QoS | 服务质量 | Quality of Service，网络性能保障 |
+| RPC | 远程过程调用 | Remote Procedure Call, communication mode between services |
+| REST | 表述性状态转移 | Representational State Transfer, Web API style |
+| GraphQL | 图查询语言 | Graph Query Language, API query language |
+| OAuth | 开放授权 | Open Authorization, third-party authorization protocol |
+| Webhook | Web 回调 | Web callback, event-driven notification mechanism |
+| SSE | 服务器推送事件 | Server-Sent Events, client receives server-side push |
+| TCP | 传输控制协议 | Transmission Control Protocol, connection-oriented reliable transport |
+| UDP | 用户数据报协议 | User Datagram Protocol, connectionless transport |
+| HTTP | 超文本传输协议 | HyperText Transfer Protocol, Web communication |
+| HTTPS | 安全超文本传输协议 | HTTP Secure, TLS-encrypted transport |
+| DNS | 域名系统 | Domain Name System, domain name resolution |
+| CDN | 内容分发网络 | Content Delivery Network, static resource acceleration |
+| QoS | 服务质量 | Quality of Service, network performance guarantee |
 
 ---
 
-##39. Code-Level Variable Abbreviations | 代码级别变量缩写
+## 39. Code-Level Variable Abbreviations
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| id |标识符 | identifier，对象唯一标识 |
-| uid | 用户标识 | user identifier，用户身份编号 |
-| pid |进程标识 | process identifier，操作系统进程编号 |
-| tid |线程标识 | thread identifier，操作系统线程编号 |
-| sid | 会话标识 | session identifier，一次交互会话唯一标识 |
-| eid | 执行标识 | execution identifier，执行实例编号 |
-| cid |关联标识 | correlation identifier，跨模块关联编号 |
-| ts | 时间戳 | timestamp，记录时间 |
-| ctx |上下文 | context，执行环境信息传递 |
-| cfg | 配置 | config/configuration，运行时参数 |
-| opts | 选项 | options，可选参数 |
-| args | 参数 | arguments，函数/命令输入 |
-| env | 环境 | environment，运行环境变量 |
-| db | 数据库 | database，持久化存储 |
+| id | 标识符 | identifier, unique object identifier |
+| uid | 用户标识 | user identifier, user identity number |
+| pid | 进程标识 | process identifier, operating system process number |
+| tid | 线程标识 | thread identifier, operating system thread number |
+| sid | 会话标识 | session identifier, unique identifier for an interaction session |
+| eid | 执行标识 | execution identifier, execution instance number |
+| cid | 关联标识 | correlation identifier, cross-module correlation number |
+| ts | 时间戳 | timestamp, records the time |
+| ctx | 上下文 | context, execution environment information passing |
+| cfg | 配置 | config / configuration, runtime parameters |
+| opts | 选项 | options, optional parameters |
+| args | 参数 | arguments, function / command input |
+| env | 环境 | environment, runtime environment variables |
+| db | 数据库 | database, persistent storage |
 | sql | 查询语言 | structured query language |
-| url |资源定位符 | uniform resource locator |
-| uri |资源标识符 | uniform resource identifier |
+| url | 资源定位符 | uniform resource locator |
+| uri | 资源标识符 | uniform resource identifier |
 | ip | 网络地址 | internet protocol address |
-| err |错误 | error，异常或失败状态 |
-| res |响应 | response，返回结果 |
-| req | 请求 | request，输入/调用 |
-| resp |响应 | response，返回数据 |
-| msg |消息 | message，通信单元 |
-| evt |事件 | event，状态变更通知 |
-| svc | 服务 | service，业务能力单元 |
-| repo |仓库 | repository，代码或数据存储 |
-| auth |认证 | authentication，身份验证 |
-| authz |授权 | authorization，权限校验 |
-| prop | 属性 | property，对象属性 |
-| val | 值 | value，属性值 |
-| idx |索引 | index，数组位置或数据库索引 |
-| len |长度 | length，数量或大小 |
-| max | 最大值 | maximum，上限 |
-| min |最小值 | minimum，下限 |
-| prev | 上一个 | previous，前一个状态 |
-| curr | 当前 | current，当前状态 |
-| next |下一个 | next，下一个状态 |
-| init |初始化 | initialize，初始化操作 |
-| def | 默认 | default，默认值 |
-| tmp |临时 | temporary，临时变量 |
-| src |源 | source，来源 |
-| dest |目标 | destination，目标位置 |
+| err | 错误 | error, exception or failure state |
+| res | 响应 | response, returned result |
+| req | 请求 | request, input / call |
+| resp | 响应 | response, returned data |
+| msg | 消息 | message, communication unit |
+| evt | 事件 | event, state change notification |
+| svc | 服务 | service, business capability unit |
+| repo | 仓库 | repository, code or data storage |
+| auth | 认证 | authentication, identity verification |
+| authz | 授权 | authorization, permission check |
+| prop | 属性 | property, object attribute |
+| val | 值 | value, attribute value |
+| idx | 索引 | index, array position or database index |
+| len | 长度 | length, quantity or size |
+| max | 最大值 | maximum, upper limit |
+| min | 最小值 | minimum, lower limit |
+| prev | 上一个 | previous, prior state |
+| curr | 当前 | current, current state |
+| next | 下一个 | next, next state |
+| init | 初始化 | initialize, initialization operation |
+| def | 默认 | default, default value |
+| tmp | 临时 | temporary, temporary variable |
+| src | 源 | source, origin |
+| dest | 目标 | destination, target location |
 
 ---
 
-##40. Operations & Business Abbreviations |运维与业务缩写
+## 40. Operations & Business Abbreviations
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| SLA | 服务等级协议 | Service Level Agreement，对外承诺协议 |
-| SLO | 服务等级目标 | Service Level Objective，期望达成目标 |
-| SLI | 服务等级指标 | Service Level Indicator，实际测量指标 |
-| KPI |关键绩效指标 | Key Performance Indicator，业务衡量指标 |
-| OKR |目标与关键成果 | Objectives and Key Results，目标管理框架 |
-| PMF | 产品-市场匹配 | Product-Market Fit，产品市场契合度 |
-| ROI |投资回报率 | Return on Investment，投资收益比 |
-| MTTR | 平均恢复时间 | Mean Time To Recovery，平均故障恢复时长 |
-| MTBF | 平均故障间隔 | Mean Time Between Failures，平均无故障运行时长 |
-| RCA |根因分析 | Root Cause Analysis，事故分析流程 |
-| RTO |恢复时间目标 | Recovery Time Objective，故障恢复时长目标 |
-| RPO | 数据回退点目标 | Recovery Point Objective，可接受数据丢失窗口 |
+| SLA | 服务等级协议 | Service Level Agreement, externally committed agreement |
+| SLO | 服务等级目标 | Service Level Objective, expected target |
+| SLI | 服务等级指标 | Service Level Indicator, actual measurement metric |
+| KPI | 关键绩效指标 | Key Performance Indicator, business measurement metric |
+| OKR | 目标与关键成果 | Objectives and Key Results, goal management framework |
+| PMF | 产品-市场匹配 | Product-Market Fit, product-market fit degree |
+| ROI | 投资回报率 | Return on Investment, investment return ratio |
+| MTTR | 平均恢复时间 | Mean Time To Recovery, average failure recovery duration |
+| MTBF | 平均故障间隔 | Mean Time Between Failures, average fault-free runtime |
+| RCA | 根因分析 | Root Cause Analysis, incident analysis process |
+| RTO | 恢复时间目标 | Recovery Time Objective, failure recovery time target |
+| RPO | 数据回退点目标 | Recovery Point Objective, acceptable data loss window |
 
 ---
 
-##41. Testing Abbreviations | 测试缩写
+## 41. Testing Abbreviations
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| E2E |端到端 | End-to-End，从入口到结果的完整测试或流程 |
-| UT |单元测试 | Unit Test，单函数/模块测试 |
-| IT |集成测试 | Integration Test，跨模块协同测试 |
-| VCR | 测试录制回放 | Video Cassette Recorder，外部调用录制/回放机制 |
+| E2E | 端到端 | End-to-End, complete test or flow from entry to result |
+| UT | 单元测试 | Unit Test, single function / module test |
+| IT | 集成测试 | Integration Test, cross-module collaboration test |
+| VCR | 测试录制回放 | Video Cassette Recorder, external call recording / replay mechanism |
 
 ---
 
-*本文档为只读治理参考，如发现术语冲突以对应 authoritative contract 为准。*
+*This document is a read-only governance reference; in case of terminology conflicts, the corresponding authoritative contract takes precedence.*
 
 ---
 
-##42. Organization & Control Plane Roles | 组织与控制层角色
+## 42. Organization & Control Plane Roles
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| `strategic_governor` |战略总督 |战略判断、升级治理、组织级审批的控制层角色（文档定义，代码中未实现为独立服务） |
-| `intake_router` | 摄取路由器 | 输入分诊、分类、路由、预算入口的控制层角色 |
-| `workflow_planner` | 工作流规划器 |跨事业部拆分、依赖图、聚合、失败升级的控制层角色 |
-| `division_lead` |部门主管 |事业部内 workflow自治编排的控制层角色（文档定义，代码中未实现为独立服务） |
-| `division` |事业部 |业务能力域或事业部边界，不应与 `tenant`混用 |
-| `role` |角色 |职责定义，不是运行实例 |
-| `agent` |智能体 |承担角色职责的智能执行实体，不应与 `worker`混用 |
-| `organization` | 组织 | 企业/组织级边界 |
-| `workspace` | 工作空间 | 组织下的工作空间边界，不应与 `session`混用 |
-| `tenant` |租户 |隔离、安全、配额和计费的主边界 |
+| `strategic_governor` | 战略总督 | Control plane role for strategic judgment, escalation governance, and organization-level approvals (defined in the document; not implemented as an independent service in code) |
+| `intake_router` | 摄取路由器 | Control plane role for input triage, classification, routing, and budget entry |
+| `workflow_planner` | 工作流规划器 | Control plane role for cross-division decomposition, dependency graph, aggregation, and failure escalation |
+| `division_lead` | 部门主管 | Control plane role for autonomous workflow orchestration within a division (defined in the document; not implemented as an independent service in code) |
+| `division` | 事业部 | Business capability domain or division boundary; should not be confused with `tenant` |
+| `role` | 角色 | Responsibility definition; not a running instance |
+| `agent` | 智能体 | Intelligent execution entity that takes on a role; should not be confused with `worker` |
+| `organization` | 组织 | Enterprise / organization-level boundary |
+| `workspace` | 工作空间 | Workspace boundary under an organization; should not be confused with `session` |
+| `tenant` | 租户 | Primary boundary for isolation, security, quota, and billing |
 
 ---
 
-##43. Channel & Extension |渠道与扩展
+## 43. Channel & Extension
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| `channel` |渠道 | 用户或系统接入界面，如 CLI、Web、Telegram、API（注：代码中仅实现 telegram/slack/webhook） |
-| `channel capability` |渠道能力 |某渠道支持的能力，如 text、button、stream、attachment（注意：代码中无对应的能力枚举类型定义） |
-| `plugin` |插件 | 通过公共 SDK 或受控边界扩展平台能力的安装单元 |
-| `skill` |技能 | 对工具或步骤的可复用编排能力 |
-| `MCP` | 模型上下文协议 |外部能力接入协议/扩展类型之一（MCP工具通过 mcp-tool-guard验证） |
-| `recipe` |配方 | 结构化工作流或模板定义，可作为 workflow 作者输入层 |
-| `template` |模板 | 与 recipe 类似，结构化工作流或步骤的定义，可复用 |
-| `provider` | 提供方 | LLM 或模型能力提供方 |
-| `model` | 模型 | provider提供的具体模型实例 |
-| `model profile` | 模型画像 |某模型的能力、限制、价格、默认参数等元数据 |
+| `channel` | 渠道 | User or system access interface, such as CLI, Web, Telegram, API (note: only telegram / slack / webhook are implemented in code) |
+| `channel capability` | 渠道能力 | Capabilities supported by a channel, such as text, button, stream, attachment (note: there is no corresponding capability enum type defined in code) |
+| `plugin` | 插件 | Installation unit that extends platform capabilities through a public SDK or controlled boundary |
+| `skill` | 技能 | Reusable orchestration capability over tools or steps |
+| `MCP` | 模型上下文协议 | External capability access protocol / extension type (MCP tools are validated by mcp-tool-guard) |
+| `recipe` | 配方 | Structured workflow or template definition, usable as the workflow author input layer |
+| `template` | 模板 | Similar to recipe, definition of a structured workflow or steps; reusable |
+| `provider` | 提供方 | LLM or model capability provider |
+| `model` | 模型 | Specific model instance provided by a provider |
+| `model profile` | 模型画像 | Metadata of a model such as capabilities, limits, pricing, and default parameters |
 
 ---
 
-##44. Domain & Plugin Registry |领域与插件注册
+## 44. Domain & Plugin Registry
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| `domain` |领域 |业务能力域的定义，包含 workflows、toolBundles、outputContracts 等 |
-| `domain model` |领域模型 |包含 StepTemplateConfig、WorkflowConfig、ToolBundleConfig 等的结构定义 |
-| `plugin binding` |插件绑定 |领域与插件的关联配置，定义 pluginId、pluginType、priority 等 |
-| `PluginSpiType` |插件SPI类型 | 包括 retriever、validator、planner、presenter、adapter 五种 |
-| `PluginLifecycleState` |插件生命周期状态 | 包括 registered、loaded、active、inactive、unloaded、degraded、disabled |
-| `ExternalAdapterPlugin` |外部适配器插件 | 连接外部系统（github、jira、notion、figma 等）的插件类型 |
-| `PluginRuntimeIsolation` |插件运行时隔离级别 | 包括 shared_process、serialized_in_process、forked_process、sandboxed_process、containerized_process |
-| `PluginSandboxPolicy` |插件沙箱策略 | timeoutMs、allowFilesystemWrite、allowNetworkEgress 等安全配置 |
+| `domain` | 领域 | Definition of a business capability domain, including workflows, toolBundles, outputContracts, etc. |
+| `domain model` | 领域模型 | Structural definition including StepTemplateConfig, WorkflowConfig, ToolBundleConfig, etc. |
+| `plugin binding` | 插件绑定 | Association configuration between a domain and a plugin, defining pluginId, pluginType, priority, etc. |
+| `PluginSpiType` | 插件SPI类型 | Five types: retriever, validator, planner, presenter, adapter |
+| `PluginLifecycleState` | 插件生命周期状态 | Includes registered, loaded, active, inactive, unloaded, degraded, disabled |
+| `ExternalAdapterPlugin` | 外部适配器插件 | Plugin type that connects external systems (github, jira, notion, figma, etc.) |
+| `PluginRuntimeIsolation` | 插件运行时隔离级别 | Includes shared_process, serialized_in_process, forked_process, sandboxed_process, containerized_process |
+| `PluginSandboxPolicy` | 插件沙箱策略 | Security configuration such as timeoutMs, allowFilesystemWrite, allowNetworkEgress, etc. |
 
 ---
 
-##45. Confusable Term Pairs with Distinctions | 易混淆术语对详解
+## 45. Confusable Term Pairs with Distinctions
 
-### permission vs policy |权限 vs策略
-- **permission（权限）**:授权结果或静态能力边界。代码中 permission概念通过 PolicyEngine隐式实现，无独立的 Permission 类型定义。
-- **policy（策略）**:裁决逻辑与规则体系，对权限、风险、审批、预算和运行约束进行最终裁决的代码级入口。
-- **区分**: 不应把 prompt 中的口头限制当作正式 policy。
+### permission vs policy
+- **permission**: Authorization result or static capability boundary. In code, the permission concept is implicitly implemented through PolicyEngine; there is no independent Permission type definition.
+- **policy**: Adjudication logic and rule system; the code-level entry point that makes the final ruling on permissions, risk, approval, budget, and runtime constraints.
+- **Distinction**: Verbal restrictions in prompts should not be treated as formal policy.
 
-### queue vs lease |队列 vs租赁
-- **queue（队列）**:决定等待顺序的任务排队机制。
-- **lease（租赁）**:某次 execution 或 worker dispatch 的临时所有权，用于防止重复执行，决定当前执行权。
-- **区分**:两者都存在时，不应互相替代。
+### queue vs lease
+- **queue**: Task queuing mechanism that determines the waiting order.
+- **lease**: Temporary ownership of an execution or worker dispatch; used to prevent duplicate execution and determine the current execution right.
+- **Distinction**: When both exist, they should not substitute for each other.
 
-### readiness vs production-ready | 就绪度 vs 生产就绪
-- **readiness（就绪度）**: 表示达到某个 gate 或下一动作的准备度。
-- **production-ready（生产就绪）**: 表示已达到生产托底所需的综合门槛。
-- **区分**: `Phase1a ready`不得被误读为 `production-ready`。
+### readiness vs production-ready
+- **readiness**: Indicates the preparation level for reaching a certain gate or next action.
+- **production-ready**: Indicates that the comprehensive threshold required for production safeguards has been reached.
+- **Distinction**: `Phase 1a ready` must not be misread as `production-ready`.
 
-### signoff vs completion gate |签过 vs 完成门
-- **signoff（签过）**: 当前 revision 的评审结论。
-- **completion gate（完成门）**: 进入 coding 前必须再次执行的门槛检查。
-- **区分**: 不应把一次 signoff结论当作永久通行证。
+### signoff vs completion gate
+- **signoff**: Review conclusion for the current revision.
+- **completion gate**: Threshold check that must be re-executed before entering coding.
+- **Distinction**: A signoff conclusion should not be treated as a permanent pass.
 
-### provider vs model | 提供方 vs 模型
-- **provider（提供方）**: 服务提供方，如 OpenAI、Anthropic。
-- **model（模型）**: provider提供的具体模型实例，如 GPT-4、Claude-3。
-- **区分**: `model profile` 是模型元数据，不等于 provider profile。
+### provider vs model
+- **provider**: Service provider, such as OpenAI, Anthropic.
+- **model**: Specific model instance provided by a provider, such as GPT-4, Claude-3.
+- **Distinction**: `model profile` is model metadata and is not equal to provider profile.
 
-### artifact vs output vs step output |产物 vs 输出 vs步骤输出
-- **artifact（产物）**: 文件型或二进制产物，通常通过 artifact store 管理。
-- **output（输出）**: 面向上游步骤或用户的结果，可为结构化数据或文本，不必是文件。
-- **step output（步骤输出）**:某个 step 完成后的结构化结果快照。
+### artifact vs output vs step output
+- **artifact**: File-type or binary artifact, typically managed through the artifact store.
+- **output**: Result for the upstream step or the user; may be structured data or text, not necessarily a file.
+- **step output**: Structured result snapshot after a step completes.
 
-### task vs session |任务 vs 会话
-- **task（任务）**:业务工作单元，是系统面向用户和业务的最小工作承诺对象。
-- **session（会话）**:渠道交互会话，承载用户输入、流式输出和交互上下文。
-- **区分**: 一个 session 可以触发多个 task；一个 task 也可能跨多个 session 更新状态。
+### task vs session
+- **task**: Business work unit; the smallest work commitment object the system exposes to users and business.
+- **session**: Channel interaction session that carries user input, streaming output, and interaction context.
+- **Distinction**: A single session can trigger multiple tasks; a single task may also update state across multiple sessions.
 
-### workflow vs execution | 工作流 vs 执行
-- **workflow（工作流）**: task 的结构化执行路径定义。
-- **execution（执行）**:某次运行尝试。
-- **区分**:同一 workflow 可以对应多个 execution attempt。
+### workflow vs execution
+- **workflow**: Definition of the structured execution path of a task.
+- **execution**: A specific running attempt.
+- **Distinction**: The same workflow can correspond to multiple execution attempts.
 
-### agent vs worker |智能体 vs 工作器
-- **agent（智能体）**:偏职责与智能体概念。
-- **worker（工作器）**:偏执行承载与资源位。
-- **区分**: `sub-agent` 不是远程 worker 的同义词。
+### agent vs worker
+- **agent**: Emphasizes role and intelligent entity concept.
+- **worker**: Emphasizes execution carrier and resource slot.
+- **Distinction**: `sub-agent` is not synonymous with a remote worker.
 
 ---
 
-##46. Five-Plane Architecture | 五平面架构
+## 46. Five-Plane Architecture
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| P1 Interface Plane | P1 接口平面 | 对外接入层：API Gateway / Webhook / Scheduler / Console / Ingress，负责输入校验、身份认证、限流、路由 |
-| P2 Control Plane | P2 控制平面 | 控制与治理层：Policy / Approval / Rollout / Incident / Config，负责定义与版本治理、审批控制、风险守卫、发布控制 |
-| P3 Orchestration Plane | P3编排平面 |编排与决策层：OAPEFLIR Loop / Planner / Routing / Escalation，负责决定做什么、下一步谁执行、何时暂停转人工 |
-| P4 Execution Plane | P4 执行平面 |统一执行层：Dispatcher / Workers / Tools / Plugins / Recovery，负责真正执行动作、维护 lease、结果回写、触发恢复 |
-| P5 State & Evidence Plane | P5状态与证据平面 |状态与证据平面：Truth / Events / Artifacts / Memory / Knowledge / Audit / Projections，负责保存控制真相、历史轨迹、恢复支撑、审计证据 |
-| X1 Reliability Fabric | X1可靠性织网 |跨平面横切生命支持系统：AuthN/Z / Sandbox / Circuit Breaker / DLQ / Backpressure，以 middleware形式注入各平面 |
-| RequestEnvelope | 请求信封 | P1 → P2 的标准请求封装，包含 requestId / tenantId / taskSpec / priority / traceContext / principal |
-| ControlDirective | 控制指令 | P2 → P3/P4 的控制指令，用于模式切换、暂停、终止、回滚、配额调整 |
-| ExecutionPlan | 执行计划 | P3 → P4 的标准执行计划，描述有序步骤与资源约束 |
-| ExecutionReceipt | 执行回执 | P4 → P3/P5 的执行结果回报，包含 status / duration / artifacts / telemetry / sideEffects / error |
-| StateCommand |状态命令 | P3/P4 → P5 的状态写入指令，基于 CAS 保证幂等 |
-| EvidenceRecord |证据记录 | P3 → P5 的异步决策证据写入 |
-| ProjectionUpdate |投影更新 | P5 → P2 的投影变化事件通知 |
+| P1 Interface Plane | P1 接口平面 | External ingress layer: API Gateway / Webhook / Scheduler / Console / Ingress, responsible for input validation, identity authentication, rate limiting, and routing |
+| P2 Control Plane | P2 控制平面 | Control and governance layer: Policy / Approval / Rollout / Incident / Config, responsible for definition and version governance, approval control, risk guards, and release control |
+| P3 Orchestration Plane | P3 编排平面 | Orchestration and decision layer: OAPEFLIR Loop / Planner / Routing / Escalation, responsible for deciding what to do, who executes next, and when to pause for human intervention |
+| P4 Execution Plane | P4 执行平面 | Unified execution layer: Dispatcher / Workers / Tools / Plugins / Recovery, responsible for actually executing actions, maintaining leases, writing back results, and triggering recovery |
+| P5 State & Evidence Plane | P5 状态与证据平面 | State and evidence plane: Truth / Events / Artifacts / Memory / Knowledge / Audit / Projections, responsible for preserving control truth, historical trajectories, recovery support, and audit evidence |
+| X1 Reliability Fabric | X1 可靠性织网 | Cross-plane cross-cutting life support system: AuthN/Z / Sandbox / Circuit Breaker / DLQ / Backpressure, injected into each plane as middleware |
+| RequestEnvelope | 请求信封 | Standard request wrapper from P1 -> P2, containing requestId / tenantId / taskSpec / priority / traceContext / principal |
+| ControlDirective | 控制指令 | Control directive from P2 -> P3/P4, used for mode switching, pausing, termination, rollback, and quota adjustment |
+| ExecutionPlan | 执行计划 | Standard execution plan from P3 -> P4, describing ordered steps and resource constraints |
+| ExecutionReceipt | 执行回执 | Execution result return from P4 -> P3/P5, containing status / duration / artifacts / telemetry / sideEffects / error |
+| StateCommand | 状态命令 | State write instruction from P3/P4 -> P5, idempotent based on CAS |
+| EvidenceRecord | 证据记录 | Asynchronous decision evidence write from P3 -> P5 |
+| ProjectionUpdate | 投影更新 | Projection change event notification from P5 -> P2 |
 
 ---
 
-##47. OAPEFLIR Stage Types | OAPEFLIR阶段类型
+## 47. OAPEFLIR Stage Types
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| OapeflirStage | OAPEFLIR阶段枚举 | 八阶段闭环的状态枚举：`observe / assess / plan / execute / feedback / learn / improve / release / knowledge_promotion` |
-| OapeflirStageStatus | OAPEFLIR阶段状态 |阶段执行状态：`completed / skipped` |
-| OapeflirStageRecord |阶段记录 |记录单个阶段的执行状态、耗时、引用 ID 和原因码 |
-| OapeflirStageTimelineBuilder |阶段时间线构建器 | 用于构建 OAPEFLIR 各阶段执行时间线的工具类 |
-| OapeflirLoopInput | OAPEFLIR循环输入 |包含 taskId / objective / workflow / feedbackSignals / blockerSummaries / fileRefs / stepOutputs |
-| OapeflirLoopResult | OAPEFLIR循环结果 |包含 observation / assessment / plan / stepOutputs / feedback / learningSignals / learningObjects / rolloutRecord / timeline / outcome / qualityGate / replanDecision |
-| OapeflirLoopService | OAPEFLIR循环服务 | OAPEFLIR闭环的主服务类，协调各阶段的执行 |
-| ExecuteBridge | 执行桥接 | 执行计划到双通道步骤输出的转换接口 |
-| RuntimeExecuteBridge |运行时执行桥接 | 基于数据库的实现 |
-| MockExecuteBridge |模拟执行桥接 | 用于测试的模拟实现 |
+| OapeflirStage | OAPEFLIR 阶段枚举 | State enum for the eight-stage closed loop: `observe / assess / plan / execute / feedback / learn / improve / release / knowledge_promotion` |
+| OapeflirStageStatus | OAPEFLIR 阶段状态 | Stage execution status: `completed / skipped` |
+| OapeflirStageRecord | 阶段记录 | Records the execution status, duration, reference IDs, and reason code of a single stage |
+| OapeflirStageTimelineBuilder | 阶段时间线构建器 | Utility class used to build execution timelines for each OAPEFLIR stage |
+| OapeflirLoopInput | OAPEFLIR 循环输入 | Contains taskId / objective / workflow / feedbackSignals / blockerSummaries / fileRefs / stepOutputs |
+| OapeflirLoopResult | OAPEFLIR 循环结果 | Contains observation / assessment / plan / stepOutputs / feedback / learningSignals / learningObjects / rolloutRecord / timeline / outcome / qualityGate / replanDecision |
+| OapeflirLoopService | OAPEFLIR 循环服务 | Main service class of the OAPEFLIR closed loop, coordinating the execution of each stage |
+| ExecuteBridge | 执行桥接 | Conversion interface from execution plan to dual-channel step output |
+| RuntimeExecuteBridge | 运行时执行桥接 | Database-based implementation |
+| MockExecuteBridge | 模拟执行桥接 | Mock implementation used for testing |
 
 ---
 
-##48. OAPEFLIR Status Enums | OAPEFLIR状态枚举
+## 48. OAPEFLIR Status Enums
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| promotion_status |推广状态 | LearningObject 的生命周期状态：`draft / validated / promoted / retired` |
-| candidate_status |候选状态 | ImprovementCandidate 的状态：`proposed / evaluating / approved / shadow_running / rejected / rolled_back` |
-| rollout_status | 发布状态 | RolloutRecord 的状态：`draft / pending_approval / shadow / canary_5 / partial_25 / partial_50 / partial_75 / stable / rejected / rolled_back / paused` |
-| rollout_level | 发布级别 | 发布灰度等级：`off / suggest / shadow / canary_5 / partial_25 / partial_50 / partial_75 / stable` |
-| AssessmentPhase |评估阶段 |评估时刻：`pre-execution / post-execution` |
-| AssessmentComplexity |评估复杂度 |任务复杂度等级：`trivial / simple / moderate / complex / critical` |
-| AssessmentRisk |评估风险 |风险等级：`low / medium / high / critical` |
-| ExecutionMode | 执行模式 | 执行模式：`auto / supervised / manual` |
-| ApprovalLevel |审批级别 |审批要求级别：`none / user / admin` |
-| FeedbackSource |反馈来源 |反馈信号来源：`execution / user / hitl / validation / system` |
-| FeedbackCategory |反馈类别 |反馈信号类别：`success / failure / correction / timeout / partial` |
-| FeedbackSeverity |反馈严重性 |反馈严重程度：`info / warning / error / critical` |
-| PlanStrategy |计划策略 |计划生成策略：`linear / hierarchical / tree_branch / reflexive / goal_driven / resource_constrained / online / replanned` |
-| PlanStepStatus |计划步骤状态 |步骤执行状态：`pending / running / done / failed / skipped` |
-| LearningType | 学习类型 | 学习对象类型：`failure_pattern / user_correction / recovery_playbook / model_retraining / dataset_gap` |
-| ValidatedBy |验证方式 | 学习对象验证方式：`none / evidence / human_review / shadow_execution` |
-| ImprovementChangeScope |改进变更范围 |改进变更的作用域：`prompt / policy / model / workflow / tool_config` |
-| TaskPhase |任务阶段 |任务当前所处阶段：`intake / planning / executing / reviewing / completed` |
+| promotion_status | 推广状态 | Lifecycle status of LearningObject: `draft / validated / promoted / retired` |
+| candidate_status | 候选状态 | Status of ImprovementCandidate: `proposed / evaluating / approved / shadow_running / rejected / rolled_back` |
+| rollout_status | 发布状态 | Status of RolloutRecord: `draft / pending_approval / shadow / canary_5 / partial_25 / partial_50 / partial_75 / stable / rejected / rolled_back / paused` |
+| rollout_level | 发布级别 | Gradual rollout level: `off / suggest / shadow / canary_5 / partial_25 / partial_50 / partial_75 / stable` |
+| AssessmentPhase | 评估阶段 | Assessment moment: `pre-execution / post-execution` |
+| AssessmentComplexity | 评估复杂度 | Task complexity level: `trivial / simple / moderate / complex / critical` |
+| AssessmentRisk | 评估风险 | Risk level: `low / medium / high / critical` |
+| ExecutionMode | 执行模式 | Execution mode: `auto / supervised / manual` |
+| ApprovalLevel | 审批级别 | Approval requirement level: `none / user / admin` |
+| FeedbackSource | 反馈来源 | Source of feedback signal: `execution / user / hitl / validation / system` |
+| FeedbackCategory | 反馈类别 | Category of feedback signal: `success / failure / correction / timeout / partial` |
+| FeedbackSeverity | 反馈严重性 | Feedback severity: `info / warning / error / critical` |
+| PlanStrategy | 计划策略 | Plan generation strategy: `linear / hierarchical / tree_branch / reflexive / goal_driven / resource_constrained / online / replanned` |
+| PlanStepStatus | 计划步骤状态 | Step execution status: `pending / running / done / failed / skipped` |
+| LearningType | 学习类型 | Learning object type: `failure_pattern / user_correction / recovery_playbook / model_retraining / dataset_gap` |
+| ValidatedBy | 验证方式 | Learning object validation method: `none / evidence / human_review / shadow_execution` |
+| ImprovementChangeScope | 改进变更范围 | Scope of improvement change: `prompt / policy / model / workflow / tool_config` |
+| TaskPhase | 任务阶段 | Current stage of the task: `intake / planning / executing / reviewing / completed` |
 
 ---
 
-##49. Execution Assessment Types | 执行评估类型
+## 49. Execution Assessment Types
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| ExecutionAssessment | 执行评估 |完整的计划执行后评估，包含结果分类、质量评分、偏差分析、重规划建议 |
-| ExecutionOutcome | 执行结果 | 执行结果类型：`completed / completed_with_deviations / repairable / failed / escalated` |
-| ExecutionDeviation | 执行偏差 | 执行期间与计划的工作流偏差：`skipped / reordered / modified / added / substituted` |
-| ExecutionError | 执行错误 | 执行期间遇到的错误，包含步骤 ID、错误码、消息、严重性和可恢复性 |
-| CriterionResult | 标准结果 |成功标准评估结果，包含是否通过、实际值和失败原因 |
+| ExecutionAssessment | 执行评估 | Complete post-execution assessment of a plan, including result classification, quality score, deviation analysis, and replan suggestion |
+| ExecutionOutcome | 执行结果 | Execution result type: `completed / completed_with_deviations / repairable / failed / escalated` |
+| ExecutionDeviation | 执行偏差 | Workflow deviation from the plan during execution: `skipped / reordered / modified / added / substituted` |
+| ExecutionError | 执行错误 | Error encountered during execution, including step ID, error code, message, severity, and recoverability |
+| CriterionResult | 标准结果 | Success criterion evaluation result, including pass/fail, actual value, and failure reason |
 
 ---
 
-##50. Recovery & Fault Tolerance |恢复与容错
+## 50. Recovery & Fault Tolerance
 
-| English | 中文 |解释 |
+| English | 中文 | 解释 |
 |---------|------|------|
-| runtime repair |运行时修复 |故障时自动修复执行的机制 |
-| replay | 重放 | 从已知良好状态重新执行 |
-| recovery playbook |恢复手册 | 针对特定失败模式的标准化恢复步骤 |
-| lease reclaim |租约回收 |回收超时工作器的执行权 |
-| stalled detection |停滞检测 | 检测长时间无有效进展的执行 |
-| auto-rollback | 自动回滚 | 发布失败时自动回退到上一版本 |
-| guardrail |护栏 |保护生产环境免受不当变更影响的机制 |
-| canary | 金丝雀发布 | 小流量验证新版本后再扩大 |
-| circuit breaker |断路器 |失败率过高时暂时阻断调用的保护机制 |
+| runtime repair | 运行时修复 | Mechanism that automatically repairs execution in the event of a failure |
+| replay | 重放 | Re-execute from a known good state |
+| recovery playbook | 恢复手册 | Standardized recovery steps for a specific failure mode |
+| lease reclaim | 租约回收 | Reclaim execution rights from timed-out workers |
+| stalled detection | 停滞检测 | Detect executions that have made no effective progress for a long time |
+| auto-rollback | 自动回滚 | Automatically fall back to the previous version when a release fails |
+| guardrail | 护栏 | Mechanism that protects the production environment from inappropriate changes |
+| canary | 金丝雀发布 | Validate a new version with small traffic first, then expand |
+| circuit breaker | 断路器 | Protection mechanism that temporarily blocks calls when the failure rate is too high |
 
 ---
 
-*本文档为只读治理参考，如发现术语冲突以对应 authoritative contract 为准。*
+*This document is a read-only governance reference; in case of terminology conflicts, the corresponding authoritative contract takes precedence.*

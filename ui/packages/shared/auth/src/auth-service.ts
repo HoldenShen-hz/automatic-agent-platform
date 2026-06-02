@@ -18,6 +18,7 @@ interface PendingCodeFlow {
 }
 
 const PENDING_CODE_FLOW_STORAGE_KEY = "aa.auth.pending-code-flow";
+const PENDING_CODE_FLOW_COOKIE_NAME = "aa-auth-pending-code-flow";
 
 export class AuthService {
   private pendingCodeFlow: PendingCodeFlow | null = null;
@@ -81,7 +82,11 @@ export class AuthService {
       state,
     });
 
-    return `${this.options.authorizationEndpoint ?? "https://auth.example.com/oauth/authorize"}?${params.toString()}`;
+    const authorizationEndpoint = this.options.authorizationEndpoint?.trim();
+    if (authorizationEndpoint == null || authorizationEndpoint.length === 0) {
+      throw new Error("auth.authorization_endpoint_required");
+    }
+    return `${authorizationEndpoint}?${params.toString()}`;
   }
 
   public async handleAuthorizationCallback(params: URLSearchParams): Promise<AuthSession> {
@@ -136,10 +141,7 @@ export class AuthService {
       return this.pendingCodeFlow;
     }
     const storage = getSessionStorage();
-    if (storage == null) {
-      return null;
-    }
-    const raw = storage.getItem(PENDING_CODE_FLOW_STORAGE_KEY);
+    const raw = readPendingCodeFlowCookie() ?? storage?.getItem(PENDING_CODE_FLOW_STORAGE_KEY) ?? null;
     if (raw == null) {
       return null;
     }
@@ -168,19 +170,19 @@ export class AuthService {
   private persistPendingCodeFlow(flow: PendingCodeFlow | null): void {
     this.pendingCodeFlow = flow;
     const storage = getSessionStorage();
-    if (storage == null) {
-      return;
-    }
     if (flow == null) {
+      clearPendingCodeFlowCookie();
       try {
-        storage.removeItem(PENDING_CODE_FLOW_STORAGE_KEY);
+        storage?.removeItem(PENDING_CODE_FLOW_STORAGE_KEY);
       } catch {
         // Ignore storage cleanup failures in restricted browser contexts.
       }
       return;
     }
     try {
-      storage.setItem(PENDING_CODE_FLOW_STORAGE_KEY, JSON.stringify(flow));
+      const serialized = JSON.stringify(flow);
+      writePendingCodeFlowCookie(serialized);
+      storage?.removeItem(PENDING_CODE_FLOW_STORAGE_KEY);
     } catch {
       // Ignore storage persistence failures in restricted browser contexts.
     }
@@ -243,5 +245,40 @@ function clearAuthorizationArtifactsFromHistory(): void {
   for (const key of ["code", "state", "session_state", "access_token", "refresh_token", "error", "error_description"]) {
     url.searchParams.delete(key);
   }
-  window.history.replaceState(null, document.title, `${url.pathname}${url.search}`);
+  const nextState = typeof window.history.state === "object" && window.history.state != null
+    ? Object.fromEntries(
+        Object.entries(window.history.state as Record<string, unknown>).filter(([key]) =>
+          !["code", "state", "session_state", "access_token", "refresh_token", "error", "error_description"].includes(key),
+        ),
+      )
+    : null;
+  window.history.replaceState(nextState, document.title, `${url.pathname}${url.search}`);
+}
+
+function writePendingCodeFlowCookie(value: string): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+  document.cookie = `${PENDING_CODE_FLOW_COOKIE_NAME}=${encodeURIComponent(value)}; Max-Age=600; Path=/; SameSite=Strict; Secure`;
+}
+
+function readPendingCodeFlowCookie(): string | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  const raw = document.cookie
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(`${PENDING_CODE_FLOW_COOKIE_NAME}=`));
+  if (raw == null) {
+    return null;
+  }
+  return decodeURIComponent(raw.slice(PENDING_CODE_FLOW_COOKIE_NAME.length + 1));
+}
+
+function clearPendingCodeFlowCookie(): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+  document.cookie = `${PENDING_CODE_FLOW_COOKIE_NAME}=; Max-Age=0; Path=/; SameSite=Strict; Secure`;
 }

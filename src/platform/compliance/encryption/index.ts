@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHmac, randomBytes } from "node:crypto";
 
 import { ValidationError } from "../../contracts/errors.js";
 
@@ -63,15 +63,16 @@ export class FieldEncryptionService {
 
   public revealField(input: { ciphertext: string; keyRef: string }): string {
     const envelope = parseEncryptionEnvelope(input.ciphertext);
-    if (envelope.kf !== fingerprintKey(input.keyRef)) {
+    const salt = decodeBase64UrlStrict(envelope.s, "salt");
+    const key = deriveEncryptionKey(input.keyRef, salt);
+    if (envelope.kf !== fingerprintKey(key)) {
       throw new ValidationError("field_encryption.key_mismatch", "Ciphertext does not match the provided key reference.");
     }
 
-    const salt = decodeBase64UrlStrict(envelope.s, "salt");
     const iv = decodeBase64UrlStrict(envelope.i, "iv");
     const authTag = decodeBase64UrlStrict(envelope.t, "auth_tag");
     const ciphertext = decodeBase64UrlStrict(envelope.c, "ciphertext");
-    const decipher = createDecipheriv("aes-256-gcm", deriveEncryptionKey(input.keyRef, salt), iv);
+    const decipher = createDecipheriv("aes-256-gcm", key, iv);
     decipher.setAuthTag(authTag);
 
     const decrypted = Buffer.concat([
@@ -85,7 +86,8 @@ export class FieldEncryptionService {
 function protectValue(value: string, keyRef: string): string {
   const salt = randomBytes(16);
   const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", deriveEncryptionKey(keyRef, salt), iv);
+  const key = deriveEncryptionKey(keyRef, salt);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
   const ciphertext = Buffer.concat([
     cipher.update(value, "utf8"),
     cipher.final(),
@@ -93,7 +95,7 @@ function protectValue(value: string, keyRef: string): string {
   const authTag = cipher.getAuthTag();
   return serializeEncryptionEnvelope({
     v: 1,
-    kf: fingerprintKey(keyRef),
+    kf: fingerprintKey(key),
     s: encodeBase64Url(salt),
     i: encodeBase64Url(iv),
     t: encodeBase64Url(authTag),
@@ -101,12 +103,16 @@ function protectValue(value: string, keyRef: string): string {
   });
 }
 
-function fingerprintKey(keyRef: string): string {
-  return createHash("sha256").update(keyRef).digest("hex");
+function fingerprintKey(key: Buffer): string {
+  return createHmac("sha256", key).update("field-encryption:fingerprint:v1", "utf8").digest("hex");
 }
 
 function deriveEncryptionKey(keyRef: string, salt: Buffer): Buffer {
-  return scryptSync(keyRef, salt, 32);
+  return createHmac("sha256", salt)
+    .update("field-encryption:key:v1", "utf8")
+    .update("\0", "utf8")
+    .update(keyRef, "utf8")
+    .digest();
 }
 
 function readField(record: Record<string, unknown>, path: string): unknown {

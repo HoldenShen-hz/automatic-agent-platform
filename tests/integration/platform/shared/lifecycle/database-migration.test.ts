@@ -233,7 +233,7 @@ test("lifecycle: WAL checkpoint occurs and preserves data", () => {
           "checkpoint_task",
           null,
           "checkpoint_task",
-          "general_ops",
+          "general-ops",
           "Checkpoint test",
           "pending",
           "user",

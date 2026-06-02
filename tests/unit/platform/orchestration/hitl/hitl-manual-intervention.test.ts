@@ -25,7 +25,7 @@ function createMockStore(): HitlPersistenceStore & { requests: Map<string, HitlR
   };
 }
 
-test("HitlRuntime.inspect transitions request to approved", () => {
+test("HitlRuntime.inspect records observation without auto-approving the request", () => {
   const runtime = new HitlRuntime();
   const request = runtime.open({
     runId: "run-inspect",
@@ -36,10 +36,10 @@ test("HitlRuntime.inspect transitions request to approved", () => {
 
   const result = runtime.inspect(request.requestId, "human:inspector");
 
-  assert.equal(result.request.status, "approved");
-  assert.equal(result.request.resolvedBy, "human:inspector");
+  assert.equal(result.request.status, "pending");
+  assert.equal(result.request.resolvedBy, null);
   assert.equal(result.record.action, "inspect");
-  assert.ok(result.request.resolvedAt !== null);
+  assert.equal(result.request.resolvedAt, null);
 });
 
 test("HitlRuntime.inspect throws for unknown request", () => {
@@ -276,9 +276,9 @@ test("HitlRuntime.resolve with approved sets status and creates record", () => {
 
   const result = runtime.resolve(request.requestId, "approved", "human:approver");
 
-  assert.equal(result.status, "approved");
-  assert.equal(result.resolvedBy, "human:approver");
-  assert.ok(result.resolvedAt !== null);
+  assert.equal(result.request.status, "approved");
+  assert.equal(result.request.resolvedBy, "human:approver");
+  assert.ok(result.request.resolvedAt !== null);
   assert.equal(result.record.action, "resume"); // approved maps to resume action
 });
 
@@ -293,8 +293,8 @@ test("HitlRuntime.resolve with rejected sets status and creates record", () => {
 
   const result = runtime.resolve(request.requestId, "rejected", "human:approver");
 
-  assert.equal(result.status, "rejected");
-  assert.equal(result.resolvedBy, "human:approver");
+  assert.equal(result.request.status, "rejected");
+  assert.equal(result.request.resolvedBy, "human:approver");
   assert.equal(result.record.action, "override"); // rejected maps to override action
 });
 

@@ -1,14 +1,25 @@
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import {
-  createSandboxLayer,
-  type HarnessSandboxLayer,
-  type SandboxLayer,
-} from "../../five-plane-orchestration/harness/sandbox/index.js";
+
+export type SandboxLayer = "ephemeral" | "persistent" | "network_isolated";
+
+export interface ToolSandboxBinding {
+  readonly toolName: string;
+  readonly layer: SandboxLayer;
+  readonly isolationId: string;
+  readonly timeoutMs: number;
+  readonly allowedHosts?: readonly string[];
+}
+
+export interface HarnessSandboxLayer {
+  readonly bindings: readonly ToolSandboxBinding[];
+  readonly defaultLayer: SandboxLayer;
+  readonly createdAt: string;
+}
 
 export type SandboxProviderKind = "local" | "container" | "browser" | "microvm" | "remote";
 
 export interface SandboxProviderRequirement {
-  sandboxMode: Exclude<SandboxLayer, "none">;
+  sandboxMode: SandboxLayer;
   timeoutMs?: number;
   allowedHosts?: readonly string[];
   providerHint?: SandboxProviderKind;
@@ -38,13 +49,7 @@ export class DefaultSandboxProvider implements SandboxProvider {
     toolNames: readonly string[],
     requirement: SandboxProviderRequirement,
   ): SandboxProviderSession {
-    const sandboxLayer = createSandboxLayer(toolNames, {
-      sandboxRequirement: {
-        sandboxMode: requirement.sandboxMode,
-        ...(requirement.timeoutMs != null ? { timeoutMs: requirement.timeoutMs } : {}),
-        ...(requirement.allowedHosts != null ? { allowedHosts: requirement.allowedHosts } : {}),
-      },
-    });
+    const sandboxLayer = createExecutionSandboxLayer(toolNames, requirement);
     return {
       providerSessionId: newId("sandbox_session"),
       providerKind: requirement.providerHint ?? this.providerKind,
@@ -76,4 +81,24 @@ export function createDefaultSandboxProvider(
   requirement?: SandboxProviderRequirement,
 ): SandboxProvider {
   return new DefaultSandboxProvider(requirement == null ? "local" : resolveSandboxProviderKind(requirement));
+}
+
+function createExecutionSandboxLayer(
+  requestedTools: readonly string[],
+  requirement: SandboxProviderRequirement,
+): HarnessSandboxLayer {
+  const defaultLayer = requirement.sandboxMode;
+  const timeoutMs = requirement.timeoutMs ?? 30_000;
+  const bindings: ToolSandboxBinding[] = requestedTools.map((toolName) => ({
+    toolName,
+    layer: defaultLayer,
+    isolationId: newId("sandbox_binding"),
+    timeoutMs,
+    ...(requirement.allowedHosts != null ? { allowedHosts: requirement.allowedHosts } : {}),
+  }));
+  return {
+    bindings,
+    defaultLayer,
+    createdAt: nowIso(),
+  };
 }

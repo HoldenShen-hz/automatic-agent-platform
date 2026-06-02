@@ -11,6 +11,6 @@
   "labelingMethod": "maintainer_review",
   "allowedForTraining": false,
   "allowedForReleaseGate": true,
-  "retentionPolicyRef": "training-data-policy/revocation.yaml",
-  "frozenHash": "sha256:swe-style-heldout-v1"
+  "retentionPolicyRef": "training-data-policy/retention.yaml",
+  "frozenHash": "sha256:d82768d7443b71698c976596676eee5c4cef0ffe4d3a41e95b6bcc87f36313d9"
 }

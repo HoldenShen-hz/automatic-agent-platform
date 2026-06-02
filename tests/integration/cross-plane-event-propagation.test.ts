@@ -51,7 +51,7 @@ test("integration: cross-plane event propagation - task status change emits Plat
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Cross-plane event test",
         status: "queued",
@@ -101,7 +101,7 @@ test("integration: cross-plane event propagation - task status change emits Plat
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -171,7 +171,7 @@ test("integration: event sourcing replay - execution lifecycle events are durabl
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Event replay test",
         status: "queued",
@@ -221,7 +221,7 @@ test("integration: event sourcing replay - execution lifecycle events are durabl
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -308,7 +308,7 @@ test("integration: OAPEFLR FSM validation - harness run respects state machine",
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "FSM validation test",
         status: "queued",
@@ -358,7 +358,7 @@ test("integration: OAPEFLR FSM validation - harness run respects state machine",
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -562,7 +562,7 @@ test("integration: multi-plane coordination - workflow state coordinates task/ex
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Multi-plane coordination test",
         status: "in_progress",
@@ -612,7 +612,7 @@ test("integration: multi-plane coordination - workflow state coordinates task/ex
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -735,7 +735,7 @@ test("integration: OAPEFLIR FSM chain - multi-step PlanGraph emits events at eac
       // Verify task snapshot exists with proper structure
       assert.ok(result.snapshot.task, "Should have task snapshot");
       const task = result.snapshot.task!;
-      assert.equal(task.divisionId, "general_ops", "Task should have correct divisionId");
+      assert.equal(task.divisionId, "general-ops", "Task should have correct divisionId");
 
       // Verify execution reached terminal state
       assert.ok(
@@ -781,7 +781,7 @@ test("integration: event sourcing durability - PlanGraph chain events are durabl
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Event durability test",
           status: "queued",
@@ -831,7 +831,7 @@ test("integration: event sourcing durability - PlanGraph chain events are durabl
 
         harness.store.insertWorkflowState({
           taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           workflowId: "single_agent_minimal",
           currentStepIndex: 0,
           status: "running",
@@ -955,7 +955,7 @@ test("integration: cross-plane FSM validation - invalid OAPEFLIR transitions are
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "FSM rejection test",
         status: "queued",
@@ -1005,7 +1005,7 @@ test("integration: cross-plane FSM validation - invalid OAPEFLIR transitions are
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",

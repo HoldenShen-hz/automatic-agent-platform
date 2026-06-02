@@ -7,7 +7,7 @@ import { RoleToolExposureService } from "../../../../../src/platform/five-plane-
 test("RoleToolExposureService resolves general executor tools without filtering [role-tool-exposure-service]", () => {
   const service = new RoleToolExposureService();
   const result = service.resolve({
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     roleId: "general_executor",
     taskContext: "Read the task details and inspect the current status.",
   });
@@ -22,7 +22,7 @@ test("RoleToolExposureService resolves general executor tools without filtering 
 test("RoleToolExposureService applies deferred loading to larger engineering tool surfaces [role-tool-exposure-service]", () => {
   const service = new RoleToolExposureService();
   const result = service.resolve({
-    divisionId: "engineering_ops",
+    divisionId: "engineering-ops",
     roleId: "engineer",
     taskContext: "Implement the code fix, apply a patch, and verify the result with bash.",
   });

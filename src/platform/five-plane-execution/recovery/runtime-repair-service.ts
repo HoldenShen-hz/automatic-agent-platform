@@ -21,6 +21,7 @@
  * @see {@link docs_zh/governance/glossary_and_terminology.md}
  */
 
+import type { FileLockRecord } from "../../contracts/types/domain.js";
 import type { RepairAction, StartupConsistencyReport } from "../startup/startup-consistency-checker.js";
 
 import { EventOpsService } from "../../five-plane-state-evidence/events/event-ops-service.js";
@@ -49,6 +50,13 @@ export interface RepairExecutionResult {
   applied: boolean;
   /** Human-readable description of the result */
   detail: string;
+}
+
+interface AckDrainSummary {
+  beforePending: number;
+  afterPending: number;
+  drainCompleted: boolean;
+  drainErrorCode: string | null;
 }
 
 function parseJsonArray(value: string): string[] {
@@ -178,11 +186,12 @@ export class RuntimeRepairService {
         detail: "execution missing",
       };
     }
-
-    this.leases.reclaimActiveLease(execution.id, occurredAt, "stale_worker_requeue");
+    let replacementTicketId: string | null = null;
 
     // Perform all state changes in a transaction for atomicity
     this.db.transaction(() => {
+      this.leases.reclaimActiveLeaseWithinTransaction(execution.id, occurredAt, "stale_worker_requeue");
+
       // Reset execution status to allow reprocessing
       this.store.execution.updateExecutionStatus(execution.id, "created", occurredAt, null, null, null);
       // Reset task to pending state
@@ -230,18 +239,18 @@ export class RuntimeRepairService {
           repairAction: action.action,
           targetId: action.targetId,
         }),
-        traceId: newId("trace"),
+        traceId: execution.traceId,
         createdAt: occurredAt,
       });
-    });
 
-    this.ensurePendingDispatchTicket(execution.id, occurredAt);
+      replacementTicketId = this.ensurePendingDispatchTicket(execution.id, occurredAt);
+    });
 
     return {
       action: action.action,
       targetId: action.targetId,
       applied: true,
-      detail: "execution requeued",
+      detail: replacementTicketId == null ? "execution requeued" : `execution requeued with pending ticket ${replacementTicketId}`,
     };
   }
 
@@ -516,6 +525,24 @@ export class RuntimeRepairService {
    * @returns Result indicating whether lock was released
    */
   private releaseStaleLock(action: RepairAction, occurredAt: string): RepairExecutionResult {
+    const lock = this.findFileLock(action.targetId);
+    if (!lock) {
+      return {
+        action: action.action,
+        targetId: action.targetId,
+        applied: false,
+        detail: "file lock missing",
+      };
+    }
+    if (!isExpiredFileLock(lock, occurredAt)) {
+      return {
+        action: action.action,
+        targetId: action.targetId,
+        applied: false,
+        detail: "file lock no longer stale",
+      };
+    }
+
     this.db.transaction(() => {
       // Delete the stale lock from the database
       this.store.lock.deleteFileLock(action.targetId);
@@ -582,17 +609,17 @@ export class RuntimeRepairService {
         detail: `event_schema_missing_skipped:${event.eventType}`,
       };
     }
-    // Only rebuild acks for tier-1 events with registered schemas
-    for (const consumerId of getRegisteredConsumers(event.eventType)) {
-      this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
-    }
+    const registeredConsumers = [...getRegisteredConsumers(event.eventType)];
+    let beforePending = 0;
+    this.db.transaction(() => {
+      // Rebuild the pending ack rows atomically before any consumer drain starts.
+      for (const consumerId of registeredConsumers) {
+        this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
+      }
+      beforePending = this.store.event.countPendingTier1Acks();
+    });
 
-    // Count pending acks before drainage
-    const beforePending = this.store.event.countPendingTier1Acks();
-    // Trigger consumer drainage to process any newly available acks
-    await this.eventOps.drainDefaultConsumers();
-    // Count remaining pending acks after drainage
-    const afterPending = this.store.event.countPendingTier1Acks();
+    const drainSummary = await this.drainRebuiltAcks(event.id, occurredAt, beforePending);
 
     // Record the repair with before/after counts for monitoring
     this.db.transaction(() => {
@@ -606,20 +633,75 @@ export class RuntimeRepairService {
           repairAction: action.action,
           targetId: action.targetId,
           eventTier: event.eventTier,
-          beforePending,
-          afterPending,
+          rebuiltConsumerCount: registeredConsumers.length,
+          beforePending: drainSummary.beforePending,
+          afterPending: drainSummary.afterPending,
+          drainCompleted: drainSummary.drainCompleted,
+          drainErrorCode: drainSummary.drainErrorCode,
         }),
-        traceId: newId("trace"),
+        traceId: null,
         createdAt: occurredAt,
       });
     });
 
+    const fullyDrained = drainSummary.drainCompleted && drainSummary.afterPending === 0;
+    const detailBase = `pending acknowledgements drained from ${drainSummary.beforePending} to ${drainSummary.afterPending}`;
+    const detail = drainSummary.drainCompleted
+      ? fullyDrained
+        ? detailBase
+        : `${detailBase}; backlog remains`
+      : `${detailBase}; drain failed (${drainSummary.drainErrorCode ?? "unknown_error"})`;
+
     return {
       action: action.action,
       targetId: action.targetId,
-      // Consider applied if we managed to drain at least some pending acks
-      applied: afterPending < beforePending,
-      detail: `pending acknowledgements drained from ${beforePending} to ${afterPending}`,
+      applied: registeredConsumers.length > 0 && fullyDrained,
+      detail,
     };
   }
+
+  private findFileLock(lockId: string): FileLockRecord | null {
+    const directLookupStore = this.store.lock as typeof this.store.lock & {
+      getFileLock?: (targetId: string) => FileLockRecord | null;
+    };
+    if (typeof directLookupStore.getFileLock === "function") {
+      const direct = directLookupStore.getFileLock(lockId);
+      if (direct) {
+        return direct;
+      }
+    }
+    return this.store.lock.listFileLocks().find((lock) => lock.id === lockId) ?? null;
+  }
+
+  private async drainRebuiltAcks(
+    _eventId: string,
+    _occurredAt: string,
+    beforePending: number,
+  ): Promise<AckDrainSummary> {
+    try {
+      await this.eventOps.drainDefaultConsumers();
+      return {
+        beforePending,
+        afterPending: this.store.event.countPendingTier1Acks(),
+        drainCompleted: true,
+        drainErrorCode: null,
+      };
+    } catch (error) {
+      return {
+        beforePending,
+        afterPending: this.store.event.countPendingTier1Acks(),
+        drainCompleted: false,
+        drainErrorCode: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+}
+
+function isExpiredFileLock(lock: FileLockRecord, occurredAt: string): boolean {
+  const lockExpiry = Date.parse(lock.expiresAt);
+  const repairTime = Date.parse(occurredAt);
+  if (!Number.isFinite(lockExpiry) || !Number.isFinite(repairTime)) {
+    return false;
+  }
+  return lockExpiry <= repairTime;
 }

@@ -258,6 +258,9 @@ export interface LearningKnowledgePromotedPayload {
   namespace: string;
   trustLevel: string;
   promotedCount: number;
+  failedCount?: number;
+  failedObjectIds?: string[];
+  status?: "promoted" | "partial_failure" | "failed";
   promotedObjects?: Array<{
     learningObjectId: string;
     documentId: string;

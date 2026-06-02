@@ -6,6 +6,7 @@ import {
   WRITE_METHODS,
   extractIdempotencyKey,
   createIdempotencyKeyMiddleware,
+  configureGlobalIdempotencyKeyMiddleware,
   getGlobalIdempotencyKeyMiddleware,
   resetGlobalIdempotencyKeyMiddleware,
   buildIdempotencyErrorResponse,
@@ -176,7 +177,7 @@ test("extractIdempotencyKey uses custom header name", () => {
   assert.equal(result, "key-123");
 });
 
-test("extractIdempotencyKey reads ContractEnvelope idempotency key when header is missing", () => {
+test("extractIdempotencyKey does not parse request body when header is missing", () => {
   const result = extractIdempotencyKey(
     {},
     "Idempotency-Key",
@@ -187,7 +188,7 @@ test("extractIdempotencyKey reads ContractEnvelope idempotency key when header i
       idempotencyKey: "env-key-123",
     }),
   );
-  assert.equal(result, "env-key-123");
+  assert.equal(result, undefined);
 });
 
 test("buildIdempotencyErrorResponse creates AppError", () => {
@@ -201,8 +202,16 @@ test("createIdempotencyKeyMiddleware creates instance with config", () => {
   assert.ok(middleware instanceof IdempotencyKeyMiddleware);
 });
 
-test("getGlobalIdempotencyKeyMiddleware returns singleton", () => {
+test("getGlobalIdempotencyKeyMiddleware requires explicit shared storage configuration", () => {
   resetGlobalIdempotencyKeyMiddleware();
+  assert.throws(() => getGlobalIdempotencyKeyMiddleware(), /shared storage configuration/);
+});
+
+test("getGlobalIdempotencyKeyMiddleware returns configured singleton", () => {
+  resetGlobalIdempotencyKeyMiddleware();
+  configureGlobalIdempotencyKeyMiddleware(
+    createIdempotencyKeyMiddleware({ storage: new InMemoryIdempotencyStorage() }),
+  );
   const instance1 = getGlobalIdempotencyKeyMiddleware();
   const instance2 = getGlobalIdempotencyKeyMiddleware();
   assert.equal(instance1, instance2);
@@ -210,10 +219,49 @@ test("getGlobalIdempotencyKeyMiddleware returns singleton", () => {
 
 test("resetGlobalIdempotencyKeyMiddleware clears singleton", () => {
   resetGlobalIdempotencyKeyMiddleware();
+  configureGlobalIdempotencyKeyMiddleware(
+    createIdempotencyKeyMiddleware({ storage: new InMemoryIdempotencyStorage() }),
+  );
   const instance1 = getGlobalIdempotencyKeyMiddleware();
   resetGlobalIdempotencyKeyMiddleware();
+  configureGlobalIdempotencyKeyMiddleware(
+    createIdempotencyKeyMiddleware({ storage: new InMemoryIdempotencyStorage() }),
+  );
   const instance2 = getGlobalIdempotencyKeyMiddleware();
   assert.notEqual(instance1, instance2);
+});
+
+test("IdempotencyKeyMiddleware drops pending cache entries for 5xx responses", async () => {
+  const middleware = new IdempotencyKeyMiddleware();
+  await middleware.check({ method: "POST", idempotencyKey: "key-500", tenantId: "tenant-1" });
+
+  await middleware.record({
+    method: "POST",
+    idempotencyKey: "key-500",
+    tenantId: "tenant-1",
+    statusCode: 500,
+    responseBody: { error: true },
+  });
+
+  const retried = await middleware.check({ method: "POST", idempotencyKey: "key-500", tenantId: "tenant-1" });
+  assert.equal(retried.allowed, true);
+  assert.equal(retried.isDuplicate, false);
+});
+
+test("IdempotencyKeyMiddleware rejects oversized cached responses", async () => {
+  const middleware = new IdempotencyKeyMiddleware();
+  await middleware.check({ method: "POST", idempotencyKey: "key-large", tenantId: "tenant-1" });
+
+  await assert.rejects(
+    middleware.record({
+      method: "POST",
+      idempotencyKey: "key-large",
+      tenantId: "tenant-1",
+      statusCode: 200,
+      responseBody: { payload: "x".repeat(600_000) },
+    }),
+    /maximum cache size/,
+  );
 });
 
 test("DEFAULT_IDEMPOTENCY_KEY_CONFIG has correct values", () => {

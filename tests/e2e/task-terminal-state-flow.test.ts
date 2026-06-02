@@ -79,7 +79,7 @@ test("E2E Task Terminal: task reaches done terminal state from in_progress", asy
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Terminal done test",
         status: "in_progress",
@@ -127,7 +127,7 @@ test("E2E Task Terminal: task reaches done terminal state from in_progress", asy
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -213,7 +213,7 @@ test("E2E Task Terminal: task reaches failed terminal state from execution failu
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Terminal failed test",
         status: "in_progress",
@@ -261,7 +261,7 @@ test("E2E Task Terminal: task reaches failed terminal state from execution failu
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -341,7 +341,7 @@ test("E2E Task Terminal: task reaches cancelled terminal state from user cancell
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Terminal cancelled test",
         status: "in_progress",
@@ -389,7 +389,7 @@ test("E2E Task Terminal: task reaches cancelled terminal state from user cancell
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",
@@ -466,7 +466,7 @@ test("E2E Task Terminal: multi-step workflow task reaches done terminal state", 
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Multi-step terminal test",
         status: "in_progress",
@@ -515,7 +515,7 @@ test("E2E Task Terminal: multi-step workflow task reaches done terminal state", 
       // Workflow at final step (step 3)
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "multi_step_wf",
         currentStepIndex: 3,
         status: "running",
@@ -623,7 +623,7 @@ test("E2E Task Terminal: task with paused workflow reaches cancelled terminal st
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Paused workflow terminal test",
         status: "in_progress",
@@ -672,7 +672,7 @@ test("E2E Task Terminal: task with paused workflow reaches cancelled terminal st
       // Workflow is paused at step 1
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "multi_step_wf",
         currentStepIndex: 1,
         status: "paused",
@@ -758,7 +758,7 @@ test("E2E Task Terminal: terminal state preserves task output", async () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Output preservation test",
         status: "in_progress",
@@ -806,7 +806,7 @@ test("E2E Task Terminal: terminal state preserves task output", async () => {
 
       harness.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",

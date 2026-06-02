@@ -85,6 +85,7 @@ export interface OperatorConsoleSnapshot {
   workerPanel: ConsoleWorkerSummary[];
   tenantPanel: Array<{ tenantId: string; organizationId: string; isolationMode: string }>;
   incidentTimeline: ConsoleIncidentSummary[];
+  incidentTimelineTruncated: boolean;
   findings: string[];
 }
 
@@ -111,9 +112,9 @@ export class OperatorConsoleBackendService {
     const tenantPanel = (this.sources.listTenants?.() ?? []).filter((tenant) =>
       operator.tenantId == null || tenant.tenantId === operator.tenantId,
     );
-    const incidentTimeline = this.filterByOperatorScope(this.sources.listIncidents?.() ?? [], operator)
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-      .slice(0, 50);
+    const incidentTimelineFull = this.filterByOperatorScope(this.sources.listIncidents?.() ?? [], operator)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    const incidentTimeline = incidentTimelineFull.slice(0, 50);
 
     return {
       generatedAt: nowIso(),
@@ -130,6 +131,7 @@ export class OperatorConsoleBackendService {
       workerPanel,
       tenantPanel,
       incidentTimeline,
+      incidentTimelineTruncated: incidentTimelineFull.length > incidentTimeline.length,
       findings: buildFindings({ taskBoard, approvalQueue, workerPanel, incidentTimeline }),
     };
   }
@@ -152,7 +154,13 @@ export class OperatorConsoleBackendService {
     if (input.reasonCode.trim().length === 0) {
       throw new ValidationError("console.reason_required", "Operator action requires a reason code.");
     }
+    if (HIGH_RISK_ACTIONS.has(input.actionType) && !input.operator.roles.includes("admin") && !input.operator.roles.includes("break_glass")) {
+      throw new ValidationError("console.high_risk_action_requires_admin", "High-risk console actions require admin or break-glass role.");
+    }
     const requiresBreakGlass = BREAK_GLASS_ACTIONS.has(input.actionType) && !input.operator.roles.includes("break_glass");
+    if (requiresBreakGlass) {
+      throw new ValidationError("console.break_glass_required", "Break-glass console actions require explicit break_glass role.");
+    }
     const requiresPolicyEvaluation = HIGH_RISK_ACTIONS.has(input.actionType) || requiresBreakGlass;
     return {
       actionId: input.actionId,
@@ -250,5 +258,8 @@ function buildFindings(input: {
 function assertOperator(operator: OperatorIdentity): void {
   if (operator.operatorId.trim().length === 0) {
     throw new ValidationError("console.operator_id_required", "Operator id is required.");
+  }
+  if (operator.roles.length === 0) {
+    throw new ValidationError("console.operator_role_required", "Operator role is required.");
   }
 }

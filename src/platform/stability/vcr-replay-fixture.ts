@@ -40,15 +40,27 @@ export interface VcrRequestMessage {
 }
 
 /** A request to replay or record */
+export interface VcrToolDescriptor {
+  name: string;
+  version?: string;
+  schemaHash?: string;
+  inputSchema?: unknown;
+}
+
 export interface VcrReplayRequest {
   provider: string;
   model: string;
   messages: readonly VcrRequestMessage[];
-  tools?: readonly string[];
+  tools?: readonly (string | VcrToolDescriptor)[];
   settings?: {
     temperature?: number;
     reasoningLevel?: string;
     topP?: number;
+    seed?: number;
+    maxTokens?: number;
+    stop?: string | readonly string[];
+    topK?: number;
+    responseFormat?: string | Record<string, unknown>;
   };
 }
 
@@ -176,9 +188,28 @@ export class VcrFixtureStore {
    * Looks up by request fingerprint.
    * Throws if no matching fixture found.
    */
-  public replay(request: VcrReplayRequest): RecordedInteraction {
+  public replay(
+    request: VcrReplayRequest,
+    options?: {
+      record?: () => Omit<RecordedInteraction, "provider" | "model" | "requestFingerprint" | "requestSummary">;
+    },
+  ): RecordedInteraction {
     const requestFingerprint = buildRequestFingerprint(request);
     const interaction = this.interactionsByFingerprint.get(requestFingerprint);
+    if (interaction != null) {
+      return interaction;
+    }
+    if (this.mode === "vcr_record" && options?.record != null) {
+      const recorded = validateRecordedInteraction({
+        ...options.record(),
+        provider: request.provider,
+        model: request.model,
+        requestFingerprint,
+        requestSummary: buildRequestSummary(request),
+      });
+      this.recordInteraction(recorded);
+      return recorded;
+    }
     if (interaction == null) {
       throw new ValidationError("vcr.fixture_missing", "vcr.fixture_missing", {
         statusCode: 404,
@@ -201,14 +232,68 @@ export function buildVcrReplayFixture(options: VcrReplayFixtureOptions): VcrRepl
           retryable: false,
         });
       }
-      return recording.events.map((event) => ({ ...event }));
+      return replayEventsWithDeterministicSeed(recording.events, recording.recordedAt, options.seed ?? null);
     },
     record(input) {
       return createVcrReplayRecording({
-        fixtureId: options.fixtureId,
         ...input,
+        fixtureId: options.fixtureId,
+        metadata: {
+          ...(options.seed != null ? { replaySeed: options.seed } : {}),
+          ...input.metadata,
+        },
       });
     },
+  };
+}
+
+function replayEventsWithDeterministicSeed(
+  events: readonly VcrReplayEvent[],
+  recordedAt: string,
+  seed: number | null,
+): VcrReplayEvent[] {
+  const cloned = events.map((event) => ({
+    ...event,
+    payload: cloneReplayPayload(event.payload),
+  }));
+  if (seed == null) {
+    return cloned;
+  }
+  const rng = createSeededReplayRandom(seed);
+  const baseSeedOffsetMs = Math.abs(Math.trunc(seed)) % 17;
+  const recordedAtMs = Number.isNaN(Date.parse(recordedAt))
+    ? Date.parse("2026-01-01T00:00:00.000Z")
+    : Date.parse(recordedAt);
+  let lastTimestampMs = recordedAtMs - 1;
+  return cloned.map((event, index) => {
+    const eventTimestampMs = Date.parse(event.timestamp);
+    const relativeBaseMs = Number.isNaN(eventTimestampMs)
+      ? recordedAtMs + index
+      : recordedAtMs + Math.max(0, eventTimestampMs - recordedAtMs);
+    const replayTimestampMs = Math.max(
+      lastTimestampMs + 1,
+      relativeBaseMs + baseSeedOffsetMs + Math.floor(rng() * 5),
+    );
+    lastTimestampMs = replayTimestampMs;
+    return {
+      ...event,
+      timestamp: new Date(replayTimestampMs).toISOString(),
+    };
+  });
+}
+
+function cloneReplayPayload(payload: unknown): unknown {
+  if (payload == null || typeof payload !== "object") {
+    return payload;
+  }
+  return JSON.parse(JSON.stringify(payload));
+}
+
+function createSeededReplayRandom(seed: number): () => number {
+  let state = (Math.trunc(seed) >>> 0) || 0x9e3779b9;
+  return () => {
+    state = (1664525 * state + 1013904223) >>> 0;
+    return state / 0x1_0000_0000;
   };
 }
 
@@ -283,11 +368,16 @@ function buildRequestSummary(request: VcrReplayRequest): RecordedInteraction["re
       role: message.role,
       content: normalizePromptText(message.content),
     })),
-    toolSignature: [...(request.tools ?? [])].sort().join(","),
+    toolSignature: buildToolSignature(request.tools),
     keyParameters: {
       ...(request.settings?.temperature != null ? { temperature: request.settings.temperature } : {}),
       ...(request.settings?.reasoningLevel ? { reasoningLevel: request.settings.reasoningLevel } : {}),
       ...(request.settings?.topP != null ? { topP: request.settings.topP } : {}),
+      ...(request.settings?.seed != null ? { seed: request.settings.seed } : {}),
+      ...(request.settings?.maxTokens != null ? { maxTokens: request.settings.maxTokens } : {}),
+      ...(request.settings?.stop != null ? { stop: normalizeStopSequences(request.settings.stop) } : {}),
+      ...(request.settings?.topK != null ? { topK: request.settings.topK } : {}),
+      ...(request.settings?.responseFormat != null ? { responseFormat: stableSerialize(request.settings.responseFormat) } : {}),
     },
   };
 }
@@ -301,8 +391,44 @@ function normalizePromptText(content: string): string {
     .replace(/authorization\s*:\s*bearer\s+\S+/gi, "authorization:bearer <redacted>")
     .replace(/api[_-]?key\s*[:=]\s*\S+/gi, "api_key=<redacted>")
     .replace(/token\s*[:=]\s*\S+/gi, "token=<redacted>")
+    .replace(/x[-_][a-z0-9_-]*key\s*[:=]\s*\S+/gi, "x-key=<redacted>")
+    .replace(/"(secret|api[_-]?key|token|x[-_][a-z0-9_-]*key)"\s*:\s*"[^"]*"/gi, "\"$1\":\"<redacted>\"")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function buildToolSignature(tools: readonly (string | VcrToolDescriptor)[] | undefined): string {
+  return [...(tools ?? [])]
+    .map((tool) => normalizeToolDescriptor(tool))
+    .sort()
+    .join(",");
+}
+
+function normalizeToolDescriptor(tool: string | VcrToolDescriptor): string {
+  if (typeof tool === "string") {
+    return tool.trim();
+  }
+  const schemaFingerprint = tool.schemaHash
+    ?? (tool.inputSchema != null ? createHash("sha256").update(stableSerialize(tool.inputSchema)).digest("hex").slice(0, 12) : "");
+  return [
+    tool.name.trim(),
+    tool.version?.trim() ?? "",
+    schemaFingerprint,
+  ].filter((part) => part.length > 0).join("@");
+}
+
+function normalizeStopSequences(stop: string | readonly string[]): readonly string[] {
+  return (Array.isArray(stop) ? [...stop] : [stop]).map((item) => item.trim()).sort();
+}
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableSerialize(item)).join(",")}]`;
+  }
+  if (value != null && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableSerialize((value as Record<string, unknown>)[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 /**

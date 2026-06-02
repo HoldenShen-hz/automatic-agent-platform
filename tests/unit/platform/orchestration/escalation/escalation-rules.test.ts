@@ -70,14 +70,14 @@ test("riskLevel 'medium' returns decision 'approval' when estimatedCostUsd >= 10
   assert.equal(decision.decision, "approval");
 });
 
-test("riskLevel 'high' returns decision 'approval' in non-execute stages", () => {
+test("riskLevel 'high' returns approval only in assess stage and takeover for later stages", () => {
   const service = new EscalationService();
   const stages: EscalationStage[] = ["assess", "plan", "feedback", "improve", "release"];
 
   for (const stage of stages) {
     const request = createRequest({ riskLevel: "high", stage, affectsProduction: false });
     const decision = service.decide(request);
-    assert.equal(decision.decision, "approval", `Failed for stage: ${stage}`);
+    assert.equal(decision.decision, stage === "assess" ? "approval" : "takeover", `Failed for stage: ${stage}`);
   }
 });
 
@@ -152,13 +152,12 @@ test("stage 'assess' does not trigger takeover for high risk", () => {
   assert.equal(decision.decision, "approval");
 });
 
-test("stage 'plan' does not trigger takeover for high risk", () => {
+test("stage 'plan' triggers takeover for high risk", () => {
   const service = new EscalationService();
   const request = createRequest({ riskLevel: "high", stage: "plan" });
   const decision = service.decide(request);
 
-  assert.notEqual(decision.decision, "takeover");
-  assert.equal(decision.decision, "approval");
+  assert.equal(decision.decision, "takeover");
 });
 
 test("stage 'execute' triggers takeover for high risk", () => {
@@ -169,28 +168,28 @@ test("stage 'execute' triggers takeover for high risk", () => {
   assert.equal(decision.decision, "takeover");
 });
 
-test("stage 'feedback' does not trigger takeover for high risk", () => {
+test("stage 'feedback' triggers takeover for high risk", () => {
   const service = new EscalationService();
   const request = createRequest({ riskLevel: "high", stage: "feedback" });
   const decision = service.decide(request);
 
-  assert.notEqual(decision.decision, "takeover");
+  assert.equal(decision.decision, "takeover");
 });
 
-test("stage 'improve' does not trigger takeover for high risk", () => {
+test("stage 'improve' triggers takeover for high risk", () => {
   const service = new EscalationService();
   const request = createRequest({ riskLevel: "high", stage: "improve" });
   const decision = service.decide(request);
 
-  assert.notEqual(decision.decision, "takeover");
+  assert.equal(decision.decision, "takeover");
 });
 
-test("stage 'release' does not trigger takeover for high risk", () => {
+test("stage 'release' triggers takeover for high risk", () => {
   const service = new EscalationService();
   const request = createRequest({ riskLevel: "high", stage: "release" });
   const decision = service.decide(request);
 
-  assert.notEqual(decision.decision, "takeover");
+  assert.equal(decision.decision, "takeover");
 });
 
 test("all stages return valid decision for critical production risk", () => {

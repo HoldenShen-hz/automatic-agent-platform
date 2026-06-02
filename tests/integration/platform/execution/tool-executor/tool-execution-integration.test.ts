@@ -33,7 +33,7 @@ test("tool execution: can insert and retrieve execution records", () => {
           error_code, created_at, updated_at, completed_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(taskId, null, taskId, "general_ops", "Tool execution test", "in_progress",
+      .run(taskId, null, taskId, "general-ops", "Tool execution test", "in_progress",
         "user", "normal", "{}", null, null, 0, 0, null, now, now, null);
 
     // Insert execution
@@ -85,7 +85,7 @@ test("tool execution: execution timeout is recorded correctly", () => {
           error_code, created_at, updated_at, completed_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(taskId, null, taskId, "general_ops", "Timeout test", "in_progress",
+      .run(taskId, null, taskId, "general-ops", "Timeout test", "in_progress",
         "user", "normal", "{}", null, null, 0, 0, null, now, now, null);
 
     // Insert execution with timeout
@@ -135,7 +135,7 @@ test("tool execution: allowed tools and paths are enforced", () => {
           error_code, created_at, updated_at, completed_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(taskId, null, taskId, "general_ops", "Allowed tools test", "in_progress",
+      .run(taskId, null, taskId, "general-ops", "Allowed tools test", "in_progress",
         "user", "normal", "{}", null, null, 0, 0, null, now, now, null);
 
     // Insert execution with allowed tools and paths

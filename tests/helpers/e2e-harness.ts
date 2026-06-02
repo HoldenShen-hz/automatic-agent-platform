@@ -81,7 +81,7 @@ export function createSeededE2EHarness(
       id: taskId,
       parentId: null,
       rootId: taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       tenantId: null,
       title: "E2E test task",
       status: "in_progress",
@@ -131,7 +131,7 @@ export function createSeededE2EHarness(
 
     harness.store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "single_agent_minimal",
       currentStepIndex: 0,
       status: "running",

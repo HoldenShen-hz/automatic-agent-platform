@@ -140,7 +140,7 @@ export class KnowledgePromotionService {
 
   private promoteEligible(learningObjects: readonly LearningObject[], taskId: string): KnowledgePromotionResult {
     const promoted: Array<{ objectId: string; documentId: string }> = [];
-    const failed: string[] = [];
+    const failed: Array<{ objectId: string; learningType: string }> = [];
 
     for (const obj of learningObjects) {
       if (obj.promotionStatus !== "validated" && obj.promotionStatus !== "promoted") {
@@ -161,14 +161,15 @@ export class KnowledgePromotionService {
 
         promoted.push({ objectId: obj.learningObjectId, documentId: result.document.documentId });
       } catch (err) {
-        failed.push(obj.learningObjectId);
+        failed.push({ objectId: obj.learningObjectId, learningType: obj.learningType });
         // Log but don't throw — promotion failure should not block the loop
         logger.error(`[KnowledgePromotion] Failed to promote ${obj.learningObjectId}`, { error: String(err) });
       }
     }
 
-    // Emit learning:knowledge_promoted event (Tier 2) for downstream consumers
-    if (promoted.length > 0 && this.eventPublisher) {
+    // Emit learning:knowledge_promoted event (Tier 2) for downstream consumers,
+    // including partial or complete failures so operators can observe write loss.
+    if ((promoted.length > 0 || failed.length > 0) && this.eventPublisher) {
       const promotedCount = promoted.length;
       // R13-09: Emit a single batch event with all promoted objects' metadata
       const allObjectsMetadata = promoted.map(({ objectId, documentId }) => {
@@ -182,12 +183,34 @@ export class KnowledgePromotionService {
           confidence: obj?.confidence ?? 0,
         };
       });
+      const firstOutcome =
+        promoted[0] != null
+          ? {
+            learningObjectId: promoted[0].objectId,
+            learningType: learningObjects.find((item) => item.learningObjectId === promoted[0].objectId)?.learningType ?? "unknown",
+            documentId: promoted[0].documentId,
+          }
+          : {
+            learningObjectId: failed[0]?.objectId ?? "unknown",
+            learningType: failed[0]?.learningType ?? "unknown",
+            documentId: "",
+          };
 
       this.eventPublisher.publish({
         eventType: "learning:knowledge_promoted",
         taskId,
         payload: {
+          learningObjectId: firstOutcome.learningObjectId,
+          learningType: firstOutcome.learningType,
+          documentId: firstOutcome.documentId,
           promotedCount,
+          failedCount: failed.length,
+          failedObjectIds: failed.map((item) => item.objectId),
+          status: failed.length > 0
+            ? promoted.length > 0
+              ? "partial_failure"
+              : "failed"
+            : "promoted",
           promotedObjects: allObjectsMetadata,
           namespace: "system.learned.patterns",
           trustLevel: "team_reviewed",

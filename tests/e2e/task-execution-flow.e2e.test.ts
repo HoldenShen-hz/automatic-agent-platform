@@ -145,7 +145,7 @@ test("E2E Task Execution: single task follows correct state machine transitions"
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "State machine test",
           status: "queued",
@@ -193,7 +193,7 @@ test("E2E Task Execution: single task follows correct state machine transitions"
 
         harness.store.insertWorkflowState({
           taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           workflowId: "single_agent_minimal",
           currentStepIndex: 0,
           status: "running",
@@ -523,7 +523,7 @@ test("E2E Task Execution: task execution respects priority ordering", async () =
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Medium priority task",
           status: "queued",

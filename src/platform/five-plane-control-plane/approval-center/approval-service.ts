@@ -83,6 +83,10 @@ export interface ApprovalRequest {
   approverGroups?: readonly string[];
   /** Current count of approvals received */
   approvalsReceived?: number;
+  /** Current count of rejections/expirations received in multi-party mode */
+  rejectionsReceived?: number;
+  /** Threshold of rejections that finalizes the request as denied */
+  rejectionsRequired?: number;
 }
 
 export type ApprovalStageViewRef =
@@ -192,6 +196,31 @@ export function validateApprovalDecision(decision: ApprovalDecision): void {
 
 function parseApprovalRequest(requestJson: string): ApprovalRequest {
   return JSON.parse(requestJson) as ApprovalRequest;
+}
+
+function parseApprovalDecisionOrNull(responseJson: string | null): ApprovalDecision | null {
+  if (responseJson == null) {
+    return null;
+  }
+  try {
+    return JSON.parse(responseJson) as ApprovalDecision;
+  } catch {
+    return null;
+  }
+}
+
+function readTaskTenantId(
+  store: AuthoritativeTaskStore,
+  taskId: string,
+): string | null {
+  const taskRepository = (store as { task?: { getTask?: (id: string) => { tenantId?: string | null } | null } }).task;
+  if (taskRepository == null) {
+    return null;
+  }
+  if (typeof taskRepository.getTask !== "function") {
+    return null;
+  }
+  return taskRepository.getTask(taskId)?.tenantId ?? null;
 }
 
 function readCascadeSessionId(request: ApprovalRequest): string | null {
@@ -461,6 +490,20 @@ export class ApprovalService {
 
       // Only apply if still pending - already resolved requests are ignored
       if (existing.status !== "requested") {
+        this.repository.insertEvent({
+          id: newId("evt"),
+          taskId: existing.taskId,
+          executionId: existing.executionId,
+          eventType: "decision:duplicate_attempt",
+          eventTier: "tier_2",
+          payloadJson: JSON.stringify({
+            approvalId: existing.id,
+            currentStatus: existing.status,
+            attemptedDecision: decision,
+          }),
+          traceId: null,
+          createdAt: decision.respondedAt,
+        });
         return;
       }
 
@@ -544,7 +587,8 @@ export class ApprovalService {
       // Emit DecisionDirective to P3/P4 per R4-14 (P2→P3/P4 governance gate)
       const directiveTenantId =
         readStringContextField(existingRequest.context, "tenantId", "tenant_id")
-        ?? existing.taskId;
+        ?? readTaskTenantId(this.store, existing.taskId)
+        ?? "global";
       const directiveRole = decision.respondedBy === "system" || decision.respondedBy.startsWith("system:")
         ? "system"
         : "approver";
@@ -587,7 +631,7 @@ export class ApprovalService {
 
 function toLegacyApprovalView(record: ApprovalRecord): LegacyApprovalView {
   const request = parseApprovalRequest(record.requestJson);
-  const response = record.responseJson == null ? null : JSON.parse(record.responseJson) as ApprovalDecision;
+  const response = parseApprovalDecisionOrNull(record.responseJson);
   return {
     approvalId: record.id,
     status: record.status === "requested" ? "pending" : record.status,

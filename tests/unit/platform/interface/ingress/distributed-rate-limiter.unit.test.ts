@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 import { DistributedRateLimiter } from "../../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
+
+test.afterEach(() => {
+  try {
+    mock.timers.reset();
+  } catch {
+    // Individual tests enable mocked timers only when needed.
+  }
+});
 
 test("DistributedRateLimiter - Constructor applies default config values", () => {
   const limiter = new DistributedRateLimiter({});
@@ -84,6 +92,7 @@ test("DistributedRateLimiter - in-memory mode blocks when limit exceeded", async
 });
 
 test("DistributedRateLimiter - in-memory mode allows after window expires", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const limiter = new DistributedRateLimiter({
     maxCalls: 2,
     windowMs: 100,
@@ -96,7 +105,7 @@ test("DistributedRateLimiter - in-memory mode allows after window expires", asyn
   assert.equal(blocked.allowed, false);
 
   // Wait for window to expire
-  await new Promise((resolve) => setTimeout(resolve, 120));
+  mock.timers.tick(120);
 
   const allowed = await limiter.checkAndConsume("expiry-test");
   assert.equal(allowed.allowed, true);
@@ -120,6 +129,7 @@ test("DistributedRateLimiter - different keys have independent limits", async ()
 });
 
 test("DistributedRateLimiter - retryAfterMs decreases over time", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const limiter = new DistributedRateLimiter({
     maxCalls: 1,
     windowMs: 1000,
@@ -129,7 +139,7 @@ test("DistributedRateLimiter - retryAfterMs decreases over time", async () => {
   const initialRetry = await limiter.checkAndConsume("retry-test");
   assert.ok(initialRetry.retryAfterMs !== undefined);
 
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  mock.timers.tick(500);
 
   const laterRetry = await limiter.checkAndConsume("retry-test");
   assert.ok(laterRetry.retryAfterMs !== undefined);
@@ -181,6 +191,7 @@ test("DistributedRateLimiter - handles very large maxCalls", async () => {
 });
 
 test("DistributedRateLimiter - handles very small windowMs", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
   const limiter = new DistributedRateLimiter({
     maxCalls: 1,
     windowMs: 10,
@@ -190,7 +201,7 @@ test("DistributedRateLimiter - handles very small windowMs", async () => {
   const blocked = await limiter.checkAndConsume("tiny-window");
   assert.equal(blocked.allowed, false);
 
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  mock.timers.tick(20);
 
   const allowed = await limiter.checkAndConsume("tiny-window");
   assert.equal(allowed.allowed, true);

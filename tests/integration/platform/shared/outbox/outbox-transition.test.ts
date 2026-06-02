@@ -99,7 +99,7 @@ test.describe("Outbox transition integration tests", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: null,
         title: "Outbox transition test task",
         status: "queued",

@@ -38,6 +38,41 @@ function buildSecretAuthorizationContext(envConfig: ReturnType<typeof loadSecret
   };
 }
 
+function sanitizeSecretMetadata(value: unknown): unknown {
+  if (value == null || typeof value !== "object") {
+    return value;
+  }
+  const keys = Object.keys(value as Record<string, unknown>).sort();
+  return { redacted: true, keys };
+}
+
+function sanitizeSecretResult(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeSecretResult(entry));
+  }
+  if (value == null || typeof value !== "object") {
+    return value;
+  }
+  const record = value as Record<string, unknown>;
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(record)) {
+    if (key === "metadata") {
+      sanitized[key] = sanitizeSecretMetadata(entry);
+      continue;
+    }
+    if (key === "registry" || key === "lease") {
+      sanitized[key] = sanitizeSecretMetadata(entry);
+      continue;
+    }
+    if (/^(plaintext|value|secretValue|resolvedValue|leaseToken|token|privateKey|material)$/u.test(key)) {
+      sanitized[key] = "[REDACTED]";
+      continue;
+    }
+    sanitized[key] = sanitizeSecretResult(entry);
+  }
+  return sanitized;
+}
+
 export async function main(): Promise<number> {
   const envConfig = loadSecretManagementCliEnv();
   await withCliStorageAsync(async (storage) => {
@@ -149,7 +184,7 @@ export async function main(): Promise<number> {
         throw new ValidationError(`unsupported_secret_action:${envConfig.action}`, `unsupported_secret_action:${envConfig.action}`);
     }
 
-    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify(sanitizeSecretResult(result), null, 2)}\n`);
   }, { dbPath: envConfig.dbPath });
   return CLI_EXIT_SUCCESS;
 }
@@ -157,7 +192,8 @@ export async function main(): Promise<number> {
 if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
   void runCliMain(main, {
     onError: (error) => {
-      process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+      const code = error instanceof ValidationError ? error.code : "secret_management.failed";
+      process.stderr.write(`${code}\n`);
     },
   });
 }

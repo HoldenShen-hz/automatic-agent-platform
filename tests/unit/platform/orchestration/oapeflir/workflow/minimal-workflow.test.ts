@@ -13,7 +13,7 @@ import {
 
 test("SINGLE_AGENT_MINIMAL_WORKFLOW has correct structure", () => {
   assert.equal(SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId, "single_agent_minimal");
-  assert.equal(SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId, "general_ops");
+  assert.equal(SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId, "general-ops");
   assert.equal(SINGLE_AGENT_MINIMAL_WORKFLOW.steps.length, 1);
 
   const step = SINGLE_AGENT_MINIMAL_WORKFLOW.steps[0]!;
@@ -27,7 +27,7 @@ test("SINGLE_AGENT_MINIMAL_WORKFLOW has correct structure", () => {
 
 test("PHASE_1B_SINGLE_DIVISION_WORKFLOW has correct structure", () => {
   assert.equal(PHASE_1B_SINGLE_DIVISION_WORKFLOW.workflowId, "single_division_multi_step_orchestration");
-  assert.equal(PHASE_1B_SINGLE_DIVISION_WORKFLOW.divisionId, "general_ops");
+  assert.equal(PHASE_1B_SINGLE_DIVISION_WORKFLOW.divisionId, "general-ops");
   assert.equal(PHASE_1B_SINGLE_DIVISION_WORKFLOW.steps.length, 3);
 
   const steps = PHASE_1B_SINGLE_DIVISION_WORKFLOW.steps;
@@ -112,7 +112,7 @@ test("MinimalWorkflowStep divisionId is optional", () => {
 test("MinimalWorkflowStep with all optional fields", () => {
   const step: MinimalWorkflowStep = {
     stepId: "full_step",
-    divisionId: "engineering_ops",
+    divisionId: "engineering-ops",
     roleId: "engineer",
     inputKeys: ["input1", "input2"],
     outputKey: "output",
@@ -124,7 +124,7 @@ test("MinimalWorkflowStep with all optional fields", () => {
     compensationModel: "compensating_action",
   };
 
-  assert.equal(step.divisionId, "engineering_ops");
+  assert.equal(step.divisionId, "engineering-ops");
   assert.deepEqual(step.inputKeys, ["input1", "input2"]);
   assert.equal(step.outputSchemaPath, "/schemas/output.json");
   assert.equal(step.timeoutMs, 300_000);

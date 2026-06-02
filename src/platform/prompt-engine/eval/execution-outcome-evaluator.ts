@@ -309,17 +309,16 @@ export class ExecutionOutcomeEvaluator {
   ): BudgetAdherenceResult {
     let severity: BudgetAdherenceResult["severity"] = "info";
     let adherent = true;
-    const plannedBudget = 0; // Would be derived from planGraphBundle.budgetPlanRef
+    const plannedBudget = this.resolvePlannedBudget(planGraphBundle);
     let variancePercent = 0;
 
     if (actualCost !== undefined && actualCost > 0) {
       if (plannedBudget > 0) {
         variancePercent = ((actualCost - plannedBudget) / plannedBudget) * 100;
-      }
-
-      if (actualCost > plannedBudget * 1.1) {
-        adherent = false;
-        severity = variancePercent > 50 ? "critical" : variancePercent > 25 ? "error" : "warning";
+        if (actualCost > plannedBudget * 1.1) {
+          adherent = false;
+          severity = variancePercent > 50 ? "critical" : variancePercent > 25 ? "error" : "warning";
+        }
       }
     }
 
@@ -399,7 +398,7 @@ export class ExecutionOutcomeEvaluator {
   ): TimingSloResult {
     let severity: TimingSloResult["severity"] = "info";
     let withinSlo = true;
-    const plannedDurationMs = 0; // Would be derived from plan graph
+    const plannedDurationMs = this.resolvePlannedDurationMs(planGraphBundle);
     let variancePercent = 0;
 
     if (actualDurationMs !== undefined) {
@@ -407,7 +406,6 @@ export class ExecutionOutcomeEvaluator {
         variancePercent = ((actualDurationMs - plannedDurationMs) / plannedDurationMs) * 100;
       }
 
-      // Assume max duration is 2x planned as threshold
       if (actualDurationMs > plannedDurationMs * 2 && plannedDurationMs > 0) {
         withinSlo = false;
         severity = variancePercent > 100 ? "critical" : variancePercent > 50 ? "error" : "warning";
@@ -436,6 +434,29 @@ export class ExecutionOutcomeEvaluator {
     }
   }
 
+  private resolvePlannedBudget(planGraphBundle: PlanGraphBundle): number {
+    const worstPathBudget = planGraphBundle.validationReport?.worstPath?.estimatedBudgetAmount;
+    if (Number.isFinite(worstPathBudget) && (worstPathBudget ?? 0) > 0) {
+      return Number((worstPathBudget ?? 0).toFixed(2));
+    }
+    const nodeBudget = planGraphBundle.graph?.nodes?.reduce((total, node) => {
+      const amount = node.budgetIntent?.amount;
+      return Number.isFinite(amount) ? total + Number(amount) : total;
+    }, 0) ?? 0;
+    return Number(nodeBudget.toFixed(2));
+  }
+
+  private resolvePlannedDurationMs(planGraphBundle: PlanGraphBundle): number {
+    const worstPathTimeout = planGraphBundle.validationReport?.worstPath?.timeoutMs;
+    if (Number.isFinite(worstPathTimeout) && (worstPathTimeout ?? 0) > 0) {
+      return Math.trunc(worstPathTimeout ?? 0);
+    }
+    return planGraphBundle.graph?.nodes?.reduce((total, node) => {
+      const timeoutMs = node.timeoutMs;
+      return Number.isFinite(timeoutMs) ? total + Number(timeoutMs) : total;
+    }, 0) ?? 0;
+  }
+
   /**
    * @deprecated R5-7: evaluateWithBreakdown() is kept for backward compatibility.
    * R11-04: Now consumes PlanGraphBundle instead of legacy Plan
@@ -456,10 +477,9 @@ export class ExecutionOutcomeEvaluator {
     const failurePenalty = failureSignals.length * failureSignal;
     const partialPenalty = partialSignals.length * partialSignal;
 
-    const qualityScore = Math.max(
-      0,
-      Math.min(1, successBonus + completionBonus - failurePenalty - partialPenalty),
-    );
+    const positiveScore = Math.min(1, successBonus + completionBonus);
+    const totalPenalty = Math.min(1, failurePenalty + partialPenalty);
+    const qualityScore = Math.max(0, Number((positiveScore - totalPenalty).toFixed(6)));
 
     // R11-05: Get risk-adjusted threshold
     const riskClass = planGraphBundle.riskProfile?.riskClass ?? "medium";
@@ -494,15 +514,21 @@ export class ExecutionOutcomeEvaluator {
       nextAction = "replan";
     }
 
-    const passed = nextAction === "complete" && (
-      deltaGatePassed ?? (qualityScore >= riskAdjustedThreshold)
-    );
+    const absoluteThresholdPassed = qualityScore >= riskAdjustedThreshold;
+    const passed = nextAction === "complete"
+      && absoluteThresholdPassed
+      && (deltaGatePassed ?? true);
     const reasons = feedback.signals.map((signal) =>
       `${signal.category}:${String(signal.payload.summary ?? signal.payload.reasonCode ?? signal.category)}`,
     );
     if (deltaGatePassed === false) {
       reasons.push(
         `quality_score_delta_exceeded:${(qualityScore - baselineQualityScore!).toFixed(2)} < -0.05`,
+      );
+    }
+    if (!absoluteThresholdPassed) {
+      reasons.push(
+        `quality_score_below_risk_threshold:${qualityScore.toFixed(2)} < ${riskAdjustedThreshold.toFixed(2)}`,
       );
     }
 

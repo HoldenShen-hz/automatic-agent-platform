@@ -2,114 +2,114 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Mapping
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage loop:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: signal collection and aggregation
+- **Assess**: pre-execution evaluation and risk judgement
+- **Plan**: task decomposition and DAG construction
+- **Execute**: step execution and fault tolerance
+- **Feedback**: signal collection and preprocessing
+- **Learn**: pattern detection and knowledge extraction
+- **Improve**: improvement candidate evaluation and rollout
+- **Release**: controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines平台内统一的“可执lines单元”语义视图，used for把 Task、WorkflowStep、Tool Call、HITL Decision、SubTask 等异构对象映射到统一观察vs可视化层。
+This contract defines a unified "executable unit" semantic view inside the platform. It is used to map heterogeneous objects such as Task, WorkflowStep, Tool Call, HITL decision, and SubTask to a unified observation and visualization layer.
 
-`ExecutableUnit` 不is runtime truth。v4.3 的规范最小执lines单元is `NodeRun` / `NodeAttempt`；`ExecutableUnit` 只能作为围绕它们构建的语义投影或import适配层。
+`ExecutableUnit` is not runtime truth. In v4.3, the canonical minimum execution units are `NodeRun` / `NodeAttempt`; `ExecutableUnit` can only act as a semantic projection or import adaptation layer built around them.
 
-相关文档：
+Related documents:
 
 - `task_and_workflow_contract.md`
 - `runtime_execution_contract.md`
 - `transition_service_contract.md`
 - `tool_metadata_and_recovery_contract.md`
 
-## 2. 目标
+## 2. Goals
 
-统一执lines单元的目的is让以下能力复用同一语义视图：
+The purpose of a unified execution unit is to let the following capabilities reuse the same semantic view:
 
-- 调度
-- timeout
-- 重试
-- 恢复
-- 审计
-- 计费
-- 可视化
+- Scheduling
+- Timeouts
+- Retries
+- Recovery
+- Auditing
+- Billing
+- Visualization
 
 ## 3. `ExecutableUnit`
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `unit_id` | `string` | 单元 ID |
-| `unit_kind` | `task_view \| workflow_step_view \| tool_call_view \| hitl_wait_view \| subtask_view \| release_gate_view \| knowledge_retrieval_view \| memory_promotion_view` | 语义视图class型 |
-| `harness_run_id` | `string` | 对应 HarnessRun |
-| `node_run_id` | `string?` | 对应 NodeRun |
-| `attempt_id` | `string?` | 对应 NodeAttempt |
-| `plan_graph_bundle_id` | `string?` | 对应执lines图 bundle |
-| `graph_version` | `number?` | 对应图版本 |
-| `parent_unit_id` | `string?` | 父执lines单元 |
-| `root_task_id` | `string?` | 根任务查询入口 |
-| `stage_view_ref` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | 所属闭环阶段视图 |
-| `ref_id` | `string?` | 关联 typed ref |
-| `input_ref` | `string \| json` | 输入references用或输入体 |
-| `output_ref` | `string?` | 输出references用 |
-| `status_view` | `string` | 生命cycle投影Status |
-| `retry_policy_ref` | `string?` | 重试策略 |
-| `timeout_ms` | `number?` | timeout |
-| `dependency_refs` | `string[]?` | relies on单元 |
-| `side_effect_level` | `none \| local \| external \| financial \| org_mutation` | 副作用等级 |
-| `cost_scope_ref` | `string?` | 成本归属 |
-| `created_at` | `timestamp` | 创建time |
+| Field | Type | Description |
+| --- | --- | --- |
+| `unit_id` | `string` | Unit ID |
+| `unit_kind` | `task_view \| workflow_step_view \| tool_call_view \| hitl_wait_view \| subtask_view \| release_gate_view \| knowledge_retrieval_view \| memory_promotion_view` | Semantic view type |
+| `harness_run_id` | `string` | Corresponding HarnessRun |
+| `node_run_id` | `string?` | Corresponding NodeRun |
+| `attempt_id` | `string?` | Corresponding NodeAttempt |
+| `plan_graph_bundle_id` | `string?` | Corresponding execution graph bundle |
+| `graph_version` | `number?` | Corresponding graph version |
+| `parent_unit_id` | `string?` | Parent execution unit |
+| `root_task_id` | `string?` | Root task query entry |
+| `stage_view_ref` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | Owning loop stage view |
+| `ref_id` | `string?` | Associated typed ref |
+| `input_ref` | `string \| json` | Input reference or input body |
+| `output_ref` | `string?` | Output reference |
+| `status_view` | `string` | Lifecycle projection status |
+| `retry_policy_ref` | `string?` | Retry policy |
+| `timeout_ms` | `number?` | Timeout |
+| `dependency_refs` | `string[]?` | Dependent units |
+| `side_effect_level` | `none \| local \| external \| financial \| org_mutation` | Side-effect level |
+| `cost_scope_ref` | `string?` | Cost attribution |
+| `created_at` | `timestamp` | Creation time |
 
-规则：
+Rules:
 
-- `ExecutableUnit` 必须能回链到 `NodeRun` / `NodeAttempt`；没有 `harness_run_id` 的新单元对象不得作为执lines层 canonical 输入。
-- `stage_view_ref`、`status_view` 只允许table达投影语义；真实执linesStatus仍由 `RuntimeStateMachine.transition(command)` 和 `NodeAttemptReceipt` defines。
-- `skill_step`、`decision_request`、`observe_step` 等旧 `unit_kind` 只能作为import映射，不得出现在新 schema 中。
+- `ExecutableUnit` must be linkable back to `NodeRun` / `NodeAttempt`; new unit objects without `harness_run_id` must not be used as canonical execution layer input.
+- `stage_view_ref` and `status_view` are only allowed to express projection semantics; the real execution state is still defined by `RuntimeStateMachine.transition(command)` and `NodeAttemptReceipt`.
+- Old `unit_kind` values such as `skill_step`, `decision_request`, `observe_step` may only be used as import mapping and must not appear in the new schema.
 
-## 4. 约束
+## 4. Constraints
 
-- 统一执lines单元is抽象层，不替代具体领域对象。
-- `Task` 仍然isuser主对象，`ExecutableUnit` is跨对象复用的语义/展示视图。
-- 执lines调度、timeout、恢复和 truth 审计优先消费 `NodeRun` / `NodeAttempt` / `NodeAttemptReceipt`；`ExecutableUnit` 只used for跨对象统一展示、检索或import。
+- The unified execution unit is an abstraction layer and does not replace specific domain objects.
+- `Task` is still the primary user-facing object; `ExecutableUnit` is a cross-object reusable semantic / presentation view.
+- Execution scheduling, timeouts, recovery, and truth auditing should prefer to consume `NodeRun` / `NodeAttempt` / `NodeAttemptReceipt`; `ExecutableUnit` is only used for cross-object unified display, retrieval, or import.
 
-## 5. 当前阶段映射
+## 5. Current Stage Mapping
 
-| 领域对象 | 映射方式 |
+| Domain Object | Mapping Approach |
 | --- | --- |
-| `Task` | 顶层user可见执lines单元视图 |
-| `WorkflowStep` | `PlanNode` / `NodeRun` 的语义映射视图 |
-| `ToolCall` | `NodeAttemptReceipt(receiptKind=tool)` 的原子视图 |
-| `DecisionRequest` | `hitl_wait_view`，需回链到 `ApprovalRequest` / `DecisionDirective` |
-| `SubTask` | 子树型运lines视图，需回链到 child `HarnessRun` |
-| `Observe / Assess / Feedback / Learn / Improve / Release` | OAPEFLIR 阶段视图，不is独立 truth 单元 |
+| `Task` | Top-level user-visible execution unit view |
+| `WorkflowStep` | Semantic mapping view of `PlanNode` / `NodeRun` |
+| `ToolCall` | Atomic view of `NodeAttemptReceipt(receiptKind=tool)` |
+| `DecisionRequest` | `hitl_wait_view`, must be linkable back to `ApprovalRequest` / `DecisionDirective` |
+| `SubTask` | Subtree-style run view, must be linkable back to child `HarnessRun` |
+| `Observe / Assess / Feedback / Learn / Improve / Release` | OAPEFLIR stage views, not independent truth units |
 
-## 6. Phase 边界
+## 6. Phase Boundary
 
-Phase 1a / 1b 做：
+Phase 1a / 1b do:
 
-- 文档vs运lines概念层统一抽象
-- used for调度、timeout、恢复和可视化设计
+- Unify abstraction at the documentation and runtime concept layers
+- Use it for scheduling, timeouts, recovery, and visualization design
 
-当前不做：
+Currently not doing:
 
-- 单独新建一套独立storagetable强lines替代现有 `HarnessRun / NodeRun / NodeAttempt` truth table
+- Creating a separate new storage table to forcibly replace the existing `HarnessRun / NodeRun / NodeAttempt` truth tables
 
-## 7. 收口Conclusion
+## 7. Closure Conclusion
 
-统一执lines单元不is为了再造一层概念，而is为了减少“同一class调度逻辑在五六种对象上repeats实现”的未来成本。
+The unified execution unit is not meant to invent another layer of concepts, but to reduce the future cost of "the same kind of scheduling logic being duplicated across five or six different objects".
 
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following entries fix the contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If any historical section of this document conflicts with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-20: 本文原先把 `ExecutableUnit` 写成可directly替代 task/workflow_step/tool_call 的统一执lines truth，Root cause: 早期想用一个抽象抹平所有执lines对象，却没有随着 `NodeRun / NodeAttempt` 成为规范最小执lines单元而把它降回投影层。修复：正文现明确 `ExecutableUnit` 只is围绕 `HarnessRun / NodeRun / NodeAttempt` 的语义视图，并把旧 `unit_kind` 降为import映射。
+- T-20: This document originally described `ExecutableUnit` as a unified execution truth that could directly replace task / workflow_step / tool_call. The root cause was an early attempt to flatten all execution objects under a single abstraction, but it was not downgraded to a projection layer as `NodeRun / NodeAttempt` became the canonical minimum execution units. Fix: The main text now makes clear that `ExecutableUnit` is only a semantic view around `HarnessRun / NodeRun / NodeAttempt`, and old `unit_kind` values are downgraded to import mapping.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: state transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events may only use `platform.*`; OAPEFLIR may only act as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

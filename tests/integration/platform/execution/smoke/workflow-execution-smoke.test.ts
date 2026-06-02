@@ -32,7 +32,7 @@ test("smoke: workflow state can be created alongside task", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Workflow test task",
         status: "queued",
         source: "user",
@@ -50,7 +50,7 @@ test("smoke: workflow state can be created alongside task", () => {
 
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId,
         currentStepIndex: 0,
         status: "running",
@@ -97,7 +97,7 @@ test("smoke: workflow status transitions are recorded", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Workflow transition test",
         status: "in_progress",
         source: "user",
@@ -115,7 +115,7 @@ test("smoke: workflow status transitions are recorded", () => {
 
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId,
         currentStepIndex: 0,
         status: "running",
@@ -179,7 +179,7 @@ test("smoke: workflow step index advances correctly", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Step index test",
         status: "in_progress",
         source: "user",
@@ -197,7 +197,7 @@ test("smoke: workflow step index advances correctly", () => {
 
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId,
         currentStepIndex: 0,
         status: "running",
@@ -252,7 +252,7 @@ test("smoke: workflow outputs are captured", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Output capture test",
         status: "in_progress",
         source: "user",
@@ -270,7 +270,7 @@ test("smoke: workflow outputs are captured", () => {
 
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId,
         currentStepIndex: 2,
         status: "running",
@@ -313,7 +313,7 @@ test("smoke: workflow retry count is tracked via recovery state", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         title: "Retry count test",
         status: "in_progress",
         source: "user",
@@ -331,7 +331,7 @@ test("smoke: workflow retry count is tracked via recovery state", () => {
 
       store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId,
         currentStepIndex: 0,
         status: "running",

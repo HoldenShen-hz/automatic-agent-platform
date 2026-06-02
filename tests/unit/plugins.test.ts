@@ -356,11 +356,10 @@ test("PluginSpiRegistry can register planner and invoke suggestWorkflow", async 
 
   const plugin = registry.resolve("plugin.core.basic-planner");
   assert.ok(plugin !== null);
+  assert.equal(plugin?.spiType, "planner");
+  assert.ok(plugin !== null && typeof plugin.suggestWorkflow === "function");
 
-  const suggestFn = (plugin as any).suggestWorkflow;
-  assert.ok(typeof suggestFn === "function");
-
-  const result = await suggestFn({
+  const result = await plugin!.suggestWorkflow({
     taskId: "task_test",
     intent: "test task",
     assessment: {

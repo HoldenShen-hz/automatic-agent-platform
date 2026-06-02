@@ -20,7 +20,7 @@ test("workflow repository persists and retrieves workflow state", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: "tenant-wf",
         title: "Workflow Test Task",
         status: "queued",
@@ -39,7 +39,7 @@ test("workflow repository persists and retrieves workflow state", () => {
 
       ctx.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "multi_step_plan",
         currentStepIndex: 0,
         status: "running",
@@ -85,7 +85,7 @@ test("workflow repository updates workflow step index", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: "tenant-wf-step",
         title: "Step Update Test",
         status: "in_progress",
@@ -104,7 +104,7 @@ test("workflow repository updates workflow step index", () => {
 
       ctx.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "multi_step_plan",
         currentStepIndex: 0,
         status: "running",
@@ -154,7 +154,7 @@ test("workflow repository records workflow completion", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: "tenant-wf-complete",
         title: "Completion Test",
         status: "in_progress",
@@ -173,7 +173,7 @@ test("workflow repository records workflow completion", () => {
 
       ctx.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "multi_step_plan",
         currentStepIndex: 3,
         status: "running",
@@ -224,7 +224,7 @@ test("workflow repository tracks workflow recovery state", () => {
         id: taskId,
         parentId: null,
         rootId: taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         tenantId: "tenant-wf-recovery",
         title: "Recovery Test",
         status: "in_progress",
@@ -243,7 +243,7 @@ test("workflow repository tracks workflow recovery state", () => {
 
       ctx.store.insertWorkflowState({
         taskId,
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "multi_step_plan",
         currentStepIndex: 1,
         status: "failed",

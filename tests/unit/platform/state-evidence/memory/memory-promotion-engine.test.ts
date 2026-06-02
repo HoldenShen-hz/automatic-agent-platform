@@ -91,11 +91,25 @@ test(`${label} MemoryPromotionEngine runPromotionCycle returns promoted, retaine
 
     assert.equal(result.promoted.length, 1);
     assert.equal(result.promoted[0]?.memory.id, "promote_me");
+    assert.equal(result.promoted[0]?.memory.scope, "project");
     assert.equal(result.projectEntries.length, 1);
     assert.equal(result.rejected.length, 1);
     assert.equal(result.retained.length, 1);
     assert.equal(result.retained[0]?.memory.id, "retain_me");
     assert.equal(result.demoted.length, 1);
     assert.equal(result.demoted[0]?.memory.id, "demote_me");
+  });
+
+  test(`${label} MemoryPromotionEngine rejects promotions that lack required context`, () => {
+    const engine = new EngineClass();
+    const result = engine.runPromotionCycle([
+      createMemory({ id: "needs_project", scope: "agent", hitCount: 10, qualityScore: 0.8, importanceScore: 0.65 }),
+    ]);
+
+    assert.equal(result.promoted.length, 0);
+    assert.equal(result.projectEntries.length, 0);
+    assert.equal(result.rejected.length, 1);
+    assert.equal(result.retained.length, 1);
+    assert.equal(result.retained[0]?.memory.scope, "agent");
   });
 }

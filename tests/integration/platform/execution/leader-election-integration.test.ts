@@ -282,6 +282,49 @@ test("leader election: forceAcquireLeadership preempts existing leader", async (
   }
 });
 
+test("leader election: fencing token allocation survives coordinator recreation", () => {
+  const workspace = createTempWorkspace("aa-leader-election-");
+  const dbPath = join(workspace, "token-reuse.db");
+
+  try {
+    const db = createFileDb(dbPath);
+    const coordinatorA = new HaCoordinatorService(db);
+    coordinatorA.registerNode("node-1", "us-east-1");
+    const first = coordinatorA.acquireLeadership({ nodeId: "node-1" });
+
+    const coordinatorB = new HaCoordinatorService(db);
+    coordinatorB.registerNode("node-2", "us-east-1");
+    const second = coordinatorB.acquireLeadership({ nodeId: "node-2", forceAcquire: true });
+
+    assert.ok(second.fencingToken > first.fencingToken);
+    db.connection.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("leader election: removeNode records removed epoch cause for admin teardown", () => {
+  const workspace = createTempWorkspace("aa-leader-election-");
+  const dbPath = join(workspace, "remove-node.db");
+
+  try {
+    const db = createFileDb(dbPath);
+    const coordinator = new HaCoordinatorService(db);
+    coordinator.registerNode("node-1", "us-east-1");
+    coordinator.acquireLeadership({ nodeId: "node-1" });
+
+    const removed = coordinator.removeNode("node-1");
+    const epoch = coordinator.getLatestEpoch();
+
+    assert.equal(removed, true);
+    assert.equal(epoch.cause, "removed");
+    assert.ok(epoch.endedAt);
+    db.connection.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
 test("leader election: getHaConfig returns correct configuration", async () => {
   const workspace = createTempWorkspace("aa-leader-election-");
   const dbPath = join(workspace, "test.db");

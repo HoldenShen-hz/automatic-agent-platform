@@ -19,7 +19,7 @@ describe("EdgeRuntimeSyncService", () => {
     edgeNodeId: "node-001",
     deviceId: "device-001",
     deviceAttestation: {
-      attestedAt: "2026-04-26T07:55:00Z",
+      attestedAt: new Date().toISOString(),
       status: "valid",
     },
     capabilities: ["offline-execution", "local-model"],
@@ -157,6 +157,30 @@ describe("EdgeRuntimeSyncService", () => {
       assert.equal(receipt.record.createdAt, createdAt);
     });
 
+    test("rejects stale device attestations", () => {
+      const service = new EdgeRuntimeSyncService();
+      const staleProfile: EdgeRuntimeProfile = {
+        ...defaultProfile,
+        deviceAttestation: {
+          attestedAt: "2026-04-01T00:00:00Z",
+          status: "valid",
+        },
+      };
+      const request: OfflineExecutionRequest = {
+        edgeNodeId: "node-001",
+        taskId: "task-stale-attestation",
+        modality: "text",
+        createdAt: "2026-04-26T08:00:00Z",
+        riskScore: 0.2,
+        taskType: "summarize",
+      };
+
+      assert.throws(
+        () => service.executeOffline(staleProfile, defaultModels, request),
+        /edge_runtime\.device_attestation_stale/,
+      );
+    });
+
     test("interprets offlineMaxDuration using the declared unit", () => {
       const service = new EdgeRuntimeSyncService();
       const secondsProfile: EdgeRuntimeProfile = {
@@ -271,6 +295,27 @@ describe("EdgeRuntimeSyncService", () => {
 
       assert.equal(envelope.createdAt, "2026-04-25T12:00:00Z");
     });
+
+    test("rejects envelope timestamps that are too far in the future", () => {
+      const service = new EdgeRuntimeSyncService();
+      const record = {
+        edgeNodeId: "node-001",
+        taskId: "task-001",
+        createdAt: "2026-04-26T08:00:00Z",
+      };
+
+      assert.throws(
+        () => service.buildSyncEnvelope(
+          defaultProfile,
+          record as any,
+          "digest",
+          1,
+          "internal",
+          "2099-01-01T00:00:00Z",
+        ),
+        /edge_runtime\.created_at_in_future/,
+      );
+    });
   });
 
   describe("sync", () => {
@@ -338,6 +383,45 @@ describe("EdgeRuntimeSyncService", () => {
 
       assert.equal(receipt.acceptedEnvelopeIds.length, 1);
       assert.equal(receipt.decisions[0]?.resolution, "merge");
+    });
+
+    test("rejects tampered envelopes when signed fields change", () => {
+      const service = new EdgeRuntimeSyncService();
+      const envelope = createEnvelope(service, {
+        envelopeId: "env-tampered",
+        priority: 1,
+      });
+      const receipt = service.sync(defaultProfile, [{ ...envelope, priority: 4 }], {});
+
+      assert.deepEqual(receipt.acceptedEnvelopeIds, []);
+      assert.deepEqual(receipt.rejectedEnvelopeIds, ["env-tampered"]);
+      assert.equal(receipt.decisions[0]?.rationale, "edge.sync_signature_invalid");
+    });
+
+    test("preserves conflicting fields instead of silently using last-writer-wins", () => {
+      const service = new EdgeRuntimeSyncService();
+      const envelopes = [
+        createEnvelope(service, {
+          envelopeId: "env-json-conflict",
+          payloadDigest: JSON.stringify({ status: "edge", owner: "ops" }),
+        }),
+      ];
+      const cloudDigests = {
+        "node-001:task-1:2026-04-26T08:00:00Z": "cloud-digest",
+      };
+      const receipt = service.sync(defaultProfile, envelopes, cloudDigests, {
+        "node-001:task-1:2026-04-26T08:00:00Z": JSON.stringify({ status: "cloud", region: "cn" }),
+      });
+      const mergedPayload = JSON.parse(receipt.decisions[0]?.mergedPayload ?? "{}") as Record<string, unknown>;
+
+      assert.equal(receipt.decisions[0]?.resolution, "merge");
+      assert.deepEqual(mergedPayload["region"], "cn");
+      assert.deepEqual(mergedPayload["owner"], "ops");
+      assert.deepEqual(mergedPayload["status"], {
+        conflict: true,
+        edge: "edge",
+        cloud: "cloud",
+      });
     });
 
     test("accepts edge when digest matches cloud", () => {

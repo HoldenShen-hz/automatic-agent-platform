@@ -30,9 +30,30 @@ function parseDivisionId(value: string | undefined): P0PilotDivisionId | undefin
   throw new Error(`pilot_evidence.division_unknown:${value}`);
 }
 
-function readArg(flag: string): string | undefined {
-  const matched = process.argv.find((entry) => entry.startsWith(`${flag}=`));
-  return matched == null ? undefined : matched.slice(flag.length + 1);
+function parseCliArgs(argv: readonly string[]): Record<string, string> {
+  const allowedFlags = new Set(["--division", "--input-root", "--output-root", "--platform-root", "--now"]);
+  const flags: Record<string, string> = {};
+  for (let index = 0; index < argv.length; index += 1) {
+    const entry = argv[index];
+    if (!entry.startsWith("--")) {
+      throw new Error(`pilot_evidence.invalid_cli_argument:${entry}`);
+    }
+    const [flag, inlineValue] = entry.split("=", 2);
+    if (!allowedFlags.has(flag)) {
+      throw new Error(`pilot_evidence.unknown_flag:${flag}`);
+    }
+    if (inlineValue != null) {
+      flags[flag] = inlineValue;
+      continue;
+    }
+    const nextValue = argv[index + 1];
+    if (nextValue == null || nextValue.startsWith("--")) {
+      throw new Error(`pilot_evidence.missing_flag_value:${flag}`);
+    }
+    flags[flag] = nextValue;
+    index += 1;
+  }
+  return flags;
 }
 
 export function runP0PilotEvidenceCli(options: RunP0PilotEvidenceCliOptions = {}): {
@@ -40,18 +61,28 @@ export function runP0PilotEvidenceCli(options: RunP0PilotEvidenceCliOptions = {}
   readonly outputRoot: string;
   readonly artifactPath: string;
 } {
+  const cliFlags = options.platformRoot != null
+    || options.inputRoot != null
+    || options.outputRoot != null
+    || options.divisionId != null
+    || options.now != null
+    ? {}
+    : parseCliArgs(process.argv.slice(2));
   const platformRoot = options.platformRoot
+    ?? cliFlags["--platform-root"]
     ?? process.env.AA_PLATFORM_ROOT
     ?? resolveDefaultPlatformRoot();
   const inputRoot = options.inputRoot
+    ?? cliFlags["--input-root"]
     ?? process.env.AA_PILOT_EVIDENCE_INPUT_ROOT
     ?? join(platformRoot, "data", "pilot-evidence-inputs");
   const outputRoot = options.outputRoot
+    ?? cliFlags["--output-root"]
     ?? process.env.AA_PILOT_EVIDENCE_OUTPUT_ROOT
     ?? join(platformRoot, "artifacts", "validation", "p0-pilot-evidence");
   const divisionId = options.divisionId
-    ?? parseDivisionId(process.env.AA_PILOT_EVIDENCE_DIVISION ?? readArg("--division"));
-  const now = options.now ?? new Date();
+    ?? parseDivisionId(process.env.AA_PILOT_EVIDENCE_DIVISION ?? cliFlags["--division"]);
+  const now = options.now ?? new Date(cliFlags["--now"] ?? Date.now());
 
   if (divisionId == null) {
     runAllP0PilotEvidence({

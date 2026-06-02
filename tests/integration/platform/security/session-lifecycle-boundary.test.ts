@@ -28,7 +28,7 @@ test("runtime repair preserves terminal session history instead of reopening a t
     db.transaction(() => {
       store.insertWorkflowState({
         taskId: "task-security-session-boundary",
-        divisionId: "general_ops",
+        divisionId: "general-ops",
         workflowId: "single_agent_minimal",
         currentStepIndex: 0,
         status: "running",

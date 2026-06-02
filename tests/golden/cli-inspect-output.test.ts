@@ -142,7 +142,7 @@ test("golden: inspect query workflows returns array structure", () => {
   db.transaction(() => {
     store.insertWorkflowState({
       taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       workflowId: "test_workflow",
       currentStepIndex: 1,
       status: "running",

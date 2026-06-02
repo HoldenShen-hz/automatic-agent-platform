@@ -21,6 +21,8 @@ import { loadWorkerHandshakeCliEnv } from "../../platform/five-plane-control-pla
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { ExecutionWorkerHandshakeService } from "../../platform/five-plane-execution/worker-pool/execution-worker-handshake-service.js";
 import { withCliStorage } from "./authoritative-storage.js";
+import { isCliEntryPoint, runCliMain } from "./cli-exit.js";
+import { summarizeCliError } from "./cli-file-guards.js";
 
 /**
  * Main entry point for the worker handshake CLI.
@@ -150,4 +152,10 @@ function main(): void {
   process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
 }
 
-main();
+if (isCliEntryPoint(import.meta.url)) {
+  void runCliMain(main, {
+    onError: (error) => {
+      process.stderr.write(`${summarizeCliError(error, "worker_handshake.failed")}\n`);
+    },
+  });
+}

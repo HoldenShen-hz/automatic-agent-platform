@@ -65,10 +65,12 @@ test("insertEvent executes INSERT with event fields", async () => {
   const record = eventRecord();
   await repo.insertEvent(record);
 
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 3);
   assert.equal(calls[0]!.method, "execute");
-  assert.ok(calls[0]!.sql.includes("INSERT INTO events"));
-  assert.deepEqual(calls[0]!.params.slice(0, 9), [
+  assert.equal(calls[0]!.sql, "BEGIN");
+  assert.equal(calls[1]!.method, "execute");
+  assert.ok(calls[1]!.sql.includes("INSERT INTO events"));
+  assert.deepEqual(calls[1]!.params.slice(0, 9), [
     "evt-1",
     "task-1",
     null,
@@ -79,6 +81,7 @@ test("insertEvent executes INSERT with event fields", async () => {
     null,
     now,
   ]);
+  assert.equal(calls[2]!.sql, "COMMIT");
 });
 
 test("insertEvent generates eventTier from eventType when not provided", async () => {
@@ -144,27 +147,47 @@ test("listEventDeadLetters queries with default limit", async () => {
 
   assert.equal(calls.length, 1);
   assert.equal(calls[0]!.method, "query");
-  assert.ok(calls[0]!.sql.includes("ORDER BY dead_lettered_at DESC"));
+  assert.ok(calls[0]!.sql.includes("ORDER BY dead_lettered_at DESC, id DESC"));
 });
 
 test("listEventDeadLetters uses custom limit", async () => {
   const { connection, calls } = createConnection({ queryRows: [[]] });
   const repo = new AsyncEventRepository(connection);
 
-  await repo.listEventDeadLetters(50);
+  const result = await repo.listEventDeadLetters(50);
 
   assert.ok(calls[0]!.sql.includes("LIMIT $"));
-  assert.ok(calls[0]!.params.includes(50));
+  assert.ok(calls[0]!.params.includes(51));
+  assert.equal(result.limit, 50);
 });
 
 test("listEventDeadLetters applies cursor for pagination", async () => {
   const { connection, calls } = createConnection({ queryRows: [[]] });
   const repo = new AsyncEventRepository(connection);
 
-  await repo.listEventDeadLetters(100, "2026-04-25T00:00:00.000Z");
+  await repo.listEventDeadLetters(100, { deadLetteredAt: "2026-04-25T00:00:00.000Z", id: "dl-1" });
 
-  assert.ok(calls[0]!.sql.includes("WHERE dead_lettered_at < $"));
+  assert.ok(calls[0]!.sql.includes("dead_lettered_at = $1 AND id < $2"));
   assert.ok(calls[0]!.params.includes("2026-04-25T00:00:00.000Z"));
+  assert.ok(calls[0]!.params.includes("dl-1"));
+});
+
+test("listEventDeadLetters returns nextCursor and hasMore when extra rows exist", async () => {
+  const rows = [
+    { id: "dl-3", deadLetteredAt: "2026-04-27T00:00:00.000Z" },
+    { id: "dl-2", deadLetteredAt: "2026-04-26T00:00:00.000Z" },
+    { id: "dl-1", deadLetteredAt: "2026-04-25T00:00:00.000Z" },
+  ];
+  const { connection } = createConnection({ queryRows: [rows as never[]] });
+  const repo = new AsyncEventRepository(connection);
+
+  const result = await repo.listEventDeadLetters(2);
+  assert.equal(result.records.length, 2);
+  assert.equal(result.hasMore, true);
+  assert.deepEqual(result.nextCursor, {
+    deadLetteredAt: "2026-04-26T00:00:00.000Z",
+    id: "dl-2",
+  });
 });
 
 // ─── listEventsByType ─────────────────────────────────────────────────────────

@@ -81,6 +81,7 @@ export class ApprovalFlowEngine {
   private readonly FLOW_TTL_MS = 60 * 60 * 1000; // 1 hour
   private lastEvictionTime = 0;
   private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
+  private readonly voteLocks = new Set<string>();
 
   public constructor(escalationManager?: EscalationManager) {
     this.escalationManager = escalationManager ?? new EscalationManager();
@@ -235,6 +236,28 @@ export class ApprovalFlowEngine {
    * @returns Result of the vote
    */
   public submitVote(
+    flowId: string,
+    approverId: string,
+    voteType: VoteType,
+    decision?: ApprovalDecision,
+  ): VoteResult {
+    if (this.voteLocks.has(flowId)) {
+      return {
+        success: false,
+        quorumStatus: createInitialQuorumStatus(),
+        flowStatus: FlowStatus.PENDING,
+        error: "Flow is already processing another vote",
+      };
+    }
+    this.voteLocks.add(flowId);
+    try {
+      return this.submitVoteLocked(flowId, approverId, voteType, decision);
+    } finally {
+      this.voteLocks.delete(flowId);
+    }
+  }
+
+  private submitVoteLocked(
     flowId: string,
     approverId: string,
     voteType: VoteType,
@@ -563,9 +586,11 @@ export class ApprovalFlowEngine {
       return { success: false, error: "Escalation not needed" };
     }
 
+    flow.escalationTriggered = true;
     const result = await this.escalationManager.escalate(context, flow.config.escalation);
 
     if (!result.success || !result.newLevel) {
+      flow.escalationTriggered = false;
       return { success: false, error: result.error ?? "Escalation failed" };
     }
 
@@ -581,10 +606,13 @@ export class ApprovalFlowEngine {
       flow.escalationHistory.splice(0, flow.escalationHistory.length - this.maxEscalationHistoryEntries);
     }
     flow.status = FlowStatus.ESCALATED;
-    flow.escalationTriggered = true;
     flow.updatedAt = nowIso();
 
     return { success: true };
+  }
+
+  public sweepExpiredFlows(): void {
+    this.evictExpiredFlows();
   }
 
   /**

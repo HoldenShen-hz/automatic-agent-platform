@@ -110,18 +110,26 @@ test("CanaryTrafficRouter produces different buckets for different taskIds", () 
   assert.ok(result2.bucket >= 0 && result2.bucket < 100);
 });
 
-test("CanaryTrafficRouter bucket is deterministic regardless of status", () => {
+test("CanaryTrafficRouter bucket stays deterministic for the same task and rollout salt", () => {
   const router = new CanaryTrafficRouter();
   const taskId = "task-consistent-123";
 
-  const statuses = ["draft", "shadow", "canary_5", "partial_25", "stable"] as const;
-  const buckets = statuses.map((status) => router.route(taskId, status).bucket);
+  const result1 = router.route(taskId, "canary_5", "strategy-v1");
+  const result2 = router.route(taskId, "canary_5", "strategy-v1");
 
-  // All buckets should be the same for the same taskId
-  const firstBucket = buckets[0];
-  for (const bucket of buckets) {
-    assert.equal(bucket, firstBucket);
-  }
+  assert.equal(result1.bucket, result2.bucket);
+});
+
+test("CanaryTrafficRouter varies buckets across rollout salts", () => {
+  const router = new CanaryTrafficRouter();
+  const taskId = "task-consistent-123";
+  const buckets = [
+    router.route(taskId, "canary_5", "strategy-v1").bucket,
+    router.route(taskId, "canary_5", "strategy-v2").bucket,
+    router.route(taskId, "partial_25").bucket,
+  ];
+
+  assert.ok(new Set(buckets).size > 1);
 });
 
 test("CanaryTrafficRouter handles empty string taskId", () => {

@@ -1,5 +1,7 @@
 # Knowledge Eval Report
 
+LastRefreshedAt: `2026-06-02T08:15:00.000Z`
+
 EvidenceRefs:
 
 - `eval/divisions/knowledge-base/eval-suite.yaml`

@@ -33,7 +33,7 @@ function seedTaskAndExecution(store: AuthoritativeTaskStore, taskId: string, exe
     id: taskId,
     parentId: null,
     rootId: taskId,
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     title: "Dispatch test task",
     status: "pending",
     source: "user",
@@ -104,7 +104,7 @@ function upsertWorkerSnapshot(store: AuthoritativeTaskStore, workerId: string): 
     capabilitiesJson: JSON.stringify(["code-execution"]),
     runningExecutionsJson: "[]",
     maxConcurrency: 5,
-    queueAffinity: "general_ops",
+    queueAffinity: "general-ops",
     runtimeInstanceId: `runtime-${workerId}`,
     restartedFromRuntimeInstanceId: null,
     restartGeneration: 0,
@@ -134,7 +134,7 @@ test("performance: dispatch ticket creation >500 ops/sec", (t) => {
       dispatchService.createTicket({
         executionId,
         priority: "normal",
-        queueName: "general_ops",
+        queueName: "general-ops",
         occurredAt: nowIso(),
       });
     }
@@ -181,7 +181,7 @@ test("performance: dispatch decision evaluation >1000 ops/sec", (t) => {
       dispatchService.createTicket({
         executionId,
         priority: "normal",
-        queueName: "general_ops",
+        queueName: "general-ops",
         occurredAt: nowIso(),
       });
     }
@@ -232,7 +232,7 @@ test("performance: dispatch scales with worker pool size", (t) => {
         dispatchService.createTicket({
           executionId,
           priority: "normal",
-          queueName: "general_ops",
+          queueName: "general-ops",
           occurredAt: nowIso(),
         });
       }

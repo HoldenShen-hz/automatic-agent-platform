@@ -91,3 +91,4 @@ type EvidenceType =
 ## v4.3 ADR Remediation
 
 - R5-65: 本 ADR 原先引用不存在的 `§B`/`§G` 附录，已移除。合规框架映射内容保留，但引用路径已更正为实际存在的文档。
+- 历史说明：旧评审中提到的“ADR-066 Plugin SPI Framework”是已移除的历史重复编号；当前 `ADR-066` 的权威主题是本文件，Plugin SPI 请统一参考 [ADR-071](./071-plugin-spi-framework.md)。

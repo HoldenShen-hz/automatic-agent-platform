@@ -3,6 +3,7 @@ import test from "node:test";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
 
 type PilotEvidenceCliModule = {
   runP0PilotEvidenceCli: (options?: {
@@ -17,6 +18,7 @@ type PilotEvidenceCliModule = {
 const pilotEvidenceCli = await import(
   new URL("../../../scripts/validation/run-p0-pilot-evidence.ts", import.meta.url).href
 ) as PilotEvidenceCliModule;
+const scriptPath = join(process.cwd(), "scripts", "validation", "run-p0-pilot-evidence.ts");
 
 function writeFile(path: string, contents: string): void {
   mkdirSync(dirname(path), { recursive: true });
@@ -145,6 +147,35 @@ test("runP0PilotEvidenceCli exports a single-division evidence package", () => {
       readFileSync(join(workspace, "artifacts", "validation", "p0-pilot-evidence", "coding", "summary.md"), "utf8"),
       /Engineering \/ coding P0 Pilot Evidence/u,
     );
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("run-p0-pilot-evidence CLI accepts spaced flags and rejects unknown flags", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-p0-cli-flags-"));
+  try {
+    seedWorkspace(workspace);
+    const ok = spawnSync(
+      process.execPath,
+      ["--import", "tsx", scriptPath, "--platform-root", workspace, "--division", "coding"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+      },
+    );
+    assert.equal(ok.status, 0, `${ok.stdout}\n${ok.stderr}`);
+
+    const bad = spawnSync(
+      process.execPath,
+      ["--import", "tsx", scriptPath, "--platform-root", workspace, "--unknown", "value"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+      },
+    );
+    assert.equal(bad.status, 1, `${bad.stdout}\n${bad.stderr}`);
+    assert.match(bad.stderr, /pilot_evidence\.unknown_flag:--unknown/);
   } finally {
     rmSync(workspace, { recursive: true, force: true });
   }

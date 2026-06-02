@@ -198,3 +198,48 @@ test("ImprovementCandidateRegistry.register uses provided expectedBenefit", () =
 
   assert.equal(candidate.expectedBenefit, "Custom benefit description");
 });
+
+test("ImprovementCandidateRegistry tolerates persistence load failures on startup", () => {
+  const registry = new ImprovementCandidateRegistry({
+    store: {
+      saveCandidate() {},
+      loadCandidates() {
+        throw new Error("corrupt store");
+      },
+      deleteCandidate() {},
+    },
+  });
+
+  assert.deepEqual(registry.list(), []);
+});
+
+test("ImprovementCandidateRegistry persists an expired tombstone when delete fails", () => {
+  const persisted = new Map<string, Record<string, unknown>>();
+  let now = Date.now();
+  const store = {
+    saveCandidate(candidate: Record<string, unknown>) {
+      persisted.set(String(candidate.candidateId), { ...candidate });
+    },
+    loadCandidates() {
+      return [...persisted.values()] as any[];
+    },
+    deleteCandidate() {
+      throw new Error("delete failed");
+    },
+  };
+  const registry = new ImprovementCandidateRegistry({
+    store,
+    ttlMs: 10,
+    now: () => now,
+  });
+
+  const candidate = registry.register(makeRegisterInput({ taskId: "task-expire" }));
+  const persistedCandidate = persisted.get(candidate.candidateId);
+  now = Date.parse(String(persistedCandidate?.createdAt ?? new Date().toISOString())) + 11;
+
+  assert.deepEqual(registry.list(), []);
+  const tombstone = persisted.get(candidate.candidateId);
+  assert.equal(tombstone?.status, "rejected");
+  assert.equal(tombstone?.rolloutLevel, "L0_off");
+  assert.equal(tombstone?.createdAt, new Date(0).toISOString());
+});

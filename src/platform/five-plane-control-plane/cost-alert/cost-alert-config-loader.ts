@@ -43,7 +43,6 @@ const CostAlertConfigSchema = z.object({
   minAlertIntervalMs: z.number().int().nonnegative().default(300_000),
 });
 
-const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "config/cost-alert/default.json");
 const costAlertConfigLogger = new StructuredLogger({ retentionLimit: 100 });
 const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -59,6 +58,14 @@ function buildDefaultCostAlertConfig(): CostAlertConfig {
     defaultWarningThreshold: 0.8,
     minAlertIntervalMs: 300_000,
   };
+}
+
+function resolveDefaultConfigPath(): string {
+  return resolve(process.cwd(), "config/cost-alert/default.json");
+}
+
+function buildCacheKey(configPath: string, sandboxed: boolean): string {
+  return `${sandboxed ? "sandbox" : "path"}:${configPath}`;
 }
 
 function isMissingFileError(error: unknown): boolean {
@@ -94,7 +101,7 @@ function createCostAlertConfigValidationError(error: unknown): ValidationError {
 }
 
 export class CostAlertConfigLoader {
-  public loadDefault(configPath: string = DEFAULT_CONFIG_PATH, sandboxPolicy?: SandboxPolicy): CostAlertConfig {
+  public loadDefault(configPath?: string, sandboxPolicy?: SandboxPolicy): CostAlertConfig {
     return loadCostAlertConfig(configPath, sandboxPolicy);
   }
 
@@ -104,8 +111,12 @@ export class CostAlertConfigLoader {
     warningThreshold: number;
     criticalThreshold: number;
   }): boolean {
+    const scopeAllowed = input.scope === "platform" || input.scope === "tenant" || input.scope === "pack" || input.scope === "step";
     return input.budgetLimitUsd > 0
+      && scopeAllowed
       && input.warningThreshold > 0
+      && input.warningThreshold <= 1
+      && input.criticalThreshold > 0
       && input.warningThreshold < input.criticalThreshold
       && input.criticalThreshold <= 1;
   }
@@ -119,10 +130,11 @@ export class CostAlertConfigLoader {
  * @returns The parsed cost alert configuration
  */
 export function loadCostAlertConfig(
-  configPath: string = DEFAULT_CONFIG_PATH,
+  configPath?: string,
   sandboxPolicy?: SandboxPolicy,
 ): CostAlertConfig {
-  const cacheKey = sandboxPolicy == null ? `path:${configPath}` : `sandbox:${configPath}`;
+  const requestedPath = configPath ?? resolveDefaultConfigPath();
+  const cacheKey = buildCacheKey(requestedPath, sandboxPolicy != null);
   const cachedConfig = cachedConfigs.get(cacheKey);
   if (cachedConfig && Date.now() - cachedConfig.cachedAt <= CONFIG_CACHE_TTL_MS) {
     return cachedConfig.value;
@@ -130,7 +142,7 @@ export function loadCostAlertConfig(
 
   // Validate path before reading to prevent path traversal attacks
   if (sandboxPolicy != null) {
-    const check = checkSandboxPath(sandboxPolicy, configPath);
+    const check = checkSandboxPath(sandboxPolicy, requestedPath);
     if (!check.allowed) {
       throw new PolicyDeniedError(
         check.reasonCode ?? "config.cost_alert_denied",
@@ -139,9 +151,14 @@ export function loadCostAlertConfig(
     }
     // Use normalized path after validation
     const effectivePath = check.normalizedPath;
+    const normalizedCacheKey = buildCacheKey(effectivePath, true);
+    const normalizedCachedConfig = cachedConfigs.get(normalizedCacheKey);
+    if (normalizedCachedConfig && Date.now() - normalizedCachedConfig.cachedAt <= CONFIG_CACHE_TTL_MS) {
+      return normalizedCachedConfig.value;
+    }
     try {
       const loaded = parseCostAlertConfigFile(effectivePath);
-      cachedConfigs.set(`sandbox:${effectivePath}`, { value: loaded, cachedAt: Date.now() });
+      cachedConfigs.set(normalizedCacheKey, { value: loaded, cachedAt: Date.now() });
       return loaded;
     } catch (error) {
       if (isMissingFileError(error)) {
@@ -161,19 +178,19 @@ export function loadCostAlertConfig(
   }
 
   try {
-    const loaded = parseCostAlertConfigFile(configPath);
+    const loaded = parseCostAlertConfigFile(requestedPath);
     cachedConfigs.set(cacheKey, { value: loaded, cachedAt: Date.now() });
     return loaded;
   } catch (error) {
     if (isMissingFileError(error)) {
       costAlertConfigLogger.warn("cost_alert.config_missing", {
-        data: { configPath },
+        data: { configPath: requestedPath },
       });
       return buildDefaultCostAlertConfig();
     }
     costAlertConfigLogger.error("cost_alert.config_invalid", {
       data: {
-        configPath,
+        configPath: requestedPath,
         error: error instanceof Error ? error.message : String(error),
       },
     });

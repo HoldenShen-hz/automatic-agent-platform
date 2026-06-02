@@ -73,10 +73,10 @@ export class PluginContext {
     };
 
     // Initialize with system context
-    this.setValue("system.plugin_id", config.pluginId, "system", { allowProtectedSystemKey: true });
-    this.setValue("system.timestamp", new Date().toISOString(), "system", { allowProtectedSystemKey: true });
-    this.setValue("system.call_depth", this.config.callDepth, "system", { allowProtectedSystemKey: true });
-    this.setValue("system.delegation_depth", this.config.delegationDepth, "system", { allowProtectedSystemKey: true });
+    this.setValue("system.plugin_id", config.pluginId, "system", { allowProtectedSystemKey: true, allowSystemSource: true });
+    this.setValue("system.timestamp", new Date().toISOString(), "system", { allowProtectedSystemKey: true, allowSystemSource: true });
+    this.setValue("system.call_depth", this.config.callDepth, "system", { allowProtectedSystemKey: true, allowSystemSource: true });
+    this.setValue("system.delegation_depth", this.config.delegationDepth, "system", { allowProtectedSystemKey: true, allowSystemSource: true });
   }
 
   /**
@@ -265,9 +265,12 @@ export class PluginContext {
   private setValue(
     key: string,
     value: unknown,
-    _source: ContextValue["source"],
-    options: { allowProtectedSystemKey?: boolean } = {},
+    source: ContextValue["source"],
+    options: { allowProtectedSystemKey?: boolean; allowSystemSource?: boolean } = {},
   ): void {
+    if (source === "system" && !options.allowSystemSource) {
+      throw new Error("PluginContext forbids declaring runtime values with system source");
+    }
     if (PluginContext.protectedSystemKeys.has(key) && !options.allowProtectedSystemKey) {
       throw new Error(`PluginContext forbids setting reserved key namespace: ${key}`);
     }
@@ -275,7 +278,7 @@ export class PluginContext {
       key,
       value,
       timestamp: new Date().toISOString(),
-      source: _source,
+      source,
     });
   }
 }

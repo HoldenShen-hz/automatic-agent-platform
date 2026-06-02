@@ -18,7 +18,7 @@ function generateStandardCases(count: number, prefix: string): EvalDatasetCase[]
         {
           criterionId: `judge-${i}`,
           type: "llm_judge" as const,
-          config: {},
+          config: { judgeEvaluatorId: "judge_default" },
           weight: 1,
           threshold: 0.8,
         },
@@ -29,7 +29,11 @@ function generateStandardCases(count: number, prefix: string): EvalDatasetCase[]
 }
 
 function createHarness(): CrossProviderJudgeService {
-  const judgeService = new EvalDatasetJudgeService();
+  const judgeService = new EvalDatasetJudgeService({
+    judge_default: ({ criterion, criterionSignals }) => ({
+      score: criterionSignals[criterion.criterionId] ?? 0,
+    }),
+  });
   judgeService.registerDataset({
     datasetId: "dataset-multi-judge",
     name: "Multi Judge Dataset",
@@ -86,6 +90,8 @@ test("CrossProviderJudgeService evaluateWithPipeline runs primary judge", () => 
 
   assert.equal(result.individualResults.length, 1);
   assert.equal(result.individualResults[0]?.judgeId, "judge-anthropic");
+  assert.equal(result.consensusDecision, "hold");
+  assert.ok(result.blockingFindings.includes("insufficient_judge_quorum:1/2"));
 });
 
 test("CrossProviderJudgeService evaluateWithPipeline includes fallback judges", () => {
@@ -186,6 +192,31 @@ test("CrossProviderJudgeService evaluateWithPipeline returns hold on empty resul
   assert.equal(result.consensusDecision, "hold");
   assert.equal(result.individualResults.length, 0);
   assert.ok(result.blockingFindings.includes("no_judges_available"));
+});
+
+test("CrossProviderJudgeService evaluateWithPipeline does not let a single judge promote on its own", () => {
+  const service = createHarness();
+  const result = service.evaluateWithPipeline({
+    evaluation: {
+      datasetId: "dataset-multi-judge",
+      candidateProvider: "openai",
+      candidateProviderFamily: "openai",
+      candidateModel: "gpt-test",
+      results: [
+        { caseId: "multi-judge-case-0", output: "ok", criterionSignals: { "judge-0": 0.9 } },
+        { caseId: "multi-judge-case-1", output: "ok", criterionSignals: { "judge-1": 0.9 } },
+      ],
+    },
+    pipeline: {
+      primaryJudgeId: "judge-anthropic",
+      fallbackJudgeIds: [],
+      parallelEvaluation: false,
+      consensusThreshold: 0.5,
+    },
+  });
+
+  assert.equal(result.consensusDecision, "hold");
+  assert.ok(result.blockingFindings.includes("insufficient_judge_quorum:1/2"));
 });
 
 test("CrossProviderJudgeService suggestMultipleJudges returns up to maxJudges", () => {

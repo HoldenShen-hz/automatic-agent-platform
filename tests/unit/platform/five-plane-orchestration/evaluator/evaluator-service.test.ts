@@ -51,8 +51,20 @@ function makeFeedbackBatch(overrides: Partial<FeedbackBatch> = {}): FeedbackBatc
   };
 }
 
+function createService(): EvaluatorService {
+  return new EvaluatorService({
+    riskEvaluationEngine: {
+      evaluate: () => ({
+        riskLevel: "medium",
+        riskScore: 0.6,
+        factors: {} as never,
+      }),
+    } as never,
+  });
+}
+
 test("EvaluatorService accepts successful completed feedback", () => {
-  const service = new EvaluatorService();
+  const service = createService();
 
   const report = service.evaluate({
     planGraphBundle: makePlanGraphBundle(),
@@ -68,7 +80,7 @@ test("EvaluatorService accepts successful completed feedback", () => {
 });
 
 test("EvaluatorService retries recoverable failure batches", () => {
-  const service = new EvaluatorService();
+  const service = createService();
 
   const report = service.evaluate({
     planGraphBundle: makePlanGraphBundle({ riskProfile: { riskClass: "low" } }),
@@ -86,7 +98,15 @@ test("EvaluatorService retries recoverable failure batches", () => {
 });
 
 test("EvaluatorService replans when failures also elevate risk", () => {
-  const service = new EvaluatorService();
+  const service = new EvaluatorService({
+    riskEvaluationEngine: {
+      evaluate: () => ({
+        riskLevel: "critical",
+        riskScore: 0.95,
+        factors: {} as never,
+      }),
+    } as never,
+  });
 
   const report = service.evaluate({
     planGraphBundle: makePlanGraphBundle({ riskProfile: { riskClass: "high" } }),
@@ -106,7 +126,7 @@ test("EvaluatorService replans when failures also elevate risk", () => {
 });
 
 test("EvaluatorService escalates critical findings and approves partial outcomes", () => {
-  const service = new EvaluatorService();
+  const service = createService();
 
   const escalated = service.evaluate({
     planGraphBundle: makePlanGraphBundle(),
@@ -125,4 +145,30 @@ test("EvaluatorService escalates critical findings and approves partial outcomes
 
   assert.equal(escalated.decision, "escalate");
   assert.equal(approved.decision, "approve");
+});
+
+test("EvaluatorService consults RiskEvaluationEngine before applying failure-count fallback", () => {
+  const service = new EvaluatorService({
+    riskEvaluationEngine: {
+      evaluate: () => ({
+        riskLevel: "critical",
+        riskScore: 0.96,
+        factors: {} as never,
+      }),
+    } as never,
+  });
+
+  const report = service.evaluate({
+    planGraphBundle: makePlanGraphBundle({ riskProfile: { riskClass: "medium" } }),
+    feedback: makeFeedbackBatch({
+      outcome: "failed",
+      signals: [
+        makeFeedbackSignal({ category: "failure", severity: "error" }),
+        makeFeedbackSignal({ signalId: "signal-2", category: "failure", severity: "error" }),
+      ],
+    }),
+  });
+
+  assert.equal(report.riskLevel, "elevated");
+  assert.ok(report.findings.some((finding) => finding.category === "risk" && finding.severity === "critical"));
 });

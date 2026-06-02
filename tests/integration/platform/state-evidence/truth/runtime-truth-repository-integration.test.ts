@@ -550,6 +550,26 @@ test("snapshot createdAt is a valid ISO timestamp", () => {
   assert.ok(!isNaN(parsed.getTime()), "createdAt should be a valid ISO date string");
 });
 
+test("snapshot derives deterministic metadata from state history", () => {
+  const repository = new RuntimeTruthRepository();
+  const harnessRun = createHarnessRun({
+    harnessRunId: "hrun-deterministic",
+    tenantId: "tenant-1",
+    confirmedTaskSpecId: "ctspec-1",
+    requestEnvelopeId: "request-1",
+    requestHash: "hash-1",
+    constraintPackRef: "cp-1",
+    versionLockId: "rvlock-1",
+    budgetLedgerId: "bledger-1",
+    createdAt: "2026-06-01T10:00:00.000Z",
+  });
+  repository.seed("HarnessRun", harnessRun);
+  const snapshot = repository.snapshot();
+
+  assert.equal(snapshot.createdAt, "2026-06-01T10:00:00.000Z");
+  assert.ok(snapshot.snapshotVersion.versionId.startsWith("snapshot-1-"));
+});
+
 test("snapshot version is unique per snapshot and increments sequentially", () => {
   const repository = new RuntimeTruthRepository();
 

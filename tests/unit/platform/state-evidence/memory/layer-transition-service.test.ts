@@ -80,9 +80,9 @@ test("mapScopeToSixLayer returns meta for experience", () => {
   assert.equal(mapScopeToSixLayer("experience"), "meta");
 });
 
-test("mapScopeToSixLayer defaults to session for unknown scopes", () => {
-  assert.equal(mapScopeToSixLayer("unknown"), "session");
-  assert.equal(mapScopeToSixLayer(""), "session");
+test("mapScopeToSixLayer rejects unknown scopes", () => {
+  assert.throws(() => mapScopeToSixLayer("unknown"), /memory\.six_layer_unknown_scope/);
+  assert.throws(() => mapScopeToSixLayer(""), /memory\.six_layer_unknown_scope/);
 });
 
 test("mapLayerToScope returns correct scope for each layer", () => {
@@ -154,7 +154,7 @@ test("LayerTransitionService evaluateTransition allows promotion when thresholds
     createdAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
   });
 
-  const evaluation = service.evaluateTransition(memory);
+  const evaluation = service.evaluateTransition(memory, new Date().toISOString());
   assert.equal(evaluation.canTransition, true);
   assert.equal(evaluation.targetLayer, "session");
   assert.equal(evaluation.blockers.length, 0);
@@ -169,7 +169,7 @@ test("LayerTransitionService evaluateTransition blocks when hitCount insufficien
     importanceScore: 0.8,
   });
 
-  const evaluation = service.evaluateTransition(memory);
+  const evaluation = service.evaluateTransition(memory, new Date().toISOString());
   assert.equal(evaluation.canTransition, false);
   assert.ok(evaluation.blockers.some(b => b.includes("hitCount")));
 });
@@ -183,7 +183,7 @@ test("LayerTransitionService evaluateTransition blocks when qualityScore insuffi
     importanceScore: 0.8,
   });
 
-  const evaluation = service.evaluateTransition(memory);
+  const evaluation = service.evaluateTransition(memory, new Date().toISOString());
   assert.equal(evaluation.canTransition, false);
   assert.ok(evaluation.blockers.some(b => b.includes("qualityScore")));
 });
@@ -197,7 +197,7 @@ test("LayerTransitionService evaluateTransition blocks when importanceScore insu
     importanceScore: 0.1, // Below threshold of 0.3
   });
 
-  const evaluation = service.evaluateTransition(memory);
+  const evaluation = service.evaluateTransition(memory, new Date().toISOString());
   assert.equal(evaluation.canTransition, false);
   assert.ok(evaluation.blockers.some(b => b.includes("importanceScore")));
 });
@@ -212,7 +212,7 @@ test("LayerTransitionService evaluateTransition blocks when memory too young", (
     createdAt: new Date().toISOString(), // Just now
   });
 
-  const evaluation = service.evaluateTransition(memory);
+  const evaluation = service.evaluateTransition(memory, new Date().toISOString());
   assert.equal(evaluation.canTransition, false);
   assert.ok(evaluation.blockers.some(b => b.includes("age")));
 });
@@ -226,7 +226,7 @@ test("LayerTransitionService evaluateTransition blocks at meta layer", () => {
     importanceScore: 1.0,
   });
 
-  const evaluation = service.evaluateTransition(memory);
+  const evaluation = service.evaluateTransition(memory, new Date().toISOString());
   assert.equal(evaluation.canTransition, false);
   assert.ok(evaluation.blockers.includes("at_max_layer"));
 });
@@ -241,7 +241,7 @@ test("LayerTransitionService getTransitionDirection returns up for promotable me
     createdAt: new Date(Date.now() - 3600000).toISOString(),
   });
 
-  const direction = service.getTransitionDirection(memory);
+  const direction = service.getTransitionDirection(memory, new Date().toISOString());
   assert.equal(direction, "up");
 });
 
@@ -254,8 +254,24 @@ test("LayerTransitionService getTransitionDirection returns lateral for non-prom
     importanceScore: 0.2,
   });
 
-  const direction = service.getTransitionDirection(memory);
+  const direction = service.getTransitionDirection(memory, new Date().toISOString());
   assert.equal(direction, "lateral");
+});
+
+test("LayerTransitionService getTransitionDirection returns down for stale low-signal memories", () => {
+  const service = new LayerTransitionService();
+  const evaluatedAt = "2026-06-02T00:00:00.000Z";
+  const memory = createTestMemory({
+    scope: "session",
+    hitCount: 1,
+    qualityScore: 0.2,
+    importanceScore: 0.2,
+    createdAt: "2026-05-01T00:00:00.000Z",
+    lastAccessedAt: "2026-05-01T00:00:00.000Z",
+  });
+
+  const direction = service.getTransitionDirection(memory, evaluatedAt);
+  assert.equal(direction, "down");
 });
 
 test("LayerTransitionService getRule returns rule for valid layer", () => {
@@ -332,7 +348,7 @@ test("LayerTransitionService evaluates session to episodic transition", () => {
     createdAt: new Date(Date.now() - 3600000 * 5).toISOString(), // 5 hours ago
   });
 
-  const evaluation = service.evaluateTransition(memory);
+  const evaluation = service.evaluateTransition(memory, new Date().toISOString());
   assert.equal(evaluation.canTransition, true);
   assert.equal(evaluation.targetLayer, "episodic");
 });
@@ -347,7 +363,7 @@ test("LayerTransitionService handles null qualityScore with fallback", () => {
     createdAt: new Date(Date.now() - 3600000).toISOString(),
   });
 
-  const evaluation = service.evaluateTransition(memory);
+  const evaluation = service.evaluateTransition(memory, new Date().toISOString());
   assert.equal(evaluation.canTransition, false);
   assert.ok(evaluation.blockers.some(b => b.includes("qualityScore")));
 });
@@ -362,9 +378,25 @@ test("LayerTransitionService handles null importanceScore with fallback", () => 
     createdAt: new Date(Date.now() - 3600000).toISOString(),
   });
 
-  const evaluation = service.evaluateTransition(memory);
+  const evaluation = service.evaluateTransition(memory, new Date().toISOString());
   assert.equal(evaluation.canTransition, false);
   assert.ok(evaluation.blockers.some(b => b.includes("importanceScore")));
+});
+
+test("LayerTransitionService fail-closes on clock skewed timestamps", () => {
+  const service = new LayerTransitionService();
+  const memory = createTestMemory({
+    scope: "working",
+    hitCount: 10,
+    qualityScore: 0.9,
+    importanceScore: 0.9,
+    createdAt: "2026-06-02T01:00:00.000Z",
+    lastAccessedAt: "2026-06-02T00:00:00.000Z",
+  });
+
+  const evaluation = service.evaluateTransition(memory, "2026-06-02T03:00:00.000Z");
+  assert.equal(evaluation.canTransition, false);
+  assert.ok(evaluation.blockers.includes("clock_skew_detected:lastAccessedAt_before_createdAt"));
 });
 
 test("LAYER_METADATA has correct number of entries", () => {

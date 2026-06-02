@@ -193,9 +193,9 @@ test("IntakeRouter assigns correct division ID", () => {
     const result = router.route(input);
 
     assert.ok(result.divisionId, "Should have divisionId");
-    // Default should be general_ops or coding
+    // Default should be general-ops or coding
     assert.ok(
-      result.divisionId === "general_ops" ||
+      result.divisionId === "general-ops" ||
       result.divisionId === "coding" ||
       result.divisionId.length > 0,
     );

@@ -6,7 +6,7 @@ import { RoleToolExposureService } from "../../../../src/platform/five-plane-exe
 test("role tool exposure service does not promote undeclared tools into the visible set", () => {
   const service = new RoleToolExposureService();
   const result = service.resolve({
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     roleId: "general_executor",
     taskContext: "Apply a patch to the repository and then continue.",
     promoteToolNames: ["apply_patch"],

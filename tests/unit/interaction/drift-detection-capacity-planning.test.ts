@@ -8,7 +8,7 @@ import { resolveTriggerActionMode } from "../../../src/interaction/proactive-age
 function createTrigger(overrides: Partial<TriggerDefinition> = {}): TriggerDefinition {
   return {
     triggerId: "trigger-1",
-    domainId: "general_ops",
+    domainId: "general-ops",
     name: "trigger-1",
     type: "schedule",
     config: {

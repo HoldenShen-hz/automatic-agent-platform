@@ -178,7 +178,7 @@ test("RoutingEngine IntakeRouter assigns division based on trigger patterns", ()
 
     assert.ok(result.divisionId, "Should have divisionId");
     assert.ok(
-      result.divisionId === "general_ops" || result.divisionId === "coding" || result.divisionId.length > 0,
+      result.divisionId === "general-ops" || result.divisionId === "coding" || result.divisionId.length > 0,
       `Expected valid division, got: ${result.divisionId}`,
     );
   } finally {

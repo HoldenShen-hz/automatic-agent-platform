@@ -108,7 +108,7 @@ function makeTask(overrides: Partial<TaskRecord> = {}): TaskRecord {
     id: "task-001",
     parentId: null,
     rootId: "task-001",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     tenantId: null,
     title: "Test task",
     status: "queued",
@@ -131,7 +131,7 @@ function makeWorkflow(overrides: Partial<WorkflowStateRecord> = {}): WorkflowSta
   return {
     workflowId: "wf-001",
     taskId: "task-001",
-    divisionId: "general_ops",
+    divisionId: "general-ops",
     currentStepIndex: 0,
     status: "running",
     outputsJson: "{}",
@@ -244,7 +244,11 @@ test("recordWriteback returns execution_not_found when execution view is null [e
 
 test("recordWriteback returns task_not_found when task is null in view [execution-worker-writeback-service]", () => {
   const store = createMockStore();
+  const events: Array<{ traceId: string | null; payloadJson: string }> = [];
   store.operations.loadExecutionAuthoritativeView = () => makeExecutionView({ task: null });
+  store.event.insertEvent = (event: { traceId: string | null; payloadJson: string }) => {
+    events.push(event);
+  };
   const db = createMockDb();
   const service = new ExecutionWorkerWritebackService(db, store);
 
@@ -258,6 +262,9 @@ test("recordWriteback returns task_not_found when task is null in view [executio
 
   assert.equal(result.accepted, false);
   assert.equal(result.reasonCode, "task_not_found");
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.traceId, "trace-001");
+  assert.equal(JSON.parse(events[0]!.payloadJson).orphanedTaskContext, true);
 });
 
 // ---------------------------------------------------------------------------
@@ -520,4 +527,36 @@ test("recordWriteback preserves null task output when neither input nor task row
 
   assert.equal(result.accepted, true);
   assert.equal((terminalInput as { taskOutputJson?: string | null }).taskOutputJson, null);
+});
+
+test("recordWriteback uses injected lease dependency when provided [execution-worker-writeback-service]", () => {
+  const store = createMockStore();
+  store.operations.loadExecutionAuthoritativeView = () => makeExecutionView();
+  const db = createMockDb();
+  let validateCalls = 0;
+  const service = new ExecutionWorkerWritebackService(db, store, {
+    leases: {
+      validateWriteAccess() {
+        validateCalls += 1;
+        return {
+          allowed: false,
+          reasonCode: "stale_fencing_token",
+          authoritativeFencingToken: 99,
+          activeLeaseId: "lease-001",
+        };
+      },
+    } as any,
+  });
+
+  const result = service.recordWriteback({
+    executionId: "exec-001",
+    workerId: "worker-001",
+    leaseId: "lease-001",
+    fencingToken: 1,
+    terminalStatus: "done",
+  });
+
+  assert.equal(result.accepted, false);
+  assert.equal(result.reasonCode, "stale_fencing_token");
+  assert.equal(validateCalls, 1);
 });

@@ -130,7 +130,7 @@ function seedTaskAndExecution(
       id: input.taskId,
       parentId: null,
       rootId: input.taskId,
-      divisionId: "general_ops",
+      divisionId: "general-ops",
       title: "Stable dispatch rehearsal task",
       status: "in_progress",
       source: "user",

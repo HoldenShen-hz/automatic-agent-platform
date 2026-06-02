@@ -11,7 +11,7 @@ import {
 function makeProfile(overrides: Partial<AgentTrustProfile> = {}): AgentTrustProfile {
   return {
     agentId: "agent_1",
-    domainId: "engineering_ops",
+    domainId: "engineering-ops",
     overallTrustLevel: "trusted",
     lastEvaluation: "2026-04-19T00:00:00.000Z",
     capabilityScores: [

@@ -173,7 +173,7 @@ export function createCsrfInterceptor(explicitToken?: string | null): RestClient
   return {
     onRequest(request) {
       const token = explicitToken ?? readCsrfToken();
-      if (request.method !== "GET" && token != null) {
+      if (token != null) {
         request.headers.set("x-csrf-token", token);
       }
       return request;
@@ -227,7 +227,16 @@ function readCsrfToken(): string | null {
     return null;
   }
   const meta = document.querySelector<HTMLMetaElement>('meta[name="aa-csrf-token"]');
-  return meta?.content ?? null;
+  const metaToken = meta?.content?.trim() ?? "";
+  const cookieToken = document.cookie
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith("aa-csrf-token="))
+    ?.slice("aa-csrf-token=".length) ?? "";
+  if (metaToken.length === 0 || cookieToken.length === 0 || metaToken !== decodeURIComponent(cookieToken)) {
+    return null;
+  }
+  return metaToken;
 }
 
 export function createIdempotencyKeyInterceptor(): RestClientInterceptor {
@@ -348,7 +357,6 @@ function shouldRetryRequest(error: unknown, request: RestClientRequest): boolean
 
 function extractReplayHeaders(headers: Headers): Record<string, string> {
   const replayHeaders = [
-    "authorization",
     "x-csrf-token",
     "x-tenant-id",
     "x-principal-id",

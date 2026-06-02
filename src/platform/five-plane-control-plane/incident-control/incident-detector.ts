@@ -67,8 +67,8 @@ export class IncidentDetector {
     const incidents: IncidentDetection[] = [];
 
     for (const check of checks) {
-      if (check.status === "fail_closed") {
-        incidents.push(this.createIncident({
+      const fallbackIncident = check.status === "fail_closed"
+        ? this.createIncident({
           category: this.mapCheckIdToCategory(check.checkId),
           severity: "SEV1",
           title: `Critical failure in ${check.checkId}`,
@@ -76,25 +76,24 @@ export class IncidentDetector {
           sourceCheckId: check.checkId,
           symptoms: check.findings,
           metrics: check.metrics,
-        }));
-        continue;
-      } else if (check.status === "degraded") {
-        incidents.push(this.createIncident({
-          category: this.mapCheckIdToCategory(check.checkId),
-          severity: "SEV2",
-          title: `Degraded ${check.checkId}`,
-          description: check.summary,
-          sourceCheckId: check.checkId,
-          symptoms: check.findings,
-          metrics: check.metrics,
-        }));
-        continue;
-      }
+        })
+        : check.status === "degraded"
+          ? this.createIncident({
+            category: this.mapCheckIdToCategory(check.checkId),
+            severity: "SEV2",
+            title: `Degraded ${check.checkId}`,
+            description: check.summary,
+            sourceCheckId: check.checkId,
+            symptoms: check.findings,
+            metrics: check.metrics,
+          })
+          : null;
 
-      // Apply detection rules for additional SEV1-3 coverage
       const ruleResults = applyDetectionRules(check.metrics);
+      let matchedRule = false;
       for (const { rule, matched } of ruleResults) {
         if (matched) {
+          matchedRule = true;
           incidents.push(this.createIncident({
             category: rule.category,
             severity: rule.severity,
@@ -105,6 +104,10 @@ export class IncidentDetector {
             metrics: check.metrics,
           }));
         }
+      }
+
+      if (!matchedRule && fallbackIncident != null) {
+        incidents.push(fallbackIncident);
       }
     }
 
@@ -165,7 +168,11 @@ export class IncidentDetector {
     if (normalizeIncidentSeverity(severity) !== "SEV1") {
       return false;
     }
-    const elapsedSeconds = (Date.now() - Date.parse(detectedAt)) / 1000;
+    const detectedAtMs = Date.parse(detectedAt);
+    if (!Number.isFinite(detectedAtMs)) {
+      return true;
+    }
+    const elapsedSeconds = (Date.now() - detectedAtMs) / 1000;
     return elapsedSeconds >= this.autoEscalateP1AfterSeconds;
   }
 
@@ -301,7 +308,7 @@ export function applyDetectionRules(
     p3: 2,
     p4: 3,
   };
-  const matchedDimensions = new Set<string>();
+  const matchedDimensionGroups = new Set<string>();
   return [...rules]
     .sort((left, right) => {
       const severityDelta = severityOrder[normalizeIncidentSeverity(left.severity)] - severityOrder[normalizeIncidentSeverity(right.severity)];
@@ -315,12 +322,11 @@ export function applyDetectionRules(
       if (!matched) {
         return { rule, matched: false };
       }
-      if (rule.dimensions.some((dimension) => matchedDimensions.has(dimension))) {
+      const dimensionGroup = [...rule.dimensions].sort().join("|");
+      if (matchedDimensionGroups.has(dimensionGroup)) {
         return { rule, matched: false };
       }
-      for (const dimension of rule.dimensions) {
-        matchedDimensions.add(dimension);
-      }
+      matchedDimensionGroups.add(dimensionGroup);
       return { rule, matched: true };
     });
 }

@@ -60,7 +60,7 @@ test("finance-accounting and analytics no longer share a generic reporting trigg
 });
 
 test("engineering and QA bug routing is explicitly partitioned between bugfix and bug reporting", () => {
-  const engineering = readDivision("divisions/engineering_ops/division.yaml");
+  const engineering = readDivision("divisions/engineering-ops/division.yaml");
   const qa = readDivision("divisions/qa/division.yaml");
 
   assert.equal(/^\s*-\s*bug\s*$/m.test(engineering), false);
@@ -68,8 +68,8 @@ test("engineering and QA bug routing is explicitly partitioned between bugfix an
   assert.equal(/^\s*-\s*bug\s*$/m.test(qa), true);
 });
 
-test("general_ops no longer shadows research-specific trigger vocabulary", () => {
-  const generalOps = readDivision("divisions/general_ops/division.yaml");
+test("general-ops no longer shadows research-specific trigger vocabulary", () => {
+  const generalOps = readDivision("divisions/general-ops/division.yaml");
   const research = readDivision("divisions/research/division.yaml");
 
   assert.equal(/^\s*-\s*research\s*$/m.test(generalOps), false);

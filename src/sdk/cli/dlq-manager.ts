@@ -22,6 +22,7 @@ import { ValidationError } from "../../platform/contracts/errors.js";
 import { QUEUE_JOBS_DDL } from "../../platform/five-plane-execution/queue/queue-adapter-types.js";
 import { CHANNEL_DELIVERY_DDL } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-delivery-support.js";
 import { openCliAuthoritativeStorageContext } from "./authoritative-storage.js";
+import { readCliProcessEnv } from "./cli-env.js";
 import { isCliEntryPoint } from "./cli-exit.js";
 
 interface DlqAction {
@@ -247,7 +248,7 @@ function retryDeadLetters(
   }
 }
 
-function hasPurgeConfirmationEnv(env: NodeJS.ProcessEnv = process.env): boolean {
+function hasPurgeConfirmationEnv(env: NodeJS.ProcessEnv): boolean {
   return (env["AA_DLQ_PURGE_CONFIRM"] ?? "").trim().toLowerCase() === "yes";
 }
 
@@ -267,6 +268,7 @@ function purgeDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageConte
 }
 
 function main(): void {
+  const env = readCliProcessEnv();
   const args = parseArguments();
   if (args.help) {
     writeLine(buildUsageText());
@@ -300,7 +302,7 @@ function main(): void {
           writeLine(`Dry-run: Would delete all ${args.queue} dead letter records if --yes is provided.`);
           return;
         }
-        if (!hasPurgeConfirmationEnv()) {
+        if (!hasPurgeConfirmationEnv(env)) {
           writeLine("Purge operation requires AA_DLQ_PURGE_CONFIRM=yes.");
           writeLine(`Dry-run: Would delete all ${args.queue} dead letter records if AA_DLQ_PURGE_CONFIRM=yes is set.`);
           return;

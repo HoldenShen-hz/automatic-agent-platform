@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 
 import { AdmissionController } from "../../../src/platform/five-plane-execution/dispatcher/admission-controller.js";
+import {
+  __dangerousResetAuditIntegrityConfigForTests,
+  configureAuditIntegrity,
+} from "../../../src/platform/five-plane-control-plane/iam/audit-event-integrity.js";
 import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
@@ -19,6 +23,7 @@ test("admission controller allows work when runtime is below thresholds [admissi
 
     const decision = controller.evaluate({
       priority: "normal",
+      riskClass: "low",
       estimatedCostUsd: 0.2,
       budgetRemainingUsd: 1,
     });
@@ -42,6 +47,7 @@ test("admission controller rejects when budget is exceeded [admission-controller
 
     const decision = controller.evaluate({
       priority: "normal",
+      riskClass: "low",
       estimatedCostUsd: 1.5,
       budgetRemainingUsd: 1,
     });
@@ -73,6 +79,7 @@ test("admission controller queues under active execution overload and rejects wh
     const controller = new AdmissionController(store);
     const overloadedDecision = controller.evaluate({
       priority: "normal",
+      riskClass: "low",
     });
 
     assert.equal(overloadedDecision.decision, "queue");
@@ -88,7 +95,7 @@ test("admission controller queues under active execution overload and rejects wh
           id: `task-queued-${index}`,
           parentId: null,
           rootId: `task-queued-${index}`,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           title: `Queued ${index}`,
           status: "queued",
           source: "user",
@@ -108,6 +115,7 @@ test("admission controller queues under active execution overload and rejects wh
 
     const saturatedDecision = controller.evaluate({
       priority: "low",
+      riskClass: "low",
     });
 
     assert.equal(saturatedDecision.decision, "reject");
@@ -122,6 +130,11 @@ test("admission controller rejects when tier1 backlog crosses the hard limit [ad
   const workspace = createTempWorkspace("aa-admission-");
 
   try {
+    __dangerousResetAuditIntegrityConfigForTests();
+    configureAuditIntegrity({
+      hmacKey: "unit-test-audit-integrity-key-012345",
+      isProduction: false,
+    });
     const db = new SqliteDatabase(join(workspace, "admission.db"));
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
@@ -144,6 +157,7 @@ test("admission controller rejects when tier1 backlog crosses the hard limit [ad
     const controller = new AdmissionController(store);
     const decision = controller.evaluate({
       priority: "urgent",
+      riskClass: "critical",
     });
 
     assert.equal(decision.decision, "reject");
@@ -152,6 +166,10 @@ test("admission controller rejects when tier1 backlog crosses the hard limit [ad
   } finally {
     cleanupPath(workspace);
   }
+});
+
+test.after(() => {
+  __dangerousResetAuditIntegrityConfigForTests();
 });
 
 test("admission controller queues normal priority work when queue_only backpressure is active [admission-controller]", () => {
@@ -178,6 +196,7 @@ test("admission controller queues normal priority work when queue_only backpress
 
     const decision = controller.evaluate({
       priority: "normal",
+      riskClass: "low",
     });
 
     assert.equal(decision.decision, "queue");
@@ -213,6 +232,7 @@ test("admission controller rejects low priority work when starvation protection 
 
     const decision = controller.evaluate({
       priority: "low",
+      riskClass: "low",
     });
 
     assert.equal(decision.decision, "reject");
@@ -248,6 +268,7 @@ test("admission controller rejects non-critical work when pause_non_critical mod
 
     const decision = controller.evaluate({
       priority: "normal",
+      riskClass: "low",
     });
 
     assert.equal(decision.decision, "reject");
@@ -283,6 +304,7 @@ test("admission controller rejects authoritative work when read-only mode is act
 
     const decision = controller.evaluate({
       priority: "urgent",
+      riskClass: "critical",
     });
 
     assert.equal(decision.decision, "reject");

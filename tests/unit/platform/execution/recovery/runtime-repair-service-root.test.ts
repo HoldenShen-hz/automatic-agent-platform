@@ -22,7 +22,33 @@ function createMockStore(overrides: {
   sessions?: Array<{ id: string; taskId: string; status: string }>;
   tasks?: Array<{ id: string; status: string; priority?: string }>;
   events?: Array<{ id: string }>;
-  locks?: { deleteFileLock?: () => void };
+  locks?: {
+    deleteFileLock?: () => void;
+    listFileLocks?: () => Array<{
+      id: string;
+      taskId: string | null;
+      executionId: string | null;
+      lockScope: string;
+      resourcePath: string;
+      lockMode: string;
+      ownerId: string;
+      expiresAt: string;
+      createdAt: string;
+      updatedAt: string;
+    }>;
+    getFileLock?: (id: string) => {
+      id: string;
+      taskId: string | null;
+      executionId: string | null;
+      lockScope: string;
+      resourcePath: string;
+      lockMode: string;
+      ownerId: string;
+      expiresAt: string;
+      createdAt: string;
+      updatedAt: string;
+    } | null;
+  };
   workflow?: { updateWorkflowRecoveryState?: () => void; loadTaskSnapshot?: () => { task: { id: string; status: string }; execution: { id: string; status: string } | null; workflow: { status: string; currentStepIndex?: number; outputsJson?: string; resumableFromStep?: number; retryCount?: number; lastErrorCode?: string | null } | null; session: { id: string; status: string; channel?: string; externalSessionId?: string } | null } };
   task?: { setTaskState?: () => void; getTask?: (id: string) => { id: string; status: string; priority?: string } | null };
   execution?: { updateExecutionStatus?: () => void };
@@ -57,6 +83,8 @@ function createMockStore(overrides: {
     },
     lock: {
       deleteFileLock: overrides.locks?.deleteFileLock ?? (() => {}),
+      listFileLocks: overrides.locks?.listFileLocks ?? (() => []),
+      getFileLock: overrides.locks?.getFileLock ?? (() => null),
     },
     workflow: {
       updateWorkflowRecoveryState: overrides.workflow?.updateWorkflowRecoveryState ?? (() => {}),
@@ -175,7 +203,7 @@ test("RuntimeRepairService.apply handles requeue_execution with pending ticket [
 
   assert.equal(results[0]!.action, "requeue_execution");
   assert.equal(results[0]!.applied, true);
-  assert.equal(results[0]!.detail, "execution requeued");
+  assert.match(results[0]!.detail, /execution requeued/);
   assert.equal(executionUpdated, true);
   assert.equal(taskUpdated, true);
 });
@@ -283,6 +311,18 @@ test("RuntimeRepairService.apply handles release_stale_lock [runtime-repair-serv
       deleteFileLock: () => {
         lockDeleted = true;
       },
+      listFileLocks: () => [{
+        id: "lock-1",
+        taskId: "task-1",
+        executionId: "exec-1",
+        lockScope: "workspace",
+        resourcePath: "/tmp/workspace",
+        lockMode: "exclusive",
+        ownerId: "worker-1",
+        expiresAt: "2026-01-01T00:00:00.000Z",
+        createdAt: "2025-12-31T00:00:00.000Z",
+        updatedAt: "2025-12-31T00:00:00.000Z",
+      }],
     },
   });
   const service = new RuntimeRepairService(db, store);
@@ -337,6 +377,18 @@ test("RuntimeRepairService applies multiple repair actions in sequence [runtime-
   const store = createMockStore({
     locks: {
       deleteFileLock: () => {},
+      listFileLocks: () => [{
+        id: "lock-1",
+        taskId: "task-1",
+        executionId: "exec-1",
+        lockScope: "workspace",
+        resourcePath: "/tmp/workspace",
+        lockMode: "exclusive",
+        ownerId: "worker-1",
+        expiresAt: "2026-01-01T00:00:00.000Z",
+        createdAt: "2025-12-31T00:00:00.000Z",
+        updatedAt: "2025-12-31T00:00:00.000Z",
+      }],
     },
   });
   const service = new RuntimeRepairService(db, store);

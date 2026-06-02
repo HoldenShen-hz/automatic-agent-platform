@@ -188,7 +188,7 @@ function toDefinition(trigger: ProactiveTrigger | TriggerDefinition): TriggerDef
   }
   return {
     triggerId: trigger.triggerId,
-    domainId: "general_ops",
+    domainId: "general-ops",
     name: trigger.triggerId,
     type: trigger.kind === "signal" ? "condition" : trigger.kind,
     config: trigger.kind === "schedule"

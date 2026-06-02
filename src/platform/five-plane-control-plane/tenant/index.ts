@@ -25,6 +25,19 @@ export interface TenantBoundaryTopologySeed {
   organizationMemberships?: OrganizationMembershipRecord[];
   tenants?: TenantRecord[];
   deploymentBindings?: DeploymentBindingRecord[];
+  governanceExceptions?: GovernanceExceptionRecord[];
+}
+
+export interface GovernanceExceptionRecord {
+  governanceRef: string;
+  userId: string;
+  tenantId: string;
+  workspaceId: string | null;
+  organizationId: string;
+  status: "approved" | "revoked" | "expired";
+  reasonCode: string;
+  approvedAt: string;
+  expiresAt?: string | null;
 }
 
 export interface TenantAccessDecision {
@@ -45,6 +58,7 @@ export class TenantBoundaryRegistryService {
   private readonly organizationMemberships = new Map<string, OrganizationMembershipRecord>();
   private readonly tenants = new Map<string, TenantRecord>();
   private readonly deploymentBindings = new Map<string, DeploymentBindingRecord>();
+  private readonly governanceExceptions = new Map<string, GovernanceExceptionRecord>();
 
   public constructor(seed: TenantBoundaryTopologySeed = {}) {
     seed.users?.forEach((record) => this.registerUser(record));
@@ -54,6 +68,7 @@ export class TenantBoundaryRegistryService {
     seed.workspaceMemberships?.forEach((record) => this.addWorkspaceMembership(record));
     seed.organizationMemberships?.forEach((record) => this.addOrganizationMembership(record));
     seed.deploymentBindings?.forEach((record) => this.registerDeploymentBinding(record));
+    seed.governanceExceptions?.forEach((record) => this.registerGovernanceException(record));
   }
 
   public registerUser(input: Omit<UserAccount, "createdAt"> & { createdAt?: string }): UserAccount {
@@ -92,8 +107,34 @@ export class TenantBoundaryRegistryService {
 
   public registerDeploymentBinding(record: DeploymentBindingRecord): DeploymentBindingRecord {
     this.requireTenant(record.tenantId);
+    if (this.deploymentBindings.has(record.bindingId)) {
+      throw new ValidationError("tenant.deployment_binding_conflict", "Deployment binding ID already exists.", {
+        details: { bindingId: record.bindingId },
+      });
+    }
     this.deploymentBindings.set(record.bindingId, record);
     return record;
+  }
+
+  public registerGovernanceException(record: GovernanceExceptionRecord): GovernanceExceptionRecord {
+    const governanceRef = assertId(record.governanceRef, "tenant.invalid_governance_ref");
+    this.requireUser(record.userId);
+    const tenant = this.requireTenant(record.tenantId);
+    if (record.workspaceId != null) {
+      const workspace = this.requireWorkspace(record.workspaceId);
+      if (workspace.organizationId !== tenant.organizationId) {
+        throw new ValidationError("tenant.governance_exception_workspace_mismatch", "Governance exception workspace does not match tenant organization.", {
+          details: { governanceRef, workspaceId: record.workspaceId, tenantId: record.tenantId },
+        });
+      }
+    }
+    const exception: GovernanceExceptionRecord = {
+      ...record,
+      governanceRef,
+      organizationId: tenant.organizationId,
+    };
+    this.governanceExceptions.set(governanceRef, exception);
+    return exception;
   }
 
   public addWorkspaceMembership(record: WorkspaceMembershipRecord): WorkspaceMembershipRecord {
@@ -134,10 +175,10 @@ export class TenantBoundaryRegistryService {
     if (workspace != null && workspace.organizationId !== tenant.organizationId) {
       return buildAccessDecision(input, tenant.organizationId, "deny", "tenant.workspace_tenant_mismatch");
     }
-    if (this.isOrganizationMember(input.userId, tenant.organizationId) || this.hasWorkspaceTenantAccess(input.userId, tenant)) {
+    if (this.isOrganizationMember(input.userId, tenant.organizationId) || this.hasWorkspaceTenantAccess(input.userId, tenant, input.workspaceId ?? null)) {
       return buildAccessDecision(input, tenant.organizationId, "allow", "tenant.member_allowed");
     }
-    if (input.governanceRef != null && input.governanceRef.trim().length > 0) {
+    if (this.hasApprovedGovernanceException(input.userId, tenant, input.workspaceId ?? null, input.governanceRef ?? null)) {
       return buildAccessDecision(input, tenant.organizationId, "allow_with_governance_exception", "tenant.governance_exception");
     }
     return buildAccessDecision(input, tenant.organizationId, "deny", "tenant.default_deny");
@@ -148,6 +189,9 @@ export class TenantBoundaryRegistryService {
     targetTenantId: string | null | undefined;
     reasonCode?: string;
   }): void {
+    if (input.sourceTenantId == null && input.targetTenantId == null) {
+      return;
+    }
     if (input.sourceTenantId == null || input.targetTenantId == null || input.sourceTenantId !== input.targetTenantId) {
       throw new TenantBoundaryError(input.reasonCode ?? "tenant.cross_tenant_denied", "Cross-tenant access is denied by default.", {
         details: {
@@ -189,17 +233,47 @@ export class TenantBoundaryRegistryService {
       .slice(0, Math.max(0, limit));
   }
 
-  private hasWorkspaceTenantAccess(userId: string, tenant: TenantRecord): boolean {
+  private hasWorkspaceTenantAccess(userId: string, tenant: TenantRecord, workspaceId: string | null): boolean {
+    if (workspaceId != null) {
+      if (!this.workspaceMemberships.has(`${workspaceId}:${userId}`)) {
+        return false;
+      }
+      return this.resolveTenantForWorkspace(workspaceId)?.tenantId === tenant.tenantId;
+    }
     for (const membership of this.workspaceMemberships.values()) {
       if (membership.userId !== userId) {
         continue;
       }
-      const workspace = this.workspaces.get(membership.workspaceId);
-      if (workspace?.organizationId === tenant.organizationId) {
+      if (this.resolveTenantForWorkspace(membership.workspaceId)?.tenantId === tenant.tenantId) {
         return true;
       }
     }
     return false;
+  }
+
+  private hasApprovedGovernanceException(
+    userId: string,
+    tenant: TenantRecord,
+    workspaceId: string | null,
+    governanceRef: string | null,
+  ): boolean {
+    if (governanceRef == null || governanceRef.trim().length === 0) {
+      return false;
+    }
+    const record = this.governanceExceptions.get(governanceRef.trim());
+    if (record == null || record.status !== "approved") {
+      return false;
+    }
+    if (record.userId !== userId || record.tenantId !== tenant.tenantId || record.organizationId !== tenant.organizationId) {
+      return false;
+    }
+    if (record.workspaceId !== workspaceId) {
+      return false;
+    }
+    if (record.expiresAt != null && record.expiresAt <= nowIso()) {
+      return false;
+    }
+    return true;
   }
 
   private isOrganizationMember(userId: string, organizationId: string): boolean {
@@ -265,7 +339,7 @@ function buildAccessDecision(
 }
 
 function assertId(value: string, code: string): string {
-  if (!/^[a-zA-Z0-9._:-]{2,128}$/.test(value)) {
+  if (!/^[a-zA-Z0-9_-]{2,128}$/.test(value)) {
     throw new ValidationError(code, "Tenant topology identifier is invalid.", {
       details: { value },
     });

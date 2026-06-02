@@ -67,7 +67,7 @@
       "scope": "release_certification"
     },
     {
-      "divisionId": "engineering_ops",
+      "divisionId": "engineering-ops",
       "family": "operations",
       "scope": "build_release_delivery"
     },
@@ -82,7 +82,7 @@
       "scope": "regulated_financial_ops"
     },
     {
-      "divisionId": "general_ops",
+      "divisionId": "general-ops",
       "family": "operations",
       "scope": "generic_operator_fallback"
     },

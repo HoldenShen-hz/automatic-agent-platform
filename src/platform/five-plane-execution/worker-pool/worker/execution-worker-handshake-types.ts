@@ -1,5 +1,7 @@
 import type { WorkerSnapshotRecord } from "../../../contracts/types/domain.js";
 import type { ExecutionResourceCeilingGuard } from "../../dispatcher/execution-resource-ceiling-guard.js";
+import type { ExecutionLeaseService } from "../../lease/execution-lease-service.js";
+import type { WorkerRegistryService } from "../worker-registry-service.js";
 
 export interface WorkerClaimExecutionInput {
   ticketId: string;
@@ -102,4 +104,7 @@ export interface WorkerHandshakeDecision {
 
 export interface ExecutionWorkerHandshakeServiceOptions {
   resourceCeilingGuard?: ExecutionResourceCeilingGuard;
+  leases?: ExecutionLeaseService;
+  workers?: WorkerRegistryService;
+  rejectedClaimEventDedupTtlMs?: number;
 }

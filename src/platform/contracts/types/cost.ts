@@ -24,6 +24,11 @@ export interface CostEstimate {
   readonly basedOn: "division_avg" | "global_avg" | "default" | "llm_estimate";
 }
 
+export interface CostEstimationScope {
+  readonly divisionId?: string | null;
+  readonly tenantId?: string | null;
+}
+
 /**
  * Configuration options for cost estimation.
  */
@@ -43,5 +48,5 @@ export interface CostEstimationServicePort {
   /**
    * Estimates the cost for a new task based on historical data.
    */
-  estimate(divisionId?: string | null): CostEstimate;
+  estimate(scope?: string | CostEstimationScope | null, tenantId?: string | null): CostEstimate;
 }

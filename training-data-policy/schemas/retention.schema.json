@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aa://training-data-policy/retention.schema.json",
+  "type": "object",
+  "required": [
+    "$schema",
+    "retentionPolicyId",
+    "releaseGateHeldoutRetentionDays",
+    "shadowRetentionDays",
+    "trainRetentionDays",
+    "restrictedRetentionHandling"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "training-data-policy/schemas/retention.schema.json"
+    },
+    "retentionPolicyId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "releaseGateHeldoutRetentionDays": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "shadowRetentionDays": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "trainRetentionDays": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "restrictedRetentionHandling": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}

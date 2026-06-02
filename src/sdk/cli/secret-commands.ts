@@ -23,6 +23,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 import { withCliStorageAsync } from "./authoritative-storage.js";
+import { readCliProcessEnv, type CliEnv } from "./cli-env.js";
 import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, isCliEntryPoint, runCliMain } from "./cli-exit.js";
 import { loadSecretManagementCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError, PolicyDeniedError } from "../../platform/contracts/errors.js";
@@ -40,7 +41,7 @@ interface AuthGateConfig {
 const AUTH_TOKEN_ENV = "AA_SECRET_AUTH_TOKEN";
 const SECRET_OUTPUT_PATH_ENV = "AA_SECRET_OUTPUT_PATH";
 
-function resolveSecureCliHome(env: NodeJS.ProcessEnv = process.env): string {
+function resolveSecureCliHome(env: NodeJS.ProcessEnv): string {
   const explicitHome = env.HOME?.trim();
   const fallbackHome = homedir().trim();
   const home = explicitHome && explicitHome.length > 0 ? explicitHome : fallbackHome.length > 0 ? fallbackHome : null;
@@ -50,7 +51,7 @@ function resolveSecureCliHome(env: NodeJS.ProcessEnv = process.env): string {
   return home;
 }
 
-export function resolveAuthTokenPath(env: NodeJS.ProcessEnv = process.env): string {
+export function resolveAuthTokenPath(env: NodeJS.ProcessEnv): string {
   return resolve(env.AA_SECRET_AUTH_TOKEN_PATH ?? join(resolveSecureCliHome(env), ".automatic-agent", "secret-auth-token"));
 }
 
@@ -116,7 +117,7 @@ function parseStoredTokenHash(storedTokenHash: string): { salt: Buffer; digest: 
  * Load or generate the secret auth token for CLI operations.
  * The token is stored as a hash for security.
  */
-export function loadAuthTokenConfig(env: NodeJS.ProcessEnv = process.env): AuthGateConfig {
+export function loadAuthTokenConfig(env: NodeJS.ProcessEnv): AuthGateConfig {
   const tokenPath = resolveAuthTokenPath(env);
   const rawToken = env[AUTH_TOKEN_ENV]?.trim() ?? null;
 
@@ -183,16 +184,16 @@ export function verifyAuthToken(config: AuthGateConfig, providedToken: string): 
  * Generate a new auth token and return it (only shown once at generation).
  * Token is stored as hash; the raw token is only available at generation time.
  */
-export function generateAuthToken(): { token: string; tokenPath: string } {
+export function generateAuthToken(env: CliEnv): { token: string; tokenPath: string } {
   const token = randomBytes(32).toString("hex");
-  const tokenPath = resolveAuthTokenPath(process.env);
+  const tokenPath = resolveAuthTokenPath(env);
   const tokenHash = buildStoredTokenHash(token);
   writeSecureFile(tokenPath, tokenHash);
 
   return { token, tokenPath };
 }
 
-function resolveSecretOutputPath(env: NodeJS.ProcessEnv = process.env): string {
+function resolveSecretOutputPath(env: NodeJS.ProcessEnv): string {
   const outputPath = env[SECRET_OUTPUT_PATH_ENV]?.trim() ?? null;
   if (outputPath == null || outputPath.length === 0) {
     throw new ValidationError(
@@ -218,14 +219,15 @@ export async function executeSecretCommand(
   action: string,
   envConfig: ReturnType<typeof loadSecretManagementCliEnv>,
   authConfig: AuthGateConfig,
+  env: CliEnv,
 ): Promise<SecretCommandResult> {
   try {
     if (action === "generate-token") {
       if (authConfig.storedTokenHash != null) {
         requireAuthToken(authConfig, action);
       }
-      const { token, tokenPath } = generateAuthToken();
-      const outputPath = resolveSecretOutputPath(process.env);
+      const { token, tokenPath } = generateAuthToken(env);
+      const outputPath = resolveSecretOutputPath(env);
       writeSecureFile(outputPath, `${token}\n`);
       return {
         success: true,
@@ -280,7 +282,7 @@ export async function executeSecretCommand(
             envConfig.secretRef ?? "",
             authContext,
           );
-          const outputPath = resolveSecretOutputPath(process.env);
+          const outputPath = resolveSecretOutputPath(env);
           writeSecureFile(outputPath, secretValue.value);
           return {
             success: true,
@@ -354,10 +356,11 @@ export async function executeSecretCommand(
  * Main CLI entry point
  */
 async function main(): Promise<number> {
-  const envConfig = loadSecretManagementCliEnv();
-  const authConfig = loadAuthTokenConfig();
+  const env = readCliProcessEnv();
+  const envConfig = loadSecretManagementCliEnv(env);
+  const authConfig = loadAuthTokenConfig(env);
 
-  const result = await executeSecretCommand(envConfig.action, envConfig, authConfig);
+  const result = await executeSecretCommand(envConfig.action, envConfig, authConfig, env);
 
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   return result.success ? CLI_EXIT_SUCCESS : CLI_EXIT_FAILURE;

@@ -160,7 +160,7 @@ test("ClarificationState rounds tracking", () => {
 
 test("ContextEnrichment interface structure", () => {
   const context: ContextEnrichment = {
-    domainHint: "engineering_ops",
+    domainHint: "engineering-ops",
     extractedConstraints: ["production", "urgent"],
     targetEnvironments: ["production"],
     requestedChannels: ["slack", "email"],
@@ -170,7 +170,7 @@ test("ContextEnrichment interface structure", () => {
     resolvedSlots: { date: "2026-05-21" },
   };
 
-  assert.equal(context.domainHint, "engineering_ops");
+  assert.equal(context.domainHint, "engineering-ops");
   assert.deepEqual(context.targetEnvironments, ["production"]);
   assert.deepEqual(context.requiredSlots, ["date"]);
   assert.deepEqual(context.resolvedSlots, { date: "2026-05-21" });
@@ -235,13 +235,13 @@ test("DryRunPreview mode is 'dry_run'", () => {
     mode: "dry_run",
     blocked: false,
     approvalRequired: true,
-    scope: "engineering_ops/production",
+    scope: "engineering-ops/production",
     proposedOperations: ["deploy to production"],
     sideEffectPreview: ["may affect running services"],
     policyChecks: ["approval_required"],
     proposedPayload: {
       userId: "user-1",
-      divisionId: "engineering_ops",
+      divisionId: "engineering-ops",
       workflowId: "deploy-wf",
     },
   };
@@ -286,9 +286,9 @@ test("CostEstimatorPort interface", () => {
     }),
   };
 
-  const result = estimator.estimate("engineering_ops");
+  const result = estimator.estimate("engineering-ops");
   assert.equal(result.estimatedCostUsd, 0.05);
-  assert.equal(result.divisionId, "engineering_ops");
+  assert.equal(result.divisionId, "engineering-ops");
 });
 
 test("IntentParseResult continuation accepts valid values", () => {
@@ -302,7 +302,7 @@ test("IntentParseResult continuation accepts valid values", () => {
       requiresClarification: false,
       locale: "zh-CN",
       continuation,
-      suggestedDivisionId: "general_ops",
+      suggestedDivisionId: "general-ops",
       suggestedWorkflowId: "default",
       conversationState: "Executing",
       clarificationState: {
@@ -313,7 +313,7 @@ test("IntentParseResult continuation accepts valid values", () => {
         maxRounds: 3,
       },
       context: {
-        domainHint: "general_ops",
+        domainHint: "general-ops",
         extractedConstraints: [],
         targetEnvironments: [],
         requestedChannels: [],

@@ -47,12 +47,14 @@
 src/
   core/                          # 兼容性运行时（仅保留旧代码迁移路径）
     runtime/
+  runtime/                       # runtime-boundary / compatibility surface
+    agent-runtime/
   platform/                      # 权威平台核心代码
-    control-plane/               # IAM, 配置中心, 审批中心, 事件控制
-    execution/                   # 调度器, 执行引擎, 恢复, Worker池
-    orchestration/               # OAPEFLIR, 路由,  planner, HITL
-    state-evidence/              # Truth, Events, Checkpoints, Artifacts, Knowledge, Memory
-    interface/                   # API, Channel Gateway, Ingress, Scheduler
+    five-plane-control-plane/    # IAM, 配置中心, 审批中心, 事件控制
+    five-plane-execution/        # 调度器, 执行引擎, 恢复, Worker池
+    five-plane-orchestration/    # OAPEFLIR, 路由, planner, HITL
+    five-plane-state-evidence/   # Truth, Events, Checkpoints, Artifacts, Knowledge, Memory
+    five-plane-interface/        # API, Channel Gateway, Ingress, Scheduler
     shared/                      # 可观测性, 稳定性, 缓存, 通用基础设施
     model-gateway/               # 模型网关, 成本追踪
     prompt-engine/               # Prompt 渲染、版本、评测、发布
@@ -76,7 +78,8 @@ src/
 
 - `src/platform/` 是权威代码目录，包含所有核心运行时逻辑
 - `src/core/` 仅用于向后兼容，不新增canonical运行时逻辑
-- `src/platform/` 内部按五平面架构组织：control-plane, execution, orchestration, state-evidence, interface
+- `src/platform/` 内部按五平面架构组织：`five-plane-control-plane`、`five-plane-execution`、`five-plane-orchestration`、`five-plane-state-evidence`、`five-plane-interface`
+- `src/runtime/agent-runtime/` 与 `src/core/runtime/` 当前都存在，但都属于 runtime-boundary / compatibility surface，不作为新的 canonical feature sink
 - 上层业务能力在对应上层目录（interaction, org-governance, ops-maturity等）
 
 说明：

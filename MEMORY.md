@@ -27,7 +27,7 @@ It is not a source of truth. Use `AGENTS.md`, `CLAUDE.md`, and `docs_zh/governan
 - Full build: `npm run build`
 - Full regression: `npm test`
 - Docs health: `node --import tsx --test tests/unit/docs/documentation-health.test.ts`
-- Contract integration: `node --import tsx --test tests/integration/platform/contracts/v2-7-extension-contracts.test.ts`
+- Contract integration: `node --import tsx --test tests/integration/platform/contracts/extension-contracts.test.ts`
 
 ## Edit Contract
 

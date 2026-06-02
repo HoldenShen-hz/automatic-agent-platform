@@ -52,7 +52,7 @@ test("E2E Budget Enforcement: execution blocked when actualCostUsd exceeds budge
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Budget exceeded test",
           status: "in_progress",
@@ -100,7 +100,7 @@ test("E2E Budget Enforcement: execution blocked when actualCostUsd exceeds budge
 
         harness.store.insertWorkflowState({
           taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           workflowId: "single_agent_minimal",
           currentStepIndex: 0,
           status: "running",
@@ -216,7 +216,7 @@ test("E2E Budget Enforcement: execution succeeds when actualCostUsd within budge
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Within budget test",
           status: "in_progress",
@@ -264,7 +264,7 @@ test("E2E Budget Enforcement: execution succeeds when actualCostUsd within budge
 
         harness.store.insertWorkflowState({
           taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           workflowId: "single_agent_minimal",
           currentStepIndex: 0,
           status: "running",
@@ -357,7 +357,7 @@ test("E2E Budget Enforcement: execution with zero budget is blocked on any cost"
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Zero budget test",
           status: "in_progress",
@@ -405,7 +405,7 @@ test("E2E Budget Enforcement: execution with zero budget is blocked on any cost"
 
         harness.store.insertWorkflowState({
           taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           workflowId: "single_agent_minimal",
           currentStepIndex: 0,
           status: "running",
@@ -546,7 +546,7 @@ test("E2E Budget Enforcement: execution blocked when budget reservation fails", 
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: "tenant:e2e-test",
           title: "Budget reservation failure test",
           status: "pending",
@@ -631,7 +631,7 @@ test("E2E Budget Enforcement: execution transitions to executing only when budge
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Transition test",
           status: "pending",
@@ -746,7 +746,7 @@ test("E2E Budget Enforcement: budgetUsdLimit is set to specified value, not defa
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Budget specificity test",
           status: "in_progress",
@@ -843,7 +843,7 @@ test("E2E Budget Enforcement: multi-step cost accumulation triggers blocking", a
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Accumulation test",
           status: "in_progress",
@@ -891,7 +891,7 @@ test("E2E Budget Enforcement: multi-step cost accumulation triggers blocking", a
 
         harness.store.insertWorkflowState({
           taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           workflowId: "single_agent_minimal",
           currentStepIndex: 2, // Mid-workflow (3rd step)
           status: "running",
@@ -987,7 +987,7 @@ test("E2E Budget Enforcement: NOT JUST RECORDED - budgetUsdLimit actually enforc
           id: taskId,
           parentId: null,
           rootId: taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           tenantId: null,
           title: "Verify enforcement",
           status: "in_progress",
@@ -1035,7 +1035,7 @@ test("E2E Budget Enforcement: NOT JUST RECORDED - budgetUsdLimit actually enforc
 
         harness.store.insertWorkflowState({
           taskId,
-          divisionId: "general_ops",
+          divisionId: "general-ops",
           workflowId: "single_agent_minimal",
           currentStepIndex: 0,
           status: "running",

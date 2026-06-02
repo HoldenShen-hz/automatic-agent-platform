@@ -1,8 +1,13 @@
+$schema: eval/schemas/eval-suite.schema.json
 divisionId: knowledge-base
 datasetCardRef: eval/datasets/citation-source/dataset-card.json
-runner: citation-verifier
+runnerRegistryRef: eval/runner-registry.json
+runner:
+  runnerId: citation-verifier
+  runnerVersion: "1.0.0"
+  implementationRef: src/domains/knowledge-base/citation-verifier.ts
 reportRef: docs_zh/divisions/knowledge-base/leadership-evidence/eval-report.md
-lastRefreshedAt: "2026-06-01T00:00:00.000Z"
+lastRefreshedAt: "2026-06-02T08:15:00.000Z"
 metrics:
   - citation_coverage
   - citation_correctness

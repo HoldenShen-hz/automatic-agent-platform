@@ -145,8 +145,9 @@ async function performCrmFetch(params: {
   const controller = new AbortController();
   const timeoutHandle = setTimeout(() => controller.abort(new Error("crm_adapter.timeout")), params.defaultTimeoutMs);
   try {
-    const response = await params.credentialSecret.withSecret((token) =>
-      params.fetchImplementation(params.url, {
+    const response = await params.credentialSecret.withSecretBytes((tokenBytes) => {
+      const token = tokenBytes.toString("utf8");
+      return params.fetchImplementation(params.url, {
         method: params.method,
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -154,8 +155,8 @@ async function performCrmFetch(params: {
         },
         ...(params.body === undefined ? {} : { body: JSON.stringify(params.body) }),
         signal: controller.signal,
-      }),
-    );
+      });
+    });
     const responseText = await readResponseTextWithLimit(response, params.maxResponseSizeBytes);
     if (!response.ok) {
       throw new Error(`crm_adapter.api_error:${response.status}:${responseText || "unknown"}`);

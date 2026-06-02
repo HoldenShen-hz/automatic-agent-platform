@@ -10,7 +10,7 @@ function makeNamespace(override = {}) {
     namespaceId: "ns-test-001",
     path: "/test/knowledge",
     description: "Test namespace",
-    ownerDomainId: "engineering_ops",
+    ownerDomainId: "engineering-ops",
     accessPolicy: "public" as const,
     freshnessPolicy: {
       maxAgeDays: 30,

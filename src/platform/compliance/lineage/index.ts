@@ -1,5 +1,9 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { stableStringify } from "../../shared/cache/utils/stable-stringify.js";
 
 export type LineageEdgeKind = "derived_from" | "redacted_from" | "encrypted_from" | "released_as" | "erased_by";
 
@@ -13,6 +17,8 @@ export interface DataLineageEdge {
   createdAt: string;
   /** SHA-256 hash of the canonical serialization of this entry (hex string). */
   integrityHash: string;
+  /** HMAC-SHA256 signature over the canonical entry form (hex string). */
+  integritySignature: string;
   /** Hash of the previous entry's canonical form; null for the first entry. */
   prevHash: string | null;
   metadata: Record<string, unknown>;
@@ -36,17 +42,50 @@ interface CanonicalEntry {
   metadata: Record<string, unknown>;
 }
 
+export interface DataLineagePersistenceStore {
+  loadChain(): readonly DataLineageEdge[];
+  replaceChain(chain: readonly DataLineageEdge[]): void;
+}
+
+export interface DataLineageServiceOptions {
+  readonly hmacKey?: string;
+  readonly persistenceStore?: DataLineagePersistenceStore;
+  readonly edgeIdFactory?: () => string;
+  readonly now?: () => string;
+}
+
 function canonicalForm(entry: CanonicalEntry): string {
-  return JSON.stringify(entry);
+  return stableStringify(entry);
 }
 
 function computeHash(data: string): string {
   return createHash("sha256").update(data, "utf8").digest("hex");
 }
 
+function computeSignature(data: string, hmacKey: string): string {
+  return createHmac("sha256", hmacKey).update(data, "utf8").digest("hex");
+}
+
 export class DataLineageService {
   /** Append-only chain of edges. Each entry is immutable once created. */
   private _chain: DataLineageEdge[] = [];
+  private readonly hmacKey: string;
+  private readonly persistenceStore: DataLineagePersistenceStore | null;
+  private readonly edgeIdFactory: () => string;
+  private readonly now: () => string;
+
+  public constructor(options: DataLineageServiceOptions = {}) {
+    this.hmacKey = options.hmacKey?.trim() || randomBytes(32).toString("hex");
+    this.persistenceStore = options.persistenceStore ?? null;
+    this.edgeIdFactory = options.edgeIdFactory ?? (() => newId("lineage"));
+    this.now = options.now ?? (() => nowIso());
+    const restoredChain = this.persistenceStore?.loadChain() ?? [];
+    this._chain = restoredChain.map((edge) => freezeEdge(edge));
+    const integrity = this.verifyChain();
+    if (!integrity.valid) {
+      throw new Error(`data_lineage.invalid_persisted_chain:${integrity.reason ?? "unknown"}`);
+    }
+  }
 
   /**
    * Records a new edge, appending it to the chain with integrity hash chaining.
@@ -64,18 +103,20 @@ export class DataLineageService {
     const prevHash = lastEntry?.integrityHash ?? null;
 
     const canonical: CanonicalEntry = {
-      edgeId: newId("lineage"),
+      edgeId: this.edgeIdFactory(),
       sourceRef: input.sourceRef,
       targetRef: input.targetRef,
       kind: input.kind,
       actorRef: input.actorRef,
       policyRef: input.policyRef ?? null,
-      createdAt: nowIso(),
+      createdAt: this.now(),
       prevHash,
       metadata: cloneMetadata(input.metadata),
     };
 
-    const integrityHash = computeHash(canonicalForm(canonical));
+    const canonicalPayload = canonicalForm(canonical);
+    const integrityHash = computeHash(canonicalPayload);
+    const integritySignature = computeSignature(canonicalPayload, this.hmacKey);
 
     // Create the final edge with the computed hash (replace edgeId from canonical with final)
     const edge: DataLineageEdge = {
@@ -87,12 +128,14 @@ export class DataLineageService {
       policyRef: canonical.policyRef,
       createdAt: canonical.createdAt,
       integrityHash,
+      integritySignature,
       prevHash: canonical.prevHash,
       metadata: canonical.metadata,
     };
 
     // Append-only: replace chain with new array containing all previous + new entry
-    this._chain = [...this._chain, Object.freeze({ ...edge })];
+    this._chain = [...this._chain, freezeEdge(edge)];
+    this.persistenceStore?.replaceChain(this._chain.map(cloneEdge));
 
     return cloneEdge(edge);
   }
@@ -162,8 +205,37 @@ export class DataLineageService {
           reason: `Entry ${i} integrity hash mismatch: expected "${expectedHash}", got "${entry.integrityHash}"`,
         };
       }
+      const expectedSignature = computeSignature(canonicalForm(canonical), this.hmacKey);
+      if (entry.integritySignature !== expectedSignature) {
+        return {
+          valid: false,
+          brokenAtIndex: i,
+          reason: `Entry ${i} integrity signature mismatch`,
+        };
+      }
     }
     return { valid: true, brokenAtIndex: null, reason: null };
+  }
+}
+
+export class JsonFileDataLineagePersistenceStore implements DataLineagePersistenceStore {
+  public constructor(private readonly filePath: string) {}
+
+  public loadChain(): readonly DataLineageEdge[] {
+    if (!existsSync(this.filePath)) {
+      return [];
+    }
+    const raw = readFileSync(this.filePath, "utf8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      throw new Error("data_lineage.invalid_persistence_payload");
+    }
+    return parsed.map((entry) => normalizePersistedEdge(entry));
+  }
+
+  public replaceChain(chain: readonly DataLineageEdge[]): void {
+    mkdirSync(dirname(this.filePath), { recursive: true });
+    writeFileSync(this.filePath, `${JSON.stringify(chain, null, 2)}\n`, "utf8");
   }
 }
 
@@ -174,6 +246,45 @@ function cloneEdge(edge: DataLineageEdge): DataLineageEdge {
   };
 }
 
+function freezeEdge(edge: DataLineageEdge): DataLineageEdge {
+  return Object.freeze({
+    ...edge,
+    metadata: cloneMetadata(edge.metadata),
+  });
+}
+
 function cloneMetadata(metadata: Record<string, unknown> | undefined): Record<string, unknown> {
   return metadata == null ? {} : structuredClone(metadata);
+}
+
+function normalizePersistedEdge(entry: unknown): DataLineageEdge {
+  if (entry == null || typeof entry !== "object") {
+    throw new Error("data_lineage.invalid_persisted_edge");
+  }
+  const candidate = entry as Partial<DataLineageEdge>;
+  if (
+    typeof candidate.edgeId !== "string"
+    || typeof candidate.sourceRef !== "string"
+    || typeof candidate.targetRef !== "string"
+    || typeof candidate.kind !== "string"
+    || typeof candidate.actorRef !== "string"
+    || typeof candidate.createdAt !== "string"
+    || typeof candidate.integrityHash !== "string"
+    || typeof candidate.integritySignature !== "string"
+  ) {
+    throw new Error("data_lineage.invalid_persisted_edge");
+  }
+  return {
+    edgeId: candidate.edgeId,
+    sourceRef: candidate.sourceRef,
+    targetRef: candidate.targetRef,
+    kind: candidate.kind as LineageEdgeKind,
+    actorRef: candidate.actorRef,
+    policyRef: typeof candidate.policyRef === "string" ? candidate.policyRef : null,
+    createdAt: candidate.createdAt,
+    integrityHash: candidate.integrityHash,
+    integritySignature: candidate.integritySignature,
+    prevHash: typeof candidate.prevHash === "string" ? candidate.prevHash : null,
+    metadata: cloneMetadata(candidate.metadata as Record<string, unknown> | undefined),
+  };
 }

@@ -10,6 +10,7 @@ export function HitlWebView(): ReactElement {
   const [editorTargetId, setEditorTargetId] = useState<string | null>(null);
   const [editorValue, setEditorValue] = useState("{}");
   const [editorError, setEditorError] = useState<string | null>(null);
+  const editorErrorId = "hitl-editor-error";
 
   async function applyEditor(): Promise<void> {
     if (editorTargetId == null || editorMode == null) {
@@ -49,6 +50,9 @@ export function HitlWebView(): ReactElement {
           <button
             disabled={vm.items.length === 0}
             onClick={() => {
+              if (!window.confirm(translateMessage("ui.hitl.bulkApprove"))) {
+                return;
+              }
               void vm.bulkApprove(vm.items.filter((item) => item.type === "approval").map((item) => item.id));
             }}
             type="button"
@@ -58,6 +62,9 @@ export function HitlWebView(): ReactElement {
           <button
             disabled={vm.items.length === 0}
             onClick={() => {
+              if (!window.confirm(translateMessage("ui.hitl.bulkReject"))) {
+                return;
+              }
               void vm.bulkReject(vm.items.filter((item) => item.type === "approval").map((item) => item.id));
             }}
             type="button"
@@ -104,7 +111,17 @@ export function HitlWebView(): ReactElement {
                 </button>
               </Inline>
             ) : (
-              <button onClick={() => { void vm.resume(item.id, "normal"); }} type="button">{translateMessage("ui.hitl.resume")}</button>
+              <button
+                onClick={() => {
+                  if (!window.confirm(translateMessage("ui.hitl.resume"))) {
+                    return;
+                  }
+                  void vm.resume(item.id, "normal");
+                }}
+                type="button"
+              >
+                {translateMessage("ui.hitl.resume")}
+              </button>
             )}
           </div>
         ))}
@@ -116,8 +133,13 @@ export function HitlWebView(): ReactElement {
             }}
           >
             <Stack gap={8}>
-            <textarea aria-label={translateMessage("ui.hitl.editor.label")} onChange={(event) => setEditorValue(event.target.value)} value={editorValue} />
-            {editorError != null ? <p role="alert">{editorError}</p> : null}
+            <textarea
+              aria-describedby={editorError != null ? editorErrorId : undefined}
+              aria-label={translateMessage("ui.hitl.editor.label")}
+              onChange={(event) => setEditorValue(event.target.value)}
+              value={editorValue}
+            />
+            {editorError != null ? <p id={editorErrorId} role="alert">{editorError}</p> : null}
             <button type="submit">{translateMessage("ui.hitl.apply")}</button>
             </Stack>
           </form>

@@ -15,8 +15,8 @@
 
 | division | 角色定位 | 说明 |
 | --- | --- | --- |
-| `engineering_ops` | build/release delivery | 工程交付、流水线、构建与发布协同 |
-| `general_ops` | generic operator fallback | 通用兜底执行面，适合低专属度任务 |
+| `engineering-ops` | build/release delivery | 工程交付、流水线、构建与发布协同 |
+| `general-ops` | generic operator fallback | 通用兜底执行面，适合低专属度任务 |
 | `operations` | service operations | 服务运行、值守、日常操作 |
 | `it-operations` | workstation / identity ops | 终端、账号、设备与身份域操作 |
 
@@ -39,6 +39,45 @@
 - `divisions/` 目录中的活跃 division 都必须在 catalog 中登记。
 - 只有 `qa -> quality-assurance` 这类显式 alias 才使用 `canonicalDivisionId`。
 - 其余 division 至少要声明 `family` 与 `scope`，用于治理和审计分组。
+
+## 全量 Division Matrix
+
+当前 canonical catalog 覆盖 32 个活跃 division，以下矩阵必须与 `config/quality/division-catalog.json` 保持一致。
+
+| division | family | scope | 角色 |
+| --- | --- | --- | --- |
+| `academic-research` | `research` | `academic_knowledge_workflows` | canonical |
+| `advertising` | `growth` | `paid_media_campaigns` | canonical |
+| `analytics` | `analytics` | `metrics_analysis` | canonical |
+| `coding` | `engineering` | `software_delivery` | canonical |
+| `content` | `content` | `editorial_production` | canonical |
+| `content-moderation` | `safety` | `moderation_review` | canonical |
+| `customer-service` | `customer-ops` | `support_resolution` | canonical |
+| `data-engineering` | `data` | `pipelines_storage` | canonical |
+| `design` | `product` | `design_systems` | canonical |
+| `devops` | `operations` | `infra_automation` | canonical |
+| `ecommerce` | `commerce` | `catalog_orders` | canonical |
+| `qa` | `quality` | `smoke_validation_alias` | legacy alias -> `quality-assurance` |
+| `quality-assurance` | `quality` | `release_certification` | canonical |
+| `engineering-ops` | `operations` | `build_release_delivery` | canonical |
+| `finance-accounting` | `finance` | `bookkeeping_reporting` | canonical |
+| `financial-services` | `finance` | `regulated_financial_ops` | canonical |
+| `general-ops` | `operations` | `generic_operator_fallback` | canonical |
+| `healthcare` | `healthcare` | `clinical_ops_support` | canonical |
+| `human-resources` | `people` | `workforce_processes` | canonical |
+| `industry-research` | `research` | `market_industry_research` | canonical |
+| `operations` | `operations` | `service_operations` | canonical |
+| `it-operations` | `operations` | `workstation_identity_operations` | canonical |
+| `knowledge-base` | `knowledge` | `internal_knowledge_ops` | canonical |
+| `legal` | `legal` | `legal_review` | canonical |
+| `live-streaming` | `media` | `live_stream_operations` | canonical |
+| `product-management` | `product` | `roadmap_product_ops` | canonical |
+| `project-management` | `delivery` | `project_execution` | canonical |
+| `quant-trading` | `finance` | `market_execution` | canonical |
+| `research` | `research` | `generic_research_fallback` | canonical |
+| `security` | `security` | `security_operations` | canonical |
+| `support` | `customer-ops` | `generic_support_fallback` | canonical |
+| `user-operations` | `customer-ops` | `user_lifecycle_operations` | canonical |
 
 ## 非目标
 
