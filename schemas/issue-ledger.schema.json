@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/issue-ledger.schema.json",
+  "title": "Issue Ledger Record",
+  "description": "Normalized issue entry produced by scripts/assurance/build-issue-ledger.mjs and consumed by rc:check. See docs_zh/contracts/issue-ledger-contract.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "issueId",
+    "source",
+    "sourceRef",
+    "category",
+    "severity",
+    "description",
+    "invariantViolated",
+    "status"
+  ],
+  "properties": {
+    "issueId": {
+      "type": "string",
+      "pattern": "^AAS-ISSUE-[0-9]{6,}$"
+    },
+    "source": {
+      "type": "string",
+      "enum": ["code", "doc", "adr", "release", "test", "ci", "runtime", "manual", "audit"]
+    },
+    "sourceRef": {
+      "type": "string",
+      "minLength": 1,
+      "description": "file:line or doc section reference"
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Dot-separated taxonomy, e.g. security.tenant_isolation"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["P0", "P1", "P2", "P3"]
+    },
+    "plane": {
+      "type": ["string", "null"],
+      "description": "Five-plane classification: interface / control / orchestration / execution / state-evidence"
+    },
+    "module": {
+      "type": ["string", "null"],
+      "description": "Source code module, e.g. lease, queue, plugin"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rootCause": {
+      "type": ["string", "null"]
+    },
+    "invariantViolated": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Natural-language invariant that the issue breaks. If none, must be 'unspecified'."
+    },
+    "evidence": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "fixStrategy": {
+      "type": ["string", "null"]
+    },
+    "requiredTest": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["unit", "integration", "invariant", "chaos", "regression", "audit-tool", "seeded-defect", "redteam", "eval", "golden", "contract", "e2e"]
+      }
+    },
+    "requiredGate": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "owner": {
+      "type": ["string", "null"]
+    },
+    "expiry": {
+      "type": ["string", "null"],
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "in_progress", "fixed", "verified", "accepted_risk", "needs_revalidation", "closed"]
+    },
+    "linkedPromiseIds": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "linkedReviewIds": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "blockedBy": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  }
+}
