@@ -1,8 +1,8 @@
 # Automatic Agent System — Issue Ledger Mirror
 
-> Generated: 2026-06-02T14:11:36.912Z
+> Generated: 2026-06-02T15:56:45.666Z
 > Source: artifacts/assurance/issues.deduped.jsonl
-> Total issues: 25070
+> Total issues: 24502
 
 | ID | Severity | Source | Category | Description |
 |---|---|---|---|---|
