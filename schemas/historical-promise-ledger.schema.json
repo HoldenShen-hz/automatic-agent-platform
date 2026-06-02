@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/historical-promise-ledger.schema.json",
+  "title": "Historical Promise Ledger Record",
+  "description": "Single promise record emitted by scripts/assurance/historical-promises.mjs. A promise is a must/should/done/final/production-ready statement extracted from a historical document. See docs_zh/contracts/historical-promise-ledger-contract.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "promiseId",
+    "sourceFile",
+    "sourceSection",
+    "promiseText",
+    "promiseType",
+    "status"
+  ],
+  "properties": {
+    "promiseId": {
+      "type": "string",
+      "pattern": "^AAS-PROMISE-[0-9]{6,}$"
+    },
+    "sourceFile": { "type": "string", "minLength": 1 },
+    "sourceSection": { "type": "string", "minLength": 1 },
+    "promiseText": { "type": "string", "minLength": 1 },
+    "promiseType": {
+      "type": "string",
+      "enum": [
+        "release_claim",
+        "must",
+        "should",
+        "metric",
+        "event",
+        "api",
+        "ui",
+        "runbook",
+        "gate",
+        "phase_p0",
+        "phase_p1",
+        "phase_p2",
+        "acceptance"
+      ]
+    },
+    "expectedArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "actualArtifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "unverified",
+        "fulfilled",
+        "drifted",
+        "partial",
+        "superseded",
+        "rejected"
+      ]
+    },
+    "generatedIssueId": {
+      "type": ["string", "null"]
+    },
+    "owner": { "type": ["string", "null"] },
+    "expiry": { "type": ["string", "null"], "format": "date" }
+  }
+}
