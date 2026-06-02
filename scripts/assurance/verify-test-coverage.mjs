@@ -45,6 +45,10 @@ function main() {
   mkdirSync(outputRoot, { recursive: true });
   const stamp = new Date().toISOString();
 
+  // Cap per-finding output to keep the report JSON manageable; counts are
+  // always reported in summary.
+  const MAX_PER_FINDING = 100;
+
   // 1. Load inputs.
   const testToIssue = loadJson(join(outputRoot, "test-to-issue-map.json"));
   const issueToTest = loadJson(join(outputRoot, "issue-to-test-map.json"));
@@ -58,9 +62,11 @@ function main() {
   // 2. Categorize issues.
   const p0Issues = issues.filter((i) => i.severity === "P0");
   const p0IssueIds = new Set(p0Issues.map((i) => i.issueId));
+  const knownIds = new Set(issues.map((i) => i.issueId));
 
-  // 3. Findings.
-  const findings = {
+  // 3. Findings (collect full lists in a counter form, but truncate the
+  //    stored report so it stays small).
+  const findingsFull = {
     unboundP0Issues: [],
     unboundP1Issues: [],
     unboundPromiseLinkedIssues: [],
@@ -75,7 +81,7 @@ function main() {
   for (const i of p0Issues) {
     const bound = (issueBindings[i.issueId] ?? []).length > 0;
     if (!bound) {
-      findings.unboundP0Issues.push({
+      findingsFull.unboundP0Issues.push({
         issueId: i.issueId,
         severity: i.severity,
         description: i.description,
@@ -94,7 +100,7 @@ function main() {
   for (const i of p1Issues) {
     const bound = (issueBindings[i.issueId] ?? []).length > 0;
     if (!bound) {
-      findings.unboundP1Issues.push({
+      findingsFull.unboundP1Issues.push({
         issueId: i.issueId,
         description: i.description,
         sourceRef: i.sourceRef,
@@ -108,7 +114,7 @@ function main() {
     if ((i.linkedPromiseIds ?? []).length === 0) continue;
     const bound = (issueBindings[i.issueId] ?? []).length > 0;
     if (!bound) {
-      findings.unboundPromiseLinkedIssues.push({
+      findingsFull.unboundPromiseLinkedIssues.push({
         issueId: i.issueId,
         severity: i.severity,
         linkedPromiseIds: i.linkedPromiseIds,
@@ -123,7 +129,7 @@ function main() {
     if (!i.invariantViolated || i.invariantViolated === "unspecified") continue;
     const bound = (issueBindings[i.issueId] ?? []).length > 0;
     if (!bound) {
-      findings.unboundInvariantIssues.push({
+      findingsFull.unboundInvariantIssues.push({
         issueId: i.issueId,
         severity: i.severity,
         invariantViolated: i.invariantViolated,
@@ -133,13 +139,12 @@ function main() {
   }
 
   // 3e. Unbound tests: P0 tests that reference no P0 issue.
-  const knownIds = new Set(issues.map((i) => i.issueId));
   for (const entry of metaEntries) {
     if (entry.severity !== "P0") continue;
     const refs = entry.issueIds ?? [];
     const p0Refs = refs.filter((id) => p0IssueIds.has(id));
     if (p0Refs.length === 0) {
-      findings.unboundTests.push({
+      findingsFull.unboundTests.push({
         testPath: entry.path,
         issueRefs: refs,
         knownIssueRefs: refs.filter((id) => knownIds.has(id)),
@@ -159,7 +164,7 @@ function main() {
     const refs = entry.issueIds ?? [];
     const unknown = refs.filter((id) => !knownIds.has(id));
     if (unknown.length > 0) {
-      findings.orphanTests.push({
+      findingsFull.orphanTests.push({
         testPath: entry.path,
         unknownRefs: unknown,
         knownRefs: refs.filter((id) => knownIds.has(id)),
@@ -170,7 +175,7 @@ function main() {
   // 3g. Unknown issue refs from the binding file (any test mapping to unknown id).
   for (const [issueId, tests] of Object.entries(issueBindings)) {
     if (!knownIds.has(issueId)) {
-      findings.unknownIssueRefs.push({ issueId, tests });
+      findingsFull.unknownIssueRefs.push({ issueId, tests });
     }
   }
 
@@ -179,18 +184,31 @@ function main() {
   for (const ids of Object.values(bindings)) for (const id of ids) reverseUnion.add(id);
   for (const id of reverseUnion) {
     if (!issueBindings[id]) {
-      findings.bidirectionalInconsistencies.push({ issueId: id, reason: "present in test-to-issue but missing from issue-to-test" });
+      findingsFull.bidirectionalInconsistencies.push({ issueId: id, reason: "present in test-to-issue but missing from issue-to-test" });
     }
   }
 
   // 4. Status.
-  const p0Unbound = findings.unboundP0Issues.length;
-  const invariantUnbound = findings.unboundInvariantIssues.length;
-  const orphanCount = findings.orphanTests.length;
-  const unboundTestCount = findings.unboundTests.length;
-  const bindingBroken = findings.bidirectionalInconsistencies.length > 0;
+  const p0Unbound = findingsFull.unboundP0Issues.length;
+  const invariantUnbound = findingsFull.unboundInvariantIssues.length;
+  const orphanCount = findingsFull.orphanTests.length;
+  const unboundTestCount = findingsFull.unboundTests.length;
+  const bindingBroken = findingsFull.bidirectionalInconsistencies.length > 0;
 
   const status = (p0Unbound > 0 || invariantUnbound > 0 || bindingBroken) ? "fail" : "warn";
+
+  // Truncate findings for the stored/printed report to keep it readable;
+  // counts are always present in summary.
+  const findings = {
+    unboundP0Issues: findingsFull.unboundP0Issues.slice(0, MAX_PER_FINDING),
+    unboundP1Issues: findingsFull.unboundP1Issues.slice(0, MAX_PER_FINDING),
+    unboundPromiseLinkedIssues: findingsFull.unboundPromiseLinkedIssues.slice(0, MAX_PER_FINDING),
+    unboundInvariantIssues: findingsFull.unboundInvariantIssues.slice(0, MAX_PER_FINDING),
+    unboundTests: findingsFull.unboundTests.slice(0, MAX_PER_FINDING),
+    orphanTests: findingsFull.orphanTests.slice(0, MAX_PER_FINDING),
+    unknownIssueRefs: findingsFull.unknownIssueRefs.slice(0, MAX_PER_FINDING),
+    bidirectionalInconsistencies: findingsFull.bidirectionalInconsistencies.slice(0, MAX_PER_FINDING),
+  };
 
   const report = {
     generatedAt: stamp,
@@ -203,13 +221,13 @@ function main() {
       testsWithMetadata: metaEntries.length,
       p0TestCount: metaEntries.filter((e) => e.severity === "P0").length,
       p0UnboundIssues: p0Unbound,
-      p1UnboundIssues: findings.unboundP1Issues.length,
-      unboundPromiseLinkedIssues: findings.unboundPromiseLinkedIssues.length,
+      p1UnboundIssues: findingsFull.unboundP1Issues.length,
+      unboundPromiseLinkedIssues: findingsFull.unboundPromiseLinkedIssues.length,
       unboundInvariantIssues: invariantUnbound,
       unboundTests: unboundTestCount,
       orphanTests: orphanCount,
-      unknownIssueRefs: findings.unknownIssueRefs.length,
-      bidirectionalInconsistencies: findings.bidirectionalInconsistencies.length,
+      unknownIssueRefs: findingsFull.unknownIssueRefs.length,
+      bidirectionalInconsistencies: findingsFull.bidirectionalInconsistencies.length,
     },
     findings,
   };
