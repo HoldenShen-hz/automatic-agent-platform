@@ -304,7 +304,6 @@ function main() {
     }
     const aid = a.assumptionId;
     const expired = isExpired(a.expiry, today);
-    const eligible = expired && a.status === "unverified";
 
     if (!expired) {
       report.skipped.push({
@@ -316,8 +315,23 @@ function main() {
       updatedAssumptions.push(a);
       continue;
     }
+
+    // Dedup first: if this assumption is already linked to an issue, do not
+    // re-promote regardless of its current status. This makes re-runs of the
+    // tick idempotent even though the first run flips status to "expired".
+    if (linked.has(aid)) {
+      report.skipped.push({
+        assumptionId: aid,
+        reason: `already-promoted:${linked.get(aid).join(",")}`,
+        expiry: a.expiry,
+        status: a.status,
+      });
+      updatedAssumptions.push(a);
+      continue;
+    }
+
     if (a.status !== "unverified") {
-      // Already verified, accepted, expired, or otherwise terminal — do not promote.
+      // Already verified, accepted, or otherwise terminal — do not promote.
       report.skipped.push({
         assumptionId: aid,
         reason: `status-bypass:${a.status}`,
@@ -328,17 +342,6 @@ function main() {
       continue;
     }
     // Eligible.
-    if (linked.has(aid)) {
-      // Already linked to at least one issue. Skip without re-promoting.
-      report.skipped.push({
-        assumptionId: aid,
-        reason: `already-promoted:${linked.get(aid).join(",")}`,
-        expiry: a.expiry,
-        status: a.status,
-      });
-      updatedAssumptions.push(a);
-      continue;
-    }
 
     try {
       const issueId = `AAS-ISSUE-${String(nextSeq).padStart(6, "0")}`;

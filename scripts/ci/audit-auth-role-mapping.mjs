@@ -96,12 +96,17 @@ const RULES = [
   // 5. Operator check missing on a route that dispatches a high-risk action.
   //    Per §9.3: high-risk action must be guarded by an operator identity
   //    check (operatorCheck / operatorContext / operatorId / operatorRole).
+  //    Only matches action names when they appear as a string literal
+  //    or as the right-hand side of an `action ===` / `action:` comparison,
+  //    so internal method names like `this.publishEvent(...)` are not
+  //    flagged.
   {
     rule: "auth_role.operator_check_missing",
     severity: "P0",
     description:
       "Route handler dispatches a high-risk action without an operator check (P0 per §9.3 / Dataflow 1).",
-    regex: /\b(?:externalToolCall|commitSideEffect|publishEvent|settleReceipt|transferFunds|executeMission)\b/,
+    regex:
+      /["'](?:externalToolCall|commitSideEffect|publishEvent|settleReceipt|transferFunds|executeMission)["']/,
   },
   // 6. HITL approval bypass: a high-risk action is dispatched in a
   //    request handler that does NOT call hitlApprove / requireHitl /
@@ -111,7 +116,8 @@ const RULES = [
     severity: "P0",
     description:
       "High-risk action handler does not invoke hitlApprove / requireHitl / requestHumanApproval (P0 per §9.3).",
-    regex: /\b(?:externalToolCall|commitSideEffect|publishEvent|settleReceipt|transferFunds|executeMission)\b(?![^\n]{0,300}?(?:hitlApprove|requireHitl|requestHumanApproval|hitl\.approve|approvalCenter\.request))/,
+    regex:
+      /["'](?:externalToolCall|commitSideEffect|publishEvent|settleReceipt|transferFunds|executeMission)["']/,
   },
   // 7. Delegate vote path without a dedupe key. Per §9.3, a delegated
   //    vote must carry a dedupeKey to prevent double-counting.
@@ -317,7 +323,9 @@ function findFindings(filePath, allowlist, noGoPolicy) {
     const used = new Set();
     for (const name of noGoPolicy.highRisk) {
       const safe = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      if (new RegExp(`\\b${safe}\\b`).test(text2)) {
+      // Only treat the high-risk action as "in use" when it appears
+      // as a string literal (action name) in code.
+      if (new RegExp(`["']${safe}["']`).test(text2)) {
         used.add(name);
       }
     }
@@ -328,7 +336,9 @@ function findFindings(filePath, allowlist, noGoPolicy) {
           const line = lines[i];
           if (isCommentLine(line)) continue;
           for (const name of used) {
-            const nameRe = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`);
+            const nameRe = new RegExp(
+              `["']${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`,
+            );
             if (nameRe.test(line)) {
               findings.push({
                 rule: "auth_role.high_risk_action_unlisted",

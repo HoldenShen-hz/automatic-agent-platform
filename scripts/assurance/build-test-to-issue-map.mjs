@@ -32,11 +32,13 @@ const SKIP_DIRS = new Set([
 // Header JSDoc block: /** ... */
 // We support two flavors of header metadata:
 //   1) Standard JSDoc /** ... */ block at the top of the file (multi-line).
-//   2) Single-line comments inside any line (e.g. " // hidden @issue AAS-...").
-// This makes the metadata resilient to files that put metadata in either place.
+//      Inside the block we only accept tags that begin a " * " line so that
+//      prose that happens to mention "@issue" inside a sentence is ignored.
+//   2) Single-line `// @issue ...` comments (anywhere in the file), which
+//      can be used as an evasion-tolerant fallback (e.g. `// hidden @issue ...`).
 const HEADER_BLOCK_RE = /^\s*\/\*\*([\s\S]*?)\*\//m;
-const TAG_RE = /@(\w+)\s+([^\s*][^\n*]*?)(?=\n\s*(?:\*[^/]|$)|\n\s*\*\/|$)/g;
-const LINE_TAG_RE = /(?:^|\s)\/\/[^\n]*@(\w+)\s+([^\s*][^\n]*?)(?=$|\n)/g;
+const BLOCK_TAG_RE = /(?:^|\n)\s*\*\s*@(\w+)\s+([^\n*][^\n]*?)(?=\n\s*\*\s*(?:@|\/)|$)/g;
+const LINE_TAG_RE = /(^|\n)\s*\/\/\s*[^@\n]*@(\w+)\s+([^\n]+?)\s*$/gm;
 
 const TEST_EXT = new Set([".ts", ".tsx", ".mts", ".cts"]);
 
@@ -65,26 +67,43 @@ function walk(dir, files = []) {
  */
 function parseMetadata(text) {
   const tags = {};
-  // Multi-line block first.
+  // 1) JSDoc /** ... */ block — tags must start a `*` line.
   const blockMatch = text.match(HEADER_BLOCK_RE);
   const body = blockMatch ? blockMatch[1] : "";
-  for (const re of [TAG_RE, LINE_TAG_RE]) {
-    re.lastIndex = 0;
-    let m;
-    while ((m = re.exec(body)) !== null) {
-      const key = m[1].toLowerCase();
-      const val = m[2].trim().replace(/[\s*\/]+$/g, "").trim();
-      if (!val) continue;
-      if (key === "issue" || key === "issues") {
-        (tags.issue ??= []).push(val);
-      } else if (key === "promise" || key === "promises") {
-        (tags.promise ??= []).push(val);
-      } else if (key === "review" || key === "reviews") {
-        (tags.review ??= []).push(val);
-      } else {
-        // Single-value tags use the last value (overwrite).
-        tags[key] = val;
-      }
+  BLOCK_TAG_RE.lastIndex = 0;
+  let m;
+  while ((m = BLOCK_TAG_RE.exec(body)) !== null) {
+    const key = m[1].toLowerCase();
+    const val = m[2].trim().replace(/[\s*\/]+$/g, "").trim();
+    if (!val) continue;
+    if (key === "issue" || key === "issues") {
+      (tags.issue ??= []).push(val);
+    } else if (key === "promise" || key === "promises") {
+      (tags.promise ??= []).push(val);
+    } else if (key === "review" || key === "reviews") {
+      (tags.review ??= []).push(val);
+    } else {
+      tags[key] = val;
+    }
+  }
+  // 2) Single-line `// @tag value` comments anywhere in the file. Useful for
+  //    evasion-tolerant metadata that lives in non-JSDoc files. We do NOT
+  //    match comments that just happen to contain @tag in prose (the regex
+  //    requires the `//` to lead the line, optionally prefixed with
+  //    non-@ content).
+  LINE_TAG_RE.lastIndex = 0;
+  while ((m = LINE_TAG_RE.exec(text)) !== null) {
+    const key = m[2].toLowerCase();
+    const val = m[3].trim();
+    if (!val) continue;
+    if (key === "issue" || key === "issues") {
+      (tags.issue ??= []).push(val);
+    } else if (key === "promise" || key === "promises") {
+      (tags.promise ??= []).push(val);
+    } else if (key === "review" || key === "reviews") {
+      (tags.review ??= []).push(val);
+    } else {
+      tags[key] = val;
     }
   }
   return tags;

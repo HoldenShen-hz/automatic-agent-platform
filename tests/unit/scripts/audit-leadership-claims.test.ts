@@ -86,6 +86,40 @@ test("buildLeadershipClaimScanReport respects allowlist and approved claims and 
   }
 });
 
+test("buildLeadershipClaimScanReport ignores governance vocabulary references instead of treating them as product claims", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-leadership-audit-governance-"));
+  const configRoot = join(workspace, "config", "division-coverage");
+  const dataRoot = join(workspace, "data");
+  const now = new Date("2026-05-31T00:00:00.000Z");
+
+  try {
+    writeFile(join(configRoot, "schemas", "leadership-claim.schema.json"), JSON.stringify({ $id: "aa://leadership-claim.schema.json" }));
+    writeFile(join(configRoot, "claims", "allowlist.yaml"), "entries: []");
+    writeFile(join(configRoot, "claims", "records.yaml"), "claims: []");
+    writeFile(
+      join(workspace, "docs_en", "reference", "automatic_agent_system_full_review_audit_methodology_v1_3_with_tests_relationship.md"),
+      "mock/placeholder must not enter production-ready claim.\n",
+    );
+    writeFile(
+      join(workspace, "docs_zh", "threat-models", "README.md"),
+      "| 10 | YONO | domain-coverage --mode=production-ready | ✅ |\n",
+    );
+
+    const report = buildLeadershipClaimScanReport({
+      rootDir: workspace,
+      configRoot,
+      dataRoot,
+      scanRoots: ["docs_en", "docs_zh"],
+      now,
+    });
+
+    assert.equal(report.summary.blockedCount, 0);
+    assert.equal(report.hits.length, 0);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
 test("buildLeadershipClaimScanReport fails expired allowlist entries instead of grandfathering them", () => {
   const workspace = mkdtempSync(join(tmpdir(), "aa-leadership-audit-expired-"));
   const configRoot = join(workspace, "config", "division-coverage");
