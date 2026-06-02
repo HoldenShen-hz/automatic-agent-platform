@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/assurance-report.schema.json",
+  "title": "Assurance Pipeline Report",
+  "description": "Top-level report emitted by scripts/assurance/run-full-assurance.mjs and the rc:check aggregator. Aggregates per-step results, not-yet-integrated audits, blockers, and evidence bundle references. See docs_zh/contracts/assurance-pipeline-contract.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "generatedAt",
+    "repoRoot",
+    "status",
+    "executedSteps"
+  ],
+  "properties": {
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "repoRoot": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["pass", "fail"]
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["full", "delta", "rc", "seeded", "audit-tool", "coverage"]
+    },
+    "executedSteps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/assuranceStep" }
+    },
+    "notYetIntegratedAudits": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "blockerCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "evidenceBundleRef": {
+      "type": ["string", "null"],
+      "description": "Path to artifacts/release/evidence-bundle.json, set when rc:check succeeded."
+    }
+  },
+  "$defs": {
+    "assuranceStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "command", "startedAt", "endedAt", "exitCode", "ok"],
+      "properties": {
+        "id": { "type": "string" },
+        "required": { "type": "boolean" },
+        "rationale": { "type": "string" },
+        "command": { "type": "string" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "endedAt": { "type": "string", "format": "date-time" },
+        "exitCode": { "type": "integer" },
+        "ok": { "type": "boolean" }
+      }
+    }
+  }
+}

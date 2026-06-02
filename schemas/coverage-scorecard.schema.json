@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/coverage-scorecard.schema.json",
+  "title": "Audit Coverage Scorecard",
+  "description": "Coverage scorecard emitted by scripts/assurance/build-coverage-scorecard.mjs. Each dimension answers 'how much of the corresponding P0 area is covered by static scan + dynamic test + CI gate + regression seed'. See docs_zh/contracts/coverage-scorecard-contract.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "generatedAt",
+    "overallStatus",
+    "releaseBlocked",
+    "dimensions"
+  ],
+  "properties": {
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "repoRoot": { "type": "string" },
+    "overallStatus": {
+      "type": "string",
+      "enum": ["pass", "warn", "fail"]
+    },
+    "releaseBlocked": {
+      "type": "boolean",
+      "description": "True when at least one P0 dimension is below its hard threshold."
+    },
+    "blockingReasons": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceInventory",
+        "historicalPromise",
+        "contractSync",
+        "securityAudit",
+        "executionInvariant",
+        "evalOracle",
+        "ciGate",
+        "regressionSeed",
+        "releaseClaim",
+        "auditToolSelfTest"
+      ],
+      "properties": {
+        "sourceInventory": { "$ref": "#/$defs/coverageDimension" },
+        "historicalPromise": { "$ref": "#/$defs/coverageDimension" },
+        "contractSync": { "$ref": "#/$defs/coverageDimension" },
+        "securityAudit": { "$ref": "#/$defs/coverageDimension" },
+        "executionInvariant": { "$ref": "#/$defs/coverageDimension" },
+        "evalOracle": { "$ref": "#/$defs/coverageDimension" },
+        "ciGate": { "$ref": "#/$defs/coverageDimension" },
+        "regressionSeed": { "$ref": "#/$defs/coverageDimension" },
+        "releaseClaim": { "$ref": "#/$defs/coverageDimension" },
+        "auditToolSelfTest": { "$ref": "#/$defs/coverageDimension" }
+      }
+    }
+  },
+  "$defs": {
+    "coverageDimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "score", "threshold", "details"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["pass", "warn", "fail"]
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "details": {
+          "type": "string"
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}
