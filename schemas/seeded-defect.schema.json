@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/seeded-defect.schema.json",
+  "title": "Seeded Defect Fixture",
+  "description": "Manifest for a single seeded defect fixture under tests/fixtures/seeded-defects/. Each fixture carries a positive/negative/evasion seed and the gate it is supposed to trigger. See docs_zh/contracts/assurance-pipeline-contract.md §8.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "fixtureId",
+    "category",
+    "severity",
+    "expectedGate",
+    "expectedResult",
+    "seeds"
+  ],
+  "properties": {
+    "fixtureId": {
+      "type": "string",
+      "pattern": "^AAS-SEED-[0-9]{6,}$"
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1,
+      "description": "e.g. security.tenant_isolation / secret.sink.console / contract.drift"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["P0", "P1", "P2", "P3"]
+    },
+    "description": { "type": "string", "minLength": 1 },
+    "expectedGate": {
+      "type": "string",
+      "description": "npm script name, e.g. audit:tenant-isolation"
+    },
+    "expectedResult": {
+      "type": "string",
+      "enum": ["positive_should_fail", "negative_should_pass", "evasion_should_fail"]
+    },
+    "seeds": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "path"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["positive", "negative", "evasion"]
+          },
+          "path": {
+            "type": "string",
+            "description": "Repo-relative path of the seed file"
+          },
+          "languageHint": {
+            "type": "string",
+            "description": "ts / tsx / mjs / py / json / md"
+          },
+          "expectedFinding": {
+            "type": "string",
+            "description": "What the gate is supposed to emit when it catches this seed."
+          }
+        }
+      }
+    },
+    "auditRuleRef": {
+      "type": ["string", "null"],
+      "description": "Identifier of the audit rule that should catch the seed, used for traceability."
+    }
+  }
+}
