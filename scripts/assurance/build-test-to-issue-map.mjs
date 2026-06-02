@@ -37,7 +37,7 @@ const SKIP_DIRS = new Set([
 //   2) Single-line `// @issue ...` comments (anywhere in the file), which
 //      can be used as an evasion-tolerant fallback (e.g. `// hidden @issue ...`).
 const HEADER_BLOCK_RE = /^\s*\/\*\*([\s\S]*?)\*\//m;
-const BLOCK_TAG_RE = /(?:^|\n)\s*\*\s*@(\w+)\s+([^\n*][^\n]*?)(?=\n\s*\*\s*(?:@|\/)|$)/g;
+const BLOCK_TAG_RE = /(?:^|\n)[ \t]*\*[ \t]*@(\w+)\s+([^\n]+)/g;
 const LINE_TAG_RE = /(^|\n)\s*\/\/\s*[^@\n]*@(\w+)\s+([^\n]+?)\s*$/gm;
 
 const TEST_EXT = new Set([".ts", ".tsx", ".mts", ".cts"]);

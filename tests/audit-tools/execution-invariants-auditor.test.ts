@@ -12,10 +12,9 @@
  *   2. negative seed: a well-covered invariant test (>=5 it() blocks) -> audit MUST NOT report
  *   3. evasion seed: a thin invariant test that hides its single it() block in a comment -> audit MUST still report
  *
- * In single-file mode the audit also walks the canonical 8 required
- * tests/invariants/<name>.test.ts files and reports them as P0 when
- * missing; that path is exercised by `node scripts/ci/audit-execution-invariants.mjs`
- * on the repo root, not by this self-test.
+ * In repository mode the audit verifies category coverage across the real
+ * tests/invariants, tests/integration, and tests/e2e layout instead of
+ * assuming a fixed file-name list.
  */
 
 import { describe, it } from "node:test";
@@ -100,12 +99,14 @@ describe("audit-tool: execution-invariants self-test", () => {
     );
   });
 
-  it("global scan of tests/invariants flags the 8 missing canonical files as P0", () => {
-    const report = runAudit("tests/invariants");
+  it("global scan of tests/ reports real category coverage instead of hard-coded file-name gaps", () => {
+    const report = runAudit("tests");
     const p0 = report.findings.filter((f) => f.severity === "P0");
-    assert.ok(
-      p0.length >= 8,
-      `expected >= 8 P0 missing-file findings, got ${p0.length}: ${JSON.stringify(report.findings.slice(0, 3))}`,
+    assert.equal(
+      p0.length,
+      0,
+      `expected 0 P0 coverage gaps in the repository, got ${p0.length}: ${JSON.stringify(report.findings.slice(0, 3))}`,
     );
+    assert.ok(Array.isArray((report as AuditReport & { categoryCoverage?: unknown[] }).categoryCoverage));
   });
 });

@@ -1,0 +1,23 @@
+{
+  "datasetId": "dataset-negative-heldout-v1",
+  "divisionId": "coding",
+  "scenarioId": "issue-to-patch",
+  "version": "2026.06",
+  "source": "internal_repository_snapshots",
+  "taskCount": 60,
+  "split": "heldout",
+  "samples": "tests/fixtures/seeded-defects/dataset/negative/samples",
+  "sampleCount": 60,
+  "contaminationStatus": {
+    "status": "clean",
+    "evidence": [
+      "docs_zh/divisions/coding/leadership-evidence/dataset-contamination-report.md"
+    ]
+  },
+  "privacyStatus": "restricted",
+  "labelingMethod": "maintainer_review",
+  "allowedForTraining": false,
+  "allowedForReleaseGate": true,
+  "retentionPolicyRef": "training-data-policy/retention.yaml",
+  "frozenHash": "sha256:d82768d7443b71698c976596676eee5c4cef0ffe4d3a41e95b6bcc87f36313d9"
+}

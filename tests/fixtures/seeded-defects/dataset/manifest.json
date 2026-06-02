@@ -1,0 +1,29 @@
+{
+  "fixtureId": "AAS-SEED-DATASET-001",
+  "category": "audit.dataset",
+  "severity": "P0",
+  "description": "Seeded defect fixture for audit:dataset self-test (§12.2).",
+  "expectedGate": "audit-dataset",
+  "expectedResult": "positive_should_fail",
+  "seeds": [
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/dataset/positive/dataset-card.json",
+      "languageHint": "json",
+      "expectedFinding": "dataset.* P0 (multiple)"
+    },
+    {
+      "kind": "negative",
+      "path": "tests/fixtures/seeded-defects/dataset/negative/dataset-card.json",
+      "languageHint": "json",
+      "expectedFinding": "no finding"
+    },
+    {
+      "kind": "evasion",
+      "path": "tests/fixtures/seeded-defects/dataset/evasion/dataset-card.json",
+      "languageHint": "json",
+      "expectedFinding": "dataset.* P0 (multiple)"
+    }
+  ],
+  "auditRuleRef": "audit-dataset"
+}

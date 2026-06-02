@@ -1,0 +1,29 @@
+{
+  "fixtureId": "AAS-SEED-REDTEAM-001",
+  "category": "audit.redteam",
+  "severity": "P0",
+  "description": "Seeded defect fixture for audit:redteam self-test (§12.3).",
+  "expectedGate": "audit-redteam",
+  "expectedResult": "positive_should_fail",
+  "seeds": [
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/redteam/positive/redteam-suite.yaml",
+      "languageHint": "yaml",
+      "expectedFinding": "redteam.* P0 (multiple)"
+    },
+    {
+      "kind": "negative",
+      "path": "tests/fixtures/seeded-defects/redteam/negative/redteam-suite.yaml",
+      "languageHint": "yaml",
+      "expectedFinding": "no finding"
+    },
+    {
+      "kind": "evasion",
+      "path": "tests/fixtures/seeded-defects/redteam/evasion/redteam-suite.yaml",
+      "languageHint": "yaml",
+      "expectedFinding": "redteam.* P0 (multiple)"
+    }
+  ],
+  "auditRuleRef": "audit-redteam"
+}

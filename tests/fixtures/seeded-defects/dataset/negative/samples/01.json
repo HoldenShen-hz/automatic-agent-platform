@@ -1,0 +1,5 @@
+{
+  "sampleId": "sample-001",
+  "input": "fix the bug",
+  "expected": "patch applied"
+}

@@ -1,0 +1,20 @@
+{
+  "datasetId": "dataset-evasion-heldout-v1",
+  "divisionId": "coding",
+  "scenarioId": "issue-to-patch",
+  "version": "2026.06",
+  "source": "internal_repository_snapshots",
+  "taskCount": 60,
+  "split": "heldout",
+  "_samples_path_attempt": "samples/this/looks/legit.jsonl",
+  "samples": "samples-evasion/this/does/not/exist/at/all.jsonl",
+  "sampleCount": 0,
+  "contaminationStatus": "clean",
+  "contaminationEvidence": [],
+  "privacyStatus": "restricted",
+  "labelingMethod": "maintainer_review",
+  "allowedForTraining": false,
+  "allowedForReleaseGate": true,
+  "retentionPolicyRef": "",
+  "frozenHash": "sha256:DATASET-EVASION-HELDOUT-V1"
+}

@@ -6,10 +6,13 @@
  * Runs in order:
  *   1. assurance:full
  *   2. test:p0 (test:invariants + test:regression:p0)
- *   3. test:audit-tools
- *   4. test:seeded-defects
- *   5. evidence:bundle:create
- *   6. evidence:bundle:verify
+ *   3. test:chaos:p0
+ *   4. test:redteam:p0
+ *   5. test:golden:strict
+ *   6. test:audit-tools
+ *   7. test:seeded-defects
+ *   8. evidence:bundle:create
+ *   9. evidence:bundle:verify
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
@@ -20,7 +23,10 @@ const outputDir = join(repoRoot, "artifacts", "release");
 
 const STEPS = [
   { id: "assurance:full", required: true, command: "assurance:full" },
-  { id: "test:invariants", required: true, command: "test:invariants" },
+  { id: "test:p0", required: true, command: "test:p0" },
+  { id: "test:chaos:p0", required: true, command: "test:chaos:p0" },
+  { id: "test:redteam:p0", required: true, command: "test:redteam:p0" },
+  { id: "test:golden:strict", required: true, command: "test:golden:strict" },
   { id: "test:audit-tools", required: true, command: "test:audit-tools" },
   { id: "test:seeded-defects", required: true, command: "test:seeded-defects" },
   { id: "evidence:bundle:create", required: true, command: "evidence:bundle:create" },
@@ -65,9 +71,13 @@ function main() {
   const report = {
     generatedAt: stamp,
     repoRoot,
+    mode: "rc",
     status: failed.length === 0 ? "pass" : "fail",
     failedSteps: failed,
     executedSteps: results,
+    evidenceBundleRef: failed.length === 0 && existsSync(join(outputDir, "evidence-bundle.json"))
+      ? "artifacts/release/evidence-bundle.json"
+      : null,
   };
   writeFileSync(join(outputDir, "rc-check-report.json"), JSON.stringify(report, null, 2));
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);

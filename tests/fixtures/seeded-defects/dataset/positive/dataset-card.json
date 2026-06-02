@@ -1,0 +1,16 @@
+{
+  "datasetId": "dataset-positive-heldout-v1",
+  "divisionId": "coding",
+  "scenarioId": "issue-to-patch",
+  "version": "2026.06",
+  "source": "internal_repository_snapshots",
+  "taskCount": 60,
+  "split": "heldout",
+  "contaminationStatus": "clean",
+  "privacyStatus": "restricted",
+  "labelingMethod": "maintainer_review",
+  "allowedForTraining": false,
+  "allowedForReleaseGate": true,
+  "retentionPolicyRef": "training-data-policy/retention.yaml",
+  "frozenHash": "sha256:dataset-positive-heldout-v1"
+}

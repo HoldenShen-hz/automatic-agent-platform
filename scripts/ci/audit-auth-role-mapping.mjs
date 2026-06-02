@@ -332,26 +332,24 @@ function findFindings(filePath, allowlist, noGoPolicy) {
     if (used.size > 0) {
       const hasOperator = OPERATOR_CHECK_HINTS.some((re) => re.test(text2));
       if (!hasOperator) {
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-          if (isCommentLine(line)) continue;
-          for (const name of used) {
-            const nameRe = new RegExp(
-              `["']${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`,
-            );
-            if (nameRe.test(line)) {
-              findings.push({
-                rule: "auth_role.high_risk_action_unlisted",
-                severity: "P1",
-                path: rel,
-                line: i + 1,
-                message: `High-risk action "${name}" is dispatched without an operator check (P1 per §9.3).`,
-                snippet: line.trim().length > 200 ? line.trim().slice(0, 200) + "…" : line.trim(),
-              });
-              break;
-            }
+        for (const name of used) {
+          const nameRe = new RegExp(
+            `["']${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`,
+          );
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (isCommentLine(line)) continue;
+            if (!nameRe.test(line)) continue;
+            findings.push({
+              rule: "auth_role.high_risk_action_unlisted",
+              severity: "P1",
+              path: rel,
+              line: i + 1,
+              message: `High-risk action "${name}" is dispatched without an operator check (P1 per §9.3).`,
+              snippet: line.trim().length > 200 ? line.trim().slice(0, 200) + "…" : line.trim(),
+            });
+            break; // one finding per used action
           }
-          break;
         }
       }
     }

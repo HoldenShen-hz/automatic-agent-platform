@@ -18,9 +18,19 @@ test("run-full-assurance emits a report and executes the current required baseli
   const payload = JSON.parse(readFileSync(reportPath, "utf8"));
   assert.equal(payload.status, "pass");
   assert.deepEqual(
-    payload.executedSteps.map((entry) => entry.id),
-    ["review_import", "public_entrypoints", "historical_promises", "leadership_claims", "docs_sync"],
+    payload.executedSteps.filter((entry) => entry.required).map((entry) => entry.id),
+    [
+      "inventory",
+      "review_import",
+      "public_entrypoints",
+      "historical_promises",
+      "leadership_claims",
+      "docs_sync",
+      "issue_ledger",
+      "coverage_scorecard",
+    ],
   );
+  assert.equal(payload.mode, "full");
   assert.equal(Array.isArray(payload.notYetIntegratedAudits), true);
-  assert.match(payload.notYetIntegratedAudits.join(","), /audit:contracts-sync/);
+  assert.equal(payload.notYetIntegratedAudits.length, 0);
 });

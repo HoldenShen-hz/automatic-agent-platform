@@ -1,0 +1,11 @@
+{
+  "viewIdPrefix": "agent_state",
+  "agentId": "agent-001",
+  "taskId": "task-001",
+  "executionId": "exec-001",
+  "frozenClock": "2026-06-02T00:00:00.000Z",
+  "deterministicId": "agent-state-view-basic-v1",
+  "seedInjected": 42,
+  "exactEventMatch": true,
+  "secretRedaction": true
+}

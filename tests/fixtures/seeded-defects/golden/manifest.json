@@ -1,0 +1,29 @@
+{
+  "fixtureId": "AAS-SEED-GOLDEN-001",
+  "category": "audit.golden",
+  "severity": "P0",
+  "description": "Seeded defect fixture for audit:golden self-test (§12.4).",
+  "expectedGate": "audit-golden",
+  "expectedResult": "positive_should_fail",
+  "seeds": [
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/golden/positive.golden",
+      "languageHint": "golden",
+      "expectedFinding": "golden.* P0 (multiple)"
+    },
+    {
+      "kind": "negative",
+      "path": "tests/fixtures/seeded-defects/golden/negative.golden",
+      "languageHint": "golden",
+      "expectedFinding": "no finding"
+    },
+    {
+      "kind": "evasion",
+      "path": "tests/fixtures/seeded-defects/golden/evasion.golden",
+      "languageHint": "golden",
+      "expectedFinding": "golden.* P0 (multiple)"
+    }
+  ],
+  "auditRuleRef": "audit-golden"
+}
