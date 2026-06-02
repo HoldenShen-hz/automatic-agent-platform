@@ -10,8 +10,10 @@ test("run-full-assurance emits a report and executes the current required baseli
   const result = spawnSync(process.execPath, [scriptPath], {
     cwd: "/Users/holden/Project/automatic_agent/automatic_agent_platform",
     encoding: "utf8",
+    maxBuffer: 32 * 1024 * 1024,
   });
 
+  assert.equal(result.error, undefined, result.error?.message);
   assert.equal(result.status, 0);
   assert.equal(existsSync(reportPath), true);
 

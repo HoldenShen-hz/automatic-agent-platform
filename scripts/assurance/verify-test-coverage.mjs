@@ -62,6 +62,9 @@ function main() {
   // 2. Categorize issues.
   const p0Issues = issues.filter((i) => i.severity === "P0");
   const p0IssueIds = new Set(p0Issues.map((i) => i.issueId));
+  const p0BoundIds = p0Issues
+    .map((i) => i.issueId)
+    .filter((id) => (issueBindings[id] ?? []).length > 0);
   const knownIds = new Set(issues.map((i) => i.issueId));
 
   // 3. Findings (collect full lists in a counter form, but truncate the
@@ -190,6 +193,7 @@ function main() {
 
   // 4. Status.
   const p0Unbound = findingsFull.unboundP0Issues.length;
+  const p0Bound = p0Issues.length - p0Unbound;
   const invariantUnbound = findingsFull.unboundInvariantIssues.length;
   const orphanCount = findingsFull.orphanTests.length;
   const unboundTestCount = findingsFull.unboundTests.length;
@@ -217,9 +221,11 @@ function main() {
     summary: {
       issuesTotal: issues.length,
       p0IssueCount: p0Issues.length,
+      p0BoundCount: p0BoundIds.length,
       p1IssueCount: p1Issues.length,
       testsWithMetadata: metaEntries.length,
       p0TestCount: metaEntries.filter((e) => e.severity === "P0").length,
+      p0BoundCount: p0Bound,
       p0UnboundIssues: p0Unbound,
       p1UnboundIssues: findingsFull.unboundP1Issues.length,
       unboundPromiseLinkedIssues: findingsFull.unboundPromiseLinkedIssues.length,

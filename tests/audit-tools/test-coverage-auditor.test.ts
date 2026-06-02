@@ -29,6 +29,7 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..", "..");
 const outputRoot = join(repoRoot, "artifacts", "assurance");
+let cachedVerifyReport = null;
 
 function runNode(scriptPath, ...extraArgs) {
   return execFileSync("node", [scriptPath, ...extraArgs], {
@@ -43,8 +44,9 @@ function ensureBuild() {
 }
 
 function ensureVerify() {
-  // verify expects the build artifacts; ensure they exist.
-  ensureBuild();
+  if (cachedVerifyReport != null) {
+    return cachedVerifyReport;
+  }
   // verify returns exit code 1 when P0 issues are unbound, but still
   // prints JSON to stdout. Use spawnSync so we can read the JSON even
   // on non-zero exit codes.
@@ -55,12 +57,14 @@ function ensureVerify() {
   if (!r.stdout) {
     throw new Error(`verify-test-coverage produced no stdout; stderr=${r.stderr ?? ""}`);
   }
-  return JSON.parse(r.stdout);
+  cachedVerifyReport = JSON.parse(r.stdout);
+  return cachedVerifyReport;
 }
 
 describe("audit-tool: test-coverage self-test", () => {
   before(() => {
     ensureBuild();
+    cachedVerifyReport = null;
   });
 
   it("pos/neg/evasion fixtures are present and the manifest is well-formed", () => {

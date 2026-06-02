@@ -61,7 +61,7 @@ const RULES = [
     description:
       "servicePrincipal.roles contains 'admin' or defaultRoles: ['admin'] (P0 per §9.3).",
     regex:
-      /(?:servicePrincipal|principal|sp|this|p)\s*[\.\[]\s*(?:roles|role)[\s\S]{0,80}?(?:includes|push|add|concat)\s*\(\s*["']admin["']\s*\)/,
+      /(?:servicePrincipal|principal|sp|this|p)\s*[\.\[]\s*(?:roles|role)[\s\S]{0,80}?(?:push|add|concat|unshift|splice)\s*\(\s*(?:["']admin["']|ADMIN)\s*\)/,
   },
   {
     rule: "auth_role.default_roles_admin",

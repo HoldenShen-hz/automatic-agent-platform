@@ -41,12 +41,47 @@ function readManifest(dir) {
   }
 }
 
+function resolveGateMode(expectedGate) {
+  if (typeof expectedGate !== "string" || expectedGate.length === 0) {
+    return { kind: "skip", reason: "manifest missing expectedGate" };
+  }
+  if (expectedGate.startsWith("audit-")) {
+    return { kind: "audit-script", value: expectedGate };
+  }
+  if (expectedGate.startsWith("audit:")) {
+    return { kind: "audit-script", value: expectedGate.replace("audit:", "audit-") };
+  }
+  if (expectedGate.startsWith("scripts/")) {
+    return {
+      kind: "skip",
+      reason:
+        "non-generic script gate is covered by its dedicated node test, not by the generic seeded-defect runner",
+    };
+  }
+  return {
+    kind: "skip",
+    reason: `unsupported gate form for generic seeded-defect runner: ${expectedGate}`,
+  };
+}
+
 function evaluateCategory(categoryDir) {
   const manifest = readManifest(categoryDir);
   if (!manifest) {
     return { category: categoryDir, skipped: true, reason: "no manifest.json" };
   }
-  const gate = manifest.expectedGate.replace("audit:", "audit-");
+  const gateMode = resolveGateMode(manifest.expectedGate);
+  const gate = gateMode.kind === "audit-script" ? gateMode.value : manifest.expectedGate;
+  if (gateMode.kind === "skip") {
+    return {
+      category: categoryDir,
+      manifest: manifest.fixtureId,
+      gate,
+      expectedResult: manifest.expectedResult,
+      skipped: true,
+      reason: gateMode.reason,
+      seeds: [],
+    };
+  }
   const seeds = manifest.seeds ?? [];
   const result = { category: categoryDir, manifest: manifest.fixtureId, gate, expectedResult: manifest.expectedResult, seeds: [] };
   for (const seed of seeds) {

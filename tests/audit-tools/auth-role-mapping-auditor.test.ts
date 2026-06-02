@@ -215,4 +215,23 @@ describe("audit-tool: auth-role-mapping self-test", () => {
       );
     }
   });
+
+  it("real repo authorization checks that only read admin status are NOT misreported as default-admin grants", () => {
+    const paths = [
+      "src/platform/five-plane-interface/api/http-server/approval-routes.ts",
+      "src/platform/five-plane-interface/api/http-server/task-routes.ts",
+      "src/platform/five-plane-orchestration/harness/runtime/intake-admission-service.ts",
+    ];
+    for (const relativePath of paths) {
+      const report = runAudit(relativePath);
+      const falsePositive = report.findings.find(
+        (f) => f.rule === "auth_role.service_principal_default_admin" && f.path.endsWith(relativePath),
+      );
+      assert.equal(
+        falsePositive,
+        undefined,
+        `expected no default-admin false positive for ${relativePath}, got ${JSON.stringify(falsePositive)}`,
+      );
+    }
+  });
 });
