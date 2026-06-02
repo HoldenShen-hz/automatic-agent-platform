@@ -1,0 +1,29 @@
+{
+  "fixtureId": "AAS-SEED-TEST-DISABLED-001",
+  "category": "audit.test_disabled",
+  "severity": "P0",
+  "description": "Test skip without metadata.",
+  "expectedGate": "audit-test-disabled",
+  "expectedResult": "positive_should_fail",
+  "seeds": [
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/test-disabled/positive.ts",
+      "languageHint": "ts",
+      "expectedFinding": "P0"
+    },
+    {
+      "kind": "negative",
+      "path": "tests/fixtures/seeded-defects/test-disabled/negative.ts",
+      "languageHint": "ts",
+      "expectedFinding": "no P0"
+    },
+    {
+      "kind": "evasion",
+      "path": "tests/fixtures/seeded-defects/test-disabled/evasion.ts",
+      "languageHint": "ts",
+      "expectedFinding": "P0"
+    }
+  ],
+  "auditRuleRef": "audit:test-disabled"
+}

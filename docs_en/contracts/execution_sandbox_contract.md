@@ -1,10 +1,10 @@
 # Execution Sandbox Contract
 
-## 1. 范围
+## 1. Scope
 
-definesExecution Plane沙箱模式、路径/network约束vs逃逸拒绝语义。
+Defines the execution-plane sandbox modes, path/network constraints, and escape-rejection semantics.
 
-## 2. 核心对象
+## 2. Core Objects
 
 ```typescript
 interface ExecutionSandboxPolicy {
@@ -16,9 +16,8 @@ interface ExecutionSandboxPolicy {
 }
 ```
 
-## 3. 约束
+## 3. Constraints
 
-- 任一执lines尝试都必须绑定 `ExecutionSandboxPolicy`。
-- 未列入 `allowedPaths` 的writes必须拒绝。
-- `networkAccess=false` 时不得via provider/tool indirectly放开network侧写。
-
+- Every execution attempt must be bound to an `ExecutionSandboxPolicy`.
+- Writes to paths not in `allowedPaths` must be rejected.
+- When `networkAccess=false`, network side effects must not be indirectly opened up via providers/tools.

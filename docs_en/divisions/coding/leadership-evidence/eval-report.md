@@ -1,5 +1,7 @@
 # Coding Eval Report
 
+LastRefreshedAt: `2026-06-02T08:00:00.000Z`
+
 EvidenceRefs:
 
 - `eval/divisions/coding/eval-suite.yaml`

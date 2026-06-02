@@ -1,0 +1,1 @@
+{"assumptionId":"AAS-ASSUMPTION-FUTURE-000001","statement":"This assumption expires in the future and MUST NOT be promoted yet.","evidence":[],"riskIfFalse":"unverified assumption may misguide downstream decisions","owner":"TBD","expiry":"2099-12-31","status":"unverified","sourceRef":"tests/fixtures/seeded-defects/assumption-promotion/negative/source.md#L1"}

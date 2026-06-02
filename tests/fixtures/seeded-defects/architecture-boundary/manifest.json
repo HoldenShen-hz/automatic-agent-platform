@@ -1,0 +1,29 @@
+{
+  "fixtureId": "AAS-SEED-ARCHITECTURE_BOUNDARY-001",
+  "category": "audit.architecture-boundary",
+  "severity": "P0",
+  "description": "Seeded defect fixture for audit:architecture-boundary self-test.",
+  "expectedGate": "audit-architecture-boundary",
+  "expectedResult": "positive_should_fail",
+  "seeds": [
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/architecture-boundary/positive.ts",
+      "languageHint": "ts",
+      "expectedFinding": "architecture-boundary P0"
+    },
+    {
+      "kind": "negative",
+      "path": "tests/fixtures/seeded-defects/architecture-boundary/negative.ts",
+      "languageHint": "ts",
+      "expectedFinding": "no finding"
+    },
+    {
+      "kind": "evasion",
+      "path": "tests/fixtures/seeded-defects/architecture-boundary/evasion.ts",
+      "languageHint": "ts",
+      "expectedFinding": "architecture-boundary P0"
+    }
+  ],
+  "auditRuleRef": "audit-architecture-boundary"
+}

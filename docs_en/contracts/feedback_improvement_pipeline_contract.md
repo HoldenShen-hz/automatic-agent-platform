@@ -1,10 +1,10 @@
 # Feedback Improvement Pipeline Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `§56` 的反馈采集、预handle、改进候选vssecurity护栏。
+This contract defines feedback collection, preprocessing, improvement candidates, and safety guardrails for §56.
 
-## 2. Canonical 对象
+## 2. Canonical Objects
 
 - `FeedbackSignal`
 - `SignalPreprocessRecord`
@@ -12,7 +12,7 @@
 - `ImprovementReviewDecision`
 - `FeedbackLoopSnapshot`
 
-## 3. `FeedbackSignal` 最小字段
+## 3. `FeedbackSignal` Minimum Fields
 
 - `signal_id`
 - `source_type`
@@ -22,9 +22,9 @@
 - `severity`
 - `captured_at`
 
-## 4. 改进候选
+## 4. Improvement Candidates
 
-`ImprovementCandidate` 最小字段：
+`ImprovementCandidate` minimum fields:
 
 - `candidate_id`
 - `candidate_type`
@@ -33,15 +33,14 @@
 - `risk_assessment`
 - `review_status`
 
-## 5. 规则
+## 5. Rules
 
-- 反馈信号进入改进前必须via过归一化vsfor deduplication。
-- 自动改进不得bypassing rollout / approval / policy gate。
-- 所有改进候选都必须可追溯到源信号。
+- Feedback signals must be normalized and deduplicated before entering improvement.
+- Automated improvement must not bypass rollout / approval / policy gates.
+- All improvement candidates must be traceable back to their source signals.
 
-## 6. 测试要求
+## 6. Testing Requirements
 
-- unit：signal normalization、candidate generation、dedup
-- integration：feedback -> candidate -> rollout review
-- contract：no来源信号的 candidate 不得进入发布链
-
+- unit: signal normalization, candidate generation, dedup
+- integration: feedback -> candidate -> rollout review
+- contract: candidates without source signals must not enter the release chain

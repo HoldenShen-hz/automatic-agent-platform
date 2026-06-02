@@ -4,14 +4,14 @@
 
 This document provides a comprehensive Chinese-English bilingual reference for all core terms used in the Automatic Agent Platform. Terms are organized by domain area.
 
-This document is the Chinese-English bilingual reference for all core terminology of the Automatic Agent Platform, organized by domain area.
+本文档为自动代理平台的全部核心术语提供中文-英文对照参考，按领域分类组织。
 
 ---
 
 ## 1. Core Objects | 核心对象
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | task | 任务 | User-level work unit; the smallest work commitment object the system exposes to users and business |
 | workflow | 工作流 | Structured execution path of a task; defines steps, dependencies, inputs/outputs, and failure paths |
 | step | 步骤 | A single execution step within a workflow |
@@ -29,9 +29,9 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 2. OAPEFLIR Terms | OAPEFLIR 术语
 
-| English | 中文 | 解释 |
-|---------|------|------|
-| OAPEFLIR | OAPEFLIR | Eight-stage closed loop: Observe -> Assess -> Plan -> Execute -> Feedback -> Learn -> Improve -> Release |
+| English | 中文 | Explanation |
+|---------|------|-------------|
+| OAPEFLIR | OAPEFLIR | Eight-stage closed loop: Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release |
 | stage | 阶段 | Stage-level state unit within the OAPEFLIR closed loop |
 | loop iteration | 闭环迭代 | One full or partial cycle execution round of the closed loop |
 | TaskSituation | 任务态势 | Fact snapshot output by the Observe stage |
@@ -46,8 +46,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 3. Execution & Recovery | 执行与恢复
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | runtime | 运行时 | The runtime layer that actually executes task / workflow / agent / tool |
 | execution ticket | 执行票据 | Formal execution document issued by the scheduling layer to the execution layer |
 | lease | 租约 | Temporary ownership of a specific execution or worker dispatch |
@@ -67,8 +67,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 4. Task Status | 任务状态
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | queued | 排队中 | Task pre-execution state; created but not yet entering scheduling |
 | pending | 待处理 | Task pre-execution state; created but not yet entering scheduling |
 | in_progress | 进行中 | Advancing the main logic (Task state) |
@@ -81,8 +81,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 5. Workflow Status | 工作流状态
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | running | 运行中 | Workflow is advancing the main logic |
 | paused | 已暂停 | Explicitly paused; can be resumed |
 | resuming | 恢复中 | Workflow transition state for resuming from pause |
@@ -95,8 +95,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 6. Execution Status | 执行实例状态
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | created | 已创建 | Execution created state; Execution has been created |
 | prechecking | 预校验中 | Execution pre-validation phase; pre-execution validation stage |
 | executing | 执行中 | Advancing the main logic (Execution state) |
@@ -110,8 +110,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 7. Session Status | 会话状态
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | open | 开放 | Session open state; the session is in the open state |
 | streaming | 流式输出中 | Session streaming state; the session is streaming output |
 | awaiting_user | 等待用户 | Waiting for human or external system input (Session state) |
@@ -124,8 +124,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 8. Approval Status | 审批状态
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | requested | 已请求 | Approval requested; waiting for a human decision |
 | approved | 已批准 | Approval granted; approval passed |
 | rejected | 已拒绝 | Approval denied; approval did not pass |
@@ -136,8 +136,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 9. Worker & Dispatch | 工作器与调度
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | worker | 工作器 | Execution carrier unit, may be local or remote |
 | agent | 智能体 | Intelligent execution entity that assumes role responsibilities |
 | coordinator | 协调器 | Scheduling coordination service that manages task distribution among workers |
@@ -157,8 +157,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 10. Lease & Fencing | 租约与隔离
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | lease | 租约 | Temporary ownership of a specific execution or worker dispatch |
 | fencing token | 隔离令牌 | Version token that prevents old executors from writing back stale results |
 | active | 活跃 | Lease is currently valid |
@@ -172,8 +172,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 11. Message & Event | 消息与事件
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | message | 消息 | A complete message object |
 | message part | 消息片段 | Structured segment inside a message |
 | inbound | 入站 | Message direction: user input |
@@ -192,8 +192,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 12. Message Part Types | 消息片段类型
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | text | 文本 | Text content segment |
 | reasoning | 推理 | Reasoning process trace segment |
 | tool_use | 工具调用 | Tool use request segment |
@@ -214,8 +214,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 13. Step Output Status | 步骤输出状态
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | succeeded | 成功 | Step completed successfully |
 | failed | 失败 | Step execution failed |
 | partial_success | 部分成功 | Step partially succeeded; partial result exists |
@@ -225,8 +225,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 14. Memory | 记忆系统
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | memory | 记忆 | Retrievable memory unit |
 | layer_3 | 第三层 | High-frequency low-latency memory layer |
 | layer_5 | 第五层 | Mid-frequency mid-latency memory layer |
@@ -247,8 +247,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 15. Run Types | 运行类型
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | task_run | 任务运行 | Standard task execution type |
 | tool_call | 工具调用 | Tool call execution type |
 | approval_resume | 审批恢复 | Resume execution after approval |
@@ -258,8 +258,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 16. Compensation & Checkpoint | 补偿与检查点
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | compensation | 补偿 | Action to roll back, reconcile, or manually repair a step with side effects that have already occurred |
 | idempotent_replay | 幂等重放 | Compensation strategy via replay |
 | compare_and_swap_write | 比较并交换写入 | Compensation strategy via CAS write |
@@ -274,8 +274,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 17. Termination & Error | 终止与错误
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | reasonCode | 原因码 | Termination reason code, recorded as a string |
 | termination_initiator | 终止发起者 | Subject that triggered the termination: user / system / policy / admin |
 | termination_scope | 终止范围 | Termination impact scope: step / workflow / task / session |
@@ -286,8 +286,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 18. Task Priority & Source | 任务优先级与来源
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | low | 低 | Low priority |
 | normal | 普通 | Normal priority |
 | high | 高 | High priority |
@@ -300,8 +300,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 19. Isolation & Placement | 隔离与部署
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | standard | 标准 | Standard isolation level |
 | hardened | 加固 | Hardened isolation level |
 | strict | 严格 | Strict isolation level |
@@ -312,8 +312,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 20. Session Consistency | 会话一致性
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | connecting | 连接中 | Remote session is establishing a connection |
 | connected | 已连接 | Remote session is connected |
 | reconnecting | 重连中 | Remote session is reconnecting |
@@ -330,8 +330,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 21. Lease Audit Events | 租约审计事件
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | lease_granted | 租约授予 | Lease was granted |
 | lease_renewed | 租约续期 | Lease was renewed |
 | lease_expired | 租约过期 | Lease expired naturally |
@@ -344,8 +344,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 22. Dispatch Rejection Reasons | 调度拒绝原因
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | worker_unavailable | 工作器不可用 | Worker is currently unavailable |
 | worker_quarantined | 工作器被隔离 | Worker is in a quarantined state |
 | worker_offline | 工作器离线 | Worker connection is lost |
@@ -364,8 +364,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 23. Execution Ticket Status | 执行票据状态
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | pending | 待认领 | Ticket is waiting to be claimed |
 | claimed | 已认领 | Ticket has been claimed by a worker |
 | consumed | 已消费 | Ticket has been consumed |
@@ -376,8 +376,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 24. Operator Actions | 操作员动作
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | take_over_task | 接管任务 | Operator takes over a task |
 | modify_input | 修改输入 | Operator modifies task input |
 | retry_execution | 重试执行 | Operator triggers a retry |
@@ -391,8 +391,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 25. Takeover Session | 接管会话
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | open | 开放 | Takeover session is in the open state |
 | closed | 已关闭 | Takeover session has ended |
 
@@ -400,8 +400,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 26. Evolution & Promotion | 演化与晋升
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | pending_approval | 待审批 | Proposal is awaiting approval |
 | approved | 已批准 | Proposal is approved |
 | rejected | 已拒绝 | Proposal is rejected |
@@ -423,8 +423,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 27. Compaction | 上下文压缩
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | trim | 修剪 | Remove old tool results |
 | summarize | 摘要 | Compress content into key insights |
 
@@ -432,8 +432,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 28. Event Consumer Ack | 事件消费者确认
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | pending | 待确认 | Waiting for consumer acknowledgement |
 | acked | 已确认 | Consumer has acknowledged |
 | failed | 失败 | Acknowledgement failed |
@@ -443,8 +443,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 29. Remote Log Levels | 远程日志级别
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | debug | 调试 | Debug-level log |
 | info | 信息 | Info-level log |
 | warn | 警告 | Warning-level log |
@@ -454,8 +454,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 30. Budget Scope | 预算范围
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | task_execution | 任务执行 | Task execution budget |
 | compaction | 压缩 | Context compaction budget |
 | skill_execution | 技能执行 | Skill execution budget |
@@ -466,8 +466,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 31. Transition | 状态转换
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | task | 任务 | Task entity type |
 | workflow | 工作流 | Workflow entity type |
 | session | 会话 | Session entity type |
@@ -534,8 +534,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 33. Data & Storage | 数据与存储
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | Authoritative Store | 权威存储 | The storage system that has final say over a category of facts; the ultimate source of truth for data; must not be mixed with arbitrary caches |
 | Transaction Store | 事务存储 | Storage responsible for transactional data such as task, state, approval, and event; in code, transactional data is stored in AuthoritativeSqlDatabase |
 | Artifact Store | 产物存储 | Storage for file-based, large-volume, or export-type artifacts; differs in nature from the transaction store |
@@ -563,8 +563,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 34. Configuration & Version | 配置与版本
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | Config Bundle | 配置包 | A group of configurations that take effect together, including layers such as bootstrap, gateways, providers, runtime, security, workflows |
 | Config Version | 配置版本 | Version identifier after a configuration change, used for tamper detection and cache management |
 | Config Layer | 配置层级 | Vertical layer structure of configuration, such as platform, tenant, pack, task_type |
@@ -590,8 +590,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 35. Prompt & Cache | Prompt 与缓存
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | Fixed Prefix | 固定前缀 | Fixed prefix of the system prompt shared across agents; by default does not participate in normal compaction |
 | Domain Block | 领域块 | Middle layer of prompt reusable within the same domain/profile |
 | Variable Suffix | 变量后缀 | Prompt suffix that varies dynamically by task, role, plan, memory |
@@ -601,8 +601,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 36. Storage Operations | 存储运行机制
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | Migration Runner | 迁移运行器 | State management service responsible for executing storage backend schema upgrades |
 | Schema Status | Schema 状态 | Comparison status between the current version and the expected version |
 | Pending Versions | 待执行版本 | List of migration versions not yet applied |
@@ -613,8 +613,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 37. Security & Governance | 安全与治理
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | Policy Engine | 策略引擎 | The code-level entry point for final adjudication of permissions, risk, approval, budget, and runtime constraints; the unified security decision center |
 | HITL (Human In The Loop) | 人工介入 | Decision step that requires explicit human participation; high-risk operations must pass human approval before continuing |
 | Approval | 人工审批 | Decision node in a workflow that requires explicit human confirmation to continue |
@@ -661,8 +661,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 38. Testing & Stabilization | 测试与稳定化
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | Stable Core | 稳定核心 | The minimum capability scope intentionally narrowed to achieve stable operation first, ensuring core functions are reliable |
 | Golden Task | 黄金任务 | Fixed representative task used as the version regression baseline, used to verify that basic system functions have not regressed |
 | Fixture | 测试固件 | Pre-set fixed input/output samples used for stable testing and VCR replay |
@@ -722,8 +722,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 39. Abbreviations | 缩写词
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | ADR | 架构决策记录 | Architecture Decision Record; records important architecture decisions |
 | API | 应用编程接口 | Application Programming Interface |
 | SDK | 软件开发工具包 | Software Development Kit |
@@ -752,8 +752,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 37. Protocol, Model & Security Abbreviations | 协议、模型与安全缩写
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | ADR | 架构决策记录 | Architecture Decision Record; architecture design decision document |
 | API | 应用编程接口 | Application Programming Interface; external or inter-module interface surface |
 | SDK | 软件开发工具包 | Software Development Kit; derived from authoritative schema |
@@ -779,8 +779,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 38. Integration & Communication Abbreviations | 集成与通信缩写
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | RPC | 远程过程调用 | Remote Procedure Call; inter-service communication mode |
 | REST | 表述性状态转移 | Representational State Transfer; Web API style |
 | GraphQL | 图查询语言 | Graph Query Language; API query language |
@@ -799,8 +799,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 39. Code-Level Variable Abbreviations | 代码级别变量缩写
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | id | 标识符 | identifier; unique identifier of an object |
 | uid | 用户标识 | user identifier; user identity number |
 | pid | 进程标识 | process identifier; operating system process number |
@@ -848,8 +848,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 40. Operations & Business Abbreviations | 运维与业务缩写
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | SLA | 服务等级协议 | Service Level Agreement; externally committed agreement |
 | SLO | 服务等级目标 | Service Level Objective; expected goal to achieve |
 | SLI | 服务等级指标 | Service Level Indicator; actual measured indicator |
@@ -867,8 +867,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 41. Testing Abbreviations | 测试缩写
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | E2E | 端到端 | End-to-End; complete test or process from entry to result |
 | UT | 单元测试 | Unit Test; single function/module test |
 | IT | 集成测试 | Integration Test; cross-module collaborative test |
@@ -882,8 +882,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 42. Organization & Control Plane Roles | 组织与控制层角色
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | `strategic_governor` | 战略总督 | Control plane role for strategic judgment, escalation governance, and organization-level approval (document-defined, not implemented as an independent service in code) |
 | `intake_router` | 摄取路由器 | Control plane role for input triage, classification, routing, and budget entry |
 | `workflow_planner` | 工作流规划器 | Control plane role for cross-division split, dependency graph, aggregation, and failure escalation |
@@ -899,8 +899,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 43. Channel & Extension | 渠道与扩展
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | `channel` | 渠道 | User or system access interface, such as CLI, Web, Telegram, API (note: only telegram/slack/webhook are implemented in code) |
 | `channel capability` | 渠道能力 | Capabilities supported by a channel, such as text, button, stream, attachment (note: no corresponding capability enum type is defined in code) |
 | `plugin` | 插件 | Installation unit that extends platform capabilities via public SDK or controlled boundary |
@@ -916,8 +916,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 44. Domain & Plugin Registry | 领域与插件注册
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | `domain` | 领域 | Definition of a business capability domain, including workflows, toolBundles, outputContracts, etc. |
 | `domain model` | 领域模型 | Structure definition including StepTemplateConfig, WorkflowConfig, ToolBundleConfig, etc. |
 | `plugin binding` | 插件绑定 | Association configuration between a domain and a plugin, defining pluginId, pluginType, priority, etc. |
@@ -980,28 +980,28 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 46. Five-Plane Architecture | 五平面架构
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | P1 Interface Plane | P1 接口平面 | External access layer: API Gateway / Webhook / Scheduler / Console / Ingress; responsible for input validation, identity authentication, rate limiting, and routing |
 | P2 Control Plane | P2 控制平面 | Control and governance layer: Policy / Approval / Rollout / Incident / Config; responsible for definition and version governance, approval control, risk guard, release control |
 | P3 Orchestration Plane | P3 编排平面 | Orchestration and decision layer: OAPEFLIR Loop / Planner / Routing / Escalation; responsible for deciding what to do, who executes next, and when to pause for human intervention |
 | P4 Execution Plane | P4 执行平面 | Unified execution layer: Dispatcher / Workers / Tools / Plugins / Recovery; responsible for actually executing actions, maintaining leases, writing back results, and triggering recovery |
 | P5 State & Evidence Plane | P5 状态与证据平面 | State and evidence plane: Truth / Events / Artifacts / Memory / Knowledge / Audit / Projections; responsible for preserving control truth, historical trajectory, recovery support, audit evidence |
 | X1 Reliability Fabric | X1 可靠性织网 | Cross-plane horizontal life-support system: AuthN/Z / Sandbox / Circuit Breaker / DLQ / Backpressure; injected into each plane as middleware |
-| RequestEnvelope | 请求信封 | Standard request wrapper from P1 -> P2, including requestId / tenantId / taskSpec / priority / traceContext / principal |
-| ControlDirective | 控制指令 | Control directive from P2 -> P3/P4, used for mode switching, pause, termination, rollback, quota adjustment |
-| ExecutionPlan | 执行计划 | Standard execution plan from P3 -> P4, describing ordered steps and resource constraints |
-| ExecutionReceipt | 执行回执 | Execution result return from P4 -> P3/P5, including status / duration / artifacts / telemetry / sideEffects / error |
-| StateCommand | 状态命令 | State write command from P3/P4 -> P5, with idempotency guaranteed by CAS |
-| EvidenceRecord | 证据记录 | Asynchronous decision evidence write from P3 -> P5 |
-| ProjectionUpdate | 投影更新 | Projection change event notification from P5 -> P2 |
+| RequestEnvelope | 请求信封 | Standard request wrapper from P1 → P2, including requestId / tenantId / taskSpec / priority / traceContext / principal |
+| ControlDirective | 控制指令 | Control directive from P2 → P3/P4, used for mode switching, pause, termination, rollback, quota adjustment |
+| ExecutionPlan | 执行计划 | Standard execution plan from P3 → P4, describing ordered steps and resource constraints |
+| ExecutionReceipt | 执行回执 | Execution result return from P4 → P3/P5, including status / duration / artifacts / telemetry / sideEffects / error |
+| StateCommand | 状态命令 | State write command from P3/P4 → P5, with idempotency guaranteed by CAS |
+| EvidenceRecord | 证据记录 | Asynchronous decision evidence write from P3 → P5 |
+| ProjectionUpdate | 投影更新 | Projection change event notification from P5 → P2 |
 
 ---
 
 ## 47. OAPEFLIR Stage Types | OAPEFLIR 阶段类型
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | OapeflirStage | OAPEFLIR 阶段枚举 | State enum of the eight-stage closed loop: `observe / assess / plan / execute / feedback / learn / improve / release / knowledge_promotion` |
 | OapeflirStageStatus | OAPEFLIR 阶段状态 | Stage execution status: `completed / skipped` |
 | OapeflirStageRecord | 阶段记录 | Records the execution status, duration, reference ID, and reason code of a single stage |
@@ -1017,8 +1017,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 48. OAPEFLIR Status Enums | OAPEFLIR 状态枚举
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | promotion_status | 推广状态 | Lifecycle state of LearningObject: `draft / validated / promoted / retired` |
 | candidate_status | 候选状态 | State of ImprovementCandidate: `proposed / evaluating / approved / shadow_running / rejected / rolled_back` |
 | rollout_status | 发布状态 | State of RolloutRecord: `draft / pending_approval / shadow / canary_5 / partial_25 / partial_50 / partial_75 / stable / rejected / rolled_back / paused` |
@@ -1042,8 +1042,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 49. Execution Assessment Types | 执行评估类型
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | ExecutionAssessment | 执行评估 | Complete post-execution assessment of a plan, including outcome classification, quality score, deviation analysis, and replanning suggestions |
 | ExecutionOutcome | 执行结果 | Execution outcome type: `completed / completed_with_deviations / repairable / failed / escalated` |
 | ExecutionDeviation | 执行偏差 | Workflow deviation from the plan during execution: `skipped / reordered / modified / added / substituted` |
@@ -1054,8 +1054,8 @@ This document is the Chinese-English bilingual reference for all core terminolog
 
 ## 50. Recovery & Fault Tolerance | 恢复与容错
 
-| English | 中文 | 解释 |
-|---------|------|------|
+| English | 中文 | Explanation |
+|---------|------|-------------|
 | runtime repair | 运行时修复 | Mechanism that automatically repairs execution on failure |
 | replay | 重放 | Re-execute from a known good state |
 | recovery playbook | 恢复手册 | Standardized recovery steps for specific failure modes |
@@ -1067,5 +1067,3 @@ This document is the Chinese-English bilingual reference for all core terminolog
 | circuit breaker | 断路器 | Protection mechanism that temporarily blocks calls when the failure rate is too high |
 
 ---
-
-*This document is a read-only governance reference. If a term conflict is found, the corresponding authoritative contract shall prevail.*

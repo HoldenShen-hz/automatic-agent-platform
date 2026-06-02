@@ -1,0 +1,31 @@
+{
+  "$schema": "eval/schemas/eval-suite.schema.json",
+  "divisionId": "eval-platform",
+  "datasetCardRef": "eval/datasets/swe-style/dataset-card.json",
+  "runnerRegistryRef": "eval/runner-registry.json",
+  "runner": {
+    "runnerId": "eval-oracle-p0",
+    "runnerVersion": "1.0.0",
+    "implementationRef": "src/platform/shared/stability/patch-gate.ts"
+  },
+  "reportRef": "docs_zh/divisions/coding/leadership-evidence/eval-report.md",
+  "lastRefreshedAt": "2026-06-02T23:20:00.000Z",
+  "metrics": [
+    "oracle_anti_fake.findings_p0",
+    "dataset_card.required_fields_present",
+    "dataset_card.frozenHash_sha256_format",
+    "dataset_card.additionalProperties_false"
+  ],
+  "tests": [
+    {
+      "testPath": "tests/eval/oracle-anti-fake.test.ts",
+      "purpose": "Verify audit:eval-oracle catches the actualOutput = expectedOutput anti-pattern on the seeded fixtures.",
+      "auditRuleRef": "audit:eval-oracle"
+    },
+    {
+      "testPath": "tests/eval/dataset-card-integrity.test.ts",
+      "purpose": "Verify every eval/datasets/<name>/dataset-card.json conforms to eval-dataset-card.schema.json (required fields, frozenHash shape, additionalProperties:false).",
+      "auditRuleRef": "audit:eval-oracle"
+    }
+  ]
+}

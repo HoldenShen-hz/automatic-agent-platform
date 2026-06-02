@@ -1,0 +1,28 @@
+{
+  "$schema": "release/schemas/release-suite.schema.json",
+  "suiteId": "release-p0-smoke",
+  "lastRefreshedAt": "2026-06-02T23:20:00.000Z",
+  "releaseBlocking": true,
+  "tests": [
+    {
+      "testPath": "tests/release/rc-check-smoke.test.ts",
+      "purpose": "Smoke-test the RC check evidence bundle: artifacts/release/evidence-bundle.json must exist and reference real, sha256-stable files on disk.",
+      "auditRuleRef": "release:rc-check",
+      "evidenceRefs": [
+        "artifacts/release/evidence-bundle.json",
+        "artifacts/release/rc-check-report.json"
+      ]
+    },
+    {
+      "testPath": "tests/release/release-claim-evidence.test.ts",
+      "purpose": "Every 'final release' / 'production-ready' claim in docs_zh/releases/*.md must be backed by an evidenceRef anchor; verify against the audit:release-claims self-test fixtures.",
+      "auditRuleRef": "audit:release-claims",
+      "evidenceRefs": [
+        "scripts/ci/audit-release-claims.mjs",
+        "tests/fixtures/seeded-defects/release-claims/positive.md",
+        "tests/fixtures/seeded-defects/release-claims/negative.md",
+        "tests/fixtures/seeded-defects/release-claims/evasion.md"
+      ]
+    }
+  ]
+}

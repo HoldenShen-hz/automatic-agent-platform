@@ -1,0 +1,44 @@
+{
+  "$schema": "redteam/schemas/redteam-suite.schema.json",
+  "divisionId": "platform-p0",
+  "caseCount": 2,
+  "reportRef": "docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md",
+  "lastRefreshedAt": "2026-06-02T23:20:00.000Z",
+  "cases": [
+    {
+      "caseId": "secret-leak-through-error",
+      "severity": "critical",
+      "objective": "Block attacker from extracting secrets via error message / log / event payload sinks.",
+      "scope": "error_formatter_console_log_event_publish_audit_record",
+      "evidenceRefs": [
+        "scripts/ci/audit-secret-sinks.mjs",
+        "tests/fixtures/seeded-defects/secret-logged/positive.ts",
+        "tests/fixtures/seeded-defects/secret-logged/negative.ts",
+        "tests/fixtures/seeded-defects/secret-logged/evasion.ts"
+      ],
+      "runner": "tests/redteam/p0/secret-leak-through-error.test.ts",
+      "result": "pass",
+      "critical_success_count": 4,
+      "release_blocking": true,
+      "auditRuleRef": "audit:secret-sinks"
+    },
+    {
+      "caseId": "cross-tenant-access",
+      "severity": "critical",
+      "objective": "Deny tenant A access to tenant B objects; deny non-platform event types as truth writes.",
+      "scope": "route_repository_query_tenant_filter",
+      "evidenceRefs": [
+        "scripts/ci/audit-tenant-isolation.mjs",
+        "src/platform/five-plane-orchestration/harness/runtime/runtime-entry-guard.ts",
+        "tests/fixtures/seeded-defects/tenant-query-missing/positive.ts",
+        "tests/fixtures/seeded-defects/tenant-query-missing/negative.ts",
+        "tests/fixtures/seeded-defects/tenant-query-missing/evasion.ts"
+      ],
+      "runner": "tests/redteam/p0/cross-tenant-access.test.ts",
+      "result": "pass",
+      "critical_success_count": 4,
+      "release_blocking": true,
+      "auditRuleRef": "audit:tenant-isolation"
+    }
+  ]
+}

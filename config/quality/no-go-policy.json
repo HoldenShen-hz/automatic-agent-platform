@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "description": "No-go and high-risk action registry for audit:auth-role-mapping. Actions in `noGoActions` must never be permitted by route handlers (P0 per §9.3). Actions in `highRiskActions` must be guarded by operator check + HITL approval + multi-party quorum (P0 per §9.3).",
+  "noGoActions": [
+    "dropDatabase",
+    "deleteAllUsers",
+    "forceUnleashAllAgents",
+    "bypassAllApprovals",
+    "skipAllReceipts",
+    "rewriteAuditChain"
+  ],
+  "highRiskActions": [
+    "externalToolCall",
+    "commitSideEffect",
+    "publishEvent",
+    "settleReceipt",
+    "transferFunds",
+    "executeMission"
+  ]
+}

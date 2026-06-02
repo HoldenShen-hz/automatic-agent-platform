@@ -1,0 +1,6 @@
+{
+  "exact": [],
+  "prefix": [],
+  "rules": [],
+  "_schema": "Allowlist for the audit:test-disabled scanner. 'exact' and 'prefix' match file paths; 'rules' suppresses individual rule names (e.g. ['disabled_tests.bare_skip']). See docs_zh/reference/automatic_agent_system_full_review_audit_methodology_v1_3_with_tests_relationship.md §44.15.1."
+}

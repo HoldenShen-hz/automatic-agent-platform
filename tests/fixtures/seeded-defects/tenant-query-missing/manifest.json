@@ -1,0 +1,14 @@
+{
+  "fixtureId": "AAS-SEED-000001",
+  "category": "security.tenant_isolation",
+  "severity": "P0",
+  "description": "Repository-like file with no tenancy filter should trigger audit:tenant-isolation P0.",
+  "expectedGate": "audit:tenant-isolation",
+  "expectedResult": "positive_should_fail",
+  "seeds": [
+    { "kind": "positive", "path": "tests/fixtures/seeded-defects/tenant-query-missing/positive.ts", "languageHint": "ts", "expectedFinding": "tenant_isolation.repo_missing_tenant" },
+    { "kind": "negative", "path": "tests/fixtures/seeded-defects/tenant-query-missing/negative.ts", "languageHint": "ts", "expectedFinding": "no finding" },
+    { "kind": "evasion", "path": "tests/fixtures/seeded-defects/tenant-query-missing/evasion.ts", "languageHint": "ts", "expectedFinding": "tenant_isolation.repo_missing_tenant" }
+  ],
+  "auditRuleRef": "audit:tenant-isolation"
+}

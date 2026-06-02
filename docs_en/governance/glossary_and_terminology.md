@@ -1,10 +1,10 @@
 # Glossary And Terminology
 
-##1. Objective
+## 1. Objective
 
 Unify core terminology, avoiding confusion between product narrative terms, engineering implementation terms, runtime object terms, and operations terms.
 
-This document answers4 questions:
+This document answers 4 questions:
 
 - What does a specific term mean in this system
 - Which terms are easily confused and how they should be distinguished
@@ -17,14 +17,14 @@ Related documents:
 - `../contracts/naming_and_engineering_boundary_contract.md`
 - `./naming_and_directory_conventions.md`
 
-##2. Usage Rules
+## 2. Usage Rules
 
 - This glossary is the master terminology version at the governance layer.
 - If mainline documents, contracts, ADRs, or guides conflict with this glossary, the authoritative contract for the corresponding topic prevails, and this glossary should be updated subsequently.
 - If a term has both a product alias and an engineering name, the engineering canonical name is preferred by default.
 - Aliases suited only for product narrative must not be used in protocols, schemas, events, configurations, directories, or table names.
 
-##3. Core Object Terminology
+## 3. Core Object Terminology
 
 | Term | Definition | Should Not Be Confused With |
 | --- | --- | --- |
@@ -41,7 +41,7 @@ Related documents:
 | `step output` | Structured result snapshot after a step completes | `artifact`, `final result` |
 | `result envelope` | Unified result wrapper for success, partial success, failure, warning, artifact, and metrics | Single tool result |
 
-##3A. OAPEFLIR Terminology
+## 3A. OAPEFLIR Terminology
 
 | Term | Definition | Should Not Be Confused With |
 | --- | --- | --- |
@@ -56,7 +56,7 @@ Related documents:
 | `ImprovementCandidate` | Improvement candidate produced by Improve Hub | Released policy |
 | `RolloutRecord` | Controlled release record in the Release stage | `ImprovementCandidate` |
 
-##4. Execution and Recovery Terminology
+## 4. Execution and Recovery Terminology
 
 | Term | Definition | Should Not Be Confused With |
 | --- | --- | --- |
@@ -75,9 +75,9 @@ Related documents:
 | `partial result` | Task not yet fully complete but has preservable, auditable stage results | `completed` |
 | `compensation` | Action to roll back, reconcile, or manually repair steps with side effects already occurred | Ordinary retry |
 
-##5. Status and Lifecycle Terminology
+## 5. Status and Lifecycle Terminology
 
-###5.1 Common Lifecycle Terms
+### 5.1 Common Lifecycle Terms
 
 | Term | Definition | Applicable Object |
 | --- | --- | --- |
@@ -100,7 +100,7 @@ Related documents:
 | `done` | Task terminal state, Task successfully ended | Task |
 | `cancelled` | Explicitly terminated, no longer continues | Task, Workflow |
 
-###5.2 Status Terms That Must Be Distinguished
+### 5.2 Status Terms That Must Be Distinguished
 
 - `queued` is not `blocked`
 - `blocked` only applies to Execution; Task uses `awaiting_decision` to indicate waiting for approval; Workflow uses `paused` to indicate pause
@@ -110,7 +110,7 @@ Related documents:
 - `failed` is not `cancelled`
 - `done` is the only terminal success state for Task; it does not equal "all downstream has been processed", and should defer to the authoritative state machine definition
 
-###5.3 Termination Reason Terminology
+### 5.3 Termination Reason Terminology
 
 > **Implementation Note:** `reasonCode` in `ExecutionRecord.lastErrorCode` and `DeadLetterRecord.finalReasonCode` fields is a **freeform string**, not an enum. The system does not enforce a standardized code table; callers may write any string with business meaning.
 
@@ -121,13 +121,13 @@ Related documents:
 | `termination_scope` | Termination impact scope, such as step / workflow / task / session | Semantic label, no formal enum |
 | `recoverable` | Whether recovery path is allowed after termination | boolean semantic |
 
-##6. Event and Streaming Terminology
+## 6. Event and Streaming Terminology
 
 | Term | Definition | Should Not Be Confused With |
 | --- | --- | --- |
 | `event` | Structured fact notification within the system | `message` |
 | `event type` | Event category, recommended `<domain>.<action>` | DB table name |
-| `tier1 event` | Event that must be reliably persisted, recoverable, and cannot be silently lost | Ordinary UI event |
+| `tier 1 event` | Event that must be reliably persisted, recoverable, and cannot be silently lost | Ordinary UI event |
 | `ack` | Record that a consumer has confirmed processing of an event; each consumer confirms independently, different consumers may ack the same event separately | Global consumed flag |
 | `replay` | Resending events from in-memory buffer; persistent events are pulled via deliverPending() | live stream |
 | `stream` | Incremental output stream oriented to channel/UI | authoritative event log |
@@ -137,9 +137,9 @@ Related documents:
 | `replay buffer` | Limited event window reserved for short disconnection recovery | Persistent event storage |
 | `viewer_only` | Read-only observation interaction state | Business failure state |
 
-##7. Organization and Role Terminology
+## 7. Organization and Role Terminology
 
-###7.1 Control Layer Canonical Mapping
+### 7.1 Control Layer Canonical Mapping
 
 Control layer roles uniformly use the "canonical id + business alias" format in documents.
 
@@ -162,7 +162,7 @@ Not recommended format:
 - Only writing `VP Orchestration`
 - Using `CEO / VP / Lead` directly as primary key in protocols and schemas
 
-###7.2 Other Organization Terminology
+### 7.2 Other Organization Terminology
 
 | Term | Definition | Should Not Be Confused With |
 | --- | --- | --- |
@@ -173,7 +173,7 @@ Not recommended format:
 | `workspace` | Workspace boundary under an organization | `session` |
 | `tenant` | Primary boundary for isolation, security, quota, and billing | `organization` |
 
-##8. Security and Governance Terminology
+## 8. Security and Governance Terminology
 
 | Term | Definition | Should Not Be Confused With |
 | --- | --- | --- |
@@ -188,7 +188,7 @@ Not recommended format:
 | `data classification` | Data classification rules, such as public/internal/confidential/restricted | Pure label text |
 | `audit evidence` | Traceable, verifiable, non-repudiable behavior evidence | Ordinary logs |
 
-##9. Data, Storage, and Consistency Terminology
+## 9. Data, Storage, and Consistency Terminology
 
 | Term | Definition | Should Not Be Confused With |
 | --- | --- | --- |
@@ -202,7 +202,7 @@ Not recommended format:
 | `reconciliation` | Reconciling and repairing states, events, workers, locks | Ordinary retry |
 | `migration` | Formal version migration of schema or storage structure | ad-hoc SQL patch |
 
-###9.1 OAPEFLIR Evolution Status Terms
+### 9.1 OAPEFLIR Evolution Status Terms
 
 | Term | Definition |
 | --- | --- |
@@ -211,7 +211,7 @@ Not recommended format:
 | `rollout_status` | RolloutRecord status, current minimum set is `draft / pending_approval / shadow / canary_5 / partial_25 / partial_50 / partial_75 / stable / rejected / rolled_back / paused` |
 | `guardrail_reason_code` | Pass/block reason code from deterministic guardrail |
 
-##10. Configuration, Version, and Compatibility Terminology
+## 10. Configuration, Version, and Compatibility Terminology
 
 | Term | Definition |
 | --- | --- |
@@ -224,7 +224,7 @@ Not recommended format:
 | `readiness registry` | Formal registry surface recording environment or module readiness status |
 | `evidence package` | Set of evidence packages used to support promote / signoff / production-ready judgments |
 
-###10.1 Prompt / Cache Partitioning Terminology
+### 10.1 Prompt / Cache Partitioning Terminology
 
 | Term | Definition |
 | --- | --- |
@@ -233,7 +233,7 @@ Not recommended format:
 | `variable_suffix` | Prompt suffix that dynamically changes by task, role, plan, memory |
 | `KV cache fixed prefix` | Prefill cache reuse mechanism based on same prefix hash |
 
-##11. Testing, Validation, and Stabilization Terminology
+## 11. Testing, Validation, and Stabilization Terminology
 
 | Term | Definition |
 | --- | --- |
@@ -250,7 +250,7 @@ Not recommended format:
 | `admission control` | Mechanism for system to reject, delay, or degrade before overload |
 | `readiness` | Whether a stage, module, or environment has reached readiness for the next action |
 
-##12. Observability and Operations Terminology
+## 12. Observability and Operations Terminology
 
 | Term | Definition |
 | --- | --- |
@@ -270,7 +270,7 @@ Not recommended format:
 | `RTO` | Recovery Time Objective (Note: only referenced in DR verification workflow, no independent tracking service) |
 | `RPO` | Acceptable data rollback point objective (Note: only referenced in DR verification workflow, no independent tracking service) |
 
-##13. Channel, Extension, and External Integration Terminology
+## 13. Channel, Extension, and External Integration Terminology
 
 | Term | Definition |
 | --- | --- |
@@ -283,7 +283,7 @@ Not recommended format:
 | `provider` | LLM or model capability provider |
 | `model profile` | Metadata about a model's capabilities, limitations, pricing, default parameters |
 
-##14. Protocol, Model, and Security Abbreviations
+## 14. Protocol, Model, and Security Abbreviations
 
 | Term | Definition |
 | --- | --- |
@@ -308,74 +308,74 @@ Not recommended format:
 
 Supplementary rules:
 
-- When abbreviations first appear in mainline documents, it is recommended to give at least one full name or Chinese definition.
+- When abbreviations first appear in mainline documents, it is recommended to give at least one full name or definition.
 - Abbreviations must not replace the formal definitions of object boundaries in authoritative contracts.
 
-##15. Easily Confused Term Pairs
+## 15. Easily Confused Term Pairs
 
-###15.1 `task` vs `session`
+### 15.1 `task` vs `session`
 
 - `task` is a business work unit
 - `session` is an interaction session
 - One session can trigger multiple tasks
 - One task may also update state across multiple sessions
 
-###15.2 `workflow` vs `execution`
+### 15.2 `workflow` vs `execution`
 
 - `workflow` is structure
 - `execution` is a run attempt
 - The same workflow can correspond to multiple execution attempts
 
-###15.3 `agent` vs `worker`
+### 15.3 `agent` vs `worker`
 
 - `agent` leans toward responsibility and intelligent entity
 - `worker` leans toward execution carrier and resource position
 - `sub-agent` is not synonymous with remote worker
 
-###15.4 `artifact` vs `output` vs `step output`
+### 15.4 `artifact` vs `output` vs `step output`
 
 - `artifact` leans toward file product
 - `output` leans toward result semantics
 - `step output` leans toward step-level structured snapshot
 
-###15.5 `permission` vs `policy`
+### 15.5 `permission` vs `policy`
 
 - `permission` is authorization result or static capability boundary
 - `policy` is decision logic and rule system
 - Verbal restrictions in prompts should not be treated as formal policy
 
-###15.6 `queue` vs `lease`
+### 15.6 `queue` vs `lease`
 
 - `queue` determines waiting order
 - `lease` determines current execution rights
 - When both exist, they should not substitute for each other
 
-###15.7 `readiness` vs `production-ready`
+### 15.7 `readiness` vs `production-ready`
 
 - `readiness` indicates reaching the preparation for a gate or next action
 - `production-ready` indicates reaching the comprehensive threshold for production backing
-- `Phase1a ready` must not be misread as `production-ready`
+- `Phase 1a ready` must not be misread as `production-ready`
 
-###15.8 `signoff` vs `completion gate`
+### 15.8 `signoff` vs `completion gate`
 
 - `signoff` is the review conclusion of the current revision
 - `completion gate` is the threshold check that must be performed again before entering coding
 - A signoff conclusion should not be treated as a permanent pass
 
-###15.9 `provider` vs `model`
+### 15.9 `provider` vs `model`
 
 - `provider` is the service provider
 - `model` is the specific model provided by provider
 - `model profile` is model metadata, not equal to provider profile
 
-##16. Naming Principles
+## 16. Naming Principles
 
 - External narrative may retain CEO / VP / Lead.
 - Internal implementation prefers neutral engineering terms, such as `router`, `planner`, `orchestrator`, `supervisor`.
 - If a document contains both narrative names and engineering names, a one-to-one mapping should be made explicit.
 - Schemas, events, configurations, directories, table names default to canonical engineering names.
 
-##17. Recommended Naming Formats
+## 17. Recommended Naming Formats
 
 | Object | Recommended Format | Example |
 | --- | --- | --- |
@@ -388,7 +388,7 @@ Supplementary rules:
 | feature flag | domain prefix + feature name | `runtime.enable_compaction` |
 | protocol params / response | `PascalCase` type name + `camelCase` field name | `TurnStartParams` |
 
-##18. Prohibited Usages
+## 18. Prohibited Usages
 
 - Do not use `CEO / VP / Lead` directly in schema enum
 - Do not use `session` as a substitute for `task`
@@ -401,7 +401,7 @@ Supplementary rules:
 - Do not use abbreviations as the sole explanation, causing readers unable to return to formal definitions
 - Do not mix `provider`, `model`, `profile` three levels into one object
 
-##19. Conclusion
+## 19. Conclusion
 
 The goal of terminology unification is not to remove product expression, but to avoid semantic drift during engineering implementation.
 

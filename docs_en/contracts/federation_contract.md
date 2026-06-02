@@ -1,10 +1,10 @@
 # Federation Contract
 
-## 1. 范围
+## 1. Scope
 
-defines跨租户/跨区域联合查询vs能力互联的边界。
+Defines the boundaries for cross-tenant / cross-region federated queries and capability interconnection.
 
-## 2. 核心对象
+## 2. Core Objects
 
 ```typescript
 interface FederationRequest {
@@ -17,9 +17,8 @@ interface FederationRequest {
 }
 ```
 
-## 3. 约束
+## 3. Constraints
 
-- federation 只能在显式 allowlist 的 region / tenant 对之间发生。
-- 跨边界查询必须保留data驻留vs脱敏策略。
-- 任何 handoff 都必须record来源、目标vs policy proof。
-
+- Federation can only occur between region / tenant pairs on an explicit allowlist.
+- Cross-boundary queries must preserve data residency and redaction policies.
+- Every handoff must record the source, target, and policy proof.

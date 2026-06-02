@@ -1,0 +1,29 @@
+{
+  "fixtureId": "AAS-SEED-DOCS_SOT-001",
+  "category": "audit.docs-sot",
+  "severity": "P0",
+  "description": "Seeded defect fixture for audit:docs-sot self-test.",
+  "expectedGate": "audit-docs-sot",
+  "expectedResult": "positive_should_fail",
+  "seeds": [
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/docs-sot/positive.md",
+      "languageHint": "md",
+      "expectedFinding": "docs_sot.broken_src_reference P0"
+    },
+    {
+      "kind": "negative",
+      "path": "tests/fixtures/seeded-defects/docs-sot/negative.md",
+      "languageHint": "md",
+      "expectedFinding": "no finding"
+    },
+    {
+      "kind": "evasion",
+      "path": "tests/fixtures/seeded-defects/docs-sot/evasion.md",
+      "languageHint": "md",
+      "expectedFinding": "docs_sot.broken_src_reference P0"
+    }
+  ],
+  "auditRuleRef": "audit-docs-sot"
+}

@@ -1,0 +1,29 @@
+{
+  "fixtureId": "AAS-SEED-PLUGIN_SECURITY-001",
+  "category": "audit.plugin-security",
+  "severity": "P0",
+  "description": "Seeded defect fixture for audit:plugin-security self-test.",
+  "expectedGate": "audit-plugin-security",
+  "expectedResult": "positive_should_fail",
+  "seeds": [
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/plugin-security/positive.ts",
+      "languageHint": "ts",
+      "expectedFinding": "plugin-security P0"
+    },
+    {
+      "kind": "negative",
+      "path": "tests/fixtures/seeded-defects/plugin-security/negative.ts",
+      "languageHint": "ts",
+      "expectedFinding": "no finding"
+    },
+    {
+      "kind": "evasion",
+      "path": "tests/fixtures/seeded-defects/plugin-security/evasion.ts",
+      "languageHint": "ts",
+      "expectedFinding": "plugin-security P0"
+    }
+  ],
+  "auditRuleRef": "audit-plugin-security"
+}

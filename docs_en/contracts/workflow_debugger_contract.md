@@ -1,17 +1,17 @@
 # Workflow Debugger Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `§65` 的执lines流调试、断点 API 和运lines对比。
+This contract defines the execution-flow debugging, breakpoint API, and run comparison for §65.
 
-## 2. Canonical 对象
+## 2. Canonical Objects
 
 - `WorkflowTraceFrame`
 - `BreakpointDefinition`
 - `BreakpointHit`
 - `RunComparisonReport`
 
-## 3. `BreakpointDefinition` 最小字段
+## 3. `BreakpointDefinition` Minimum Fields
 
 - `breakpoint_id`
 - `harness_run_id`
@@ -20,18 +20,18 @@
 - `condition`
 - `action`: `pause | snapshot | compare`
 
-## 4. 规则
+## 4. Rules
 
-- 调试动作不得改变业务输出的 authoritative 事实record。
-- 比较报告必须based on可重放证据，而不is UI 临时Status。
-- 生产调试必须受审批和permission控制。
+- Debug actions must not change the authoritative fact records of business output.
+- Comparison reports must be based on replayable evidence, not on transient UI state.
+- Production debugging must be gated by approval and permission control.
 
 ## v4.3 Contract Remediation
 
-- T-69: 本文原先把 breakpoint 锚点绑定到 `workflow_id / step_selector`，Root cause:  debugger contract 建在旧 workflow 调试器原型之上，没有切换到 `HarnessRun / NodeRun` 调试语义。修复：正文现以 `harness_run_id / node_run_id / node_selector` 为权威锚点，旧 workflow 术语只允许出现在投影视图中。
+- T-69: This document previously bound breakpoint anchors to `workflow_id / step_selector`. Root cause: the debugger contract was built on top of an older workflow debugger prototype and was not migrated to the `HarnessRun / NodeRun` debugging semantics. Fix: the body now uses `harness_run_id / node_run_id / node_selector` as the authoritative anchor; the legacy workflow terminology is allowed only in projection views.
 
-## 5. 测试要求
+## 5. Testing Requirements
 
-- unit：breakpoint matching、trace frame normalization
-- integration：runtime trace -> debugger -> replay/compare
-- contract：未authorizationuser不得设置生产断点
+- unit: breakpoint matching, trace frame normalization
+- integration: runtime trace -> debugger -> replay/compare
+- contract: unauthorized users must not be able to set production breakpoints

@@ -1,0 +1,29 @@
+{
+  "fixtureId": "AAS-SEED-EXECUTION_INVARIANTS-001",
+  "category": "audit.execution-invariants",
+  "severity": "P0",
+  "description": "Seeded defect fixture for audit:execution-invariants self-test.",
+  "expectedGate": "audit-execution-invariants",
+  "expectedResult": "positive_should_fail",
+  "seeds": [
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/execution-invariants/positive.ts",
+      "languageHint": "ts",
+      "expectedFinding": "execution_invariants.missing_test_file P0 (expected from run-seeded-defect-tests; positive seed is an unrelated file that intentionally does NOT match a required invariant name)"
+    },
+    {
+      "kind": "negative",
+      "path": "tests/fixtures/seeded-defects/execution-invariants/negative.ts",
+      "languageHint": "ts",
+      "expectedFinding": "no finding"
+    },
+    {
+      "kind": "evasion",
+      "path": "tests/fixtures/seeded-defects/execution-invariants/evasion.ts",
+      "languageHint": "ts",
+      "expectedFinding": "no finding (the seed is a thin-coverage sample, not in tests/invariants/)"
+    }
+  ],
+  "auditRuleRef": "audit-execution-invariants"
+}

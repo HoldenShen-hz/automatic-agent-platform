@@ -1,35 +1,66 @@
 # YONO Business Detailed Design Document
 
-> **Document Version**: v1.0
-> **Applicable Scope**: YONO Web3 social prediction market business design, product design, model design, system architecture design, operations governance design
-> **Positioning**: A social prediction and probability consensus platform oriented toward Web3, AI, technology, macro and event-driven markets
-> **Core Principles**: Predictable and quantifiable, evidence traceable, comments modelable, markets tradable, risk governable, results reviewable
+> **Document version**: v1.0
+> **Scope**: YONO Web3 social prediction market business design, product design, model design, system architecture design, operations and governance design
+> **Positioning**: A social prediction and probability consensus platform for Web3, AI, technology, macro, and event-driven markets
+> **Core principles**: Quantifiable prediction, traceable evidence, modelable commentary, tradable markets, governable risk, reviewable outcomes
+> **Review and revision**: 2026-06-02, tightened against the current repository state into a "current minimum baseline + target contract / roadmap" dual-track document
 
 ---
+
+# 0.0 Review and Revision Reading Rules
+
+1. This document contains both the current repository's minimum runnable baseline and the YONO target architecture; unless explicitly marked as "current main baseline", default to reading it as a target contract and do not treat it as a factual statement of "the repository already implements this completely".
+2. The current main baseline is determined by `src/domains/yono/index.ts`, `src/domains/yono/yono-model.ts`, and `src/platform/five-plane-interface/api/http-server/yono-routes.ts`.
+3. `Recommended directory`, `Agent list`, `database tables`, `business model`, `compliance strategy`, and `metrics system` are by default design goals or roadmap items and do not represent that the corresponding services, persistence, reporting, or governance closed loops already exist in the repository.
+4. If the current implementation differs from the target contract, the documentation wording should be corrected first and the target state should not be disguised as the current state; only when the repository has a minimum implementation should the item be listed under "current main baseline".
+
+## 0.0.1 Current Main Baseline
+
+The YONO minimum baseline already present in the current repository is as follows:
+
+| Capability | Current Main Baseline |
+|---|---|
+| Data storage | `YonoRepository` stores market/comment/signal/forecast/order/trade/position/dispute/event based on an in-memory `Map` |
+| Markets | Supports minimum lifecycle of create/list/get, `review/open/pause/close/resolve` |
+| Comments | Supports creating comments, automatically extracting the minimum comment signal, and listing comments |
+| Forecasting | Supports explicit probability forecasts `explicit_probability` |
+| Consensus probability | Supports heuristic fusion based on market/comment/forecast |
+| Review / Resolution | Supports minimum `MarketReviewAgent` and `ResolutionAssistAgent` |
+| Trading | Supports minimum order create/cancel; real matching, position maintenance, and settlement ledger are not implemented |
+| Disputes | Supports minimum baseline of dispute submit / list / decide |
+| API | Exposes a minimum set of REST routes, but not the complete product API surface listed in the later chapters of this document |
+| Platform integration | Domain definition, workflow, tool bundle, and minimum plugin binding are registered; a complete mission/task seed, admin console, and metrics/reporting closed loop have not yet formed |
+
+## 0.0.2 Target Contract Boundary
+
+- Object fields, formulas, models, and governance items in sections 3-11 are described according to the target contract; the current main baseline typically implements only a minimum subset of them.
+- The system directory, event envelope, API surface, and database tables in sections 12-16 are recommended architecture, not a current repository inventory.
+- Sections 17-25 are by default a roadmap, operations design, commercialization, and compliance recommendations, and should not be read as "already implemented and effective at runtime".
 
 # 0. One-Sentence Definition
 
 **YONO is a social prediction market platform with "event probability" as its core asset.**
 
-It is not a simple information-flow community, nor a simple prediction product, but unifies:
+It is neither a pure information feed community nor a pure guessing product, but a system that unifies:
 
 - User comments
 - Social signals
 - Expert judgments
 - Market trading prices
 - AI evidence analysis
-- Historical forecast performance
+- Historical prediction performance
 - Group consensus changes
 
-Into explainable, tradable, and calibratable probability judgments.
+into explainable, tradable, and calibratable probability judgments.
 
-The ultimate goal is to answer:
+The end goal is to answer:
 
-> What is the probability of a future event occurring?
+> What is the probability that a future event will occur?
 > Why does this probability change?
-> Which people, which evidence, which comments drove this change?
+> Which people, which evidence, and which comments drive this change?
 > Has the market price already reflected this information?
-> Is the current consensus being manipulated, overheated, or underestimated?
+> Is the current consensus manipulated, overheated, or underestimated?
 
 ---
 
@@ -37,19 +68,19 @@ The ultimate goal is to answer:
 
 ## 1.1 YONO Is Not an Ordinary Prediction Market
 
-The core of traditional prediction markets is:
+The core of a traditional prediction market is:
 
-> Users buy YES / NO, market price represents event probability.
+> Users buy YES / NO, and the market price represents the event probability.
 
 The core of YONO is:
 
-> Market price is only one of the sources of probability. Community comments, user reputation, evidence quality, AI analysis and trading behavior together form the YONO Consensus Probability.
+> Market price is only one source of probability. Community comments, user reputation, evidence quality, AI analysis, and trading behavior together form the YONO Consensus Probability.
 
-In other words, YONO not only cares about "what is the current YES price", but also answers:
+In other words, YONO is not only concerned with "what is the current YES price", but also answers:
 
 - Why does the market think YES is 60%?
 - Does the comment section support this price?
-- Do high-reputation users discover new signals early?
+- Did high-reputation users spot new signals early?
 - Is the current price distorted by wash trading, sentiment, or low liquidity?
 - Is the AI evidence model consistent with the market price?
 - Is there a probability mismatch worth betting on?
@@ -64,16 +95,16 @@ YONO's long-term vision is to become:
 
 It can cover:
 
-| Domain | Example |
+| Domain | Examples |
 |---|---|
-| Web3 | Whether a project issues a token, whether an airdrop occurs, whether a protocol launches, whether TVL reaches a certain threshold |
-| AI | Whether a certain model is released, whether a benchmark is broken through, whether a certain company open-sources a model |
-| Technology | Product release time, company mergers and acquisitions, regulatory events |
-| Finance Macro | Interest rates, ETFs, stock price ranges, policy changes |
-| Sports Entertainment | Match results, awards, box office |
-| Social Topics | Public event results, voting, policy progress |
+| Web3 | Whether a project launches a token, whether an airdrop happens, whether a protocol goes live, whether TVL reaches a certain threshold |
+| AI | Whether a certain model is released, whether a benchmark is broken, whether a company open-sources a model |
+| Technology | Product release dates, M&A, regulatory events |
+| Financial macro | Interest rates, ETFs, stock price ranges, policy changes |
+| Sports and entertainment | Match results, awards, box office |
+| Social issues | Public event outcomes, votes, policy progress |
 
-The first phase is recommended to focus on Web3, because Web3 users naturally accept market expression, prediction, trading, wallet identity, on-chain reputation and event speculation.
+The first phase suggests focusing on Web3, because Web3 users naturally accept market expression, prediction, trading, wallet identity, on-chain reputation, and event speculation.
 
 ---
 
@@ -83,13 +114,13 @@ The first phase is recommended to focus on Web3, because Web3 users naturally ac
 
 | User Type | Main Need | Value Provided by YONO |
 |---|---|---|
-| Ordinary prediction user | Want to judge event probability, participate in discussion, bet | Market, comments, AI analysis, probability explanation |
-| High-reputation predictor | Want to build reputation, output views, earn income | Reputation, Forecast Track Record, revenue sharing |
-| Web3 project researcher | Want to discover early signals | Comment signals, on-chain signals, market mismatch |
-| KOL / Analyst | Want to spread views and verify accuracy | Quantifiable prediction records, community influence |
-| Liquidity provider | Want to earn trading fees, make markets | Market heat, risk scoring, liquidity incentives |
-| Project party | Want to understand community expectations | Community signals, dispute monitoring, narrative changes |
-| Institution / Research team | Want to do event-driven research | API, data panel, historical samples, probability series |
+| Ordinary prediction user | Wants to judge event probability, discuss, and bet | Market, comments, AI analysis, probability explanation |
+| High-reputation predictor | Wants to build reputation, output views, and earn income | Reputation, forecast track record, revenue share |
+| Web3 project researcher | Wants to discover early signals | Comment signals, on-chain signals, market mispricing |
+| KOL / analyst | Wants to spread views and verify accuracy | Quantifiable prediction records, community influence |
+| Liquidity provider | Wants to earn trading fees and make markets | Market heat, risk score, liquidity incentives |
+| Project party | Wants to understand community expectations | Community signals, dispute monitoring, narrative change |
+| Institution / research team | Wants to do event-driven research | API, data panel, historical samples, probability series |
 
 ---
 
@@ -98,37 +129,40 @@ The first phase is recommended to focus on Web3, because Web3 users naturally ac
 ### Path A: Ordinary User Participates in Prediction
 
 1. Browse trending markets
-2. View current YES / NO prices
-3. Read AI evidence summary
+2. View the current YES / NO prices
+3. Read the AI evidence summary
 4. Read community comments and high-reputation user views
 5. Buy YES or NO
-6. Follow probability changes
+6. Watch the probability change
 7. Earn or lose after event settlement
-8. User prediction performance enters reputation system
+8. User prediction performance enters the reputation system
 
 ### Path B: Research-Oriented User Looks for Opportunities
 
-1. Enter market discovery page
-2. Sort by "market price vs community signal divergence"
-3. Find markets with low liquidity but high evidence signals
+1. Enter the market discovery page
+2. Sort by "market price vs community signal deviation"
+3. Find low-liquidity but high-evidence-signal markets
 4. Read evidence-backed comments
 5. View AI Probability and Comment Probability
-6. Judge whether there is mispricing
-7. Bet or publish analysis
-8. Subsequent review of accuracy
+6. Judge whether mispricing exists
+7. Place a bet or publish an analysis
+8. Review accuracy afterwards
 
 ### Path C: KOL Builds Influence
 
-1. Express probability views on a market
-2. Comments are structured into stance/evidence/signal
-3. Views are incorporated into Community Signal
-4. If result is correct, increase calibration/reputation
+1. Post a probabilistic view on a market
+2. The comment is structured into stance/evidence/signal
+3. The view is incorporated into Community Signal
+4. If the result is correct, calibration/reputation increases
 5. High-reputation comments get higher ranking and weight
-6. Can form "Predictor Home Page" and "Historical Hit Rate"
+6. Can form a "predictor home page" and "historical hit rate"
 
 ---
 
 # 3. Core Business Objects
+
+> Review revision notes (2026-06-02)
+> This chapter shows the superset of the object target contract. The current main baseline implements only the minimum schema and minimum population logic: some optional fields remain in the schema, but the create/update path may not write them; advanced objects such as `YonoUserReputation`, forecast settlement, and structured comment signal extension fields are still target design.
 
 ## 3.1 Market
 
@@ -248,7 +282,7 @@ type YonoComment = {
 
 ## 3.4 Forecast
 
-Users can explicitly submit probability predictions, not just buy/sell YES/NO.
+Users can explicitly submit probability forecasts, not just buy/sell YES/NO.
 
 ```ts
 type UserForecast = {
@@ -319,22 +353,22 @@ type YonoUserReputation = {
 
 ## 4.1 Home / Discovery
 
-The home page goal is not to simply display popular markets, but to help users discover events "worth predicting".
+The home page goal is not to simply show trending markets, but to help users discover events "worth predicting".
 
 ### Core Modules
 
 | Module | Description |
 |---|---|
-| Trending Markets | Currently most discussed and traded markets |
-| Probability Movers | Markets with largest probability changes |
-| Community Signal Divergence | Markets with largest divergence between community signals and market prices |
-| High Reputation Picks | Markets highly regarded by high-reputation predictors |
-| Evidence Emerging | Markets with rapidly emerging new evidence |
+| Trending Markets | The most actively discussed and traded markets right now |
+| Probability Movers | The markets with the largest probability changes |
+| Community Signal Divergence | Markets with the largest deviation between community signal and market price |
+| High Reputation Picks | Markets where high-reputation predictors are concentrated |
+| Evidence Emerging | Markets where new evidence is rapidly emerging |
 | Manipulation Warning | Markets suspected of wash trading or abnormal trading |
 | Closing Soon | Markets about to close |
 | Newly Created | Newly created markets |
 
-### Recommended Ranking Signal
+### Recommended Ranking Signals
 
 ```text
 market_score =
@@ -351,12 +385,12 @@ market_score =
 
 ## 4.2 Market Detail Page
 
-The market detail page is the product core.
+The market detail page is the core of the product.
 
 ### Information That Must Be Displayed
 
-1. Market title and settlement rules
-2. YES / NO current prices
+1. Market title and resolution rules
+2. YES / NO current price
 3. YONO Consensus Probability
 4. Market Probability
 5. Comment Signal Probability
@@ -366,57 +400,57 @@ The market detail page is the product core.
 9. Evidence timeline
 10. Trading entry
 11. Risk warning
-12. Settlement and dispute rules
+12. Resolution and dispute rules
 
 ### Recommended Layout
 
 ```text
-┌──────────────────────────────────────────────┐
-│ Market Title                                  │
-│ Resolution Criteria                           │
-├──────────────────────────────────────────────┤
-│ YES Price | NO Price | Volume | Liquidity     │
-├──────────────────────────────────────────────┤
-│ YONO Consensus Probability                    │
-│ - Market: 52%                                 │
-│ - Comment Signal: 61%                         │
-│ - AI Evidence: 58%                            │
-│ - Expert: 64%                                 │
-├──────────────────────────────────────────────┤
-│ Probability Chart / Timeline                  │
-├──────────────────────┬───────────────────────┤
-│ Evidence Timeline    │ Community Signal       │
-│ AI Summary           │ High-rep Comments      │
-├──────────────────────┴───────────────────────┤
-│ Comments / Forecasts / Trade Panel            │
-└──────────────────────────────────────────────┘
++----------------------------------------------+
+| Market Title                                  |
+| Resolution Criteria                           |
++----------------------------------------------+
+| YES Price | NO Price | Volume | Liquidity     |
++----------------------------------------------+
+| YONO Consensus Probability                    |
+| - Market: 52%                                 |
+| - Comment Signal: 61%                         |
+| - AI Evidence: 58%                            |
+| - Expert: 64%                                 |
++----------------------------------------------+
+| Probability Chart / Timeline                  |
++----------------------+-----------------------+
+| Evidence Timeline    | Community Signal       |
+| AI Summary           | High-rep Comments      |
++----------------------+-----------------------+
+| Comments / Forecasts / Trade Panel            |
++----------------------------------------------+
 ```
 
 ---
 
 ## 4.3 Comment Section
 
-The comment section is not an ordinary comment flow, but a prediction signal system.
+The comment section is not an ordinary comment feed, but a prediction signal system.
 
-### Comment Ranking Modes
+### Comment Sort Modes
 
 | Mode | Description |
 |---|---|
 | Top Evidence | Highest evidence quality |
 | High Reputation | High-reputation users first |
-| Newest | Newest comments |
-| Bullish | Support YES |
-| Bearish | Support NO |
-| Controversial | High divergence |
-| Signal Moving | Greatest impact on probability changes |
+| Newest | Latest comments |
+| Bullish | Supporting YES |
+| Bearish | Supporting NO |
+| Controversial | High disagreement |
+| Signal Moving | Greatest impact on probability change |
 
-### Display for Each Comment
+### Display Per Comment
 
 ```text
-User A · Reputation 82 · Web3 Skill 91
-Stance: YES · Evidence Quality: High · Manipulation Risk: Low
+User A - Reputation 82 - Web3 Skill 91
+Stance: YES - Evidence Quality: High - Manipulation Risk: Low
 
-"Official GitHub merged the token-claim module yesterday, I think the probability of issuing a token before June is at least 70%."
+"The official GitHub merged the token-claim module yesterday, I think the probability of launching a token before June is at least 70%."
 
 Extracted Claim:
 - GitHub merged token-claim module
@@ -439,45 +473,45 @@ Market creation must be structured to avoid ambiguity.
 | description | Background description |
 | category | Category |
 | outcome type | binary/multi/scalar |
-| resolution criteria | Clear settlement criteria |
-| close time | Stop trading time |
-| resolution source | Settlement source |
+| resolution criteria | Clear resolution criteria |
+| close time | Trading stop time |
+| resolution source | Resolution source |
 | initial liquidity | Initial liquidity |
 | tags | Tags |
 | risk disclosure | Risk description |
 
 ### Market Creation Review
 
-YONO must avoid ambiguous, unsettleable, illegal or manipulative markets.
+YONO must avoid ambiguous, unresolvable, illegal, or manipulative markets.
 
 Review items:
 
-- Whether there are clear settlement criteria
+- Whether there is a clear resolution criterion
 - Whether there is a clear time window
 - Whether it can be verified by public evidence
 - Whether it involves sensitive personal information
-- Whether there is illegal finance, gambling or restricted content risk
+- Whether it carries illegal financial, gambling, or restricted content risk
 - Whether it can be easily manipulated by the project party
-- Whether it duplicates existing markets
-- Whether there is ambiguity or multiple interpretations
+- Whether it duplicates an existing market
+- Whether it has ambiguity or multiple interpretations
 
 ---
 
 ## 4.5 Predictor Home Page
 
-Each user can form their own prediction profile.
+Every user can form their own prediction profile.
 
 ### Display Content
 
 | Module | Description |
 |---|---|
-| Reputation Score | Comprehensive reputation |
-| Category Skill | Ability by field |
+| Reputation Score | Overall reputation |
+| Category Skill | Capability by domain |
 | Calibration Curve | Probability calibration curve |
 | Historical Forecasts | Historical predictions |
-| Early Signal Record | Whether often earlier than market |
+| Early Signal Record | Whether often ahead of the market |
 | ROI / PnL | Trading returns |
-| Community Impact | Impact of comments on market signals |
+| Community Impact | How much the comments affect market signal |
 | Manipulation Risk | Anti-manipulation score |
 
 ---
@@ -486,19 +520,19 @@ Each user can form their own prediction profile.
 
 ## 5.1 Market Probability
 
-Market Probability comes from trading price.
+Market Probability comes from the trading price.
 
 ```text
 Market Probability ≈ YES Price
 ```
 
-But it needs adjustment:
+But adjustments are needed:
 
-- Price is unstable when liquidity is low
+- The price is unstable when liquidity is low
 - Large holders can manipulate
-- Price is distorted when bid-ask spread is too large
-- There may be insider information close to settlement
-- AMM curves may bring price deviation
+- Prices are distorted when the bid-ask spread is too wide
+- Insider information may exist near settlement
+- AMM curves can introduce price bias
 
 Therefore Market Probability cannot directly equal the true probability, but is an input signal.
 
@@ -526,12 +560,12 @@ Core inputs:
 
 ## 5.3 AI Evidence Probability
 
-AI Evidence Probability comes from AI analysis of public evidence.
+AI Evidence Probability comes from the AI's analysis of public evidence.
 
 Inputs include:
 
 - Market description
-- Settlement rules
+- Resolution rules
 - Official announcements
 - News
 - On-chain data
@@ -560,7 +594,7 @@ type AiEvidenceAssessment = {
 
 Expert Probability comes from high-reputation users or certified analysts.
 
-Cannot simply average, but should weight according to historical performance.
+It cannot be a simple average, but should be weighted by historical performance.
 
 ```text
 expert_probability =
@@ -588,13 +622,13 @@ Different scenarios have different weights:
 
 | Market Type | Market | Comment | AI Evidence | Expert |
 |---|---:|---:|---:|---:|
-| High liquidity market | high | low | medium | medium |
-| Low liquidity Web3 market | medium | high | high | medium |
-| Strong evidence market | medium | medium | high | medium |
-| KOL-driven market | medium | high | medium | high |
-| Easily manipulable market | downweight | downweight | upweight | upweight |
+| High-liquidity market | High | Low | Medium | Medium |
+| Low-liquidity Web3 market | Medium | High | High | Medium |
+| Strong-evidence market | Medium | Medium | High | Medium |
+| KOL-driven market | Medium | High | Medium | High |
+| Easily manipulated market | Down-weighted | Down-weighted | Up-weighted | Up-weighted |
 
-Production version should use model learning dynamic weights, not fixed weights.
+The production version should use models to learn dynamic weights, not fixed weights.
 
 ---
 
@@ -602,9 +636,9 @@ Production version should use model learning dynamic weights, not fixed weights.
 
 ## 6.1 Definition
 
-**Social Forecasting Engine** is YONO's core differentiated capability.
+The **Social Forecasting Engine** is YONO's core differentiating capability.
 
-It is responsible for converting comments, users, interactions, social graphs and market states into probability predictions.
+It is responsible for converting comments, users, interactions, social graphs, and market state into probability forecasts.
 
 ### Core Tasks
 
@@ -617,7 +651,7 @@ It is responsible for converting comments, users, interactions, social graphs an
 7. Identify manipulation
 8. Output probability
 9. Calibrate probability
-10. Explain probability changes
+10. Explain probability change
 
 ---
 
@@ -688,7 +722,7 @@ type CommentSignal = {
 
 ## 6.4 User Reputation Weighting
 
-User weight recommendation:
+Recommended user weight:
 
 ```text
 user_weight =
@@ -699,21 +733,21 @@ user_weight =
 + anti_manipulation_score * 0.10
 ```
 
-### Metric Explanation
+### Indicator Explanations
 
-| Metric | Description |
+| Indicator | Description |
 |---|---|
 | reputation_score | User's overall reputation |
 | category_skill | User's capability in the current domain |
-| calibration_score | Whether user's probability prediction is calibrated |
-| early_signal_score | Whether often discovers changes before the market |
-| anti_manipulation_score | Whether not like a wash trading, bot, or manipulative account |
+| calibration_score | Whether the user's probability predictions are calibrated |
+| early_signal_score | Whether they often spot changes ahead of the market |
+| anti_manipulation_score | Whether they don't look like wash trading, bot, or manipulation accounts |
 
 ---
 
 ## 6.5 Temporal Aggregation
 
-Aggregate by multiple time windows:
+Aggregate over multiple time windows:
 
 - 1h
 - 6h
@@ -731,7 +765,7 @@ comment_signal =
   × confidence_i
   × novelty_score_i
   × time_decay_i
-  × anti-spam_weight_i)
+  × anti_spam_weight_i)
 ```
 
 stance_score:
@@ -753,14 +787,14 @@ Comment prediction is naturally susceptible to manipulation, so an anti-manipula
 
 | Signal | Risk |
 |---|---|
-| Large number of new accounts with same-direction comments in a short time | bot |
-| Highly similar comment text | template spam |
-| Low-reputation accounts concentrated likes | fake popularity |
-| KOL's post associated with wallet position building | potential manipulation |
-| Comments suddenly unanimously bullish after price rise | chasing sentiment |
-| Inducing comments appear close to settlement | settlement manipulation |
-| Multiple accounts with same device/IP behavior | sybil attack |
-| Strong correlation between comments and trading addresses | coordinated manipulation |
+| Many new accounts commenting in the same direction in a short time | Bot accounts |
+| Highly similar comment text | Template spam |
+| Concentrated likes from low-reputation accounts | Fake heat |
+| KOL's associated wallet opens a position before posting | Potential manipulation |
+| Comments suddenly turn unanimously bullish after the price rises | Trend-chasing sentiment |
+| Inducing comments appear near settlement | Settlement manipulation |
+| Multiple accounts from the same device / same IP | Sybil attack |
+| Strong correlation between comment accounts and trade addresses | Coordinated manipulation |
 
 ### Output
 
@@ -783,22 +817,22 @@ type ManipulationAssessment = {
 
 # 7. Trading System Design
 
-## 7.1 Trading Mode Selection
+## 7.1 Trading Mode Choice
 
-YONO can be implemented in stages.
+YONO can be implemented in phases.
 
 ### MVP
 
-Recommend using centralized order/points/simulated trading or internal ledger, not going on-chain immediately.
+Recommend using a centralized order / points / simulated trading or internal ledger, and not going on-chain immediately.
 
 Advantages:
 
-- Quickly validate product
+- Quickly validate the product
 - Reduce compliance and on-chain complexity
-- Easy for risk control
+- Easy to control risk
 - Easy to fix settlement issues
 
-### Second Stage
+### Second Phase
 
 Introduce real funds or on-chain settlement.
 
@@ -806,13 +840,13 @@ Optional modes:
 
 | Mode | Advantages | Risks |
 |---|---|---|
-| Centralized ledger | fast, low cost | trust the platform |
-| AMM | continuous liquidity | complex price curve design |
-| Order Book | good price discovery | needs liquidity |
-| On-chain contract | transparent and verifiable | compliance, gas, attack surface |
-| Hybrid mode | both experience and transparency | complex architecture |
+| Centralized ledger | Fast, low cost | Trust the platform |
+| AMM | Continuous liquidity | Price curve design is complex |
+| Order Book | Good price discovery | Needs liquidity |
+| On-chain contract | Transparent and verifiable | Compliance, Gas, attack surface |
+| Hybrid mode | Balances experience and transparency | Architecture is complex |
 
-Recommended path:
+Recommended roadmap:
 
 ```text
 Phase 1: off-chain points / paper trading
@@ -895,20 +929,20 @@ type YonoTrade = {
 
 ---
 
-# 8. Settlement System Design
+# 8. Resolution System Design
 
-## 8.1 Settlement Principles
+## 8.1 Resolution Principles
 
-Each market must clearly define at creation time:
+Every market must define at creation time:
 
-- Settlement time
-- Settlement source
-- Settlement criteria
+- Resolution time
+- Resolution source
+- Resolution criteria
 - Exception handling
 - Dispute window
 - Cancellation conditions
 
-If clear settlement is not possible, the market should not go live.
+If it cannot be clearly resolved, the market should not go live.
 
 ---
 
@@ -943,7 +977,7 @@ type ResolutionPolicy = {
 
 ---
 
-## 8.3 Settlement Process
+## 8.3 Resolution Flow
 
 ```mermaid
 flowchart TD
@@ -999,20 +1033,20 @@ type MarketDispute = {
 
 | Risk | Description | Handling |
 |---|---|---|
-| Ambiguity Risk | Market question is not clear | Reject at creation stage or require modification |
-| Resolution Risk | Cannot be objectively settled | Mandatory manual review |
-| Manipulation Risk | Abnormal comments/trading | Downweight, freeze, manual review |
-| Insider Risk | Event party can control outcome | Mark high risk |
+| Ambiguity Risk | Market question is not clear | Reject or require revision at the creation stage |
+| Resolution Risk | Cannot be resolved objectively | Force manual review |
+| Manipulation Risk | Abnormal comment / trading | Down-weight, freeze, manual review |
+| Insider Risk | The event party can control the outcome | Mark as high risk |
 | Regulatory Risk | Involves regulatory sensitivity | Prohibit or restrict |
-| Liquidity Risk | Price easily manipulated | Show risk, limit position |
-| Oracle Risk | Data source unreliable | Multi-source verification |
-| User Harm Risk | May induce high-risk behavior | Limit, warn, cool-off period |
+| Liquidity Risk | Price can be easily manipulated | Show risk, limit position |
+| Oracle Risk | Data source is unreliable | Multi-source verification |
+| User Harm Risk | May induce high-risk behavior | Limit, warn, cool-down |
 
 ---
 
 ## 9.2 Market Review Rules
 
-Market creation enters review queue:
+Market creation enters the review queue:
 
 ```text
 Market Draft
@@ -1024,14 +1058,14 @@ Market Draft
 
 Automated review checks:
 
-- Whether contains illegal content
-- Whether involves personal privacy
-- Whether has clear time boundary
-- Whether has clear outcome
-- Whether has objective evidence source
-- Whether duplicates existing market
-- Whether may be unilaterally manipulated
-- Whether belongs to restricted financial market
+- Whether it contains illegal content
+- Whether it involves personal privacy
+- Whether there are clear time boundaries
+- Whether there is a clear outcome
+- Whether there is an objective evidence source
+- Whether it duplicates an existing market
+- Whether it can be manipulated by a single party
+- Whether it belongs to a restricted financial market
 
 ---
 
@@ -1042,11 +1076,11 @@ Automated review checks:
 | KYC / identity tier | Tiered authentication |
 | deposit limit | Deposit limit |
 | position limit | Position limit |
-| market creation limit | Market creation limit |
+| market creation limit | Limit on market creation |
 | suspicious behavior | Abnormal behavior detection |
-| collusion detection | Coordinated behavior detection |
-| rate limit | Comment, trade, create rate limit |
-| account reputation | Reputation affects permission |
+| collusion detection | Collusion detection |
+| rate limit | Comment, trade, create rate limiting |
+| account reputation | Reputation affects permissions |
 
 ---
 
@@ -1054,13 +1088,13 @@ Automated review checks:
 
 - Maximum position per market
 - Maximum loss per user
-- Slippage warning for large orders in low liquidity market
-- Pause for abnormal price fluctuations
+- Slippage warning for large orders in low-liquidity markets
+- Pause on abnormal price volatility
 - High-frequency wash trading limit
 - Self-trade detection
-- KOL post and trade correlation detection
-- Market creator trade restriction
-- Event-related party trade restriction
+- Detection of correlation between KOL posting and trading
+- Trading restrictions on market creators
+- Trading restrictions on event-related parties
 
 ---
 
@@ -1068,7 +1102,7 @@ Automated review checks:
 
 ## 10.1 Comment Governance
 
-The comment section must be governed:
+The comment section must be governed against:
 
 - spam
 - harassment
@@ -1092,17 +1126,17 @@ visible
 
 ## 10.2 AI-Assisted Governance
 
-AI can be used for:
+AI can be used to:
 
-- Detecting violating comments
-- Extracting claims
-- Identifying irony/inducement
-- Judging evidence quality
-- Detecting duplicate templates
-- Identifying market manipulation narratives
-- Generating review suggestions
+- Detect violating comments
+- Extract claims
+- Identify irony / inducement
+- Judge evidence quality
+- Detect repeated templates
+- Identify market manipulation narratives
+- Generate review suggestions
 
-But final high-risk content should have manual review.
+But the final high-risk content should have manual review.
 
 ---
 
@@ -1113,20 +1147,20 @@ But final high-risk content should have manual review.
 | Data | Purpose |
 |---|---|
 | Historical markets | Train outcome prediction |
-| Comments | Train stance/evidence |
-| User prediction records | Train reputation |
+| Comments | Train stance / evidence |
+| User forecast records | Train reputation |
 | Trading behavior | Train market signal |
-| Settlement results | Labels |
+| Resolution results | Labels |
 | Dispute records | Risk model |
 | Report records | Content governance |
 | On-chain data | Web3 evidence |
-| External news/announcements | AI evidence |
+| External news / announcements | AI evidence |
 
 ---
 
 ## 11.2 Sample Construction
 
-Take snapshots by market time:
+Cut snapshots by market time:
 
 ```text
 T-30d
@@ -1162,19 +1196,19 @@ type ForecastTrainingSample = {
 First version recommendation:
 
 ```text
-LLM / small model comment structuring
-+ LightGBM / XGBoost probability prediction
-+ Isotonic Regression probability calibration
+LLM / small model for comment structuring
++ LightGBM / XGBoost for probability prediction
++ Isotonic Regression for probability calibration
 + Rule-based anti-manipulation detection
 ```
 
 Advantages:
 
 - Explainable
-- Fast training
+- Fast to train
 - Low data requirements
 - Easy to debug
-- Easy to deploy
+- Easy to launch
 
 ---
 
@@ -1197,10 +1231,10 @@ Comment Encoder
 | Model | Function |
 |---|---|
 | Comment Understanding Model | Comment understanding |
-| Stance Extraction Model | YES/NO/Neutral |
+| Stance Extraction Model | YES / NO / Neutral |
 | Evidence Quality Model | Judge evidence quality |
 | Reputation Model | User credibility |
-| Graph Model | User relationships/collusion groups |
+| Graph Model | User relationships / manipulation gangs |
 | Temporal Model | Time series trends |
 | Forecast Model | Output probability |
 | Calibration Model | Probability calibration |
@@ -1212,16 +1246,16 @@ Comment Encoder
 
 | Metric | Description |
 |---|---|
-| Brier Score | Probability prediction quality |
+| Brier Score | Probability forecast quality |
 | Log Loss | High-confidence error penalty |
 | ECE | Probability calibration error |
-| AUC | Distinguish YES/NO |
-| CLV | Whether better than market price |
-| Market Outperformance | Whether exceeds benchmark market price |
-| Early Signal Score | Whether trend discovered early |
-| Manipulation Robustness | Anti-manipulation capability |
-| Category Performance | Performance by field |
-| Resolver Accuracy | Settlement accuracy |
+| AUC | Distinguish YES / NO |
+| CLV | Whether it beats the market price |
+| Market Outperformance | Whether it beats the baseline market price |
+| Early Signal Score | Whether it discovers trends early |
+| Manipulation Robustness | Anti-manipulation ability |
+| Category Performance | Performance by domain |
+| Resolver Accuracy | Resolution accuracy |
 | Dispute Rate | Market dispute rate |
 
 ---
@@ -1318,20 +1352,20 @@ flowchart TD
 
 ## 12.2 Relationship with Automatic Agent Platform
 
-YONO can serve as a business domain of the Automatic Agent Platform, but it is not recommended to deeply couple the core runtime from the beginning.
+YONO can be a business domain of the Automatic Agent Platform, but it is not recommended to be tightly coupled with the core runtime from the start.
 
 It is recommended to adopt:
 
 ```text
 YONO Product Domain
 → Use the platform's IAM / Policy / Event / Evidence / Observability
-→ Use Agent Runtime for AI Evidence, Social Forecast, Resolution Assist
-→ Trading, market, comments, settlement remain as business domain services
+→ Use the Agent Runtime for AI Evidence, Social Forecast, Resolution Assist
+→ Trading, market, comment, and resolution stay as business domain services
 ```
 
-### Correspondence
+### Mapping
 
-| YONO Module | Reusable Capabilities of Automatic Agent Platform |
+| YONO Module | Reusable Capability of Automatic Agent Platform |
 |---|---|
 | Market Review | Policy Engine / HITL |
 | AI Evidence | Model Gateway / Harness |
@@ -1346,6 +1380,9 @@ YONO Product Domain
 ---
 
 ## 12.3 Recommended Directory
+
+> Review revision notes (2026-06-02)
+> This is the target split directory, not a fact of the current repository directory. The current YONO implementation in the repository is still concentrated in `src/domains/yono/index.ts` and `src/domains/yono/yono-model.ts`, centered on a minimum runnable baseline.
 
 ```text
 src/domains/yono/
@@ -1409,18 +1446,21 @@ src/domains/yono/
 
 # 13. Agent Design
 
-## 13.1 What Agents Should YONO Have
+## 13.1 What Agents YONO Should Have
+
+> Review revision notes (2026-06-02)
+> This table is the target agent family list. The current main baseline only implements three minimum capabilities: `Market Review Agent`, `Social Forecast Agent`, and `Resolution Assist Agent`; the rest are still future extensions.
 
 | Agent | Responsibility |
 |---|---|
-| Market Review Agent | Review whether market can go live |
+| Market Review Agent | Review whether the market can go live |
 | Social Forecast Agent | Generate probability from comments and user behavior |
 | Evidence Research Agent | Collect and summarize external evidence |
-| Manipulation Detection Agent | Detect wash trading, coordinated manipulation |
-| Resolution Assist Agent | Help settle market |
-| Dispute Review Agent | Assist dispute processing |
+| Manipulation Detection Agent | Detect wash trading and coordinated manipulation |
+| Resolution Assist Agent | Help resolve markets |
+| Dispute Review Agent | Assist dispute handling |
 | Reputation Audit Agent | Analyze user reputation and abnormal behavior |
-| Notification Agent | Generate user reminders |
+| Notification Agent | Generate user notifications |
 | Recommendation Agent | Recommend markets and comments |
 
 ---
@@ -1464,15 +1504,15 @@ type SocialForecastOutput = {
 
 ## 13.3 Market Review Agent
 
-Check:
+Checks:
 
-- Whether market can be settled
-- Whether outcome is clear
-- Whether has clear deadline
-- Whether has compliance risk
-- Whether may induce manipulation
-- Whether duplicates
-- Whether requires manual review
+- Whether the market can be resolved
+- Whether the outcome is clear
+- Whether there is a clear deadline
+- Whether there is compliance risk
+- Whether it may induce manipulation
+- Whether it duplicates existing markets
+- Whether manual approval is needed
 
 Output:
 
@@ -1493,7 +1533,7 @@ type MarketReviewResult = {
 Input:
 
 - Market rules
-- Evidence source
+- Evidence sources
 - Comment disputes
 - External data
 - oracle data
@@ -1515,6 +1555,9 @@ type ResolutionDraft = {
 ---
 
 # 14. Event System
+
+> Review revision notes (2026-06-02)
+> This chapter describes the target event-driven contract. The current main baseline's `YonoEventEnvelope` contains only five fields `eventId / eventType / aggregateId / occurredAt / payload`, and has not yet been extended to the complete envelope metadata listed later in this chapter.
 
 YONO should be an event-driven system.
 
@@ -1570,6 +1613,9 @@ type YonoEventEnvelope<T> = {
 ---
 
 # 15. API Design
+
+> Review revision notes (2026-06-02)
+> This chapter lists the target product API surface. The current main baseline only exposes minimum market, comment, forecast, consensus, order, dispute, and resolution-draft endpoints, and does not yet cover comment reaction/report, forecast record, dispute decision external routes, the complete trading admin, or moderation APIs.
 
 ## 15.1 Market API
 
@@ -1633,6 +1679,9 @@ POST /api/v1/yono/disputes/:disputeId/decision
 ---
 
 # 16. Database Table Design
+
+> Review revision notes (2026-06-02)
+> This chapter is the recommended persistence model. The current main baseline still uses an in-memory repository, and these PostgreSQL table definitions should not be understood as migrations or SQL schema already committed in the repository.
 
 ## 16.1 markets
 
@@ -1783,40 +1832,43 @@ CREATE TABLE yono_user_reputation (
 
 # 17. Operations Design
 
-## 17.1 Cold Start Strategy
+> Review revision notes (2026-06-02)
+> This chapter is by default an operations roadmap and growth design; leaderboards, badges, rewards, shareable cards, KOL pages, and other capabilities are not yet implemented in the current main baseline.
 
-YONO's biggest cold start difficulty is:
+## 17.1 Cold-Start Strategy
+
+The biggest challenge for YONO's cold start is:
 
 - Not enough markets
 - Not enough comments
 - Not enough liquidity
 - Not enough historical reputation
 
-Recommend staging:
+It is recommended to proceed in phases:
 
-### Stage 1: Curated Markets
+### Phase 1: Curated Markets
 
-Officially create high-quality markets:
+The official party creates high-quality markets:
 
-- Web3 token issuance
+- Web3 token launches
 - Airdrops
-- Project roadmap
+- Project roadmaps
 - AI model releases
 - Crypto regulatory events
 
-### Stage 2: Invite High-Quality Predictors
+### Phase 2: Invite High-Quality Predictors
 
 Invite:
 
 - Web3 researchers
 - KOLs
-- Community active users
+- Active community users
 - Data analysts
 - Alpha group members
 
-### Stage 3: Points-Based Prediction
+### Phase 3: Points-Based Prediction
 
-Don't use real money first, use:
+First, do not use real money; use:
 
 - points
 - reputation
@@ -1824,12 +1876,12 @@ Don't use real money first, use:
 - badges
 - rewards
 
-### Stage 4: Introduce Trading Incentives
+### Phase 4: Introduce Trading Incentives
 
 - LP incentives
-- Prediction competitions
+- Prediction contests
 - High-quality comment rewards
-- Correct early prediction rewards
+- Early-correct-prediction rewards
 
 ---
 
@@ -1837,12 +1889,12 @@ Don't use real money first, use:
 
 | Mechanism | Description |
 |---|---|
-| Shareable Market Card | Share market probability card |
+| Shareable Market Card | Shareable market probability card |
 | Prediction Badge | User prediction badge |
-| Leaderboard | Prediction leaderboard |
+| Leaderboard | Prediction ranking |
 | Streak | Consecutive accurate predictions |
-| Market Creator Reward | Quality market creation reward |
-| Evidence Reward | High-quality evidence comment reward |
+| Market Creator Reward | High-quality market creation reward |
+| Evidence Reward | Reward for high-quality evidence comments |
 | Referral | Invitation reward |
 | KOL Page | KOL prediction home page |
 
@@ -1852,19 +1904,22 @@ Don't use real money first, use:
 
 Recommendation dimensions:
 
-- User followed domain
+- User-followed domains
 - User historical predictions
-- Market popularity
-- Price changes
-- Comment signal changes
+- Market heat
+- Price change
+- Comment signal change
 - High-reputation user participation
-- Approaching settlement
+- Closing soon
 - Degree of dispute
 - Potential mispricing
 
 ---
 
 # 18. Business Model
+
+> Review revision notes (2026-06-02)
+> This chapter belongs to commercialization planning and does not represent that trading fees, analytics subscriptions, API billing, or sponsored markets already exist in the current repository.
 
 ## 18.1 Revenue Sources
 
@@ -1874,17 +1929,17 @@ Recommendation dimensions:
 | Market Creation Fee | Market creation fee |
 | Liquidity Fee Share | Liquidity fee share |
 | Premium Analytics | Premium analytics subscription |
-| API Access | Data API charge |
+| API Access | Data API paid access |
 | KOL Tools | KOL professional tools |
-| Enterprise Dashboard | Enterprise/project party intelligence panel |
+| Enterprise Dashboard | Enterprise / project intelligence panel |
 | Sponsored Market | Compliant sponsored market |
 | Data Products | Historical prediction dataset |
 
 ---
 
-## 18.2 Highest Priority Commercialization Path
+## 18.2 Top-Priority Commercialization Path
 
-Recommended priority:
+Suggested priority:
 
 1. Premium analytics subscription
 2. Trading fees
@@ -1897,88 +1952,94 @@ Reasons:
 
 - Prediction markets themselves have compliance complexity
 - Data and analytics products are easier to commercialize first
-- Community signal models can become independent selling points
+- The community signal model can become an independent selling point
 - Web3 project parties are willing to pay for market sentiment and community predictions
 
 ---
 
-# 19. Compliance Risk
+# 19. Compliance Risks
 
-One of YONO's biggest risks is compliance.
+> Review revision notes (2026-06-02)
+> This chapter is a compliance design recommendation. The current main baseline only expresses a conservative direction through the `points_only` trading mode and the minimum review/risk fields; geographic restrictions, real-money/withdrawal toggles, KYC tiers, and policy enforcement have not yet formed runtime enforcement.
 
-## 19.1 Issues That Must Be Paid Attention To
+One of the biggest risks for YONO is compliance.
 
-- Whether constitutes gambling
-- Whether constitutes financial derivatives
-- Whether involves securities
-- Whether real money trading is allowed
-- Whether US/China/EU users are supported
+## 19.1 Issues That Must Be Addressed
+
+- Whether it constitutes gambling
+- Whether it constitutes a financial derivative
+- Whether it involves securities
+- Whether real-money trading is allowed
+- Whether US / China / EU users are supported
 - Whether KYC is required
-- Whether geographical restrictions are required
-- Whether involves minors
-- Whether involves politics/elections/sports betting
-- Whether involves insider information
+- Whether geographic restrictions are needed
+- Whether minors are involved
+- Whether politics / elections / sports betting are involved
+- Whether inside information is involved
 
 ## 19.2 Recommended Strategy
 
-First phase recommendation:
+The first phase recommends:
 
-- No real money trading
+- No real-money trading
 - Use points or reputation
-- No withdrawal
+- No withdrawals
 - No high-risk financial products
 - No politically sensitive markets
 - Market creation goes through review
-- Strengthen disclaimer
-- Geographical restriction reserved
-- Settlement dispute mechanism improved
+- Strengthen disclaimers
+- Reserve geographic restrictions
+- Refine the settlement dispute mechanism
 
 ---
 
 # 20. MVP Scope
 
-## 20.1 MVP Must Have
+> Review revision notes (2026-06-02)
+> This chapter is the target MVP roadmap, not a "fully available now" feature list. The current main baseline covers only a minimum runnable subset, and the admin console, metrics collection, automatic down-weighting/alerting, and the full reputation/settlement/update pipeline are still not a closed loop.
 
-| Module | Whether Required |
+## 20.1 What the MVP Must Have
+
+| Module | Required |
 |---|---|
-| Market creation | required |
-| Market review | required |
-| Market detail page | required |
-| Comment system | required |
-| Comment structuring | required |
-| User explicit prediction | required |
-| Basic reputation | required |
-| YONO Consensus Probability | required |
-| AI Evidence Summary | recommended required |
-| Settlement system | required |
-| Dispute system | simplified version required |
-| Points trading | recommended required |
-| Real money trading | not recommended for MVP |
-| Anti-manipulation detection | simplified version required |
-| Admin console | required |
+| Market creation | Required |
+| Market review | Required |
+| Market detail page | Required |
+| Comment system | Required |
+| Comment structuring | Required |
+| User explicit forecast | Required |
+| Basic reputation | Required |
+| YONO Consensus Probability | Required |
+| AI Evidence Summary | Recommended required |
+| Resolution system | Required |
+| Dispute system | Simplified version required |
+| Points trading | Recommended required |
+| Real-money trading | Not recommended for MVP |
+| Anti-manipulation detection | Simplified version required |
+| Admin console | Required |
 
 ---
 
-## 20.2 MVP Does Not Do
+## 20.2 What the MVP Does Not Do
 
 - No complex on-chain contracts
-- No real money withdrawal
+- No real-money withdrawals
 - No cross-chain trading
 - No high-frequency trading
 - No complex AMM
-- No fully automatic settlement
+- No fully automated resolution
 - No fully open market creation
-- No high-risk financial markets
+- No high-risk financial-type markets
 
 ---
 
 ## 20.3 MVP Milestones
 
-### M1: Basic Market and Comments
+### M1: Basic Markets and Comments
 
 - Market CRUD
 - Comment CRUD
-- User prediction
+- User forecast
 - Market detail page
 - Backend review
 
@@ -1989,7 +2050,7 @@ First phase recommendation:
 - comment signal probability
 - high reputation weighting
 
-### M3: Settlement and Reputation
+### M3: Resolution and Reputation
 
 - market resolution
 - dispute workflow
@@ -2012,6 +2073,9 @@ First phase recommendation:
 
 # 21. Key Metrics
 
+> Review revision notes (2026-06-02)
+> This chapter is the recommended metrics system. The current main baseline has not yet built-in DAU/WAU, Brier/LogLoss/ECE, Spread/Resolution Delay product and quality metrics collection reporting.
+
 ## 21.1 Product Metrics
 
 | Metric | Description |
@@ -2019,11 +2083,11 @@ First phase recommendation:
 | DAU / WAU | Active users |
 | Market Views | Market views |
 | Comment Rate | Comment rate |
-| Forecast Rate | Prediction rate |
-| Trade Conversion | View to trade conversion |
+| Forecast Rate | Forecast rate |
+| Trade Conversion | View-to-trade conversion |
 | Retention | Retention |
 | Share Rate | Share rate |
-| Creator Rate | Proportion of users creating markets |
+| Creator Rate | Proportion of users who create markets |
 
 ---
 
@@ -2034,7 +2098,7 @@ First phase recommendation:
 | Brier Score | Probability quality |
 | Log Loss | High-confidence error |
 | Calibration Error | Calibration |
-| Market Outperformance | Whether better than market price |
+| Market Outperformance | Whether it beats the market price |
 | Early Signal Score | Early signal capability |
 | Evidence Hit Rate | Evidence hit rate |
 | Comment Signal Lift | Comment signal contribution |
@@ -2050,26 +2114,29 @@ First phase recommendation:
 | Spread | Bid-ask spread |
 | Dispute Rate | Dispute rate |
 | Manipulation Risk | Manipulation risk |
-| Resolution Delay | Settlement delay |
+| Resolution Delay | Resolution delay |
 | User Concentration | User concentration |
 | Market Creator Quality | Market creator quality |
 
 ---
 
-# 22. Risk List
+# 22. Risk Register
+
+> Review revision notes (2026-06-02)
+> This chapter is the risk register and recommended mitigations, and does not represent that position limits, legal review, dispute windows, manipulation labels, cool-downs, and other policies have been enforced at runtime.
 
 | Risk | Severity | Description | Mitigation |
 |---|---|---|---|
-| Compliance Risk | P0 | Real money prediction markets may trigger regulation | MVP uses points, limit regions, legal review |
-| Market Ambiguity | P0 | Cannot settle leads to loss of trust | Create review, settlement rules template |
-| Comment Manipulation | P0 | Wash trading affects probability | Anti-manipulation model, downweight |
-| Low Liquidity Manipulation | P0 | Few trades affect price | Liquidity warning, position limit |
-| Settlement Dispute | P1 | User does not recognize result | Dispute window, evidence chain |
-| Model Over-Confidence | P1 | Wrong probability misleads user | Probability calibration, confidence display |
-| KOL Manipulation | P1 | KOL leads position | Trade disclosure, anomaly detection |
-| Data Pollution | P1 | Comment training set polluted | Data isolation, manipulation label |
-| Cold Start | P1 | No market no user | Official curated market, invitation system |
-| Reputation Cheating | P2 | Small accounts brush reputation | Identity/behavior/graph detection |
+| Compliance risk | P0 | Real-money prediction markets may trigger regulation | Use points in MVP, restrict regions, legal review |
+| Market ambiguity | P0 | Unresolvable markets cause trust loss | Creation review, resolution rule templates |
+| Comment manipulation | P0 | Wash trading affects probability | Anti-manipulation model, down-weighting |
+| Low-liquidity manipulation | P0 | Few trades affect price | Liquidity warnings, position limits |
+| Resolution dispute | P1 | Users do not accept the result | Dispute window, evidence chain |
+| Model overconfidence | P1 | Wrong probability misleads users | Probability calibration, confidence display |
+| KOL manipulation | P1 | KOL leads trades | Trade disclosure, anomaly detection |
+| Data pollution | P1 | Comment training set is contaminated | Data isolation, manipulation labels |
+| Cold start | P1 | No markets or users | Official curated markets, invitation-based |
+| Reputation cheating | P2 | Burner accounts inflate reputation | Identity / behavior / graph detection |
 
 ---
 
@@ -2084,12 +2151,12 @@ First phase recommendation:
 5. Admin Review Console
 6. Social Forecasting Engine MVP
 7. User Reputation MVP
-8. Event/Audit Infrastructure
+8. Event / Audit infrastructure
 
 ## 23.2 Second Priority
 
 1. Paper Trading
-2. Position/Order/Trade
+2. Position / Order / Trade
 3. Leaderboard
 4. AI Evidence Engine
 5. Manipulation Detection
@@ -2101,7 +2168,7 @@ First phase recommendation:
 1. API data product
 2. Enterprise Dashboard
 3. On-chain settlement
-4. Real money trading
+4. Real-money trading
 5. Advanced social graph model
 6. Multi-domain expansion
 
@@ -2109,12 +2176,15 @@ First phase recommendation:
 
 # 24. Relationship with Mission Architecture
 
-If YONO is integrated into the Automatic Agent Platform, it is recommended that:
+> Review revision notes (2026-06-02)
+> The current main baseline has already registered YONO as a domain definition and provided workflow/tool bundle/plugin binding; however, the mission examples, domain seeds, and long-term metric goals in this document are still conceptual mappings and have not yet formed a dedicated YONO blueprint or seed configuration on the mission orchestration side.
+
+If YONO connects to the Automatic Agent Platform, it is recommended that:
 
 - A Market Review can be a Task
 - A Resolution Review can be a Task
 - A Social Forecasting run can be a HarnessRun
-- A long-term market operation goal can be a Mission
+- A long-term market operations goal can be a Mission
 - A market itself is not a Mission
 - A user session is not a Mission
 - A trade is not a Mission
@@ -2139,51 +2209,51 @@ type MissionExample = {
 }
 ```
 
-Mission is responsible for long-term goals, budget, governance and review, does not participate in real-time execution of every comment, every trade.
+The Mission is responsible for long-term goals, budget, governance, and review, and does not participate in the real-time execution of every comment or trade.
 
 ---
 
-# 25. Final Recommendation
+# 25. Final Recommendations
 
-What YONO is most worth strengthening is not the "prediction market trading" itself, but:
+What YONO should most strengthen is not "prediction market trading" itself, but:
 
 1. **Social signal prediction capability**
 2. **User reputation and calibration capability**
 3. **AI evidence explanation capability**
-4. **Discovery of deviations between market price and community consensus**
-5. **Anti-manipulation and settlement governance capability**
+4. **Discovery of deviation between market price and community consensus**
+5. **Anti-manipulation and resolution governance capability**
 
-If only trading is done, YONO will become an ordinary prediction market.
+If it only does trading, YONO will become an ordinary prediction market.
 
-If comments, reputation, evidence, probability calibration and market price are integrated, YONO will form a truly differentiated:
+If it fuses comments, reputation, evidence, probability calibration, and market price, YONO will form a real differentiation:
 
 > A tradable social consensus probability engine.
 
-Recommend positioning the first version as:
+The first version is recommended to be positioned as:
 
 **Web3 Social Prediction Intelligence Platform**
 
-Rather than directly positioning as a real money prediction exchange.
+rather than directly as a real-money prediction exchange.
 
-This way, you can first use content, prediction, reputation, analysis and points markets to build network effects, and then gradually enter more complex trading and settlement systems.
+This way, network effects can first be built with content, prediction, reputation, analytics, and points markets, and then gradually move into more complex trading and settlement systems.
 
 ---
 
-# 26. v1.0 Freeze Conclusion
+# 26. v1.0 Frozen Conclusion
 
-YONO v1.0 is recommended to freeze according to the following principles:
+YONO v1.0 is recommended to be frozen with the following principles:
 
-1. **Prediction intelligence first, real money trading later.**
+1. **Prediction intelligence first, real-money trading later.**
 2. **Web3 vertical domain first, cross-domain expansion later.**
-3. **Points/reputation market first, on-chain settlement later.**
+3. **Points/reputation markets first, on-chain settlement later.**
 4. **Comment signal model first, complex social graph model later.**
-5. **Manual review settlement first, semi-automatic settlement later.**
-6. **All markets must have clear settlement rules.**
+5. **Manual review resolution first, semi-automated resolution later.**
+6. **All markets must have clear resolution rules.**
 7. **All probability outputs must be explainable, calibratable, and reviewable.**
-8. **Comments cannot be equally weighted votes, must be weighted by user reputation, evidence quality and manipulation risk.**
-9. **YONO Consensus Probability should fuse market price, AI evidence, comment signal and expert prediction.**
-10. **YONO should be integrated as a business domain of the Automatic Agent Platform, not invade the core runtime.**
+8. **Comments cannot be equally weighted votes; they must be weighted by user reputation, evidence quality, and manipulation risk.**
+9. **YONO Consensus Probability should fuse market price, AI evidence, comment signal, and expert forecasts.**
+10. **YONO should be integrated as a business domain of the Automatic Agent Platform, rather than intruding into the core runtime.**
 
-Final product form:
+The final product form:
 
-> **YONO = Prediction Market + Social Forecasting Engine + Reputation Network + AI Evidence Layer + Governance/Resolution System**
+> **YONO = Prediction Market + Social Forecasting Engine + Reputation Network + AI Evidence Layer + Governance / Resolution System**

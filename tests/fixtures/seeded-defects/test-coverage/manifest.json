@@ -1,0 +1,29 @@
+{
+  "fixtureId": "AAS-SEED-TEST-COVERAGE-001",
+  "category": "assurance.test-coverage",
+  "severity": "P0",
+  "description": "Seeded defect fixture for assurance:test-coverage self-test. Validates that the build-test-to-issue-map and verify-test-coverage scripts handle: unknown @issue refs (positive), real @issue refs (negative), and line-comment hidden @issue tags (evasion).",
+  "expectedGate": "scripts/assurance/verify-test-coverage.mjs",
+  "expectedResult": "verifier_passes_on_negative_evasion_only",
+  "seeds": [
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/test-coverage/positive/test-positive.test.ts",
+      "languageHint": "ts",
+      "expectedFinding": "unboundTests (unknown issue ref)"
+    },
+    {
+      "kind": "negative",
+      "path": "tests/fixtures/seeded-defects/test-coverage/negative/test-negative.test.ts",
+      "languageHint": "ts",
+      "expectedFinding": "no orphan / no unbound"
+    },
+    {
+      "kind": "evasion",
+      "path": "tests/fixtures/seeded-defects/test-coverage/evasion/test-evasion.test.ts",
+      "languageHint": "ts",
+      "expectedFinding": "parser picks up hidden line-comment @issue"
+    }
+  ],
+  "auditRuleRef": "verify-test-coverage"
+}

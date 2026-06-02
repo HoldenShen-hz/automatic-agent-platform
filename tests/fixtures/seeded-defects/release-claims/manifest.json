@@ -1,0 +1,29 @@
+{
+  "fixtureId": "AAS-SEED-RELEASE_CLAIMS-001",
+  "category": "audit.release-claims",
+  "severity": "P0",
+  "description": "Seeded defect fixture for audit:release-claims self-test.",
+  "expectedGate": "audit-release-claims",
+  "expectedResult": "positive_should_fail",
+  "seeds": [
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/release-claims/positive.md",
+      "languageHint": "md",
+      "expectedFinding": "release-claims P0"
+    },
+    {
+      "kind": "negative",
+      "path": "tests/fixtures/seeded-defects/release-claims/negative.md",
+      "languageHint": "md",
+      "expectedFinding": "no finding"
+    },
+    {
+      "kind": "evasion",
+      "path": "tests/fixtures/seeded-defects/release-claims/evasion.md",
+      "languageHint": "md",
+      "expectedFinding": "release-claims P0"
+    }
+  ],
+  "auditRuleRef": "audit-release-claims"
+}

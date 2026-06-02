@@ -1,0 +1,29 @@
+{
+  "fixtureId": "AAS-SEED-ASSUMPTION_PROMOTION-001",
+  "category": "audit.assumption-expired",
+  "severity": "P1",
+  "description": "Seeded fixture for promote-expired-assumptions self-test (smoke entry, not driven by seeded-defect-runner).",
+  "expectedGate": "assurance:assumptions:tick",
+  "expectedResult": "positive_should_promote",
+  "seeds": [
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/assumption-promotion/positive/assumptions.jsonl",
+      "languageHint": "jsonl",
+      "expectedFinding": "1 issue promoted for AAS-ASSUMPTION-EXPIRED-000001"
+    },
+    {
+      "kind": "negative",
+      "path": "tests/fixtures/seeded-defects/assumption-promotion/negative/assumptions.jsonl",
+      "languageHint": "jsonl",
+      "expectedFinding": "no promotion for AAS-ASSUMPTION-FUTURE-000001"
+    },
+    {
+      "kind": "evasion",
+      "path": "tests/fixtures/seeded-defects/assumption-promotion/evasion/assumptions.jsonl",
+      "languageHint": "jsonl",
+      "expectedFinding": "no promotion for AAS-ASSUMPTION-VERIFIED-000001 (status bypass)"
+    }
+  ],
+  "auditRuleRef": "assurance:assumptions:promote"
+}

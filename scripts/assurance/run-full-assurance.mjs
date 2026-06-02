@@ -43,16 +43,41 @@ const steps = [
     required: true,
     rationale: "保证中英文 contract/reference/review 文档树不继续漂移，避免历史承诺在双语文档中裂开。",
   },
+  // === 2026-06-02: integrated 10 new audit:* scanners per methodology v1.3 §20.6 ===
+  // These run in observe mode (required: false) at first to surface the
+  // raw findings without breaking the existing build; rc:check and
+  // coverage-scorecard upgrade them to release-blocking once stable.
+  { id: "audit_tenant_isolation",  command: "npm", args: ["run", "audit:tenant-isolation"],  required: false, rationale: "P0 跨租户隔离扫描" },
+  { id: "audit_secret_sinks",      command: "npm", args: ["run", "audit:secret-sinks"],      required: false, rationale: "P0 secret 泄露到 log/throw/event sink" },
+  { id: "audit_fire_and_forget",   command: "npm", args: ["run", "audit:fire-and-forget"],   required: false, rationale: "P1 fire-and-forget Promise" },
+  { id: "audit_determinism",       command: "npm", args: ["run", "audit:determinism"],       required: false, rationale: "P0 Date.now/Math.random in business code" },
+  { id: "audit_release_claims",    command: "npm", args: ["run", "audit:release-claims"],    required: false, rationale: "P0 final/production-ready 声明的 evidenceRef 缺失检测" },
+  { id: "audit_architecture_boundary", command: "npm", args: ["run", "audit:architecture-boundary"], required: false, rationale: "P0 五平面 import 边界" },
+  { id: "audit_path_safety",       command: "npm", args: ["run", "audit:path-safety"],       required: false, rationale: "P0 脚本 rm/mv/cp/write 路径守卫" },
+  { id: "audit_eval_oracle",       command: "npm", args: ["run", "audit:eval-oracle"],       required: false, rationale: "P0 eval expectedOutput 当 actualOutput" },
+  { id: "audit_plugin_security",   command: "npm", args: ["run", "audit:plugin-security"],   required: false, rationale: "P0 plugin signature/SBOM fail-open" },
+  { id: "audit_ui_token_storage",  command: "npm", args: ["run", "audit:ui-token-storage"],  required: false, rationale: "P0 UI token 存储" },
+  { id: "audit_contracts_sync",    command: "npm", args: ["run", "audit:contracts-sync"],    required: false, rationale: "P0 contract N-way 对账" },
+  { id: "audit_idempotency",       command: "npm", args: ["run", "audit:idempotency"],       required: false, rationale: "P0 §10.1 write call missing idempotency key" },
+  { id: "audit_queue",             command: "npm", args: ["run", "audit:queue"],             required: false, rationale: "P0 §10.2 queue atomic / visibility / backoff" },
+  { id: "audit_lease_fencing",     command: "npm", args: ["run", "audit:lease-fencing"],     required: false, rationale: "P0 §10.3 lease / fencing token" },
+  { id: "audit_side_effect_receipt", command: "npm", args: ["run", "audit:side-effect-receipt"], required: false, rationale: "P0 §10.4 side-effect / receipt producer" },
+  { id: "audit_recovery_replay",   command: "npm", args: ["run", "audit:recovery-replay"],   required: false, rationale: "P0 §10.5 recovery / replay tenant + transaction" },
+  { id: "audit_audit_chain",       command: "npm", args: ["run", "audit:audit-chain"],       required: false, rationale: "P0 §11.1 audit chain integrity" },
+  { id: "audit_receipt_verification", command: "npm", args: ["run", "audit:receipt-verification"], required: false, rationale: "P0 §11.2 receipt factory / signature / schemaVersion" },
+  { id: "audit_event_outbox",      command: "npm", args: ["run", "audit:event-outbox"],      required: false, rationale: "P0 §11.3 outbox atomicity / partition / cursor" },
+  // === 2026-06-02: §9.3 + §20.6 + §10/§11 coverage gates ===
+  { id: "audit_auth_role_mapping", command: "npm", args: ["run", "audit:auth-role-mapping"],  required: false, rationale: "P0 §9.3 service principal / admin / approval bypass" },
+  { id: "audit_docs_sot",          command: "npm", args: ["run", "audit:docs-sot"],          required: false, rationale: "P1 §20.6 source-of-truth drift (broken src / schema references)" },
+  { id: "audit_execution_invariants", command: "npm", args: ["run", "audit:execution-invariants"], required: false, rationale: "P0 §10/§11 invariant test coverage (8 required test files)" },
+  { id: "audit_test_disabled",     command: "npm", args: ["run", "audit:test-disabled"],     required: false, rationale: "P0 §44.15.1 disabled/skip/only/todo without @quarantine metadata" },
 ];
 
 const notYetIntegratedAudits = [
-  "audit:contracts-sync",
-  "audit:secret-sinks",
-  "audit:tenant-isolation",
-  "audit:plugin-security",
-  "audit:eval-oracle",
-  "audit:path-safety",
-  "audit:execution-invariants",
+  // §9.3 仍缺：no-go policy 完整检查、break-glass 全路径审计（当前只检查 routes + roles）
+  // §20.6 仍缺：eval/redteam/golden 三类 anti-fake 的独立 audit
+  // §44.18 仍缺：test-to-issue 双向映射生成器
+  // §27 已实现但未并入 required：assumptions.jsonl ledger 自动升级
 ];
 
 function runStep(step) {

@@ -1,24 +1,23 @@
-# API Client usesDescription
+# API Client Usage
 
-本仓 UI 的 API SDK 位于 `ui/packages/shared/api-client`，公共入口is
-`@aa/shared-api-client`。
+The API SDK for the UI in this repository lives in `ui/packages/shared/api-client`; the public entry is `@aa/shared-api-client`.
 
-## 公共能力
+## Public Capabilities
 
-- `RESTClient`: 统一 REST request、拦截器、幂等重试和错误包装。
-- `WSClient`: 统一浏览器 WebSocket、SharedWorker WebSocket 和内存 fallback。
-- `WSEventRouter`: 按频道路由事件，并为高优先级事件触发 UI 刷新。
-- `interceptors`: 负责authentication头、trace/correlation、错误归一化。
+- `RESTClient`: unified REST request handling, interceptors, idempotent retry, and error wrapping.
+- `WSClient`: unified browser WebSocket, SharedWorker WebSocket, and in-memory fallback.
+- `WSEventRouter`: routes events by channel and triggers UI refreshes for high-priority events.
+- `interceptors`: responsible for authentication headers, trace/correlation IDs, and error normalization.
 
-## 约束
+## Constraints
 
-- Feature 层只能relies on API client 的公共export，不directly访问 Layer A/B 内部端点。
-- Planned 后端能力必须via typed mock 和 feature gate 暴露，不在 UI 中as生产可用。
-- SharedWorker 客户端在 `disconnect()` 时必须移除 message listener、清空 replay buffer 并关闭 port。
+- The Feature layer may only depend on the public exports of the API client and must not access Layer A/B internal endpoints directly.
+- Planned backend capabilities must be exposed via typed mocks and feature gates, and must not be presented as production-ready inside the UI.
+- When the SharedWorker client calls `disconnect()`, it must remove the message listener, clear the replay buffer, and close the port.
 
-## 版本协商
+## Version Negotiation
 
-- UI API client 的真实 HTTP transport 会在request头里发送 `Accept-Version`。
-- 服务端协商结果via `x-api-version` 返回。
-- Node/CLI SDK 不defaults to复用 UI 的逐request协商模型，而is走握手 + `X-Platform-Version` / `X-SDK-Version` / `X-Contract-Version` 头。
-- 这两个table面故意不同，详细边界见 `docs_zh/adr/120-ui-sdk-client-transport-boundary.md`。
+- The real HTTP transport of the UI API client sends `Accept-Version` in the request headers.
+- The server returns the negotiation result via the `x-api-version` response header.
+- The Node/CLI SDK does not reuse the UI's per-request negotiation model by default; instead, it performs a handshake and uses the `X-Platform-Version` / `X-SDK-Version` / `X-Contract-Version` headers.
+- These two surfaces are intentionally different; see `docs_zh/adr/120-ui-sdk-client-transport-boundary.md` for the detailed boundary.

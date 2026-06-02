@@ -2,31 +2,31 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Mapping
 
-- **Observe**: 领域信号、术语、风险vs知识边界输入
-- **Assess**: 领域Description完整度vs一致性校验
-- **Plan**: 以 descriptor 驱动 workflow、prompt、eval
-- **Execute**: 按 descriptor 暴露领域能力
-- **Feedback**: 汇总领域table现vs治理反馈
-- **Learn**: 迭代领域元模型
-- **Improve**: 优化 descriptor completeness
-- **Release**: descriptor 成为领域上线门
+- **Observe**: Inputs from domain signals, terminology, risk and knowledge boundaries
+- **Assess**: Validate completeness and consistency of the domain descriptor
+- **Plan**: Drive workflow, prompt and eval from the descriptor
+- **Execute**: Expose domain capabilities per the descriptor
+- **Feedback**: Aggregate domain performance and governance feedback
+- **Learn**: Iterate the domain meta-model
+- **Improve**: Optimize descriptor completeness
+- **Release**: Descriptor becomes the domain promotion gate
 
 ---
 
-- Status：Accepted
-- Decision日期：2026-04-23
+- Status: Accepted
+- Decision date: 2026-04-23
 
 ## Background
 
-业务域不能只靠目录名或 pack 名字table达语义，必须有正式 semantic layer。
+A business domain cannot be expressed semantically only by its directory or pack name; it requires a formal semantic layer.
 
 ## Decision
 
-- `DomainDescriptor` is业务域 authoritative 语义层
-- 所有 workflow、tool bundle、prompt library、risk/eval 都要挂回 descriptor
+- `DomainDescriptor` is the authoritative semantic layer for business domains
+- All workflows, tool bundles, prompt libraries, and risk/eval artifacts must hook back to the descriptor
 
 ## Consequences
 
-- 领域元模型和领域注册主链有统一根对象
+- The domain meta-model and the domain registration main chain have a unified root object

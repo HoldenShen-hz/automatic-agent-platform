@@ -1,0 +1,29 @@
+{
+  "fixtureId": "AAS-SEED-FIRE_AND_FORGET-001",
+  "category": "audit.fire-and-forget",
+  "severity": "P0",
+  "description": "Seeded defect fixture for audit:fire-and-forget self-test.",
+  "expectedGate": "audit-fire-and-forget",
+  "expectedResult": "positive_should_fail",
+  "seeds": [
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/fire-and-forget/positive.ts",
+      "languageHint": "ts",
+      "expectedFinding": "fire-and-forget P0"
+    },
+    {
+      "kind": "negative",
+      "path": "tests/fixtures/seeded-defects/fire-and-forget/negative.ts",
+      "languageHint": "ts",
+      "expectedFinding": "no finding"
+    },
+    {
+      "kind": "evasion",
+      "path": "tests/fixtures/seeded-defects/fire-and-forget/evasion.ts",
+      "languageHint": "ts",
+      "expectedFinding": "fire-and-forget P0"
+    }
+  ],
+  "auditRuleRef": "audit-fire-and-forget"
+}

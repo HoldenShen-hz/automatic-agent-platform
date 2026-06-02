@@ -1,0 +1,47 @@
+{
+  "fixtureId": "AAS-SEED-AUTH_ROLE_MAPPING-001",
+  "category": "audit.auth-role-mapping",
+  "severity": "P0",
+  "description": "Seeded defect fixture for audit:auth-role-mapping self-test.",
+  "expectedGate": "audit-auth-role-mapping",
+  "expectedResult": "positive_should_fail",
+  "seeds": [
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/auth-role-mapping/positive.ts",
+      "languageHint": "ts",
+      "expectedFinding": "auth_role.service_principal_default_admin P0"
+    },
+    {
+      "kind": "negative",
+      "path": "tests/fixtures/seeded-defects/auth-role-mapping/negative.ts",
+      "languageHint": "ts",
+      "expectedFinding": "no finding"
+    },
+    {
+      "kind": "evasion",
+      "path": "tests/fixtures/seeded-defects/auth-role-mapping/evasion.ts",
+      "languageHint": "ts",
+      "expectedFinding": "auth_role.service_principal_default_admin P0"
+    },
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/auth-role-mapping/positive-operator.ts",
+      "languageHint": "ts",
+      "expectedFinding": "auth_role.operator_check_missing P0"
+    },
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/auth-role-mapping/positive-no-go.ts",
+      "languageHint": "ts",
+      "expectedFinding": "auth_role.no_go_policy_violation P0"
+    },
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/auth-role-mapping/positive-manual-takeover.ts",
+      "languageHint": "ts",
+      "expectedFinding": "auth_role.manual_takeover_no_audit P0"
+    }
+  ],
+  "auditRuleRef": "audit-auth-role-mapping"
+}

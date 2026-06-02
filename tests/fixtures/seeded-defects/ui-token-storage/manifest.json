@@ -1,0 +1,29 @@
+{
+  "fixtureId": "AAS-SEED-UI_TOKEN_STORAGE-001",
+  "category": "audit.ui-token-storage",
+  "severity": "P0",
+  "description": "Seeded defect fixture for audit:ui-token-storage self-test.",
+  "expectedGate": "audit-ui-token-storage",
+  "expectedResult": "positive_should_fail",
+  "seeds": [
+    {
+      "kind": "positive",
+      "path": "tests/fixtures/seeded-defects/ui-token-storage/positive.html",
+      "languageHint": "html",
+      "expectedFinding": "ui-token-storage P0"
+    },
+    {
+      "kind": "negative",
+      "path": "tests/fixtures/seeded-defects/ui-token-storage/negative.html",
+      "languageHint": "html",
+      "expectedFinding": "no finding"
+    },
+    {
+      "kind": "evasion",
+      "path": "tests/fixtures/seeded-defects/ui-token-storage/evasion.html",
+      "languageHint": "html",
+      "expectedFinding": "ui-token-storage P0"
+    }
+  ],
+  "auditRuleRef": "audit-ui-token-storage"
+}

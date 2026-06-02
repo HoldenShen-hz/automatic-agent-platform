@@ -1,33 +1,33 @@
-# API 版本策略
+# API Versioning Policy
 
-本文档defines API 文档和实现的版本口径，避免 `docs_zh` API 文档vs实际路由长期漂移。
+This document defines the version semantics used by the API documentation and implementation, in order to prevent long-term drift between the `docs_zh` API documentation and the actual routes.
 
-## 版本层级
+## Version Layers
 
-- 路由前缀：稳定公共 API 保留 `/api/v1` 路径。
-- OpenAPI：以 `openapi.json` 为机器可读事实来源。
-- 文档：`docs_zh/reference/` record人工Description和迁移注意事项。
-- request协商：UI transport via `Accept-Version` 发送可accepts版本集合。
-- response回显：服务端via `x-api-version` 暴露本iterations选中的版本。
+- Route prefix: stable public APIs keep the `/api/v1` prefix.
+- OpenAPI: `openapi.json` is the machine-readable source of truth.
+- Documentation: `docs_zh/reference/` records human-readable explanations and migration notes.
+- Request negotiation: the UI transport sends its set of acceptable versions via `Accept-Version`.
+- Response echo: the server exposes the version selected for the current request via the `x-api-version` response header.
 
-## 变更规则
+## Change Rules
 
-- 兼容变更可以保留当前主版本，例如新增optional字段或新增端点。
-- 破坏性变更必须新增主版本或提供迁移兼容层。
-- 删除字段、改变错误码、改变authentication语义和改变分页defaults to值都视为破坏性变更。
+- Backward-compatible changes may remain on the current major version, for example adding optional fields or new endpoints.
+- Breaking changes must introduce a new major version or provide a migration compatibility layer.
+- Removing fields, changing error codes, changing authentication semantics, and changing pagination defaults are all considered breaking changes.
 
-## 发布要求
+## Release Requirements
 
-- API 变更必须同时更新 OpenAPI/golden 证据或明确Description不Impact公共契约。
-- SDK 变更必须Description服务端路由、错误class别和authenticationlines为isnosynchronous变化。
-- 需要区分两class client 协商模型：
-  - UI shared api-client：每iterationsrequest发送 `Accept-Version`
-  - SDK client：发送 `X-Platform-Version` / `X-SDK-Version` / `X-Contract-Version`，并在初始化阶段执lines握手
-- 两class模型的边界以 `docs_zh/adr/120-ui-sdk-client-transport-boundary.md` 为准，不能在文档里混写成同一条协议。
-- 文档更新必须contains版本、生效time和兼容性Description。
+- API changes must simultaneously update the OpenAPI/golden evidence, or clearly state that the public contract is not affected.
+- SDK changes must specify whether the server routes, error categories, and authentication behavior are updated in sync.
+- The two client negotiation models must be kept distinct:
+  - UI shared api-client: sends `Accept-Version` on every request.
+  - SDK client: sends `X-Platform-Version` / `X-SDK-Version` / `X-Contract-Version` and performs a handshake during initialization.
+- The boundary between the two models is defined in `docs_zh/adr/120-ui-sdk-client-transport-boundary.md`; the documentation must not blend them into a single protocol.
+- Documentation updates must include the version, effective time, and a compatibility note.
 
-## 验证
+## Verification
 
-- 点名运lines相关 OpenAPI golden 测试。
-- 对 SDK/API 路由变更运lines最小定向测试。
-- 不usesfull测试结果替代 API 契约证据。
+- Run the relevant OpenAPI golden tests by name.
+- Run the minimal targeted tests for SDK/API route changes.
+- Do not use full-suite test results as a substitute for API contract evidence.

@@ -2,36 +2,36 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Mapping
 
-- **Observe**: 收集领域建模vsrelies on输入
-- **Assess**: 检查 readiness vsauthentication要求
-- **Plan**: 规划建模、开发、authentication、灰度四阶段
-- **Execute**: 逐阶段推进接入
-- **Feedback**: 每阶段沉淀结构化证据
-- **Learn**: 复盘 onboarding 模式
-- **Improve**: 优化接入门禁
-- **Release**: 灰度via后才能进入 active
+- **Observe**: Collect inputs for domain modeling and dependencies
+- **Assess**: Check readiness and certification requirements
+- **Plan**: Plan the four phases of modeling, development, certification, and canary
+- **Execute**: Advance onboarding phase by phase
+- **Feedback**: Deposit structured evidence for each phase
+- **Learn**: Replay and learn from onboarding patterns
+- **Improve**: Optimize onboarding gate enforcement
+- **Release**: Canary must pass before entering active
 
 ---
 
-- Status：Accepted
-- Decision日期：2026-04-23
+- Status: Accepted
+- Decision date: 2026-04-23
 
 ## Background
 
-领域接入如果没有固定阶段，就会跳过治理、测试或灰度验证。
+Without fixed phases for domain onboarding, the process will skip governance, testing, or canary validation.
 
 ## Decision
 
-领域接入固定为四阶段：
+Domain onboarding is fixed to four phases:
 
-1. 建模
-2. 开发
-3. authentication
-4. 灰度
+1. Modeling
+2. Development
+3. Certification
+4. Canary
 
 ## Consequences
 
-- onboarding 不再relies on口头流程
-- domain readiness vs rollout 有一致门禁
+- Onboarding no longer relies on tribal/verbal processes
+- Domain readiness and rollout share consistent gates

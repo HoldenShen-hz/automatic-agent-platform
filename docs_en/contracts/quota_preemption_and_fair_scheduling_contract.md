@@ -1,10 +1,10 @@
 # Quota Preemption And Fair Scheduling Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `§53` 的资源配额、优先级抢占和公平调度。
+This contract defines resource quota, priority preemption, and fair scheduling for §53.
 
-## 2. Canonical 对象
+## 2. Canonical Objects
 
 - `QuotaPolicy`
 - `SchedulingClass`
@@ -12,7 +12,7 @@
 - `FairQueueSnapshot`
 - `ResourceClaim`
 
-## 3. `QuotaPolicy` 最小字段
+## 3. `QuotaPolicy` Minimum Fields
 
 - `scope`
 - `resource_type`
@@ -21,15 +21,14 @@
 - `burst_limit?`
 - `reset_window`
 
-## 4. 调度规则
+## 4. Scheduling Rules
 
-- 调度至少考虑 `tenant / org / domain / sla_tier / priority` 五个维度。
-- 抢占必须输出 `PreemptionDecision` 并record被抢占对象vs原因。
-- 公平调度必须显式暴露饥饿保护vs年龄加权。
+- Scheduling must consider at least the five dimensions of `tenant / org / domain / sla_tier / priority`.
+- Preemption must emit a `PreemptionDecision` and record the preempted subject and reason.
+- Fair scheduling must explicitly expose starvation protection and age weighting.
 
-## 5. 测试要求
+## 5. Testing Requirements
 
-- unit：quota match、preemption scoring、fair queue ordering
-- integration：高优先级任务抢占低优先级任务
-- contract：exceeds配额任务不得静默进入执lines
-
+- unit: quota match, preemption scoring, fair queue ordering
+- integration: high-priority tasks preempt low-priority tasks
+- contract: over-quota tasks must not silently enter execution
