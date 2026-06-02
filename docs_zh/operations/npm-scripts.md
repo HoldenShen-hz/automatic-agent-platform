@@ -34,6 +34,14 @@
   作用：初始化 `coding / knowledge-base / customer-service` 三条 P0 真实样本输入模板目录。
 - `npm run pilot:evidence:p0`
   作用：把真实 pilot / eval / red-team / ROI / benchmark 输入聚合成统一 evidence package。
+- `npm run assurance:review-import`
+  作用：扫描 `docs_zh/reviews/`，生成 `review-ledger` 原始台账、归一化台账、覆盖报告和冲突裁决报告。
+- `npm run assurance:review-import:check`
+  作用：以 gate 模式运行 review import；若存在 parse warning、未扫描 review 或阻断性冲突，则返回失败。
+- `npm run audit:historical-promises`
+  作用：扫描 reference / release / review / README 等历史承诺来源，生成 promise ledger 与 drift report。
+- `npm run assurance:full`
+  作用：聚合当前已稳定接线的 assurance 基线，并输出 `artifacts/assurance/assurance-full-report.json`。
 
 默认地址：
 

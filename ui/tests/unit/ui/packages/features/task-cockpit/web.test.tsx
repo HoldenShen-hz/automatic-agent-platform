@@ -9,22 +9,26 @@ const mockRetryTask = vi.fn();
 const mockResumeTask = vi.fn();
 const mockEscalateTask = vi.fn();
 
-vi.mock("@aa/ui-core", () => ({
-  FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  KeyValueTable: ({ rows }: { rows: Array<{ key: string; value: string }> }) => (
-    <div>{rows.map((row) => <div key={row.key}>{`${row.key}: ${row.value}`}</div>)}</div>
-  ),
-  ListCard: ({ items }: { items: Array<{ title: string; description: string }> }) => (
-    <div>{items.map((item) => <div key={`${item.title}-${item.description}`}>{`${item.title} ${item.description}`}</div>)}</div>
-  ),
-  ThreePaneLayout: ({ left, center, right }: { left: React.ReactNode; center: React.ReactNode; right: React.ReactNode }) => (
-    <div>
-      <div>{left}</div>
-      <div>{center}</div>
-      <div>{right}</div>
-    </div>
-  ),
-}));
+vi.mock("@aa/ui-core", async () => {
+  const actual = await vi.importActual<typeof import("@aa/ui-core")>("@aa/ui-core");
+  return {
+    ...actual,
+    FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    KeyValueTable: ({ rows }: { rows: Array<{ key: string; value: string }> }) => (
+      <div>{rows.map((row) => <div key={row.key}>{`${row.key}: ${row.value}`}</div>)}</div>
+    ),
+    ListCard: ({ items }: { items: Array<{ title: string; description: string }> }) => (
+      <div>{items.map((item) => <div key={`${item.title}-${item.description}`}>{`${item.title} ${item.description}`}</div>)}</div>
+    ),
+    ThreePaneLayout: ({ left, center, right }: { left: React.ReactNode; center: React.ReactNode; right: React.ReactNode }) => (
+      <div>
+        <div>{left}</div>
+        <div>{center}</div>
+        <div>{right}</div>
+      </div>
+    ),
+  };
+});
 
 vi.mock("../../../../../../packages/features/task-cockpit/src/hooks", () => ({
   useTaskCockpitVm: () => ({
@@ -80,9 +84,9 @@ describe("TaskCockpitWebView", () => {
   it("renders L3-L5 drill-down tabs and their content", () => {
     render(<TaskCockpitWebView />);
 
-    expect(screen.queryByText(/L3 步骤/)).not.toBeNull();
+    expect(screen.queryByText(/L3 详情/)).not.toBeNull();
     expect(screen.queryByText(/CPU: 62%/)).not.toBeNull();
-    expect(screen.queryByText(/Memory: 768 MB/)).not.toBeNull();
+    expect(screen.queryByText(/内存: 768 MB/)).not.toBeNull();
     expect(screen.queryByText(/Collect inputs completed · agent-1/)).not.toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "L4 证据" }));

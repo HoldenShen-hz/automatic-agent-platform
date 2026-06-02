@@ -15,7 +15,7 @@
  * @see {@link docs_zh/governance/glossary_and_terminology.md}
  */
 
-import type { ExecutionTicketRecord } from "../../contracts/types/domain.js";
+import type { ExecutionTicketRecord, WorkerSnapshotRecord } from "../../contracts/types/domain.js";
 import type { ExecutionStatus } from "../../contracts/types/status.js";
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
@@ -39,9 +39,13 @@ interface DispatchReconciliationStore {
     listExecutionTicketsByStatuses(statuses: ExecutionTicketRecord["status"][]): ExecutionTicketRecord[];
     getExecutionTicket(ticketId: string): ExecutionTicketRecord | null | undefined;
     getActiveExecutionLease(executionId: string): { readonly id: string; readonly workerId: string; readonly expiresAt: string } | null | undefined;
-    invalidateExecutionTicket(input: { ticketId: string; status: string; invalidatedAt: string }): void;
+    invalidateExecutionTicket(input: {
+      ticketId: string;
+      status: Extract<ExecutionTicketRecord["status"], "cancelled" | "expired">;
+      invalidatedAt: string;
+    }): void;
     insertExecutionTicket(ticket: ExecutionTicketRecord): void;
-    getWorkerSnapshot?: (workerId: string) => unknown;
+    getWorkerSnapshot?: (workerId: string) => WorkerSnapshotRecord | null | undefined;
   };
   readonly dispatch: {
     getExecution(executionId: string): { readonly id: string; readonly taskId: string; readonly status: ExecutionStatus; readonly traceId?: string | null } | null | undefined;
@@ -338,7 +342,7 @@ export class ExecutionDispatchReconciliationService {
 
   private resolveNextTicketAttempt(executionId: string, fallbackAttempt: number): number {
     const attempts = this.store.worker
-      .listExecutionTicketsByStatuses(["pending", "claimed", "consumed", "expired", "cancelled", "invalidated"])
+      .listExecutionTicketsByStatuses(["pending", "claimed", "consumed", "expired", "cancelled"])
       .filter((ticket) => ticket.executionId === executionId)
       .map((ticket) => ticket.attempt)
       .filter((attempt): attempt is number => Number.isInteger(attempt));
@@ -354,11 +358,7 @@ export class ExecutionDispatchReconciliationService {
     }
 
     const workerStore = this.store.worker as {
-      getWorkerSnapshot?: (workerId: string) => {
-        readonly runningExecutionsJson: string;
-        readonly currentStepId: string | null;
-        readonly lastProgressAt: string;
-      } | null;
+      getWorkerSnapshot?: (workerId: string) => WorkerSnapshotRecord | null;
     };
     if (typeof workerStore.getWorkerSnapshot !== "function") {
       return;

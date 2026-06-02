@@ -202,8 +202,8 @@ export class TransactionalEventAppender {
         && (error as { code?: string }).code === "SQLITE_CONSTRAINT_PRIMARYKEY"
       ) {
         throw new AppError("event.append_duplicate", "event.append_duplicate", {
-          category: "conflict",
-          source: "state_evidence",
+          category: "storage",
+          source: "storage",
           retryable: false,
         });
       }
@@ -224,7 +224,7 @@ export class TransactionalEventAppender {
     if (Buffer.byteLength(event.payloadJson, "utf8") > MAX_OUTBOX_PAYLOAD_BYTES) {
       throw new AppError("event.payload_too_large", "event.payload_too_large", {
         category: "resource",
-        source: "state_evidence",
+        source: "storage",
         retryable: false,
       });
     }

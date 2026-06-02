@@ -9,19 +9,23 @@ const mockExecutePlan = vi.fn();
 const mockRequestClarification = vi.fn();
 const mockSetDraft = vi.fn();
 
-vi.mock("@aa/ui-core", () => ({
-  designTokens: {
-    color: { border: "#d0d7de" },
-  },
-  CodeBlock: ({ code }: { code: string }) => <div>{`CODE:${code}`}</div>,
-  FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  FileAttachment: ({ files }: { files: Array<{ name: string; sizeLabel: string }> }) => (
-    <div>{files.map((file) => <div key={file.name}>{`${file.name} ${file.sizeLabel}`}</div>)}</div>
-  ),
-  KeyValueTable: ({ rows }: { rows: Array<{ key: string; value: string }> }) => (
-    <div>{rows.map((row) => <div key={row.key}>{`${row.key}: ${row.value}`}</div>)}</div>
-  ),
-}));
+vi.mock("@aa/ui-core", async () => {
+  const actual = await vi.importActual<typeof import("@aa/ui-core")>("@aa/ui-core");
+  return {
+    ...actual,
+    designTokens: {
+      color: { border: "#d0d7de" },
+    },
+    CodeBlock: ({ code }: { code: string }) => <div>{`CODE:${code}`}</div>,
+    FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    FileAttachment: ({ files }: { files: Array<{ name: string; sizeLabel: string }> }) => (
+      <div>{files.map((file) => <div key={file.name}>{`${file.name} ${file.sizeLabel}`}</div>)}</div>
+    ),
+    KeyValueTable: ({ rows }: { rows: Array<{ key: string; value: string }> }) => (
+      <div>{rows.map((row) => <div key={row.key}>{`${row.key}: ${row.value}`}</div>)}</div>
+    ),
+  };
+});
 
 vi.mock("../../../../../../packages/features/conversation/src/hooks", () => ({
   useConversationVm: () => ({

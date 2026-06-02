@@ -44,7 +44,7 @@ describe("useDomainWizardVm", () => {
       result.current.submitConfig();
     });
 
-    expect(result.current.submissionMessage).toBe("Domain configuration submitted");
+    expect(result.current.submissionMessage).toBe("领域配置已提交");
     expect(localStorage.getItem("aa-domain-wizard-draft")).toBeNull();
   });
 

@@ -196,6 +196,8 @@ export function startPersistingQueryClient(
 function shouldPersistQueryKey(queryKey: readonly unknown[]): boolean {
   const prefix = String(queryKey[0] ?? "");
   return new Set([
+    "tasks",
+    "approvals",
     "dashboard",
     "workflows",
     "agents",

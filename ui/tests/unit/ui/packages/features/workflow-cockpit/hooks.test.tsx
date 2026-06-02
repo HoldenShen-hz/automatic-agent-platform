@@ -83,7 +83,7 @@ describe("useWorkflowCockpitVm", () => {
     expect(mocks.mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ["workflows"] });
 
     await waitFor(() => {
-      expect(result.current.activityItems[0]?.title).toContain("Released");
+      expect(result.current.activityItems[0]?.title).toContain("已发布");
     });
   });
 

@@ -311,10 +311,14 @@ export class PlanBuilder {
             retryPolicy: { maxRetries: 0, backoffMs: DEFAULT_PLAN_RETRY_BACKOFF_BASE_MS },
           };
           const targetIdx = patchedSteps.findIndex((s) => s.stepId === op.targetRef);
+          const normalizedNewStep = {
+            ...newStep,
+            outputs: newStep.outputs ?? [],
+          };
           if (targetIdx >= 0) {
-            patchedSteps.splice(targetIdx + 1, 0, newStep);
+            patchedSteps.splice(targetIdx + 1, 0, normalizedNewStep);
           } else {
-            patchedSteps.push(newStep);
+            patchedSteps.push(normalizedNewStep);
           }
           break;
         }

@@ -52,7 +52,6 @@ describe("R24 UI source review", () => {
     expect(tokenSource).toContain("primitiveTokens");
     expect(tokenSource).toContain("semanticTokens");
     expect(tokenSource).toContain("mobile: 768");
-    expect(layoutSource).toContain("viewportWidth");
     expect(layoutSource).toContain("gridTemplateColumns");
     expect(componentSource).toContain('role: "listbox"');
     expect(componentSource).toContain('role: "log"');

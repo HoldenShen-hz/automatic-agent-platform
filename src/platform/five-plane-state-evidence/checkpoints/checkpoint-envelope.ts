@@ -332,7 +332,7 @@ export async function unpackCheckpointEnvelope<T = unknown>(
     logger.log({
       level: "warn",
       message: "Checkpoint envelope checksum mismatch",
-      data: integrityFailure,
+      data: integrityFailure as unknown as Record<string, unknown>,
     });
     persistCheckpointIntegrityFailure(options.integrityFailureLogPath, integrityFailure);
     throw new CheckpointEnvelopeInvalidError(

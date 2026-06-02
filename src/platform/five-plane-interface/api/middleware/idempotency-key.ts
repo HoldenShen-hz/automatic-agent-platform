@@ -413,7 +413,7 @@ export function getGlobalIdempotencyKeyMiddleware(): IdempotencyKeyMiddleware {
       "Global idempotency middleware requires explicit shared storage configuration.",
       {
         statusCode: 500,
-        category: "configuration",
+        category: "runtime",
         source: "runtime",
         retryable: false,
       },

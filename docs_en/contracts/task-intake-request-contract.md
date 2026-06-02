@@ -25,6 +25,7 @@ Minimum fields:
 | `principal` | `PrincipalRef` | Initiating principal |
 | `source` | `nl \| webhook \| ui \| cli \| scheduler \| external_event` | Input source |
 | `rawInputRef` | `ArtifactRef?` | Raw input reference; large text must be artifact-ized |
+| `domainId` | `string` | Domain ID; the owning domain must already be determined at draft time |
 | `normalizedIntent` | `json` | Structured intent |
 | `missingFields` | `string[]` | Fields still needing clarification |
 | `riskPreview` | `RiskPreview` | Preliminary risk assessment |
@@ -50,9 +51,10 @@ Minimum fields:
 | `taskDraftId` | `string` | Source draft |
 | `tenantId` | `string` | Tenant |
 | `principal` | `PrincipalRef` | Initiating principal |
+| `domainId` | `string` | Domain ID |
 | `goal` | `string` | Goal after user confirmation |
 | `inputs` | `json` | Confirmed inputs |
-| `constraints` | `ConstraintPackRef` | Task-level constraint pack |
+| `constraintPackRef` | `ConstraintPackRef` | Task-level constraint-pack reference |
 | `riskClass` | `low \| medium \| high \| critical` | Risk class |
 | `confirmationReceipt` | `UserConfirmationReceipt?` | Required for high / critical |
 | `idempotencyKey` | `string` | Idempotency key |
@@ -63,7 +65,7 @@ Constraints:
 
 - When `riskClass=high|critical`, `confirmationReceipt` must exist and not be expired.
 - `idempotencyKey` must be stable under the same tenant; repeated submissions return the same admission result.
-- `constraints` must be an immutable reference from the merged platform, tenant, domain, and task constraints.
+- `constraintPackRef` must be an immutable reference derived from the merged platform, tenant, domain, and task constraints.
 
 ## 4. RequestEnvelope
 
@@ -77,8 +79,10 @@ Minimum fields:
 | `confirmedTaskSpecId` | `string` | Confirmed task spec |
 | `tenantId` | `string` | Tenant |
 | `principal` | `PrincipalRef` | Initiating principal |
+| `domainId` | `string` | Domain ID |
 | `traceId` | `string` | Trace ID |
 | `idempotencyKey` | `string` | Idempotency key |
+| `priority` | `number` | Admission priority |
 | `requestHash` | `string` | Admission idempotency check hash |
 | `constraintPackRef` | `ConstraintPackRef` | Constraint pack |
 | `budgetIntent` | `BudgetIntent` | Budget intent, not reservation |
@@ -107,3 +111,9 @@ Constraints:
 - Repeated submission of the same `idempotencyKey + requestHash` must not create multiple `HarnessRun`s.
 - `TaskDraft` must not be consumed by P4 dispatch.
 - Old `/api/v1/tasks` compatibility entry must project to v4.3 intake chain.
+
+## v4.3 Architecture Remediation
+
+The entries below repair naming drift between the historical contract text and the executable intake model. If older sections conflict with this remediation note, `src/platform/contracts/executable-contracts/` is authoritative.
+
+- This contract previously continued the legacy `constraints` naming and omitted `domainId` / `priority`. It is now aligned with the current executable intake contracts; older wording remains only as historical context.

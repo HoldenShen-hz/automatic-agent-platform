@@ -432,7 +432,8 @@ export class SemanticKnowledgeGraph {
   }
 
   private addUndirectedEdge(fromNodeId: string, toNodeId: string, relation: KnowledgeGraphEdgeType, weight: number): void {
-    const [canonicalFrom, canonicalTo] = [fromNodeId, toNodeId].sort((left, right) => left.localeCompare(right));
+    const canonicalFrom = fromNodeId.localeCompare(toNodeId) <= 0 ? fromNodeId : toNodeId;
+    const canonicalTo = canonicalFrom === fromNodeId ? toNodeId : fromNodeId;
     this.addEdge(canonicalFrom, canonicalTo, relation, weight);
   }
 

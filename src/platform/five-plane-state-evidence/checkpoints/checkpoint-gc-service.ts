@@ -504,11 +504,11 @@ export class CheckpointGCService {
       checkpointRef: {
         checkpointId,
         storageUri: `file://${file.path}`,
-        createdAt: file.createdAt,
+        createdAt: new Date(file.stat.birthtimeMs ?? file.stat.mtimeMs).toISOString(),
       },
       storagePath: file.path,
       sizeBytes: Number(file.stat.size),
-      createdAt: file.createdAt,
+      createdAt: new Date(file.stat.birthtimeMs ?? file.stat.mtimeMs).toISOString(),
       executionId,
       isOrphaned: false,
       reason: "version_limit_exceeded",

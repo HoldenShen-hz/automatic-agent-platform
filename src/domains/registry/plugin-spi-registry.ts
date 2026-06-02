@@ -47,10 +47,14 @@ export interface PluginSpiRegistryOptions {
   maxConsecutiveFailures?: number;
 }
 
+type PluginManifestInput =
+  Omit<PluginManifest, "outputDataClass">
+  & { outputDataClass?: PluginManifest["outputDataClass"] };
+
 function resolveCapabilityIds(
   plugin: RegisteredPlugin,
   builtinManifest: PluginManifest | undefined,
-  manifest: PluginManifest | undefined,
+  manifest: PluginManifestInput | undefined,
 ): string[] {
   const explicitCapabilityIds =
     manifest?.capabilityIds
@@ -116,7 +120,7 @@ export class PluginSpiRegistry {
     this.maxConsecutiveFailures = options.maxConsecutiveFailures ?? 3;
   }
 
-  public register<TPlugin extends RegisteredPlugin>(plugin: TPlugin, manifest?: PluginManifest): RegisteredPluginRecord<TPlugin> {
+  public register<TPlugin extends RegisteredPlugin>(plugin: TPlugin, manifest?: PluginManifestInput): RegisteredPluginRecord<TPlugin> {
     if (this.registry.has(plugin.pluginId)) {
       throw new ValidationError("plugin_spi.duplicate_plugin_id", `plugin_spi.duplicate_plugin_id: Plugin ${plugin.pluginId} is already registered.`, {
         category: "validation",

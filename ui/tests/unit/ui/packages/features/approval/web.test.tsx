@@ -7,30 +7,34 @@ const mockDelegate = vi.fn(async () => undefined);
 const mockRequestMoreContext = vi.fn(async () => undefined);
 const mockSelectApproval = vi.fn();
 
-vi.mock("@aa/ui-core", () => ({
-  designTokens: {
-    color: { border: "#d0d7de" },
-    semantic: { color: { surfaceSelected: "#f3f4f6" } },
-  },
-  FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  KeyValueTable: ({ rows }: { rows: Array<{ key: string; value: string }> }) => (
-    <div>
-      {rows.map((row) => (
-        <div key={row.key}>{`${row.key}: ${row.value}`}</div>
-      ))}
-    </div>
-  ),
-  ListCard: ({ items }: { items: Array<{ title: string; description: string }> }) => (
-    <div>{items.map((item) => <div key={item.title}>{item.title}</div>)}</div>
-  ),
-  ThreePaneLayout: ({ left, center, right }: { left: React.ReactNode; center: React.ReactNode; right: React.ReactNode }) => (
-    <div>
-      <div>{left}</div>
-      <div>{center}</div>
-      <div>{right}</div>
-    </div>
-  ),
-}));
+vi.mock("@aa/ui-core", async () => {
+  const actual = await vi.importActual<typeof import("@aa/ui-core")>("@aa/ui-core");
+  return {
+    ...actual,
+    designTokens: {
+      color: { border: "#d0d7de" },
+      semantic: { color: { surfaceSelected: "#f3f4f6" } },
+    },
+    FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    KeyValueTable: ({ rows }: { rows: Array<{ key: string; value: string }> }) => (
+      <div>
+        {rows.map((row) => (
+          <div key={row.key}>{`${row.key}: ${row.value}`}</div>
+        ))}
+      </div>
+    ),
+    ListCard: ({ items }: { items: Array<{ title: string; description: string }> }) => (
+      <div>{items.map((item) => <div key={item.title}>{item.title}</div>)}</div>
+    ),
+    ThreePaneLayout: ({ left, center, right }: { left: React.ReactNode; center: React.ReactNode; right: React.ReactNode }) => (
+      <div>
+        <div>{left}</div>
+        <div>{center}</div>
+        <div>{right}</div>
+      </div>
+    ),
+  };
+});
 
 vi.mock("../../../../../../packages/features/approval/src/hooks", () => ({
   useApprovalCenterVm: () => ({
@@ -76,17 +80,17 @@ describe("ApprovalWebView", () => {
   it("renders deadline, policy source, and recommended option", () => {
     render(<ApprovalWebView />);
 
-    expect(screen.getByText(/Deadline:/)).toBeInTheDocument();
-    expect(screen.getByText(/Policy Source: domain-policy/)).toBeInTheDocument();
-    expect(screen.getByText(/Recommended Option: approve/)).toBeInTheDocument();
+    expect(screen.getByText(/截止时间:/)).toBeInTheDocument();
+    expect(screen.getByText(/策略来源: domain-policy/)).toBeInTheDocument();
+    expect(screen.getByText(/推荐选项: approve/)).toBeInTheDocument();
   });
 
   it("supports request-context and decision actions", () => {
     render(<ApprovalWebView />);
 
-    const approveButton = screen.getByRole("button", { name: "Approve" });
-    const rejectButton = screen.getByRole("button", { name: "Reject" });
-    const contextButton = screen.getByRole("button", { name: "Request context" });
+    const approveButton = screen.getByRole("button", { name: "批准" });
+    const rejectButton = screen.getByRole("button", { name: "拒绝" });
+    const contextButton = screen.getByRole("button", { name: "请求上下文" });
 
     fireEvent.pointerDown(approveButton);
     fireEvent.click(approveButton);

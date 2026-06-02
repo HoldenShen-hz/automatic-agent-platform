@@ -55,11 +55,11 @@ describe("GovernanceComplianceWebView", () => {
   it("renders policy, audit, and exception panels", () => {
     render(<GovernanceComplianceWebView />);
 
-    expect(screen.queryByText("Policy Editor")).not.toBeNull();
+    expect(screen.queryByText("策略编辑器")).not.toBeNull();
     expect(screen.queryByText("Prod Change Control")).not.toBeNull();
     expect(screen.getAllByText("Audit Trail").length).toBeGreaterThan(0);
     expect(screen.queryByText("policy.update")).not.toBeNull();
-    expect(screen.queryByText("Exception Management")).not.toBeNull();
+    expect(screen.queryByText("异常管理")).not.toBeNull();
     expect(screen.queryByText("Temporary bypass")).not.toBeNull();
   });
 
@@ -71,9 +71,9 @@ describe("GovernanceComplianceWebView", () => {
     fireEvent.click(screen.getByRole("button", { name: "查看审计轨迹" }));
     fireEvent.click(screen.getByRole("button", { name: "管理异常" }));
     fireEvent.click(screen.getByRole("button", { name: "升级委托审批" }));
-    fireEvent.click(screen.getByRole("button", { name: "Review" }));
-    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
-    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
+    fireEvent.click(screen.getByRole("button", { name: "审阅" }));
+    fireEvent.click(screen.getByRole("button", { name: "批准" }));
+    fireEvent.click(screen.getByRole("button", { name: "拒绝" }));
 
     expect(mockSelectPolicy).toHaveBeenCalledWith("policy-1");
     expect(mockUpdatePolicy).toHaveBeenCalledWith("policy-1", {});

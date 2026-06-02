@@ -49,8 +49,8 @@ interface ValidationResult {
 }
 
 function parseMajorVersion(version: string): number {
-  const [majorSegment] = version.trim().split(".");
-  if (!/^\d+$/u.test(majorSegment ?? "")) {
+  const [majorSegment = ""] = version.trim().split(".");
+  if (!/^\d+$/u.test(majorSegment)) {
     return -1;
   }
   const major = Number.parseInt(majorSegment, 10);

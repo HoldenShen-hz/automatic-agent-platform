@@ -4,6 +4,7 @@ import {
   createDecisionInputBundle,
   createPlanGraphBundle,
   createGraphPatch,
+  type PlanNode,
   type DecisionInputBundle,
   type GraphPatch,
   type JsonValue,
@@ -249,10 +250,13 @@ export abstract class OapeflirLoopSupport {
         });
       });
     } catch (error) {
+      const errorCode = typeof (error as { code?: unknown } | null | undefined)?.code === "string"
+        ? (error as { code: string }).code
+        : null;
       const reasonCode = error instanceof ValidationError
         ? error.code
-        : error instanceof Error && typeof (error as { code?: unknown }).code === "string"
-          ? String((error as { code: string }).code)
+        : errorCode != null
+          ? errorCode
           : "oapeflir.budget_reservation_failed";
       throw new ValidationError(
         reasonCode,

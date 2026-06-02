@@ -315,7 +315,7 @@ export class ExecutionPriorityPreemptionService {
     const candidates = this.workers
       .listWorkers()
       .filter((worker) => this.isCompatibleFullWorker(worker, input))
-      .map((worker) => this.toCandidate(worker, input.ticket.executionId))
+      .map((worker) => this.toCandidate(worker, input.ticket.executionId, input.ticket.tenantId ?? null))
       .filter((candidate): candidate is PreemptionCandidate => candidate != null)
       .sort((left, right) => {
         const priorityCompare = priorityRank(left.taskPriority) - priorityRank(right.taskPriority);
@@ -398,7 +398,11 @@ export class ExecutionPriorityPreemptionService {
    * - Workflow has a recovery step
    * - Worker and agent execution are at the recovery step
    */
-  private toCandidate(worker: RegisteredWorkerView, sourceExecutionId: string): PreemptionCandidate | null {
+  private toCandidate(
+    worker: RegisteredWorkerView,
+    sourceExecutionId: string,
+    sourceTenantId: string | null,
+  ): PreemptionCandidate | null {
     const executionId = worker.runningExecutionIds[0];
     if (!executionId || executionId === sourceExecutionId) {
       return null;
@@ -416,7 +420,6 @@ export class ExecutionPriorityPreemptionService {
     if (!task || !workflow || workflow.status !== "running" || !activeLease || activeLease.workerId !== worker.workerId) {
       return null;
     }
-    const sourceTenantId = input.ticket.tenantId ?? null;
     if (sourceTenantId != null && task.tenantId !== sourceTenantId) {
       return null;
     }

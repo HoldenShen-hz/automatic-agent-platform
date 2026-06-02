@@ -48,6 +48,11 @@ function mergeArrays(serverValue, localValue, serverMetadata, localMetadata) {
     return merged;
 }
 function mergeObjects(serverValue, localValue, serverMetadata, localMetadata) {
+    const serverOrder = resolveVersionOrder(serverValue);
+    const localOrder = resolveVersionOrder(localValue);
+    if (serverOrder != null && localOrder != null && serverMetadata?.vectorClock == null && localMetadata?.vectorClock == null) {
+        return localOrder > serverOrder ? localValue : serverValue;
+    }
     const merged = { ...serverValue };
     const keys = new Set([...Object.keys(serverValue), ...Object.keys(localValue)]);
     for (const key of keys) {

@@ -183,16 +183,18 @@ export class KnowledgePromotionService {
           confidence: obj?.confidence ?? 0,
         };
       });
+      const firstPromoted = promoted[0] ?? null;
+      const firstFailed = failed[0] ?? null;
       const firstOutcome =
-        promoted[0] != null
+        firstPromoted != null
           ? {
-            learningObjectId: promoted[0].objectId,
-            learningType: learningObjects.find((item) => item.learningObjectId === promoted[0].objectId)?.learningType ?? "unknown",
-            documentId: promoted[0].documentId,
+            learningObjectId: firstPromoted.objectId,
+            learningType: learningObjects.find((item) => item.learningObjectId === firstPromoted.objectId)?.learningType ?? "unknown",
+            documentId: firstPromoted.documentId,
           }
           : {
-            learningObjectId: failed[0]?.objectId ?? "unknown",
-            learningType: failed[0]?.learningType ?? "unknown",
+            learningObjectId: firstFailed?.objectId ?? "unknown",
+            learningType: firstFailed?.learningType ?? "unknown",
             documentId: "",
           };
 

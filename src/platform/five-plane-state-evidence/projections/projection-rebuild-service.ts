@@ -477,12 +477,12 @@ export class ProjectionRebuildService {
         const events: EventRecord[] = [];
         let after: EventReplayCursor | null = null;
         while (true) {
-          const page = cursorRepository.listEventsUpToCursor(fetchBatchSize, after, upperBound);
+          const page: EventRecord[] = cursorRepository.listEventsUpToCursor(fetchBatchSize, after, upperBound);
           if (page.length === 0) {
             break;
           }
           events.push(...this.applyEventFilters(page, options));
-          const lastEvent = page[page.length - 1]!;
+          const lastEvent: EventRecord = page[page.length - 1]!;
           after = {
             createdAt: lastEvent.createdAt,
             id: lastEvent.id,

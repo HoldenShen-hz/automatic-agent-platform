@@ -218,8 +218,8 @@ export function verifyManifestChecksum(manifest: CheckpointManifest): boolean {
   try {
     const computed = computeCombinedChecksum(manifest.checkpoints, {
       manifestId: manifest.manifestId,
-      executionId: manifest.executionId,
-      workflowId: manifest.workflowId,
+      ...(manifest.executionId ? { executionId: manifest.executionId } : {}),
+      ...(manifest.workflowId ? { workflowId: manifest.workflowId } : {}),
     });
     return computed.toLowerCase() === manifest.combinedChecksum.toLowerCase();
   } catch {
@@ -249,8 +249,8 @@ export function createCheckpointManifest(input: {
 
   const combinedChecksum = computeCombinedChecksum(input.checkpoints, {
     manifestId: input.manifestId,
-    executionId: input.executionId,
-    workflowId: input.workflowId,
+    ...(input.executionId ? { executionId: input.executionId } : {}),
+    ...(input.workflowId ? { workflowId: input.workflowId } : {}),
   });
 
   return {

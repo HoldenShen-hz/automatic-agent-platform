@@ -82,6 +82,12 @@ function mergeObjects(
   serverMetadata?: ConflictMetadata,
   localMetadata?: ConflictMetadata,
 ): Record<string, unknown> {
+  const serverOrder = resolveVersionOrder(serverValue);
+  const localOrder = resolveVersionOrder(localValue);
+  if (serverOrder != null && localOrder != null && serverMetadata?.vectorClock == null && localMetadata?.vectorClock == null) {
+    return (localOrder > serverOrder ? localValue : serverValue) as Record<string, unknown>;
+  }
+
   const merged: Record<string, unknown> = { ...serverValue };
   const keys = new Set([...Object.keys(serverValue), ...Object.keys(localValue)]);
 

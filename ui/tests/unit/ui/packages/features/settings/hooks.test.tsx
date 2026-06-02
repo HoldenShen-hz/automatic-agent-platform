@@ -62,7 +62,7 @@ describe("useSettingsVm", () => {
 
     await waitFor(() => {
       expect(result.current.saveState).toBe("saved");
-      expect(result.current.activityItems[0]?.title).toBe("Configuration saved");
+      expect(result.current.activityItems[0]?.title).toBe("配置已保存");
     });
     expect(mocks.mockUpdatePreferences).toHaveBeenCalledWith(
       mocks.mockClient,

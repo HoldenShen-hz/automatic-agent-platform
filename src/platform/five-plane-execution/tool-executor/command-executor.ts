@@ -26,6 +26,7 @@ import { checkSandboxPath } from "../../shared/sandbox-path-policy.js";
 import { sanitizeToolOutput, type SanitizedToolOutput } from "./tool-output-sanitizer.js";
 import { assessCommand } from "./command-security.js";
 import { isToolCallSuccessful, type ToolCallResult } from "./tool-call-result.js";
+import type { ExecutionRecord } from "../../contracts/types/domain.js";
 import {
   coerceCommandToolRequest,
   formatToolArgumentCoercionWarnings,
@@ -81,6 +82,26 @@ export interface CommandExecutorOptions {
 
 interface CommandExecutionStore {
   getExecution(executionId: string): unknown;
+}
+
+function resolveExecutionPolicyRecord(
+  execution: unknown,
+): Pick<ExecutionRecord, "allowedToolsJson" | "allowedPathsJson"> | null {
+  if (execution == null || typeof execution !== "object") {
+    return null;
+  }
+  const allowedToolsJson =
+    "allowedToolsJson" in execution && typeof execution.allowedToolsJson === "string"
+      ? execution.allowedToolsJson
+      : "[]";
+  const allowedPathsJson =
+    "allowedPathsJson" in execution && typeof execution.allowedPathsJson === "string"
+      ? execution.allowedPathsJson
+      : "[]";
+  return {
+    allowedToolsJson,
+    allowedPathsJson,
+  };
 }
 
 interface CommandArtifactWriterInput {
@@ -277,7 +298,9 @@ export class CommandExecutor {
     ) {
       return this.blocked(normalizedRequest, "tool.command_path_arguments_invalid", coercedRequestResult.traces);
     }
-    const execution = normalizedRequest.executionId == null ? null : this.store?.getExecution(normalizedRequest.executionId) ?? null;
+    const execution = normalizedRequest.executionId == null
+      ? null
+      : resolveExecutionPolicyRecord(this.store?.getExecution(normalizedRequest.executionId) ?? null);
     const allowedToolsResolution = resolveExecutionAllowedTools({
       execution,
       executionRequired: normalizedRequest.executionId != null,

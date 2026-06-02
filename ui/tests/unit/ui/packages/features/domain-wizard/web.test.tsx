@@ -3,9 +3,13 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@aa/ui-core", () => ({
-  FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}));
+vi.mock("@aa/ui-core", async () => {
+  const actual = await vi.importActual<typeof import("@aa/ui-core")>("@aa/ui-core");
+  return {
+    ...actual,
+    FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  };
+});
 
 vi.mock("../../../../../../packages/features/domain-wizard/src/hooks", () => ({
   useDomainWizardVm: () => ({

@@ -6,9 +6,9 @@ describe("compliance feature", () => {
   it("renders a dedicated compliance center instead of a bare re-export", () => {
     render(<compliance.Component />);
 
-    expect(screen.getByText("Compliance")).toBeInTheDocument();
-    expect(screen.getAllByText("Run Check").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Export Report").length).toBeGreaterThan(0);
+    expect(screen.getByText("合规中心")).toBeInTheDocument();
+    expect(screen.getAllByText("运行检查").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("导出报告").length).toBeGreaterThan(0);
     expect(compliance.route.path).toBe("/governance/compliance");
     expect(compliance.manifest.id).toBe("compliance");
   });

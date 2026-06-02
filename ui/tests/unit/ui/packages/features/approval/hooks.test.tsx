@@ -78,7 +78,7 @@ describe("useApprovalCenterVm", () => {
 
     expect(mocks.mockRequestMoreContextApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-1");
     await waitFor(() => {
-      expect(result.current.actionHistory[0]?.title).toContain("Requested Context");
+      expect(result.current.actionHistory[0]?.title).toContain("已请求上下文");
     });
   });
 

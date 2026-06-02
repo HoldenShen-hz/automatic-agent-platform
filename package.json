@@ -182,6 +182,7 @@
     "coverage:cards:check": "node scripts/generate-division-coverage-cards.mjs --check",
     "assurance:review-import": "node scripts/assurance/review-import.mjs",
     "assurance:review-import:check": "node scripts/assurance/review-import.mjs --check",
+    "audit:historical-promises": "node scripts/assurance/historical-promises.mjs --check",
     "assurance:full": "node scripts/assurance/run-full-assurance.mjs",
     "audit:domain-coverage": "node scripts/ci/audit-domain-coverage.mjs --mode=warning",
     "audit:domain-coverage:p0": "node scripts/ci/audit-domain-coverage.mjs --mode=p0",

@@ -21,6 +21,14 @@ artifacts/assurance/review-source-coverage-report.json
 artifacts/assurance/review-conflict-resolution-report.jsonl
 ```
 
+`assurance:full` 还必须额外产出：
+
+```text
+artifacts/assurance/assurance-full-report.json
+```
+
+该报告用于说明当前 assurance 总入口实际执行了哪些 required audit、哪些高层 audit 仍未接线，避免入口名称先于实现范围。
+
 ## 字段要求
 
 最小 schema 以 [review-ledger.schema.json](/Users/holden/Project/automatic_agent/automatic_agent_platform/schemas/review-ledger.schema.json) 为准。

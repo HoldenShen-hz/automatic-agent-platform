@@ -13,5 +13,6 @@ const divisionInventoryFeature = createFeatureModule({
 });
 
 export default divisionInventoryFeature;
+export { createDivisionInventoryMobileCards } from "./mobile";
 export { DivisionInventoryWebView } from "./web";
 export { useDivisionInventoryVm } from "./hooks";

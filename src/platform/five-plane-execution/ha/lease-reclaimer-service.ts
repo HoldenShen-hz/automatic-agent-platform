@@ -545,7 +545,7 @@ export class LeaseReclaimerService implements RecoveryWorker {
   }
 
   private getCoordinatorDb(): AuthoritativeSqlDatabase | null {
-    const candidate = this.coordinator as HaCoordinatorService & { db?: AuthoritativeSqlDatabase };
+    const candidate = this.coordinator as unknown as { db?: AuthoritativeSqlDatabase };
     return candidate.db ?? null;
   }
 }

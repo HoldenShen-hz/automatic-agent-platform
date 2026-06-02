@@ -68,7 +68,7 @@ function main(): void {
         return registration.completeRegistration({
           workerId: envConfig.workerId ?? "",
           challengeId: envConfig.challengeId ?? "",
-          challengeToken: envConfig.challengeToken,
+          challengeToken: envConfig.challengeToken ?? "",
           capabilities: envConfig.capabilities,
           maxConcurrency: envConfig.maxConcurrency ?? 0,
           queueAffinity: envConfig.queueAffinity,

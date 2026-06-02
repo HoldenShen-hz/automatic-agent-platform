@@ -99,7 +99,7 @@ export class ExecutionDispatchService {
   public createTicket(input: CreateExecutionTicketInput): ExecutionTicketDecision {
     const occurredAt = input.occurredAt ?? nowIso();
 
-    const decision = this.db.transaction(() => {
+    const decision = this.db.transaction<ExecutionTicketDecision>(() => {
       const view = this.store.operations.loadExecutionAuthoritativeView(input.executionId);
       if (!view) {
         throw new StorageError("storage.execution_not_found", `Execution not found: ${input.executionId}`, {
@@ -430,15 +430,6 @@ export class ExecutionDispatchService {
         reasonCode: "lease_grant_failed",
         lease: null,
       };
-      let claimedTicketEvent:
-        | {
-            taskId: string;
-            executionId: string;
-            payloadJson: string;
-            traceId: string | null;
-            createdAt: string;
-          }
-        | null = null;
       // Issue 1900 fix: Keep lease acquisition and claim in the same transaction boundary.
       this.db.transaction(() => {
         leaseResult = this.leases.acquireLeaseWithinTransaction({
@@ -470,25 +461,6 @@ export class ExecutionDispatchService {
             updatedAt: occurredAt,
           });
         }
-        const execution = this.store.dispatch.getExecution(ticket.executionId);
-        claimedTicketEvent = {
-          taskId: ticket.taskId,
-          executionId: ticket.executionId,
-          payloadJson: JSON.stringify({
-            ticketId: ticket.id,
-            workerId: selectedWorker.workerId,
-            leaseId: leaseResult.lease.id,
-            queueName: ticket.queueName,
-            dispatchTarget,
-            remoteAvailability,
-            requiredIsolationLevel,
-            requiredRepoVersion,
-            fallbackApplied: selection.fallbackApplied,
-            requiredCapabilities: parseJsonArray(ticket.requiredCapabilitiesJson),
-          }),
-          traceId: execution?.traceId ?? null,
-          createdAt: occurredAt,
-        };
       });
 
       const resolvedLeaseResult = leaseResult;
@@ -512,9 +484,25 @@ export class ExecutionDispatchService {
         });
         continue;
       }
-      if (claimedTicketEvent != null) {
+      if (leaseResult.outcome === "granted" && leaseResult.lease != null) {
+        const execution = this.store.dispatch.getExecution(ticket.executionId);
         this.tryInsertDispatchLifecycleEvent({
-          ...claimedTicketEvent,
+          taskId: ticket.taskId,
+          executionId: ticket.executionId,
+          payloadJson: JSON.stringify({
+            ticketId: ticket.id,
+            workerId: selectedWorker.workerId,
+            leaseId: leaseResult.lease.id,
+            queueName: ticket.queueName,
+            dispatchTarget,
+            remoteAvailability,
+            requiredIsolationLevel,
+            requiredRepoVersion,
+            fallbackApplied: selection.fallbackApplied,
+            requiredCapabilities: parseJsonArray(ticket.requiredCapabilitiesJson),
+          }),
+          traceId: execution?.traceId ?? null,
+          createdAt: occurredAt,
           eventType: "dispatch:ticket_claimed",
         });
       }

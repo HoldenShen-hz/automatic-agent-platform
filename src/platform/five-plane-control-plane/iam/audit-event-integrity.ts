@@ -76,11 +76,12 @@ function resolveAuditIntegrityHmacKey(): string {
   }
   const envConfig = loadAuditIntegrityConfigFromEnv(process.env);
   if (envConfig.hmacKey != null && envConfig.hmacKey.trim().length >= 32) {
+    const trimmedHmacKey = envConfig.hmacKey.trim();
     auditIntegrityConfig = {
-      hmacKey: envConfig.hmacKey.trim(),
+      hmacKey: trimmedHmacKey,
       isProduction: envConfig.isProduction === true,
     };
-    return auditIntegrityConfig.hmacKey;
+    return trimmedHmacKey;
   }
   throw new Error(
     auditIntegrityConfig.isProduction

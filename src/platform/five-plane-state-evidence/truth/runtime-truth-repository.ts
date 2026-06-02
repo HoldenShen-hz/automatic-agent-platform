@@ -542,7 +542,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
             details: {
               rollbackErrors,
             },
-            cause: error instanceof Error ? error : undefined,
+            ...(error instanceof Error ? { cause: error } : {}),
           },
         );
       }

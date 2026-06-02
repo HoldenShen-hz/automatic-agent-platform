@@ -36,7 +36,7 @@ import type { ComplianceStore } from "./types.js";
 /**
  * DEK status enum
  */
-export type DekStatus = "active" | "rotating" | "destroyed";
+export type DekStatus = "active" | "rotating" | "rotated" | "destroyed";
 
 /**
  * Data encryption key record stored in the database

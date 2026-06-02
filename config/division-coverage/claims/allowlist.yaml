@@ -191,6 +191,51 @@ entries:
     reason: governance_todo_definition
     owner: platform-governance-owner
     expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reference/automatic_agent_system_full_review_audit_methodology_v1_3_with_tests_relationship.md
+    matchedText: industry-leading
+    reason: methodology_claim_governance_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reference/automatic_agent_system_full_review_audit_methodology_v1_3_with_tests_relationship.md
+    matchedText: 行业领先
+    reason: methodology_claim_governance_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reference/automatic_agent_system_full_review_audit_methodology_v1_3_with_tests_relationship.md
+    matchedText: production-ready
+    reason: methodology_claim_governance_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/contracts/release_rollout_and_rollback_contract.md
+    matchedText: fully autonomous
+    reason: autonomy_boundary_contract_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/contracts/ring_model_contract.md
+    matchedText: fully autonomous
+    reason: autonomy_boundary_contract_definition
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_en/reference/anthropic_founders_playbook_to_automatic_agent_platform_v1_6_2.md
+    matchedText: production-ready
+    reason: reference_gap_analysis_statement
+    owner: platform-governance-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reviews/platforme-full-review-e.md
+    matchedText: production-ready
+    reason: review_gap_statement
+    owner: architecture-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reviews/platforme-full-review-e.md
+    matchedText: 行业领先
+    reason: review_gap_statement
+    owner: architecture-owner
+    expiresAt: "2027-12-31T00:00:00Z"
+  - filePath: docs_zh/reviews/platforme-full-review-e.md
+    matchedText: fully autonomous
+    reason: review_gap_statement
+    owner: architecture-owner
+    expiresAt: "2027-12-31T00:00:00Z"
   - filePath: docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md
     matchedText: 行业领先
     reason: release_readiness_negative_statement

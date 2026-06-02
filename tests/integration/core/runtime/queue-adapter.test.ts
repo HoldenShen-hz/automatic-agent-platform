@@ -40,8 +40,8 @@ test("queue-adapter barrel exports QueueBackendKind type", () => {
 
 test("queue-adapter barrel exports QueueJobStatus type", () => {
   // Verify the type exists by checking its string values
-  const statuses: QueueJobStatus[] = ["waiting", "delayed", "active", "completed", "failed", "dead_letter"];
-  assert.equal(statuses.length, 6);
+  const statuses: QueueJobStatus[] = ["waiting", "delayed", "active", "completed", "dead_letter"];
+  assert.equal(statuses.length, 5);
 });
 
 test("queue-adapter barrel exports EnqueueInput type", () => {
@@ -60,7 +60,6 @@ test("queue-adapter barrel exports QueueStats type", () => {
     delayed: 2,
     active: 1,
     completed: 100,
-    failed: 3,
     deadLetter: 1,
   };
   assert.equal(stats.queueName, "test-queue");

@@ -8,7 +8,7 @@
  * - Layer 3: Context-aware authorization
  */
 
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { ValidationError } from "../../contracts/errors.js";
 import { assertInMemoryStoreAllowed } from "./in-memory-store-guard.js";
 

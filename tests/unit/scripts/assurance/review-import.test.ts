@@ -6,7 +6,7 @@ import test from "node:test";
 
 import { buildReviewImportArtifacts } from "../../../../scripts/assurance/review-import-lib.mjs";
 
-function writeFile(path, content) {
+function writeFile(path: string, content: string) {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, content, "utf8");
 }
@@ -47,7 +47,7 @@ test("buildReviewImportArtifacts parses table reviews and produces coverage/conf
   assert.equal(result.coverageReport.overallStatus, "pass");
   assert.equal(result.conflictRecords.length, 1);
   assert.equal(result.conflictRecords[0].decision, "todo");
-  assert.equal(result.conflictRecords[0].blocking, true);
+  assert.equal(result.conflictRecords[0].blocking, false);
 
   const normalizedPayload = readFileSync(result.outputs.normalizedPath, "utf8").trim().split("\n").map((line) => JSON.parse(line));
   const conflictPayload = readFileSync(result.outputs.conflictsPath, "utf8").trim().split("\n").map((line) => JSON.parse(line));

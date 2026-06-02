@@ -26,6 +26,8 @@ export interface ApprovalEscalationEvaluationContext {
   readonly escalationDepth?: number;
   readonly lastEscalatedAtIso?: string | null;
   readonly slaBreached?: boolean;
+  readonly conflictedApproverIds?: readonly string[];
+  readonly blockedApproverIds?: readonly string[];
   // R5-36: OrgTree for hierarchy traversal
   readonly orgNodeId?: string;
   readonly orgNodes?: ReadonlyArray<{ orgNodeId: string; parentOrgNodeId: string | null; ownerUserIds: readonly string[] }>;

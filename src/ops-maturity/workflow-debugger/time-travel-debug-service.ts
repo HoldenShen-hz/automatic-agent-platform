@@ -297,7 +297,7 @@ export class TimeTravelDebugService {
   public getSnapshot(sessionId: string, stepId: string): DebugSnapshot | null {
     const sessionRecord = this.findSessionRecord(sessionId);
     const session = sessionRecord?.session;
-    if (session == null) {
+    if (session == null || sessionRecord == null) {
       return null;
     }
     this.assertReplayAccess(session.accessContext);
