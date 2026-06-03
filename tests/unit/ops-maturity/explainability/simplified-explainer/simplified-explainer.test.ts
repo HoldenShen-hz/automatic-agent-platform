@@ -170,8 +170,8 @@ test("simplifyExplanation returns no action for completed stage", () => {
 test("simplifyExplanation calculates confidence from factors and causal links", () => {
   const factors = ["Factor 1", "Factor 2", "Factor 3"];
   const causalLinks: CausalLink[] = [
-    { cause: "a", effect: "b", confidence: 0.5, evidence: [] },
-    { cause: "b", effect: "c", confidence: 0.5, evidence: [] },
+    { source: "a", target: "b", rationale: "a -> b", confidence: 0.5 },
+    { source: "b", target: "c", rationale: "b -> c", confidence: 0.5 },
   ];
   const result = simplifyExplanation(
     "assess",
@@ -187,11 +187,11 @@ test("simplifyExplanation calculates confidence from factors and causal links", 
 test("simplifyExplanation caps confidence at 100", () => {
   const factors = ["Factor 1", "Factor 2", "Factor 3", "Factor 4", "Factor 5"];
   const causalLinks: CausalLink[] = [
-    { cause: "a", effect: "b", confidence: 0.5, evidence: [] },
-    { cause: "b", effect: "c", confidence: 0.5, evidence: [] },
-    { cause: "c", effect: "d", confidence: 0.5, evidence: [] },
-    { cause: "d", effect: "e", confidence: 0.5, evidence: [] },
-    { cause: "e", effect: "f", confidence: 0.5, evidence: [] },
+    { source: "a", target: "b", rationale: "a -> b", confidence: 0.5 },
+    { source: "b", target: "c", rationale: "b -> c", confidence: 0.5 },
+    { source: "c", target: "d", rationale: "c -> d", confidence: 0.5 },
+    { source: "d", target: "e", rationale: "d -> e", confidence: 0.5 },
+    { source: "e", target: "f", rationale: "e -> f", confidence: 0.5 },
   ];
   const result = simplifyExplanation(
     "assess",

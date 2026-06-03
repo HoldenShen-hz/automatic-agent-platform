@@ -1,0 +1,7 @@
+{
+  "caseId": "tau-007",
+  "customerIntent": "complaint",
+  "policyRef": "policy-8",
+  "requiresHitl": false,
+  "jurisdiction": "standard"
+}

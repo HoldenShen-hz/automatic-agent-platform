@@ -6,21 +6,42 @@ actions:
     reversible: true
     requiresHITL: false
     requiresPreparedAction: false
-    rollbackPolicyRef: docs_zh/pilots/engineering-pilot.md
+    rollbackPolicyRef: docs_zh/governance/rollback-policies/engineering-change-rollback.md
     dataClassesTouched:
       - source_code
     allowedFamilies:
       - engineering
       - enterprise-ops
+    mitigations:
+      - read_only_command_allowlist
   - actionId: apply_patch
     riskClass: R2
     sideEffect: local_write
     reversible: true
     requiresHITL: false
     requiresPreparedAction: false
-    rollbackPolicyRef: docs_zh/pilots/engineering-pilot.md
+    rollbackPolicyRef: docs_zh/governance/rollback-policies/engineering-change-rollback.md
     dataClassesTouched:
       - source_code
     allowedFamilies:
       - engineering
     trustedSourcesOnly: true
+    mitigations:
+      - diff_review
+      - targeted_tests
+  - actionId: destructive_shell
+    riskClass: R4
+    sideEffect: local_write
+    reversible: false
+    requiresHITL: true
+    requiresPreparedAction: true
+    rollbackPolicyRef: docs_zh/governance/rollback-policies/engineering-change-rollback.md
+    dataClassesTouched:
+      - source_code
+      - local_state
+    allowedFamilies:
+      - engineering
+    trustedSourcesOnly: true
+    mitigations:
+      - explicit_operator_approval
+      - verified_backup

@@ -9,65 +9,75 @@ import {
   type WizardStep,
 } from "../../../../../src/interaction/ux/wizard/index.js";
 
-test("canAdvanceWizard returns false when current step is not completed", () => {
-  const session: WizardSession = {
+function makeStep(overrides: Partial<WizardStep> = {}): WizardStep {
+  return WizardStepSchema.parse({
+    stepId: "step_1",
+    title: "Step 1",
+    completed: false,
+    ...overrides,
+  });
+}
+
+function makeSession(overrides: Partial<WizardSession> = {}): WizardSession {
+  return WizardSessionSchema.parse({
     sessionId: "session_1",
+    steps: [makeStep({ stepId: "step_1" })],
+    currentStepId: "step_1",
+    answers: {},
+    history: [],
+    visitedStepIds: [],
+    ...overrides,
+  });
+}
+
+test("canAdvanceWizard returns false when current step is not completed", () => {
+  const session = makeSession({
     steps: [
-      { stepId: "step_1", title: "Step 1", completed: true },
-      { stepId: "step_2", title: "Step 2", completed: false },
-      { stepId: "step_3", title: "Step 3", completed: false },
+      makeStep({ stepId: "step_1", completed: true }),
+      makeStep({ stepId: "step_2", title: "Step 2", completed: false }),
+      makeStep({ stepId: "step_3", title: "Step 3", completed: false }),
     ],
     currentStepId: "step_2",
-  };
+  });
 
   assert.equal(canAdvanceWizard(session), false);
 });
 
 test("canAdvanceWizard returns true when current step is completed", () => {
-  const session: WizardSession = {
-    sessionId: "session_1",
+  const session = makeSession({
     steps: [
-      { stepId: "step_1", title: "Step 1", completed: true },
-      { stepId: "step_2", title: "Step 2", completed: true },
-      { stepId: "step_3", title: "Step 3", completed: false },
+      makeStep({ stepId: "step_1", completed: true }),
+      makeStep({ stepId: "step_2", title: "Step 2", completed: true }),
+      makeStep({ stepId: "step_3", title: "Step 3", completed: false }),
     ],
     currentStepId: "step_2",
-  };
+  });
 
   assert.equal(canAdvanceWizard(session), true);
 });
 
 test("canAdvanceWizard returns false when current step not found", () => {
-  const session: WizardSession = {
-    sessionId: "session_1",
-    steps: [
-      { stepId: "step_1", title: "Step 1", completed: true },
-    ],
+  const session = makeSession({
+    steps: [makeStep({ stepId: "step_1", completed: true })],
     currentStepId: "nonexistent",
-  };
+  });
 
   assert.equal(canAdvanceWizard(session), false);
 });
 
 test("canAdvanceWizard returns false for empty steps array", () => {
-  const session: WizardSession = {
-    sessionId: "session_1",
-    steps: [],
-    currentStepId: "step_1",
-  };
+  const session = makeSession({ steps: [] });
 
   assert.equal(canAdvanceWizard(session), false);
 });
 
 test("canAdvanceWizard returns true when first step is completed and current is first", () => {
-  const session: WizardSession = {
-    sessionId: "session_1",
+  const session = makeSession({
     steps: [
-      { stepId: "step_1", title: "Step 1", completed: true },
-      { stepId: "step_2", title: "Step 2", completed: false },
+      makeStep({ stepId: "step_1", completed: true }),
+      makeStep({ stepId: "step_2", title: "Step 2", completed: false }),
     ],
-    currentStepId: "step_1",
-  };
+  });
 
   assert.equal(canAdvanceWizard(session), true);
 });
@@ -131,28 +141,26 @@ test("WizardSessionSchema rejects empty currentStepId", () => {
 });
 
 test("canAdvanceWizard handles session with all steps completed", () => {
-  const session: WizardSession = {
-    sessionId: "session_1",
+  const session = makeSession({
     steps: [
-      { stepId: "step_1", title: "Step 1", completed: true },
-      { stepId: "step_2", title: "Step 2", completed: true },
-      { stepId: "step_3", title: "Step 3", completed: true },
+      makeStep({ stepId: "step_1", completed: true }),
+      makeStep({ stepId: "step_2", title: "Step 2", completed: true }),
+      makeStep({ stepId: "step_3", title: "Step 3", completed: true }),
     ],
     currentStepId: "step_3",
-  };
+  });
 
   assert.equal(canAdvanceWizard(session), true);
 });
 
 test("canAdvanceWizard handles session where current is last step", () => {
-  const session: WizardSession = {
-    sessionId: "session_1",
+  const session = makeSession({
     steps: [
-      { stepId: "step_1", title: "Step 1", completed: true },
-      { stepId: "step_2", title: "Step 2", completed: false },
+      makeStep({ stepId: "step_1", completed: true }),
+      makeStep({ stepId: "step_2", title: "Step 2", completed: false }),
     ],
     currentStepId: "step_2",
-  };
+  });
 
   // Even though it's the last step, we can still "advance" (complete it)
   assert.equal(canAdvanceWizard(session), false);
@@ -171,13 +179,9 @@ test("WizardStepSchema requires stepId and title", () => {
 });
 
 test("canAdvanceWizard returns false for session with null/undefined step completion", () => {
-  const session: WizardSession = {
-    sessionId: "session_1",
-    steps: [
-      { stepId: "step_1", title: "Step 1", completed: false },
-    ],
-    currentStepId: "step_1",
-  };
+  const session = makeSession({
+    steps: [makeStep({ stepId: "step_1", completed: false })],
+  });
 
   assert.equal(canAdvanceWizard(session), false);
 });

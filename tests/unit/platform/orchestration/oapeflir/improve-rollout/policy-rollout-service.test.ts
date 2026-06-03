@@ -3,11 +3,12 @@ import assert from "node:assert/strict";
 
 import { AutoRollbackService } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/auto-rollback-service.js";
 import { PolicyRolloutService } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/policy-rollout-service.js";
-import type { RolloutRecord, RolloutStatus } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
+import { parseRolloutRecord, type RolloutRecord, type RolloutStatus } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
 import type { RolloutMetrics } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/auto-rollback-service.js";
 import type { ImprovementCandidate } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/improvement-candidate-registry.js";
 import type { StrategyVersion } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/strategy-versioning.js";
 import { rolloutFreezeManager } from "../../../../../../src/platform/shared/observability/rollout-freeze-manager.js";
+import { parseImprovementCandidate } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/improvement-candidate.js";
 
 // Helper to run test with frozen rollout state
 function withFrozenRollouts(fn: () => void): void {
@@ -20,18 +21,30 @@ function withFrozenRollouts(fn: () => void): void {
 }
 
 function createMinimalCandidate(overrides: Partial<ImprovementCandidate> = {}): ImprovementCandidate {
-  return {
+  return parseImprovementCandidate({
     candidateId: "candidate_test",
     taskId: "task_test",
+    learningObjectId: "lo_1",
+    source: "failure_pattern",
+    targetScope: "domain",
+    priority: "medium",
+    rolloutLevel: "L0_off",
+    metrics: {
+      errorRate: 0,
+      latencyP99: 0,
+      successRate: 1,
+      sampleCount: 0,
+    },
+    guardrails: [],
     sourceSignalRefs: ["signal_1"],
     sourceLearningObjectIds: ["lo_1"],
     changeScope: "policy",
     description: "Test candidate",
     expectedBenefit: "Test benefit",
     status: "approved",
-    createdAt: Date.now(),
+    createdAt: new Date().toISOString(),
     ...overrides,
-  };
+  });
 }
 
 function createStrategyVersion(overrides: Partial<StrategyVersion> = {}): StrategyVersion {
@@ -46,7 +59,7 @@ function createStrategyVersion(overrides: Partial<StrategyVersion> = {}): Strate
 }
 
 function createRolloutRecord(overrides: Partial<RolloutRecord> = {}): RolloutRecord {
-  return {
+  return parseRolloutRecord({
     recordId: "rollout_test",
     candidateId: "candidate_test",
     level: "stable",
@@ -57,7 +70,7 @@ function createRolloutRecord(overrides: Partial<RolloutRecord> = {}): RolloutRec
     guardrailReasonCodes: [],
     evidence: [],
     ...overrides,
-  };
+  });
 }
 
 function createHealthyMetrics(): RolloutMetrics {
@@ -517,7 +530,11 @@ test("inferLevelFromStatus maps all progressive statuses", () => {
   const candidate = createMinimalCandidate();
   const healthyMetrics = createHealthyMetrics();
 
-  const progressiveStatuses: Array<{ from: RolloutStatus; to: Exclude<RolloutStatus, "draft" | "rejected" | "rolled_back" | "paused">; expectedLevel: string }> = [
+  const progressiveStatuses: Array<{
+    from: RolloutStatus;
+    to: "canary_5" | "partial_25" | "partial_50" | "partial_75" | "stable";
+    expectedLevel: string;
+  }> = [
     { from: "shadow", to: "canary_5", expectedLevel: "canary_5" },
     { from: "canary_5", to: "partial_25", expectedLevel: "partial_25" },
     { from: "partial_25", to: "partial_50", expectedLevel: "partial_50" },

@@ -11,9 +11,9 @@ test("platform contract barrel re-exports canonical compliance contract aliases"
 
   assert.match(contractsIndex, /type EvidenceMappingRule/);
   assert.match(contractsIndex, /type ComplianceReportRequest/);
-  assert.match(contractsIndex, /type Artifact/);
-  assert.match(contractsIndex, /type EvidenceRecord as ComplianceEvidenceRecord/);
-  assert.match(contractsIndex, /type AuditAppendCommand as ComplianceAuditAppendCommand/);
+  assert.match(contractsIndex, /type ComplianceArtifact as Artifact/);
+  assert.match(contractsIndex, /type ComplianceEvidenceRecord/);
+  assert.match(contractsIndex, /type ComplianceAuditAppendCommand/);
 });
 
 test("five-plane compliance module defines the canonical compliance contract types", () => {
@@ -22,9 +22,10 @@ test("five-plane compliance module defines the canonical compliance contract typ
     "utf8",
   );
 
-  assert.match(complianceIndex, /export interface EvidenceMappingRule/);
-  assert.match(complianceIndex, /export interface ComplianceReportRequest/);
-  assert.match(complianceIndex, /export interface Artifact/);
-  assert.match(complianceIndex, /export interface EvidenceRecord/);
-  assert.match(complianceIndex, /export interface AuditAppendCommand/);
+  assert.match(complianceIndex, /export type \{/);
+  assert.match(complianceIndex, /EvidenceMappingRule/);
+  assert.match(complianceIndex, /ComplianceReportRequest/);
+  assert.match(complianceIndex, /ComplianceArtifact as Artifact/);
+  assert.match(complianceIndex, /ComplianceEvidenceRecord as EvidenceRecord/);
+  assert.match(complianceIndex, /ComplianceAuditAppendCommand as AuditAppendCommand/);
 });

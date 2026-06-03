@@ -122,7 +122,7 @@ describe("eval: dataset-card-integrity (P0)", () => {
     // NOT require 100% here because the audit is what enforces it;
     // we only assert the *audit* is wired and the schema contract
     // is consistent.
-    void hasSamples;
+    assert.ok(hasSamples >= 1, "expected at least one dataset card to declare samples");
   });
 
   it("eval-oracle audit script scans a TS dataset and reports per-file", () => {

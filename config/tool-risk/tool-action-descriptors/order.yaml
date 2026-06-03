@@ -6,8 +6,10 @@ actions:
     reversible: true
     requiresHITL: false
     requiresPreparedAction: false
-    rollbackPolicyRef: docs_zh/pilots/customer-service-pilot.md
+    rollbackPolicyRef: docs_zh/governance/rollback-policies/customer-service-action-rollback.md
     dataClassesTouched:
       - order_record
     allowedFamilies:
       - enterprise-ops
+    mitigations:
+      - order_identity_check

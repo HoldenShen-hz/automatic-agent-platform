@@ -11,6 +11,9 @@ import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evi
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
 import { newId } from "../../../../../src/platform/contracts/types/ids.js";
+import { waitForMs } from "../../../../helpers/wait.js";
+
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
 
 test.describe("DurableEventBus unit tests", () => {
   let workspace: string;
@@ -169,7 +172,7 @@ test.describe("DurableEventBus unit tests", () => {
     });
 
     // timing-contract: async delivery queue flushes on a later poll tick.
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await waitForMs(50);
 
     const delivered = await bus.deliverPending("consumer-1");
 
@@ -192,7 +195,7 @@ test.describe("DurableEventBus unit tests", () => {
     });
 
     // timing-contract: initial dispatch happens on an async poll tick.
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await waitForMs(100);
 
     // deliverPending should eventually throw after retries
     await assert.rejects(
@@ -201,7 +204,7 @@ test.describe("DurableEventBus unit tests", () => {
           await bus.deliverPending("consumer-1");
           if (callCount >= 3) break;
           // timing-contract: retry/dead-letter flow requires poll tick advancement.
-          await new Promise(resolve => setTimeout(resolve, 50));
+          await waitForMs(50);
         }
       },
       /dead_lettered/,

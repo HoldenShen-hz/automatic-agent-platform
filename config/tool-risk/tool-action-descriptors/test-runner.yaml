@@ -6,19 +6,23 @@ actions:
     reversible: true
     requiresHITL: false
     requiresPreparedAction: false
-    rollbackPolicyRef: docs_zh/pilots/engineering-pilot.md
+    rollbackPolicyRef: docs_zh/governance/rollback-policies/engineering-change-rollback.md
     dataClassesTouched:
       - test_results
     allowedFamilies:
       - engineering
+    mitigations:
+      - isolated_test_workspace
   - actionId: analyze_failure
     riskClass: R1
     sideEffect: none
     reversible: true
     requiresHITL: false
     requiresPreparedAction: false
-    rollbackPolicyRef: docs_zh/pilots/engineering-pilot.md
+    rollbackPolicyRef: docs_zh/governance/rollback-policies/engineering-change-rollback.md
     dataClassesTouched:
       - test_results
     allowedFamilies:
       - engineering
+    mitigations:
+      - non_executing_analysis

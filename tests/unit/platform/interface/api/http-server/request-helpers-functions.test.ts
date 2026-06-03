@@ -74,7 +74,7 @@ test("matchRoute handles missing URL", () => {
 
 test("matchRoute handles null method as GET", () => {
   const request: ApiRequestLike = {
-    method: null,
+    method: undefined,
     url: "/tasks",
     headers: {},
     body: null,

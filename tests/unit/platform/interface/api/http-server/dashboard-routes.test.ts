@@ -346,6 +346,6 @@ test("GET /v1/meta/contract-version returns supported public contract range", as
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
   const body = JSON.parse(response.body) as { data: Record<string, string> };
-  assert.match(body.data.contractVersion, /^\d{4}-\d{2}-\d{2}$/);
-  assert.match(body.data.minServerVersion, /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(body.data.contractVersion ?? "", /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(body.data.minServerVersion ?? "", /^\d{4}-\d{2}-\d{2}$/);
 });

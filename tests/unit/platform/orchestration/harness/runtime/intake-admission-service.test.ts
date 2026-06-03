@@ -6,6 +6,15 @@ import {
   IntakeAdmissionService,
   type TrafficController,
 } from "../../../../../../src/platform/five-plane-orchestration/harness/runtime/intake-admission-service.js";
+import type { BudgetIntent, BudgetResourceKind } from "../../../../../../src/platform/contracts/executable-contracts/index.js";
+
+function createBudgetIntent(resourceKinds: readonly BudgetResourceKind[]): BudgetIntent {
+  return {
+    amount: 100,
+    currency: "USD",
+    resourceKinds,
+  };
+}
 
 test("IntakeAdmissionService builds the canonical intake and admission chain idempotently", () => {
   const service = new IntakeAdmissionService();
@@ -19,15 +28,12 @@ test("IntakeAdmissionService builds the canonical intake and admission chain ide
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "platform",
     goal: "ship runtime contract",
     inputs: { repo: "automatic_agent_platform" },
     riskPreview: { riskClass: "medium", reasons: [] },
     constraintPackRef: "policy://default",
-    budgetIntent: {
-      amount: 100,
-      currency: "USD",
-      resourceKinds: ["token", "tool"],
-    },
+    budgetIntent: createBudgetIntent(["token", "tool"]),
     idempotencyKey: "idem-1",
     traceId: "trace-1",
   });
@@ -35,14 +41,11 @@ test("IntakeAdmissionService builds the canonical intake and admission chain ide
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "platform",
     goal: "ship runtime contract",
     riskPreview: { riskClass: "medium", reasons: [] },
     constraintPackRef: "policy://default",
-    budgetIntent: {
-      amount: 100,
-      currency: "USD",
-      resourceKinds: ["token"],
-    },
+    budgetIntent: createBudgetIntent(["token"]),
     idempotencyKey: "idem-1",
     traceId: "trace-1",
   });
@@ -75,15 +78,12 @@ test("IntakeAdmissionService refuses admission when traffic controller blocks tr
         tenantId: "tenant-1",
         principal,
         source: "nl",
+        domainId: "platform",
         goal: "ship runtime contract",
         inputs: { repo: "automatic_agent_platform" },
         riskPreview: { riskClass: "medium", reasons: [] },
         constraintPackRef: "policy://default",
-        budgetIntent: {
-          amount: 100,
-          currency: "USD",
-          resourceKinds: ["token", "tool"],
-        },
+        budgetIntent: createBudgetIntent(["token", "tool"]),
         idempotencyKey: "idem-blocked",
         traceId: "trace-1",
       }),
@@ -107,15 +107,12 @@ test("IntakeAdmissionService allows admission when traffic controller permits tr
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "platform",
     goal: "ship runtime contract",
     inputs: { repo: "automatic_agent_platform" },
     riskPreview: { riskClass: "medium", reasons: [] },
     constraintPackRef: "policy://default",
-    budgetIntent: {
-      amount: 100,
-      currency: "USD",
-      resourceKinds: ["token", "tool"],
-    },
+    budgetIntent: createBudgetIntent(["token", "tool"]),
     idempotencyKey: "idem-allowed",
     traceId: "trace-2",
   });
@@ -136,15 +133,12 @@ test("IntakeAdmissionService allows admission when no traffic controller is conf
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "platform",
     goal: "ship runtime contract",
     inputs: { repo: "automatic_agent_platform" },
     riskPreview: { riskClass: "medium", reasons: [] },
     constraintPackRef: "policy://default",
-    budgetIntent: {
-      amount: 100,
-      currency: "USD",
-      resourceKinds: ["token", "tool"],
-    },
+    budgetIntent: createBudgetIntent(["token", "tool"]),
     idempotencyKey: "idem-no-controller",
     traceId: "trace-3",
   });

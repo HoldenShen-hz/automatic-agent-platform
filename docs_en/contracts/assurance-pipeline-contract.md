@@ -34,12 +34,12 @@ It covers three execution scenarios:
 | Layer | Responsibility | npm Script | Key Artifact |
 |---|---|---|---|
 | 1 Inventory | Full repository file/contract/event/metric/test/document/config/workflow indexing | `assurance:inventory` | `artifacts/assurance/source-inventory.json`, `routes.json`, `contracts.json`, `events.json`, `metrics.json`, `tests.json` |
-| 2 Historical Promises | Extract promises like must/done/final/production-ready | `assurance:historical-promises`, `audit:historical-promises` | `artifacts/assurance/historical-promises.jsonl` |
+| 2 Historical Promises | Extract promises like must/done/final/production-ready and archive assumptions | `assurance:historical-promises`, `assurance:assumptions`, `audit:historical-promises` | `artifacts/assurance/historical-promises.jsonl`, `assumptions.jsonl` |
 | 3 Static Audit | contract/secret/tenant/path/import/determinism scanning | `audit:contracts-sync`, `audit:secret-sinks`, `audit:tenant-isolation`, `audit:plugin-security`, `audit:path-safety`, `audit:architecture-boundary`, `audit:fire-and-forget`, `audit:determinism`, `audit:release-claims` | `artifacts/assurance/static-audit-report.json` |
 | 4 Dynamic Invariant | invariant/chaos/multi-tenant/replay tests | `test:invariants`, `test:chaos:p0`, `test:regression:p0` | `artifacts/assurance/invariant-test-report.json` |
 | 5 Eval/Redteam/Golden Anti-fake | expected-as-actual/judge read-self-score detection | `audit:eval-oracle`, `test:redteam:p0`, `test:golden:strict` | `artifacts/assurance/eval-oracle-report.json` |
-| 6 Issue Ledger | Normalization + dedup + epic grouping | `assurance:issue-ledger` | `artifacts/assurance/issues.{raw,normalized,deduped}.jsonl` |
-| 7 Coverage Scorecard | 10-dimension scoring, determines release blocked | `assurance:coverage-scorecard` | `artifacts/assurance/audit-coverage-scorecard.{json,md}` |
+| 6 Issue Ledger | Normalization + dedup + epic grouping, plus test-to-issue and historical regression mapping | `assurance:issue-ledger`, `assurance:test-to-issue`, `assurance:historical-regression-map` | `artifacts/assurance/issues.{raw,normalized,deduped}.jsonl`, `historical-issue-regression-map.{json,md}` |
+| 7 Coverage Scorecard | 10-dimension scoring plus completeness coverage matrix, determines release blocked | `assurance:coverage-scorecard`, `assurance:completeness-matrix` | `artifacts/assurance/audit-coverage-scorecard.{json,md}`, `completeness-coverage-matrix.{json,md}` |
 | 8 Evidence Bundle | Signed archive, verifier signature check | `evidence:bundle:create`, `evidence:bundle:verify` | `artifacts/release/evidence-bundle.json`, `.sig` |
 
 ## 3. Differences Across PR / Nightly / Release Scheduling Scenarios
@@ -76,7 +76,7 @@ Runs the full pipeline:
 npm run assurance:full
 ```
 
-Outputs to `artifacts/assurance/nightly/YYYY-MM-DD/`.
+Outputs to `artifacts/assurance/`.
 
 ### 3.3 Release rc:check
 
@@ -128,11 +128,20 @@ P0 audit gate lacks seeded defect test
   "validationRunId": "...",
   "includedReports": [
     "artifacts/release/rc-check-report.json",
-    "artifacts/release/contract-drift-report.json",
-    "artifacts/release/security-audit-report.json",
-    "artifacts/release/eval-redteam-report.json",
-    "artifacts/release/release-claim-report.json",
-    "artifacts/assurance/audit-coverage-scorecard.json"
+    "artifacts/assurance/audit-coverage-scorecard.json",
+    "artifacts/assurance/eval-oracle-report.json",
+    "artifacts/assurance/redteam-report.json",
+    "artifacts/assurance/golden-replay-report.json",
+    "artifacts/assurance/review-ledger.normalized.jsonl",
+    "artifacts/assurance/review-evidence-readiness-report.json",
+    "artifacts/assurance/historical-promises.jsonl",
+    "artifacts/assurance/assumptions.jsonl",
+    "artifacts/assurance/issues.deduped.jsonl",
+    "artifacts/assurance/test-to-issue-map.json",
+    "artifacts/assurance/historical-issue-regression-map.json",
+    "artifacts/assurance/completeness-coverage-matrix.json",
+    "artifacts/assurance/seeded-defect-report.json",
+    "artifacts/assurance/assurance-full-report.json"
   ]
 }
 ```

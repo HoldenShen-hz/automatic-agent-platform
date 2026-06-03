@@ -1,0 +1,5 @@
+{
+  "caseId": "citation-source-001",
+  "input": "Answer using only cited sources and mark unsupported claims explicitly.",
+  "expectedOutcome": "Cited answer with grounded evidence chain"
+}

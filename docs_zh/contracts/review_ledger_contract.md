@@ -12,13 +12,14 @@
 
 ## 产物
 
-实现至少产出以下 4 个文件：
+实现至少产出以下文件：
 
 ```text
 artifacts/assurance/review-ledger.raw.jsonl
 artifacts/assurance/review-ledger.normalized.jsonl
 artifacts/assurance/review-source-coverage-report.json
 artifacts/assurance/review-conflict-resolution-report.jsonl
+artifacts/assurance/review-evidence-readiness-report.json
 ```
 
 `assurance:full` 还必须额外产出：
@@ -45,6 +46,13 @@ artifacts/assurance/assurance-full-report.json
 - `sourceRefs`: 反向追溯到原文的最小定位集合。
 - `evidenceRefs`: 该 finding 对应的代码、测试、文档或命令证据。
 - `freshness`: 当前 review 结论是否仍然新鲜。
+
+`review-evidence-readiness-report.json` 额外按 review source 报告：
+
+- checklist 是否覆盖 `reviewed files / reviewed contracts / reviewed tests / reviewed CI gates / unverified assumptions / found issues / missed areas / confidence score`
+- blind spot declaration 是否显式声明
+- P0 finding 是否满足双人独立审查要求
+- 当前 review 是否可作为 release evidence
 
 ## 状态枚举
 

@@ -53,6 +53,44 @@ test("RegionFailoverController.resolve returns no failover for healthy primary [
   assert.equal(decision.rationale, "multi_region.primary_within_threshold");
 });
 
+test("RegionFailoverController.castVote requires a matching dedupeKey [failover-controller-comprehensive]", () => {
+  const controller = new RegionFailoverController();
+
+  assert.throws(
+    () =>
+      controller.castVote(
+        "global",
+        {
+          regionId: "us-east-1",
+          vote: "promote",
+          weight: 1,
+          timestamp: "2026-06-03T00:00:00.000Z",
+          dedupeKey: "vote-1",
+        },
+        "",
+      ),
+    /region_failover\.vote_dedupe_key_required/,
+  );
+});
+
+test("RegionFailoverController.castVote dedupes repeated delegated votes by dedupeKey [failover-controller-comprehensive]", () => {
+  const controller = new RegionFailoverController();
+  const vote = {
+    regionId: "us-east-1",
+    vote: "promote" as const,
+    weight: 1,
+    timestamp: "2026-06-03T00:00:00.000Z",
+    dedupeKey: "vote-1",
+  };
+
+  controller.castVote("global", vote, "vote-1");
+  controller.castVote("global", vote, "vote-1");
+
+  const consensus = controller.evaluateConsensus("global", 0.5);
+  assert.equal(consensus.votesFor, 1);
+  assert.equal(consensus.totalWeight, 1);
+});
+
 test("RegionFailoverController.resolve triggers failover for unhealthy primary [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({ primaryHealthy: false });

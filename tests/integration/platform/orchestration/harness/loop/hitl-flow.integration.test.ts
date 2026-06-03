@@ -21,27 +21,38 @@ import {
 } from "../../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
+  const baseBudget = {
+    maxSteps: 12,
+    maxCost: 5.0,
+    maxDurationMs: 120_000,
+  } as const;
   return {
-    policyIds: ["policy.hitl.test"],
-    approvalMode: "required",
-    autonomyMode: "supervised",
-    toolPolicy: {
+    policyIds: overrides.policyIds ?? ["policy.hitl.test"],
+    approvalMode: overrides.approvalMode ?? "required",
+    autonomyMode: overrides.autonomyMode ?? "supervised",
+    tool_policy: overrides.tool_policy ?? {
       allowedTools: ["read", "write", "bash", "delete"],
     },
-    risk_policy: {
+    risk_policy: overrides.risk_policy ?? {
       maxRiskScore: 80,
       escalationThreshold: 50,
     },
-    output_policy: {
+    output_policy: overrides.output_policy ?? {
       requiredEvidence: ["security_scan", "code_review"],
       redactSensitiveData: true,
     },
-    budget: {
-      maxSteps: 12,
-      maxCost: 5.0,
-      maxDurationMs: 120_000,
+    budget: overrides.budget ?? baseBudget,
+    sandboxRequirement: overrides.sandboxRequirement ?? {
+      sandboxMode: "ephemeral",
+      timeoutMs: 120_000,
     },
-    ...overrides,
+    approvalRequirement: overrides.approvalRequirement ?? {
+      requiredForRiskClass: ["high", "critical"],
+      approverRoles: ["operator"],
+      escalationTimeoutMs: 30_000,
+    },
+    ...(overrides.budgetEnvelope != null ? { budgetEnvelope: overrides.budgetEnvelope } : {}),
+    ...(overrides.versionLockRef != null ? { versionLockRef: overrides.versionLockRef } : {}),
   };
 }
 
@@ -304,7 +315,7 @@ test("HITL with blocked tools returns abort instead of paused hitl", () => {
         taskId: "task-hitl-blocked-001",
         domainId: "security",
         constraintPack: createConstraintPack({
-          toolPolicy: {
+          tool_policy: {
             allowedTools: ["read"],
           },
         }),
@@ -434,7 +445,7 @@ test("Separate HitlRuntime instances maintain isolated request state", () => {
 
     // Resolve in one runtime doesn't affect the other
     const resolved1 = hitlRuntime1.resolve(request1.requestId, "approved", "actor-1");
-    assert.equal(resolved1.status, "approved");
+    assert.equal(resolved1.request.status, "approved");
     assert.equal(hitlRuntime2.get(request1.requestId), null); // Still not in runtime2
   } finally {
     ctx.cleanup();

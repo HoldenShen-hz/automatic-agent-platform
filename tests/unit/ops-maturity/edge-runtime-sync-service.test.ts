@@ -3,6 +3,10 @@ import test from "node:test";
 
 import { EdgeRuntimeSyncService } from "../../../src/ops-maturity/edge-runtime/edge-runtime-sync-service.js";
 
+function freshAttestedAt(): string {
+  return new Date(Date.now() - 60_000).toISOString();
+}
+
 const profile = {
   edgeNodeId: "edge_factory_1",
   deviceId: "device_factory_1",
@@ -12,7 +16,7 @@ const profile = {
   offlineMaxDuration: 60 * 60 * 1000,
   keyLease: "lease_edge_factory_1",
   deviceAttestation: {
-    attestedAt: "2026-04-20T00:00:00.000Z",
+    attestedAt: freshAttestedAt(),
     status: "valid" as const,
   },
   allowedModels: ["local-vision"],

@@ -5,15 +5,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { scoreSystemHealth } from "../../../../../src/interaction/dashboard/health-scorer/index.js";
-import type { SystemSituation } from "../../../../../src/interaction/dashboard/health-scorer/index.js";
+import type { DashboardSystemSituation } from "../../../../../src/interaction/dashboard/index.js";
 
-function makeSystemSituation(overrides: Partial<SystemSituation> = {}): SystemSituation {
+function makeSystemSituation(overrides: Partial<DashboardSystemSituation> = {}): DashboardSystemSituation {
   return {
-    situationId: "sit-1",
-    tenantId: "tenant-1",
-    observedAt: new Date().toISOString(),
     healthStatus: "ok",
-    activeExecutions: 0,
     queueBacklog: new Set(),
     findings: [],
     ...overrides,
@@ -80,7 +76,7 @@ test("scoreSystemHealth handles findings of size 4", () => {
 
 test("scoreSystemHealth combined penalties do not go below 0", () => {
   const system = makeSystemSituation({
-    healthStatus: "critical",
+    healthStatus: "unhealthy",
     queueBacklog: new Set(Array.from({ length: 50 }, (_, i) => `item${i}`)),
     findings: Array.from({ length: 10 }, (_, i) => ({
       checkId: `f${i}`,
@@ -107,7 +103,7 @@ test("scoreSystemHealth overloaded status with no backlog or findings", () => {
 });
 
 test("scoreSystemHealth critical status with no backlog or findings", () => {
-  const system = makeSystemSituation({ healthStatus: "critical" });
+  const system = makeSystemSituation({ healthStatus: "unhealthy" });
   const score = scoreSystemHealth(system);
   assert.equal(score, 30);
 });

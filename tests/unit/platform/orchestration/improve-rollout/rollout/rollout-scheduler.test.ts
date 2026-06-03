@@ -2,24 +2,39 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { RolloutScheduler } from "../../../../../../src/platform/five-plane-orchestration/improve-rollout/rollout/rollout-scheduler.js";
-import type { RolloutRecord } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
+import { parseRolloutRecord, type RolloutRecord } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
 import type { ImprovementCandidate } from "../../../../../../src/platform/five-plane-orchestration/improve-rollout/improvement-candidate-registry.js";
+import { parseImprovementCandidate } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/improvement-candidate.js";
 
 function createMockCandidate(overrides: Partial<ImprovementCandidate> = {}): ImprovementCandidate {
-  return {
+  return parseImprovementCandidate({
     candidateId: "candidate-1",
     taskId: "task-1",
-    domainId: "domain-1",
-    changeScope: "feature",
+    learningObjectId: "learning-1",
+    source: "failure_pattern",
+    targetScope: "domain",
+    priority: "medium",
+    rolloutLevel: "L1_evaluate",
+    metrics: {
+      errorRate: 0,
+      latencyP99: 0,
+      successRate: 1,
+      sampleCount: 0,
+    },
+    guardrails: [],
+    changeScope: "policy",
     status: "approved",
-    createdAt: Date.now(),
+    createdAt: new Date().toISOString(),
     sourceSignalRefs: [],
+    sourceLearningObjectIds: ["learning-1"],
+    description: "Test rollout candidate",
+    expectedBenefit: "Validate rollout progression",
     ...overrides,
-  } as unknown as ImprovementCandidate;
+  });
 }
 
 function createMockRecord(overrides: Partial<RolloutRecord> = {}): RolloutRecord {
-  return {
+  return parseRolloutRecord({
     recordId: "record-1",
     candidateId: "candidate-1",
     level: "L1_evaluate",
@@ -27,11 +42,10 @@ function createMockRecord(overrides: Partial<RolloutRecord> = {}): RolloutRecord
     strategyVersionId: null,
     status: "evaluation_enabled",
     transitionedAt: Date.now() - 600_000,
-    approvedBy: null,
     guardrailReasonCodes: [],
     evidence: [],
     ...overrides,
-  };
+  });
 }
 
 function createMetrics() {

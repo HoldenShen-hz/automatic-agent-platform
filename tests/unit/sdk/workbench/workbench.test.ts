@@ -24,6 +24,7 @@ const mockPlugin: PluginManifest = {
   trustLevel: "trusted",
   publicSdkSurface: "sdk.query",
   settingsSchema: {},
+  outputDataClass: "internal",
   sandbox: {
     timeoutMs: 5000,
     allowFilesystemWrite: false,
@@ -103,6 +104,7 @@ test("SdkWorkbenchService.createInstallPlan handles multiple plugins", () => {
     trustLevel: "trusted",
     publicSdkSurface: "sdk.transform",
     settingsSchema: {},
+    outputDataClass: "internal",
     sandbox: {
       timeoutMs: 5000,
       allowFilesystemWrite: false,

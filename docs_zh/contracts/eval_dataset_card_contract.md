@@ -17,7 +17,10 @@
 | `source` | `string` | 来源说明 |
 | `taskCount` | `integer >= 1` | 样本数量 |
 | `split` | `train \| heldout \| release \| shadow` | 数据集用途 |
+| `samples` | `string` | 指向样本文件或目录的仓库内路径 |
+| `sampleCount` | `integer >= 1` | 冻结快照中声明的样本数 |
 | `contaminationStatus` | `clean \| suspected \| unknown` | 污染状态 |
+| `contaminationEvidence` | `string[]` | 支撑污染状态结论的证据引用 |
 | `privacyStatus` | `public \| internal \| redacted \| restricted` | 隐私级别 |
 | `labelingMethod` | `string` | 标注方式 |
 | `allowedForTraining` | `boolean` | 是否允许用于训练 |
@@ -28,8 +31,9 @@
 ## 3. 规则
 
 - schema 当前按 `additionalProperties: false` fail-close。
+- `samples` 必须能解析到仓库内真实文件或目录；缺失样本路径时，release gate 不得消费该数据集。
 - `frozenHash` 表示数据集内容、索引和卡片绑定到一次冻结快照；卡片更新后必须重新计算。
-- `contaminationStatus=clean` 只能在有污染检查证据时声明；否则应使用 `suspected` 或 `unknown`。
+- `contaminationStatus=clean` 只能在 `contaminationEvidence` 非空时声明；否则应使用 `suspected` 或 `unknown`。
 - `allowedForReleaseGate=true` 不等同于自动通过 release gate，仍需结合 eval threshold 与场景 owner 判定。
 
 ## 4. Legacy / Scope Notes

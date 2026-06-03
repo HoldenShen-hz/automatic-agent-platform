@@ -1,0 +1,7 @@
+{
+  "caseId": "swe-054",
+  "issueRef": "ISSUE-1054",
+  "repository": "coding-pilot",
+  "expectation": "patch_draft",
+  "severity": "medium"
+}

@@ -14,8 +14,21 @@ import {
   buildNextActions,
   buildRecommendedCommands,
   summarizeCriteria,
-  type StableReleaseGateReport,
 } from "../../../../../src/platform/shared/stability/stable-release-package.js";
+import type { StableGateCriterion, StableReleaseGateReport } from "../../../../../src/platform/stability/stable-release-gate.js";
+
+function createCriterion(
+  criterionId: StableGateCriterion["criterionId"],
+  status: StableGateCriterion["status"],
+  evidenceRefs: string[] = [],
+): StableGateCriterion {
+  return {
+    criterionId,
+    status,
+    detail: `${criterionId}:${status}`,
+    evidenceRefs,
+  };
+}
 
 function createMinimalGateReport(): StableReleaseGateReport {
   return {
@@ -135,8 +148,8 @@ test("buildRecommendedCommands includes profile-specific commands [stable-releas
 
 test("summarizeCriteria returns pass when all criteria pass [stable-release-package-additional]", () => {
   const criteria = [
-    { criterionId: "test1", status: "pass" as const, detail: "test1 pass", evidenceRefs: [] },
-    { criterionId: "test2", status: "pass" as const, detail: "test2 pass", evidenceRefs: [] },
+    createCriterion("contracts_frozen", "pass"),
+    createCriterion("conformance_tests", "pass"),
   ];
 
   const result = summarizeCriteria(criteria);
@@ -146,8 +159,8 @@ test("summarizeCriteria returns pass when all criteria pass [stable-release-pack
 
 test("summarizeCriteria returns partial when any criterion is partial [stable-release-package-additional]", () => {
   const criteria = [
-    { criterionId: "test1", status: "pass" as const, detail: "test1 pass", evidenceRefs: [] },
-    { criterionId: "test2", status: "partial" as const, detail: "test2 partial", evidenceRefs: [] },
+    createCriterion("contracts_frozen", "pass"),
+    createCriterion("conformance_tests", "partial"),
   ];
 
   const result = summarizeCriteria(criteria);
@@ -157,8 +170,8 @@ test("summarizeCriteria returns partial when any criterion is partial [stable-re
 
 test("summarizeCriteria returns fail when any criterion fails [stable-release-package-additional]", () => {
   const criteria = [
-    { criterionId: "test1", status: "pass" as const, detail: "test1 pass", evidenceRefs: [] },
-    { criterionId: "test2", status: "fail" as const, detail: "test2 fail", evidenceRefs: [] },
+    createCriterion("contracts_frozen", "pass"),
+    createCriterion("conformance_tests", "fail"),
   ];
 
   const result = summarizeCriteria(criteria);
@@ -168,8 +181,8 @@ test("summarizeCriteria returns fail when any criterion fails [stable-release-pa
 
 test("summarizeCriteria dedupes evidence refs [stable-release-package-additional]", () => {
   const criteria = [
-    { criterionId: "test1", status: "pass" as const, detail: "test1 pass", evidenceRefs: ["/evidence/1.json"] },
-    { criterionId: "test2", status: "pass" as const, detail: "test2 pass", evidenceRefs: ["/evidence/1.json", "/evidence/2.json"] },
+    createCriterion("contracts_frozen", "pass", ["/evidence/1.json"]),
+    createCriterion("conformance_tests", "pass", ["/evidence/1.json", "/evidence/2.json"]),
   ];
 
   const result = summarizeCriteria(criteria);

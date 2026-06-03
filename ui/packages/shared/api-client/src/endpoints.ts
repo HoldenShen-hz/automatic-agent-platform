@@ -699,6 +699,7 @@ export async function submitLeadershipClaimReviewRequest(
     scenarioId?: string;
     requestedClaimLevel: string;
     requestedSurfaces: readonly string[];
+    evidenceRefs: readonly string[];
     rationale: string;
   },
 ): Promise<{ reviewRequest: { requestId: string; familyId: string; requestedBy: string; status: string } }> {

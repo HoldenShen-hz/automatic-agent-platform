@@ -22,13 +22,13 @@ test("protocolService module is exported", () => {
 });
 
 test("CollaborationProtocol types exist", () => {
-  assert.ok(types.CollaborationProtocol !== undefined || Object.keys(types).length >= 0);
+  assert.ok(types.ACPMessageSchema !== undefined);
 });
 
 test("InvariantEnforcer has enforce function", () => {
-  assert.ok(typeof invariantEnforcer.enforce === "function" || Object.keys(invariantEnforcer).length >= 0);
+  assert.ok(typeof invariantEnforcer.ACPInvariantEnforcer === "function");
 });
 
 test("ProtocolService has send function", () => {
-  assert.ok(typeof protocolService.send === "function" || Object.keys(protocolService).length >= 0);
+  assert.ok(typeof protocolService.CollaborationProtocolService === "function");
 });

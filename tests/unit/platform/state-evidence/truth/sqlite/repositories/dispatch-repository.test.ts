@@ -47,7 +47,7 @@ test("DispatchRepository lists executions by statuses", () => {
   } as any;
   const repo = new DispatchRepository(mockConn);
 
-  const result = repo.listExecutionsByStatuses(["pending", "running"]);
+  const result = repo.listExecutionsByStatuses(["queued", "executing"]);
   assert.ok(Array.isArray(result));
 });
 

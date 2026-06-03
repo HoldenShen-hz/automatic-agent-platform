@@ -8,6 +8,8 @@ import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { createSeededApiContext } from "../../../../helpers/api.js";
 import { createHmac } from "node:crypto";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 function makeSignature(body: string, secret: string): string {
   const hmac = createHmac("sha256", secret);
   hmac.update(body);

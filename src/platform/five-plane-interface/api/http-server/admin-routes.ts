@@ -131,6 +131,7 @@ const leadershipClaimReviewRequestSchema = z.object({
   scenarioId: nonEmptyStringSchema.optional(),
   requestedClaimLevel: leadershipClaimLevelSchema,
   requestedSurfaces: z.array(leadershipClaimSurfaceSchema).min(1),
+  evidenceRefs: z.array(nonEmptyStringSchema).min(1).max(16),
   rationale: nonEmptyStringSchema,
 }).strict();
 
@@ -166,7 +167,7 @@ const userPreferenceState = new Map<string, UserPreferenceState>();
 const MAX_DIVISION_INVENTORY_SNAPSHOT_BYTES = 1024 * 1024;
 
 function resolvePlatformRoot(deps: AdminRouteDeps): string {
-  return deps.platformRoot ?? process.cwd();
+  return deps.platformRoot ?? process.env.AA_PLATFORM_ROOT ?? process.cwd();
 }
 
 async function readDivisionInventorySnapshot(deps: AdminRouteDeps): Promise<unknown> {
@@ -802,6 +803,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
           ...(payload.scenarioId != null ? { scenarioId: payload.scenarioId } : {}),
           requestedClaimLevel: payload.requestedClaimLevel,
           requestedSurfaces: payload.requestedSurfaces,
+          evidenceRefs: payload.evidenceRefs,
           requestedBy: principal.actorId,
           rationale: payload.rationale,
         });

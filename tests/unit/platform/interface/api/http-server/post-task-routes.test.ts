@@ -58,7 +58,7 @@ function createMockInspectService(): InspectService {
 
 function createMockAuthService(): ApiAuthService {
   return {
-    requireRole: () => ({ actorId: "actor-1", roles: ["operator"], authMethod: "api_key", tenantId: null }),
+    requireRole: () => ({ actorId: "actor-1", roles: ["operator"], authMethod: "jwt", tenantId: null }),
   } as unknown as ApiAuthService;
 }
 
@@ -163,7 +163,6 @@ test("POST /api/v1/tasks returns 503 when task store is unavailable", async () =
     authService: createMockAuthService(),
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
-    taskStore: undefined,
   };
   const routes = createTaskRoutes(deps);
   const ctx = createMockContext("/api/v1/tasks", ["api", "v1", "tasks"], {}, "POST", { title: "New Task" });
@@ -299,7 +298,7 @@ test("POST /api/v1/tasks with intakeAdmissionService persists task record before
   assert.equal(insertedEvents, 1);
 });
 
-test("POST /api/v1/tasks uses api_key auth method", async () => {
+test("POST /api/v1/tasks accepts protected-route principals without relying on direct api-key auth", async () => {
   let insertedTask: any = null;
   const mockTaskStore = {
     task: {
@@ -318,7 +317,13 @@ test("POST /api/v1/tasks uses api_key auth method", async () => {
     taskStore: mockTaskStore,
   };
   const routes = createTaskRoutes(deps);
-  const ctx = createMockContext("/api/v1/tasks", ["api", "v1", "tasks"], { "x-api-key": "test-key-123" }, "POST", { title: "Auth Method Test" });
+  const ctx = createMockContext(
+    "/api/v1/tasks",
+    ["api", "v1", "tasks"],
+    { authorization: "Bearer test-token" },
+    "POST",
+    { title: "Auth Method Test" },
+  );
   const response = await callRoute(routes, ctx);
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 201);

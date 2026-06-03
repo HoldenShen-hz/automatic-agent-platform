@@ -157,10 +157,11 @@ describe("SdkVersionHandshakeService", () => {
   });
 
   describe("semver comparison", () => {
-    const createPolicy = (): SdkVersionHandshakePolicy => ({
+    const createPolicy = (overrides: Partial<SdkVersionHandshakePolicy> = {}): SdkVersionHandshakePolicy => ({
       platformVersion: "2026-04-01",
       contractVersion: "1.0.0",
       minimumSdkVersion: "1.0.0",
+      ...overrides,
     });
 
     it("should handle major version comparison", () => {

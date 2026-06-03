@@ -16,6 +16,8 @@ import type {
   StepFailurePlan,
 } from "../../../../../src/core/runtime/orchestrator/types.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 

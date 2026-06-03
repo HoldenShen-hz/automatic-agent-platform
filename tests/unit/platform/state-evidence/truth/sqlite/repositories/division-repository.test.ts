@@ -159,16 +159,16 @@ test("DivisionRepository.listDataMovementJobRecords filters by status", () => {
 test("DivisionRepository.listDataMovementJobRecords filters by movementType", () => {
   const mockRows = [
     { jobId: "job_1", tenantId: "t1", organizationId: "o1", workspaceId: "w1", sourceNamespaceId: "s1", targetNamespaceId: "t1", sourcePlane: "p1", targetPlane: "p2", movementType: "archive", inputRefsJson: "[]", status: "completed", startedAt: "2026-04-01T00:00:00.000Z", finishedAt: null, reportJson: null },
-    { jobId: "job_2", tenantId: "t2", organizationId: "o2", workspaceId: "w2", sourceNamespaceId: "s2", targetNamespaceId: "t2", sourcePlane: "p1", targetPlane: "p2", movementType: "restore", inputRefsJson: "[]", status: "pending", startedAt: "2026-04-02T00:00:00.000Z", finishedAt: null, reportJson: null },
+    { jobId: "job_2", tenantId: "t2", organizationId: "o2", workspaceId: "w2", sourceNamespaceId: "s2", targetNamespaceId: "t2", sourcePlane: "p1", targetPlane: "p2", movementType: "artifact_lifecycle_move", inputRefsJson: "[]", status: "pending", startedAt: "2026-04-02T00:00:00.000Z", finishedAt: null, reportJson: null },
   ];
 
   const conn = createMockConnection(mockRows);
   const repo = new DivisionRepository(conn);
 
-  const results = repo.listDataMovementJobRecords({ movementType: "restore" });
+  const results = repo.listDataMovementJobRecords({ movementType: "artifact_lifecycle_move" });
 
   assert.equal(results.length, 1);
-  assert.ok(results.every((r) => r.movementType === "restore"));
+  assert.ok(results.every((r) => r.movementType === "artifact_lifecycle_move"));
 });
 
 test("DivisionRepository.listDataMovementJobRecords applies limit", () => {

@@ -1,5 +1,17 @@
 # Regulated Family Expansion
 
+## Current Readiness Snapshot
+
+- readinessStatus: `governance_ready`
+- targetClaimLevel: `designed`
+- targetRelease: `v3.4`
+
+## Leadership Types
+
+- safety_governance_leadership
+- audit_leadership
+- hitl_leadership
+
 ## Pilot Source
 
 - legal

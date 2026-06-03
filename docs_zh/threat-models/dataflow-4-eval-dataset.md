@@ -50,6 +50,6 @@ evidence:bundle:verify          # §16.3
 ## Status
 
 - audit:eval-oracle ✅
-- test:golden:strict (npm 脚本已存在但未跑通)
-- test:redteam:p0 (无 redteam/p0 测试)
+- test:golden:strict ✅
+- test:redteam:p0 ✅
 - evidence:bundle:* ✅

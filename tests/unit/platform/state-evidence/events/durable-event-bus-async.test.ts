@@ -15,6 +15,8 @@ import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-s
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 function createTestBus(workspace: string): { bus: DurableEventBusAsync; db: SqliteDatabase; store: AuthoritativeTaskStore } {
   const db = new SqliteDatabase(join(workspace, "async-events.db"));
   db.migrate();

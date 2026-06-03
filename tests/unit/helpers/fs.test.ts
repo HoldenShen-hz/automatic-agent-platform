@@ -4,7 +4,7 @@
 
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, readlinkSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readlinkSync, realpathSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
   createTempWorkspace,
@@ -69,8 +69,11 @@ describe("fs helpers", () => {
     });
 
     it("should not throw if path does not exist", () => {
+      const ws = createTempWorkspace("cleanup-missing-");
+      workspaces.push(ws);
+      const missingPath = join(ws, "missing", "path.txt");
       assert.doesNotThrow(() => {
-        cleanupPath("/nonexistent/path/that/does/not/exist");
+        cleanupPath(missingPath);
         // No error means success
       });
     });
@@ -136,7 +139,7 @@ describe("fs helpers", () => {
       createSymlink(targetPath, linkPath);
       assert.ok(existsSync(linkPath));
       const linkTarget = readlinkSync(linkPath);
-      assert.strictEqual(linkTarget, targetPath);
+      assert.strictEqual(linkTarget, realpathSync(targetPath));
     });
 
     it("should create parent directories for symlink", () => {

@@ -2,7 +2,7 @@ import { describe, it, beforeEach } from "node:test";
 import assert, { strictEqual, deepStrictEqual, ok, fail, notStrictEqual } from "node:assert";
 import {
   DeduplicationMiddleware,
-  DEFAULT_DEDUPLICATION_CONFIG,
+  createDefaultDeduplicationConfig,
   createDeduplicationMiddleware,
   getGlobalDeduplicationMiddleware,
   resetGlobalDeduplicationMiddleware,
@@ -202,7 +202,7 @@ describe("DeduplicationMiddleware", () => {
       const fp = middleware.generateFingerprint({ method: "POST", path: "/api/tasks" });
       middleware.check("tenant:tenant-1", fp);
 
-      middleware.clear("tenant:tenant-1");
+      middleware.clear();
 
       const result = middleware.check("tenant:tenant-1", fp);
       strictEqual(result.isDuplicate, false);
@@ -225,12 +225,13 @@ describe("DeduplicationMiddleware", () => {
   });
 });
 
-describe("DEFAULT_DEDUPLICATION_CONFIG", () => {
+describe("createDefaultDeduplicationConfig", () => {
   it("should have standard values", () => {
-    strictEqual(DEFAULT_DEDUPLICATION_CONFIG.windowMs, 60_000);
-    strictEqual(DEFAULT_DEDUPLICATION_CONFIG.maxFingerprints, 10_000);
-    strictEqual(DEFAULT_DEDUPLICATION_CONFIG.includeBody, true);
-    strictEqual(DEFAULT_DEDUPLICATION_CONFIG.perTenant, true);
+    const config = createDefaultDeduplicationConfig();
+    strictEqual(config.windowMs, 60_000);
+    strictEqual(config.maxFingerprints, 10_000);
+    strictEqual(config.includeBody, true);
+    strictEqual(config.perTenant, true);
   });
 });
 

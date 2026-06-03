@@ -19,6 +19,15 @@ inputDataTypes:
 outputActions:
   - escalation_decision
   - handoff_summary
+outputActionBindings:
+  - outputActionId: escalation_decision
+    bindingType: tool_action
+    toolId: ticket
+    actionId: assign_ticket
+  - outputActionId: handoff_summary
+    bindingType: tool_action
+    toolId: ticket
+    actionId: create_handoff_draft
 toolActions:
   - toolId: ticket
     actionId: create_handoff_draft
@@ -28,8 +37,8 @@ toolActions:
     riskClass: R3
 riskLevel: high
 autonomyAllowed: hitl_required
-evalSuiteRef: eval/divisions/customer-service/eval-suite.yaml
-redTeamSuiteRef: redteam/divisions/customer-service/redteam-suite.yaml
+evalSuiteRef: eval/divisions/support/eval-suite.yaml
+redTeamSuiteRef: redteam/divisions/support/redteam-suite.yaml
 successMetrics:
   - handoff_accuracy
   - policy_lookup_accuracy

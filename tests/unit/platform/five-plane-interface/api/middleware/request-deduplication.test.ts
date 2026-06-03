@@ -6,7 +6,7 @@ import {
   createDeduplicationMiddleware,
   getGlobalDeduplicationMiddleware,
   resetGlobalDeduplicationMiddleware,
-  DEFAULT_DEDUPLICATION_CONFIG,
+  createDefaultDeduplicationConfig,
 } from "../../../../../../src/platform/five-plane-interface/api/middleware/request-deduplication.js";
 
 test("DeduplicationMiddleware.check allows first request", () => {
@@ -191,11 +191,12 @@ test("resetGlobalDeduplicationMiddleware clears singleton", () => {
   assert.notEqual(instance1, instance2);
 });
 
-test("DEFAULT_DEDUPLICATION_CONFIG has correct values", () => {
-  assert.equal(DEFAULT_DEDUPLICATION_CONFIG.windowMs, 60_000);
-  assert.equal(DEFAULT_DEDUPLICATION_CONFIG.maxFingerprints, 10_000);
-  assert.equal(DEFAULT_DEDUPLICATION_CONFIG.includeBody, true);
-  assert.equal(DEFAULT_DEDUPLICATION_CONFIG.perTenant, true);
+test("createDefaultDeduplicationConfig has correct values", () => {
+  const config = createDefaultDeduplicationConfig();
+  assert.equal(config.windowMs, 60_000);
+  assert.equal(config.maxFingerprints, 10_000);
+  assert.equal(config.includeBody, true);
+  assert.equal(config.perTenant, true);
 });
 
 test("DeduplicationMiddleware.check returns retryAfterMs for duplicate", () => {

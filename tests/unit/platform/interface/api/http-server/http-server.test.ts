@@ -47,6 +47,7 @@ function createMockAdminRouteDeps(): AdminRouteDeps {
   return {
     authService: createMockAuthService(),
     missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: null,
   };
 }
 

@@ -26,6 +26,7 @@ test("readLocalStackPort rejects malformed and out-of-range port values", () => 
 });
 
 test("buildLocalStackChildEnv strips secret-bearing variables while preserving safe overrides", () => {
+  const apiBaseUrl = "https://control-plane.internal.example/api";
   const env = buildLocalStackChildEnv(
     {
       PATH: "/usr/bin",
@@ -36,13 +37,13 @@ test("buildLocalStackChildEnv strips secret-bearing variables while preserving s
       SSH_AUTH_SOCK: "/tmp/agent.sock",
     },
     {
-      VITE_API_BASE_URL: "http://127.0.0.1:4000/api",
+      VITE_API_BASE_URL: apiBaseUrl,
     },
   );
 
   assert.equal(env.PATH, "/usr/bin");
   assert.equal(env.AA_DB_PATH, "/repo/data/sqlite/dev.db");
-  assert.equal(env.VITE_API_BASE_URL, "http://127.0.0.1:4000/api");
+  assert.equal(env.VITE_API_BASE_URL, apiBaseUrl);
   assert.equal("AA_API_KEYS_JSON" in env, false);
   assert.equal("AA_SESSION_TOKEN" in env, false);
   assert.equal("GITHUB_TOKEN" in env, false);

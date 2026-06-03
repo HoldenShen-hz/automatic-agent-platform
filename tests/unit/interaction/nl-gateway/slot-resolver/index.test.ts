@@ -47,7 +47,7 @@ test("resolveRequiredSlots handles empty requiredEntityTypes", () => {
   assert.deepEqual(result.resolved, { user: "charlie" });
 });
 
-test("resolveRequiredSlots uses first entity when duplicate types", () => {
+test("resolveRequiredSlots marks duplicate entity types as ambiguous", () => {
   const entities = [
     { entityType: "user", value: "first", normalized: "first_value", sourceSpan: [0, 5] as const },
     { entityType: "user", value: "second", normalized: "second_value", sourceSpan: [6, 12] as const },
@@ -55,7 +55,8 @@ test("resolveRequiredSlots uses first entity when duplicate types", () => {
 
   const result = resolveRequiredSlots(entities, ["user"]);
 
-  assert.deepEqual(result.resolved, { user: "first_value" });
+  assert.deepEqual(result.missing, ["user"]);
+  assert.deepEqual(result.resolved, {});
 });
 
 test("resolveRequiredSlots preserves normalized values", () => {
@@ -146,8 +147,8 @@ test("resolveRequiredSlots handles mixed resolved and missing", () => {
 
   const result = resolveRequiredSlots(entities, ["user", "env", "date"]);
 
-  assert.deepEqual(result.missing, ["env", "date"]);
-  assert.deepEqual(result.resolved, { user: "alice", task: "job" });
+  assert.deepEqual(result.missing, ["user", "env", "date"]);
+  assert.deepEqual(result.resolved, { task: "job" });
 });
 
 test("resolveRequiredSlots handles special characters in entityType", () => {

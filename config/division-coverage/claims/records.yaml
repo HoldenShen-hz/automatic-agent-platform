@@ -12,6 +12,9 @@ claims:
       - eval://divisions/coding/swe-style/report-2026-05-01
       - redteam://families/engineering/awi/report-2026-05-01
       - dashboard://divisions/coding/roi/week-2026-05-01
+    owner: engineering-platform-owner
+    requestedBy: release-owner
+    submittedAt: "2026-05-20T00:00:00Z"
     reviewedBy: [engineering-platform-owner, security-governance-owner]
     expiresAt: "2026-08-01T00:00:00Z"
     status: approved
@@ -25,9 +28,61 @@ claims:
     evidenceRefs:
       - eval://divisions/customer-service/tau-style/report-2026-05-15
       - dashboard://divisions/customer-service/sla/week-2026-05-15
+    owner: enterprise-ops-owner
+    requestedBy: service-ops-owner
+    submittedAt: "2026-05-25T00:00:00Z"
     reviewedBy: [enterprise-ops-owner, quality-owner]
     expiresAt: "2026-09-01T00:00:00Z"
     status: approved
+  - claimId: knowledge-base-local-leader-v3-2
+    familyId: knowledge-research
+    divisionId: knowledge-base
+    scenarioId: citation-grounded-answering
+    claimLevel: local_leader
+    claimText: "knowledge-base division 在 citation grounding 与 evidence traceability pilot 中达到局部领先。"
+    allowedSurfaces: [docs, ui, release_note]
+    evidenceRefs:
+      - eval://divisions/knowledge-base/citation-grounding/report-2026-05-15
+      - dashboard://divisions/knowledge-base/evidence-linkage/week-2026-05-15
+      - audit://families/knowledge-research/source-grounding/report-2026-05-15
+    owner: knowledge-governance-owner
+    requestedBy: research-quality-owner
+    submittedAt: "2026-05-24T00:00:00Z"
+    reviewedBy: [knowledge-governance-owner, research-quality-owner]
+    expiresAt: "2026-09-15T00:00:00Z"
+    status: approved
+  - claimId: engineering-family-industry-comparable-v3-2
+    familyId: engineering
+    divisionId: coding
+    scenarioId: issue-to-patch
+    claimLevel: industry_comparable
+    claimText: "engineering family 在 issue-to-patch workflow 上达到行业可比。"
+    allowedSurfaces: [docs]
+    evidenceRefs:
+      - eval://families/engineering/benchmark-calibration/2026-05
+      - audit://families/engineering/readiness/2026-05
+    owner: engineering-platform-owner
+    requestedBy: engineering-platform-owner
+    submittedAt: "2026-05-28T00:00:00Z"
+    reviewedBy: [engineering-platform-owner, architecture-owner]
+    expiresAt: "2026-08-15T00:00:00Z"
+    status: draft
+  - claimId: engineering-family-industry-leading-v3-2
+    familyId: engineering
+    divisionId: coding
+    scenarioId: issue-to-patch
+    claimLevel: industry_leading
+    claimText: "engineering family 在 issue-to-patch workflow 上达到行业领先。"
+    allowedSurfaces: [docs]
+    evidenceRefs:
+      - eval://families/engineering/benchmark-calibration/2026-05
+      - audit://families/engineering/readiness/2026-05
+    owner: engineering-platform-owner
+    requestedBy: engineering-platform-owner
+    submittedAt: "2026-05-28T00:00:00Z"
+    reviewedBy: [engineering-platform-owner, architecture-owner]
+    expiresAt: "2026-08-15T00:00:00Z"
+    status: draft
   - claimId: regulated-advisory-governance-v3-2
     familyId: regulated
     divisionId: legal
@@ -38,6 +93,9 @@ claims:
     evidenceRefs:
       - policy://regulated/no-autonomy
       - audit://regulated/advisory/design-2026-05-20
+    owner: regulated-governance-owner
+    requestedBy: regulated-governance-owner
+    submittedAt: "2026-05-21T00:00:00Z"
     reviewedBy: [regulated-governance-owner]
     expiresAt: "2026-12-01T00:00:00Z"
     status: approved

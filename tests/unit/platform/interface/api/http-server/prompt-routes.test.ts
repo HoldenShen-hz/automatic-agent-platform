@@ -43,6 +43,7 @@ function seedPromptRegistry(): HierarchicalPromptRegistryService {
   registry.registerBundle({
     name: "system.default",
     version: "1.0.0",
+    displayVersion: "1.0.0",
     domain: "global",
     taskType: "general",
     packId: undefined,
@@ -50,11 +51,18 @@ function seedPromptRegistry(): HierarchicalPromptRegistryService {
     userPrompt: undefined,
     fewShotExamples: undefined,
     constraints: undefined,
+    compatibilityMatrix: {
+      toolSchemaVersions: [],
+      evaluatorSchemaVersions: [],
+      domainDescriptorVersions: [],
+      modelRoutingProfiles: [],
+    },
     metadata: undefined,
   }, "global");
   registry.registerBundle({
     name: "system.sales",
     version: "1.1.0",
+    displayVersion: "1.1.0",
     domain: "sales",
     taskType: "lead_followup",
     packId: undefined,
@@ -62,6 +70,12 @@ function seedPromptRegistry(): HierarchicalPromptRegistryService {
     userPrompt: undefined,
     fewShotExamples: undefined,
     constraints: undefined,
+    compatibilityMatrix: {
+      toolSchemaVersions: [],
+      evaluatorSchemaVersions: [],
+      domainDescriptorVersions: [],
+      modelRoutingProfiles: [],
+    },
     metadata: undefined,
   }, "domain", "sales");
   return registry;
@@ -115,7 +129,7 @@ test("GET /v1/prompts/:name returns 404 error payload when bundle is missing", a
       headers: {},
       body: null,
     } as never,
-    route: { pathname: null, segments: ["v1", "prompts", "missing.bundle"] },
+    route: { pathname: "", segments: ["v1", "prompts", "missing.bundle"] },
     principal: null,
   });
 
@@ -140,7 +154,7 @@ test("PUT /v1/prompts/:name/deprecate returns 404 when version is missing", asyn
       headers: {},
       body: JSON.stringify({ version: "9.9.9", level: "global" }),
     } as never,
-    route: { pathname: null, segments: ["v1", "prompts", "system.default", "deprecate"] },
+    route: { pathname: "", segments: ["v1", "prompts", "system.default", "deprecate"] },
     principal: null,
   });
 

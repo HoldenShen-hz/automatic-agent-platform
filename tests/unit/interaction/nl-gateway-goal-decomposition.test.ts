@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { setTimeout as delay } from "node:timers/promises";
 import test from "node:test";
 
 import {
@@ -22,6 +21,7 @@ import {
 } from "../../../src/interaction/nl-gateway/slot-resolver/index.js";
 import type { ExtractedEntity } from "../../../src/interaction/nl-gateway/index.js";
 import type { UnifiedChatProvider } from "../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js";
+import { waitForMs } from "../../helpers/wait.js";
 
 const intakeRouter = {
   route: () => ({
@@ -268,7 +268,7 @@ test("dashboard websocket replay gap distinguishes invalid event ids from out-of
   );
   assert.equal(
     (scopedGap.gapMessage?.payload as { reasonCode?: string } | undefined)?.reasonCode,
-    "stream.last_event_id_outside_scope",
+    "stream.last_event_id_not_replayable",
   );
 });
 
@@ -284,7 +284,7 @@ test("dashboard websocket projection polling backs off after an empty poll", asy
   }, 10);
 
   // timing-contract: debounce window must elapse before recomputing decomposition.
-  await delay(60);
+  await waitForMs(60);
   server.stopProjectionIntegration();
 
   assert.equal(calls, 1);

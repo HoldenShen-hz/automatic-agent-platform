@@ -393,7 +393,7 @@ test("TaskRepository countQueuedTasks counts tasks with queued or pending status
     createTestTask(repo, "sqlite-queued-2", now, { status: "queued" });
     createTestTask(repo, "sqlite-pending-1", now, { status: "pending" });
     createTestTask(repo, "sqlite-in-progress-1", now, { status: "in_progress" });
-    createTestTask(repo, "sqlite-completed-1", now, { status: "completed" });
+    createTestTask(repo, "sqlite-completed-1", now, { status: "done" });
 
     const count = repo.countQueuedTasks();
     assert.equal(count, 3, "should count queued + pending tasks");

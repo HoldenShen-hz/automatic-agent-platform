@@ -15,7 +15,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..", "..");
 
 interface AuditReport {
-  findings: { rule: string; path: string }[];
+  findings: { rule: string; path: string; severity: string }[];
   findingCount: number;
 }
 

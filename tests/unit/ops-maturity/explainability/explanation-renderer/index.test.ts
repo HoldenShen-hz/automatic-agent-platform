@@ -66,8 +66,8 @@ test("buildDecisionTree includes evidence nodes", () => {
 
   const evidenceNodes = tree.allNodes.filter((n) => n.type === "evidence");
   assert.equal(evidenceNodes.length, 2);
-  assert.equal(evidenceNodes[0].label, "Evidence A");
-  assert.equal(evidenceNodes[1].label, "Evidence B");
+  assert.equal(evidenceNodes[0]?.label, "Evidence A");
+  assert.equal(evidenceNodes[1]?.label, "Evidence B");
 });
 
 test("buildDecisionTree includes factor nodes", () => {

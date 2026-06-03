@@ -9,6 +9,7 @@ import {
   SqliteConfigRolloutStore,
   SqliteConfigVersionStore,
 } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/config-rollout-repository.js";
+import { RolloutPhase } from "../../../../../../../src/platform/five-plane-control-plane/config-center/config-rollout-service.js";
 import { SqliteDatabase } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../../helpers/fs.js";
 
@@ -180,7 +181,7 @@ test("ConfigVersionSnapshotRepository deleteOlderThan removes old snapshots", ()
 
     const remaining = repo.getByConfigPath("/config/app", "production", null);
     assert.equal(remaining.length, 1);
-    assert.equal(remaining[0].versionId, "version-new");
+    assert.equal(remaining[0]?.versionId, "version-new");
 
   } finally {
     cleanupPath(workspace);
@@ -211,9 +212,9 @@ test("ConfigRollbackPointRepository insert and getByConfigPath round-trip", () =
     const retrieved = repo.getByConfigPath("/config/app/features", "production");
     assert.ok(Array.isArray(retrieved));
     assert.equal(retrieved.length, 1);
-    assert.equal(retrieved[0].rollbackId, "rollback-001");
-    assert.equal(retrieved[0].versionId, "version-001");
-    assert.equal(retrieved[0].createdBy, "admin");
+    assert.equal(retrieved[0]?.rollbackId, "rollback-001");
+    assert.equal(retrieved[0]?.versionId, "version-001");
+    assert.equal(retrieved[0]?.createdBy, "admin");
 
   } finally {
     cleanupPath(workspace);
@@ -235,7 +236,7 @@ test("ConfigRolloutRepository save and load round-trip", () => {
       configPath: "/config/app/features",
       layer: "production",
       sourceId: null,
-      stagePhase: "staged",
+      stagePhase: "half",
       stagePercentage: 50,
       stageMinDurationMs: 60000,
       stageAutoProgress: true,
@@ -255,7 +256,7 @@ test("ConfigRolloutRepository save and load round-trip", () => {
     assert.ok(retrieved);
     assert.equal(retrieved.rolloutId, "rollout-001");
     assert.equal(retrieved.configPath, "/config/app/features");
-    assert.equal(retrieved.stagePhase, "staged");
+    assert.equal(retrieved.stagePhase, "half");
     assert.equal(retrieved.stagePercentage, 50);
     assert.equal(retrieved.targetPercentage, 100);
 
@@ -281,7 +282,7 @@ test("ConfigRolloutRepository loadAllActive excludes completed/cancelled rollout
       configPath: "/config/app/feature-a",
       layer: "production",
       sourceId: null,
-      stagePhase: "staged",
+      stagePhase: "half",
       stagePercentage: 50,
       stageMinDurationMs: 60000,
       stageAutoProgress: true,
@@ -318,7 +319,7 @@ test("ConfigRolloutRepository loadAllActive excludes completed/cancelled rollout
     const activeRollouts = repo.loadAllActive();
     assert.ok(Array.isArray(activeRollouts));
     assert.equal(activeRollouts.length, 1);
-    assert.equal(activeRollouts[0].rolloutId, "rollout-active");
+    assert.equal(activeRollouts[0]?.rolloutId, "rollout-active");
 
   } finally {
     cleanupPath(workspace);
@@ -341,7 +342,7 @@ test("ConfigRolloutRepository delete removes rollout", () => {
       configPath: "/config/app/feature-delete",
       layer: "production",
       sourceId: null,
-      stagePhase: "staged",
+      stagePhase: "canary_25",
       stagePercentage: 25,
       stageMinDurationMs: 60000,
       stageAutoProgress: true,
@@ -382,8 +383,8 @@ test("SqliteConfigRolloutStore save and load implements ConfigRolloutStore inter
       layer: "production",
       sourceId: "source-001",
       stage: {
-        phase: "staged" as const,
-        percentage: 75,
+        phase: RolloutPhase.HALF,
+        percentage: 50,
         minDurationMs: 120000,
         autoProgress: true,
       },
@@ -392,7 +393,7 @@ test("SqliteConfigRolloutStore save and load implements ConfigRolloutStore inter
       targetPercentage: 100,
       currentPercentage: 75,
       metadata: { rolloutName: "store-test" },
-      healthGates: { errorRateThreshold: 0.03 },
+      healthGates: { maxErrorRate: 0.03 },
       lastHealthCheckAt: null,
       lastHealthCheckPassed: null,
       lastObservedErrorRate: null,
@@ -406,8 +407,8 @@ test("SqliteConfigRolloutStore save and load implements ConfigRolloutStore inter
     const loaded = store.load("store-rollout-001");
     assert.ok(loaded);
     assert.equal(loaded.configPath, "/config/app/feature-store");
-    assert.equal(loaded.stage.phase, "staged");
-    assert.equal(loaded.stage.percentage, 75);
+    assert.equal(loaded.stage.phase, "half");
+    assert.equal(loaded.stage.percentage, 50);
 
   } finally {
     cleanupPath(workspace);
@@ -447,13 +448,12 @@ test("SqliteConfigRolloutStore loadAll returns all rollouts", () => {
       configPath: "/config/app/feature-a",
       layer: "production",
       sourceId: null,
-      stage: { phase: "staged" as const, percentage: 50, minDurationMs: 60000, autoProgress: true },
+      metadata: undefined,
+      stage: { phase: RolloutPhase.HALF, percentage: 50, minDurationMs: 60000, autoProgress: true },
       startedAt: now,
       updatedAt: now,
       targetPercentage: 100,
       currentPercentage: 50,
-      metadata: undefined,
-      healthGates: null,
       lastHealthCheckAt: null,
       lastHealthCheckPassed: null,
       lastObservedErrorRate: null,
@@ -467,13 +467,12 @@ test("SqliteConfigRolloutStore loadAll returns all rollouts", () => {
       configPath: "/config/app/feature-b",
       layer: "production",
       sourceId: null,
-      stage: { phase: "staged" as const, percentage: 100, minDurationMs: 0, autoProgress: false },
+      metadata: undefined,
+      stage: { phase: RolloutPhase.FULL, percentage: 100, minDurationMs: 0, autoProgress: false },
       startedAt: now,
       updatedAt: now,
       targetPercentage: 100,
       currentPercentage: 100,
-      metadata: undefined,
-      healthGates: null,
       lastHealthCheckAt: null,
       lastHealthCheckPassed: null,
       lastObservedErrorRate: null,
@@ -507,13 +506,12 @@ test("SqliteConfigRolloutStore delete removes rollout", () => {
       configPath: "/config/app/feature-delete",
       layer: "production",
       sourceId: null,
-      stage: { phase: "staged" as const, percentage: 25, minDurationMs: 60000, autoProgress: true },
+      metadata: undefined,
+      stage: { phase: RolloutPhase.CANARY_25, percentage: 25, minDurationMs: 60000, autoProgress: true },
       startedAt: now,
       updatedAt: now,
       targetPercentage: 100,
       currentPercentage: 25,
-      metadata: undefined,
-      healthGates: null,
       lastHealthCheckAt: null,
       lastHealthCheckPassed: null,
       lastObservedErrorRate: null,
@@ -558,9 +556,9 @@ test("SqliteConfigVersionStore saveSnapshot and loadSnapshots round-trip", () =>
     const snapshots = store.loadSnapshots("/config/app/version-test", "production", null);
     assert.ok(Array.isArray(snapshots));
     assert.equal(snapshots.length, 1);
-    assert.equal(snapshots[0].versionId, "vs-001");
-    assert.deepEqual(snapshots[0].content, { key: "value", number: 42 });
-    assert.equal(snapshots[0].contentHash, "hashvs001");
+    assert.equal(snapshots[0]?.versionId, "vs-001");
+    assert.deepEqual(snapshots[0]?.content, { key: "value", number: 42 });
+    assert.equal(snapshots[0]?.contentHash, "hashvs001");
 
   } finally {
     cleanupPath(workspace);
@@ -589,8 +587,8 @@ test("SqliteConfigVersionStore saveRollbackPoint and loadRollbackPoints round-tr
     const rollbackPoints = store.loadRollbackPoints("/config/app/version-test", "production");
     assert.ok(Array.isArray(rollbackPoints));
     assert.equal(rollbackPoints.length, 1);
-    assert.equal(rollbackPoints[0].rollbackId, "rb-001");
-    assert.equal(rollbackPoints[0].versionId, "vs-001");
+    assert.equal(rollbackPoints[0]?.rollbackId, "rb-001");
+    assert.equal(rollbackPoints[0]?.versionId, "vs-001");
 
   } finally {
     cleanupPath(workspace);

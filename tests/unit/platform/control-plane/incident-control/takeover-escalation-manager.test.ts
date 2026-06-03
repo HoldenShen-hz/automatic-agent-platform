@@ -328,30 +328,30 @@ test("evictExpiredSessionEntries cleans up old entries", () => {
 });
 
 test("evictExpiredSessionEntries clears timers for removed sessions", () => {
-  const manager = createManager() as TakeoverEscalationManager & {
-    ackStatuses: Map<string, TakeoverAckStatus>;
-    activeTimeouts: Map<string, NodeJS.Timeout>;
-    escalationTimers: Map<string, NodeJS.Timeout>;
-    lastEvictionTime: number;
-    readonly EVICTION_INTERVAL_MS: number;
+  const manager = createManager();
+  const getField = <T>(field: string): T => Reflect.get(manager as object, field) as T;
+  const setField = (field: string, value: unknown): void => {
+    Reflect.set(manager as object, field, value);
   };
+  const invoke = (method: string, ...args: unknown[]): unknown =>
+    Reflect.get(manager as object, method).call(manager, ...args);
 
-  manager.startSessionTracking("session-1", "task-1");
-  manager.acknowledgeSession("session-1", "operator-1", "task-1");
-  manager.ackStatuses.set("session-1", {
+  invoke("startSessionTracking", "session-1", "task-1");
+  invoke("acknowledgeSession", "session-1", "operator-1", "task-1");
+  getField<Map<string, TakeoverAckStatus>>("ackStatuses").set("session-1", {
     sessionId: "session-1",
     acknowledgedAt: new Date(Date.now() - (31 * 60 * 1000)).toISOString(),
     expiresAt: null,
     status: "expired",
     acknowledgedBy: "operator-1",
   });
-  manager.lastEvictionTime = Date.now() - manager.EVICTION_INTERVAL_MS - 1;
+  setField("lastEvictionTime", Date.now() - getField<number>("EVICTION_INTERVAL_MS") - 1);
 
-  manager.evictExpiredSessionEntries();
+  invoke("evictExpiredSessionEntries");
 
-  assert.equal(manager.ackStatuses.has("session-1"), false);
-  assert.equal(manager.activeTimeouts.has("session-1"), false);
-  assert.equal(manager.escalationTimers.has("session-1"), false);
+  assert.equal(getField<Map<string, TakeoverAckStatus>>("ackStatuses").has("session-1"), false);
+  assert.equal(getField<Map<string, NodeJS.Timeout>>("activeTimeouts").has("session-1"), false);
+  assert.equal(getField<Map<string, NodeJS.Timeout>>("escalationTimers").has("session-1"), false);
 });
 
 });

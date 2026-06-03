@@ -41,7 +41,12 @@ export class AuditTrailService {
     this.records = this.loadRecords();
   }
 
-  public record(input: Omit<AuditRecord, "auditId" | "createdAt"> & { createdAt?: string }): AuditRecord {
+  public record(
+    input: Omit<
+      AuditRecord,
+      "auditId" | "sequence" | "createdAt" | "prevHash" | "integrityHash" | "integritySignature"
+    > & { createdAt?: string },
+  ): AuditRecord {
     const previous = this.records[this.records.length - 1] ?? null;
     const metadata = cloneMetadata(input.metadata);
     const payload = {

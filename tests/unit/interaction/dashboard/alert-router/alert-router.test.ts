@@ -2,20 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { AlertRouter, sortAttentionQueue } from "../../../../../src/interaction/dashboard/alert-router/index.js";
-
-interface AttentionItem {
-  readonly id: string;
-  readonly priority: "critical" | "high" | "normal" | "low";
-  readonly createdAt: string;
-  readonly message: string;
-}
+import type { AttentionItem } from "../../../../../src/interaction/dashboard/index.js";
 
 function makeItem(overrides: Partial<AttentionItem> = {}): AttentionItem {
   return {
     id: "item-1",
+    itemType: "incident",
     priority: "normal",
+    title: "Test item",
+    description: "Test item description",
+    actionOptions: [],
     createdAt: "2026-04-01T00:00:00.000Z",
-    message: "Test item",
+    domainId: "general-ops",
     ...overrides,
   };
 }
@@ -138,10 +136,10 @@ test("sortAttentionQueue preserves readonly input", () => {
 test("AlertRouter routes overlay, push, and haptic notifications", () => {
   const router = new AlertRouter({ now: () => 1 });
   const items = [
-    makeItem({ id: "critical-approval", priority: "critical", message: "Approval needed" }),
+    makeItem({ id: "critical-approval", priority: "critical", title: "Approval needed", description: "Approval needed" }),
   ];
 
-  const routes = router.routeNotifications(items as any);
+  const routes = router.routeNotifications(items);
 
   assert.deepEqual(
     routes.map((route) => route.delivery),
@@ -154,11 +152,11 @@ test("AlertRouter applies cooldown per item and delivery", () => {
   const router = new AlertRouter({ now: () => now, cooldownMs: 5000 });
   const items = [makeItem({ id: "incident-1", priority: "high" })];
 
-  assert.equal(router.routeNotifications(items as any).length, 2);
-  assert.equal(router.routeNotifications(items as any).length, 0);
+  assert.equal(router.routeNotifications(items).length, 2);
+  assert.equal(router.routeNotifications(items).length, 0);
 
   now = 7000;
-  assert.equal(router.routeNotifications(items as any).length, 2);
+  assert.equal(router.routeNotifications(items).length, 2);
 });
 
 test("AlertRouter delivery filters expose routed attention items", () => {
@@ -167,9 +165,9 @@ test("AlertRouter delivery filters expose routed attention items", () => {
     makeItem({ id: "normal", priority: "normal" }),
   ];
 
-  assert.equal(new AlertRouter({ now: () => 1 }).getOverlayAlerts(items as any).length, 2);
-  assert.equal(new AlertRouter({ now: () => 1 }).getPushNotifications(items as any).length, 1);
-  assert.equal(new AlertRouter({ now: () => 1 }).getHapticAlerts(items as any).length, 1);
+  assert.equal(new AlertRouter({ now: () => 1 }).getOverlayAlerts(items).length, 2);
+  assert.equal(new AlertRouter({ now: () => 1 }).getPushNotifications(items).length, 1);
+  assert.equal(new AlertRouter({ now: () => 1 }).getHapticAlerts(items).length, 1);
 });
 
 test("AlertRouter delivery filters respect cooldown state", () => {
@@ -177,9 +175,9 @@ test("AlertRouter delivery filters respect cooldown state", () => {
   const router = new AlertRouter({ now: () => now, cooldownMs: 5000 });
   const items = [makeItem({ id: "critical", priority: "critical" })];
 
-  assert.equal(router.getOverlayAlerts(items as any).length, 1);
-  assert.equal(router.getOverlayAlerts(items as any).length, 0);
+  assert.equal(router.getOverlayAlerts(items).length, 1);
+  assert.equal(router.getOverlayAlerts(items).length, 0);
 
   now = 7000;
-  assert.equal(router.getOverlayAlerts(items as any).length, 1);
+  assert.equal(router.getOverlayAlerts(items).length, 1);
 });

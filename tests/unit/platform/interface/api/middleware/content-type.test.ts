@@ -5,6 +5,7 @@ import {
   validateContentType,
   createContentTypeValidationMiddleware,
 } from "../../../../../../src/platform/five-plane-interface/api/middleware/content-type.js";
+import type { ApiRequestLike } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function buildRequest(overrides: Partial<{ method: string; headers: Record<string, string | undefined> }> = {}): ApiRequestLike {
   return {

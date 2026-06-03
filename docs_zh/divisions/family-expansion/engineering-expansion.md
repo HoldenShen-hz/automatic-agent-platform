@@ -1,5 +1,17 @@
 # Engineering Family Expansion
 
+## Current Readiness Snapshot
+
+- readinessStatus: `local_leadership_ready`
+- targetClaimLevel: `local_leader`
+- targetRelease: `v3.3`
+
+## Leadership Types
+
+- capability_leadership
+- evidence_leadership
+- safety_leadership
+
 ## Pilot Source
 
 - coding

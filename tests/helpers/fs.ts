@@ -3,6 +3,8 @@ import { mkdtempSync, rmSync, mkdirSync, realpathSync, writeFileSync, symlinkSyn
 import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 const CLEANUP_RETRYABLE_CODES = new Set(["EBUSY", "ENOTEMPTY", "EPERM"]);
 const CLEANUP_RETRY_ATTEMPTS = 5;
 const CLEANUP_RETRY_DELAY_MS = 20;

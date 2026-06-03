@@ -53,6 +53,14 @@ import {
   type BundleRevocationRecord,
 } from "../../../../src/plugins/builtin-plugin-registry.js";
 
+function createEvalDatasetJudgeService() {
+  return new EvalDatasetJudgeService({
+    judge_signal: ({ criterionSignals }) => ({
+      score: Number(criterionSignals.judge_signal ?? 0),
+    }),
+  });
+}
+
 function buildCriticalExactMatchCases(count: number) {
   return Array.from({ length: count }, (_, index) => ({
     caseId: `critical_case_${index}`,
@@ -199,9 +207,9 @@ test("R2-2: createStreamingChatCompletion validates abort signal at start", asyn
 // ============================================================================
 
 test("R2-4: EvalDatasetJudgeService rejects dataset with insufficient critical samples", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createEvalDatasetJudgeService();
 
-  // Critical cases < 200 should fail
+  // Critical cases fail only when the dataset declares that governance threshold explicitly.
   assert.throws(
     () => service.registerDataset({
       datasetId: "dataset_insufficient",
@@ -209,6 +217,7 @@ test("R2-4: EvalDatasetJudgeService rejects dataset with insufficient critical s
       version: "1.0",
       stage: "assess",
       createdBy: "test",
+      sampleRequirements: { critical: 200 },
       cases: [
         {
           caseId: "case_1",
@@ -227,9 +236,9 @@ test("R2-4: EvalDatasetJudgeService rejects dataset with insufficient critical s
 });
 
 test("R2-4: EvalDatasetJudgeService rejects dataset with insufficient standard samples", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createEvalDatasetJudgeService();
 
-  // Standard cases < 50 should fail
+  // Standard-case minimum is also policy-driven rather than hard-coded globally.
   assert.throws(
     () => service.registerDataset({
       datasetId: "dataset_insufficient_standard",
@@ -237,6 +246,7 @@ test("R2-4: EvalDatasetJudgeService rejects dataset with insufficient standard s
       version: "1.0",
       stage: "assess",
       createdBy: "test",
+      sampleRequirements: { standard: 50 },
       cases: [
         {
           caseId: "case_1",
@@ -255,7 +265,7 @@ test("R2-4: EvalDatasetJudgeService rejects dataset with insufficient standard s
 });
 
 test("R2-4: EvalDatasetJudgeService accepts dataset with sufficient samples", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createEvalDatasetJudgeService();
 
   // Create 200+ critical cases
   const criticalCases = Array.from({ length: 200 }, (_, i) => ({
@@ -555,7 +565,7 @@ test("R2-9: BundleRevocationSeverity enum has all required levels", () => {
 // ============================================================================
 
 test("R2-10: EvalDatasetJudgeService enforces independence for high-risk cases", () => {
-  const service = new EvalDatasetJudgeService();
+  const service = createEvalDatasetJudgeService();
 
   service.registerDataset({
     datasetId: "dataset_high_risk",

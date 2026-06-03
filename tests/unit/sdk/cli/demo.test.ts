@@ -13,7 +13,7 @@ import test from "node:test";
 
 test("phase1b-demo resolves db path to data/sqlite/multi-step-demo.db", () => {
   // The resolveDbPath function constructs: join(cwd, "data", "sqlite", "multi-step-demo.db")
-  const base = "/Users/test/project";
+  const base = "/workspace/project";
   const expected = `${base}/data/sqlite/multi-step-demo.db`;
 
   // Simulate path resolution

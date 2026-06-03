@@ -84,7 +84,8 @@ test("parseGatewaySendPayload accepts metadata with nested objects", () => {
       },
     },
   });
-  assert.equal(payload.metadata?.nested?.deep?.value, 123);
+  const metadata = payload.metadata as { nested?: { deep?: { value?: number } } } | undefined;
+  assert.equal(metadata?.nested?.deep?.value, 123);
 });
 
 test("parseBillingReconcilePayload parses valid payload", () => {

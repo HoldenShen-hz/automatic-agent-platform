@@ -17,33 +17,44 @@ import { createIntegrationContext } from "../../../../../helpers/integration-con
 import {
   HarnessRuntimeService,
   type ConstraintPack,
-  type HarnessRun,
   type HarnessContextSourceSet,
   type HarnessTimelineEvent,
+  type HarnessRunRuntimeState,
 } from "../../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
+  const baseBudget = {
+    maxSteps: 12,
+    maxCost: 5.0,
+    maxDurationMs: 120_000,
+  } as const;
   return {
-    policyIds: ["policy.lifecycle.test"],
-    approvalMode: "required",
-    autonomyMode: "supervised",
-    toolPolicy: {
+    policyIds: overrides.policyIds ?? ["policy.lifecycle.test"],
+    approvalMode: overrides.approvalMode ?? "required",
+    autonomyMode: overrides.autonomyMode ?? "supervised",
+    tool_policy: overrides.tool_policy ?? {
       allowedTools: ["read", "write", "bash"],
     },
-    risk_policy: {
+    risk_policy: overrides.risk_policy ?? {
       maxRiskScore: 70,
       escalationThreshold: 55,
     },
-    output_policy: {
+    output_policy: overrides.output_policy ?? {
       requiredEvidence: ["risk_profile"],
       redactSensitiveData: true,
     },
-    budget: {
-      maxSteps: 12,
-      maxCost: 5.0,
-      maxDurationMs: 120_000,
+    budget: overrides.budget ?? baseBudget,
+    sandboxRequirement: overrides.sandboxRequirement ?? {
+      sandboxMode: "ephemeral",
+      timeoutMs: 120_000,
     },
-    ...overrides,
+    approvalRequirement: overrides.approvalRequirement ?? {
+      requiredForRiskClass: ["high", "critical"],
+      approverRoles: ["operator"],
+      escalationTimeoutMs: 30_000,
+    },
+    ...(overrides.budgetEnvelope != null ? { budgetEnvelope: overrides.budgetEnvelope } : {}),
+    ...(overrides.versionLockRef != null ? { versionLockRef: overrides.versionLockRef } : {}),
   };
 }
 
@@ -545,10 +556,11 @@ test("Invariant checking: iteration_exceeds_budget violation", () => {
     });
 
     // Manually create a run that violates iteration budget
-    const violatingRun: HarnessRun = {
+    assert.ok(run.loopMetrics, "expected loop metrics on created run");
+    const violatingRun: HarnessRunRuntimeState = {
       ...run,
       loopMetrics: {
-        ...run.loopMetrics!,
+        ...run.loopMetrics,
         iterationCount: 10, // Exceeds maxSteps=5
       },
     };
@@ -572,7 +584,7 @@ test("Invariant checking: paused HITL run without hitlRequest", () => {
     });
 
     // Manually create a paused HITL run without a request to verify the invariant.
-    const violatingRun: HarnessRun = {
+    const violatingRun: HarnessRunRuntimeState = {
       ...run,
       status: "paused",
       pauseReason: "hitl",

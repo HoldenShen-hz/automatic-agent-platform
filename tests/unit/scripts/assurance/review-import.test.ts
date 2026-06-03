@@ -48,11 +48,15 @@ test("buildReviewImportArtifacts parses table reviews and produces coverage/conf
   assert.equal(result.conflictRecords.length, 1);
   assert.equal(result.conflictRecords[0].decision, "todo");
   assert.equal(result.conflictRecords[0].blocking, false);
+  assert.equal(result.reviewEvidenceReadinessReport.summary.totalSources, 2);
+  assert.equal(result.reviewEvidenceReadinessReport.summary.eligibleSources, 0);
 
   const normalizedPayload = readFileSync(result.outputs.normalizedPath, "utf8").trim().split("\n").map((line) => JSON.parse(line));
   const conflictPayload = readFileSync(result.outputs.conflictsPath, "utf8").trim().split("\n").map((line) => JSON.parse(line));
+  const reviewEvidencePayload = JSON.parse(readFileSync(result.outputs.reviewEvidencePath, "utf8"));
   assert.equal(normalizedPayload.length, 2);
   assert.equal(conflictPayload.length, 1);
+  assert.equal(reviewEvidencePayload.reviewSources.length, 2);
   assert.equal(normalizedPayload.find((entry) => entry.title === "electron bridge mismatch")?.status, "todo");
 });
 
@@ -79,6 +83,43 @@ test("buildReviewImportArtifacts marks unstructured review files as parse warnin
   assert.equal(result.coverageReport.overallStatus, "partial");
   assert.equal(result.coverageReport.filesWithParseWarnings.length, 1);
   assert.equal(result.coverageReport.filesWithParseWarnings[0].sourceFile, "docs_zh/reviews/architecture-design-review.md");
+});
+
+test("buildReviewImportArtifacts marks review evidence readiness when blind spots and dual review are declared", () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), "aa-review-import-readiness-"));
+  const reviewsRoot = join(repoRoot, "docs_zh", "reviews");
+  writeFile(
+    join(reviewsRoot, "release-review.md"),
+    [
+      "> Reviewer: Alice",
+      "> Reviewed by: Bob",
+      "reviewed files: src/platform/foo.ts",
+      "reviewed contracts: docs_zh/contracts/foo.md",
+      "reviewed tests: tests/unit/foo.test.ts",
+      "reviewed CI gates: rc:check",
+      "unverified assumptions: production traffic pattern",
+      "missed areas: runtime-only rollback path",
+      "confidence score: 0.82",
+      "无法自动验证：跨区域故障注入",
+      "需要 runtime/chaos 测试：灰度回滚链路",
+      "",
+      "| ID | 严重级别 | 问题 | 状态 | 证据 |",
+      "| --- | --- | --- | --- | --- |",
+      "| R1 | P0 | tenant isolation regression | `done` | tests/redteam/p0/cross-tenant-access.test.ts |",
+    ].join("\n"),
+  );
+
+  const result = buildReviewImportArtifacts({
+    repoRoot,
+    reviewsRoot: "docs_zh/reviews",
+    outputDir: "artifacts/assurance",
+    generatedAt: "2026-06-02T12:00:00Z",
+  });
+
+  assert.equal(result.reviewEvidenceReadinessReport.summary.totalSources, 1);
+  assert.equal(result.reviewEvidenceReadinessReport.summary.eligibleSources, 1);
+  assert.equal(result.reviewEvidenceReadinessReport.summary.dualPersonRequiredCount, 1);
+  assert.equal(result.reviewEvidenceReadinessReport.summary.dualPersonSatisfiedCount, 1);
 });
 
 test("buildReviewImportArtifacts auto-resolves newer evidenced review rows", () => {

@@ -29,9 +29,24 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..", "..");
 const outputRoot = join(repoRoot, "artifacts", "assurance");
-let cachedVerifyReport = null;
+type VerifyFindingPath = { testPath: string };
+type VerifyReport = {
+  generatedAt: string;
+  status: "pass" | "warn" | "fail";
+  summary: {
+    bidirectionalInconsistencies: number;
+    p0BoundCount: number;
+  };
+  findings: {
+    orphanTests: VerifyFindingPath[];
+    unboundTests: VerifyFindingPath[];
+    unboundP0Issues: unknown[];
+  };
+};
 
-function runNode(scriptPath, ...extraArgs) {
+let cachedVerifyReport: VerifyReport | null = null;
+
+function runNode(scriptPath: string, ...extraArgs: string[]): string {
   return execFileSync("node", [scriptPath, ...extraArgs], {
     cwd: repoRoot,
     encoding: "utf8",
@@ -43,7 +58,7 @@ function ensureBuild() {
   runNode("scripts/assurance/build-test-to-issue-map.mjs");
 }
 
-function ensureVerify() {
+function ensureVerify(): VerifyReport {
   if (cachedVerifyReport != null) {
     return cachedVerifyReport;
   }
@@ -57,7 +72,7 @@ function ensureVerify() {
   if (!r.stdout) {
     throw new Error(`verify-test-coverage produced no stdout; stderr=${r.stderr ?? ""}`);
   }
-  cachedVerifyReport = JSON.parse(r.stdout);
+  cachedVerifyReport = JSON.parse(r.stdout) as VerifyReport;
   return cachedVerifyReport;
 }
 

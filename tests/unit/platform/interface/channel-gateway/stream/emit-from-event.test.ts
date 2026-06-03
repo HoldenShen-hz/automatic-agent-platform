@@ -8,7 +8,7 @@ import test from "node:test";
 
 import { StreamBridge } from "../../../../../../src/platform/five-plane-interface/channel-gateway/stream-bridge.js";
 import type { EventRecord } from "../../../../../../src/platform/contracts/types/domain/session-types.js";
-import { EventTier } from "../../../../../../src/platform/contracts/types/domain/session-types.js";
+import type { EventTier } from "../../../../../../src/platform/contracts/types/domain/primitives.js";
 
 function makeEventRecord(overrides: Partial<EventRecord> = {}): EventRecord {
   return {
@@ -21,6 +21,17 @@ function makeEventRecord(overrides: Partial<EventRecord> = {}): EventRecord {
     payloadJson: '{"toStatus":"in_progress"}',
     traceId: null,
     createdAt: "2026-04-20T10:00:00.000Z",
+    schemaVersion: "1",
+    aggregateId: null,
+    runId: null,
+    sequence: null,
+    causationId: null,
+    correlationId: null,
+    payloadHash: null,
+    idempotencyKey: null,
+    replayBehavior: null,
+    principal: null,
+    evidenceRefs: [],
     ...overrides,
   };
 }

@@ -120,6 +120,7 @@ test("Budget exceeded requests are rejected", () => {
     priority: "normal",
     estimatedCostUsd: 100,
     budgetRemainingUsd: 50, // Not enough budget
+    riskClass: "low",
   });
 
   assert.equal(result.decision, "reject");
@@ -190,6 +191,7 @@ test("Tenant quota limits are enforced", () => {
   const result = controller.evaluate({
     priority: "normal",
     tenantId: "tenant-quota",
+    riskClass: "low",
   });
 
   assert.equal(result.decision, "reject");
@@ -205,7 +207,7 @@ test("Tier1 backlog threshold triggers rejection", () => {
 
   const controller = new AdmissionController(mockStore);
 
-  const result = controller.evaluate({ priority: "normal" });
+  const result = controller.evaluate({ priority: "normal", riskClass: "low" });
 
   assert.equal(result.decision, "reject");
   assert.equal(result.reasonCode, "admission.reject_tier1_backlog");
@@ -269,7 +271,7 @@ test("Active executions at max triggers queue (not reject)", () => {
 
   const controller = new AdmissionController(mockStore);
 
-  const result = controller.evaluate({ priority: "normal" });
+  const result = controller.evaluate({ priority: "normal", riskClass: "low" });
 
   assert.equal(result.decision, "queue");
   assert.equal(result.reasonCode, "admission.queue_overloaded");

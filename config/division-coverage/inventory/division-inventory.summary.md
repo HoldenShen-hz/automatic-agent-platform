@@ -1,11 +1,11 @@
 # Division Inventory Summary
 
-Generated at: 2026-06-01T19:15:16.543Z
+Generated at: 2026-06-02T21:12:49.670Z
 
 Total divisions: 56
 P0 divisions: 5
 Blocked divisions: 35
-ROI tracked divisions: 3
+ROI tracked divisions: 5
 Orphan source modules: 23
 
 | Division | Family | Status | Risk | Blockers |
@@ -71,6 +71,5 @@ Orphan source modules: 23
 
 Added: none
 Removed: none
-Changed coding: roi:=>roi/divisions/coding.yaml
-Changed customer-service: roi:=>roi/divisions/customer-service.yaml
-Changed knowledge-base: roi:=>roi/divisions/knowledge-base.yaml
+Changed research: roi:=>roi/divisions/research.yaml
+Changed support: roi:=>roi/divisions/support.yaml

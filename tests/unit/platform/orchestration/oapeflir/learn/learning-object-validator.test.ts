@@ -2,10 +2,46 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { LearningObjectValidator } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-object-validator.js";
+import type { LearningObject } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-object-model.js";
+
+function createLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
+  const learningObjectId = overrides.learningObjectId ?? overrides.objectId ?? "learning_test";
+  const learningType = overrides.learningType ?? overrides.kind ?? "failure_pattern";
+  const title = overrides.title ?? "Test learning object";
+  const summary = overrides.summary ?? "Test summary";
+  const evidenceRefs = overrides.evidenceRefs ?? ["artifact:a"];
+  const sourceSignalIds = overrides.sourceSignalIds ?? ["signal_1"];
+  const recommendation = overrides.recommendation ?? "Use the validated path.";
+
+  return {
+    learningObjectId,
+    objectId: overrides.objectId ?? learningObjectId,
+    learningType,
+    kind: overrides.kind ?? learningType,
+    title,
+    summary,
+    content: overrides.content ?? {
+      title,
+      summary,
+      evidenceRefs,
+      sourceSignalIds,
+      recommendation,
+    },
+    confidence: overrides.confidence ?? 0.8,
+    evidenceRefs,
+    sourceSignalIds,
+    recommendation,
+    validatedBy: overrides.validatedBy ?? "none",
+    promotionStatus: overrides.promotionStatus ?? "draft",
+    status: overrides.status ?? "created",
+    createdAt: overrides.createdAt ?? new Date().toISOString(),
+    ...overrides,
+  };
+}
 
 test("LearningObjectValidator promotes evidence-backed learning objects to validated", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     learningObjectId: "learning_1",
     learningType: "failure_pattern",
     title: "Narrow scope on schema failure",
@@ -16,8 +52,8 @@ test("LearningObjectValidator promotes evidence-backed learning objects to valid
     recommendation: "Replan with tighter scope.",
     validatedBy: "none",
     promotionStatus: "draft",
-    createdAt: Date.now(),
-  });
+    createdAt: new Date().toISOString(),
+  }));
 
   assert.equal(result.valid, true);
   assert.equal(result.learningObject.promotionStatus, "validated");
@@ -26,7 +62,7 @@ test("LearningObjectValidator promotes evidence-backed learning objects to valid
 
 test("LearningObjectValidator rejects learning objects without evidence", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     learningObjectId: "learning_2",
     learningType: "recovery_playbook",
     title: "Repair path",
@@ -37,8 +73,8 @@ test("LearningObjectValidator rejects learning objects without evidence", () => 
     recommendation: "Persist the playbook.",
     validatedBy: "none",
     promotionStatus: "draft",
-    createdAt: Date.now(),
-  });
+    createdAt: new Date().toISOString(),
+  }));
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.missing_evidence");
@@ -47,7 +83,7 @@ test("LearningObjectValidator rejects learning objects without evidence", () => 
 
 test("LearningObjectValidator rejects learning objects with confidence below minimum", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     learningObjectId: "learning_low_conf",
     learningType: "failure_pattern",
     title: "Low confidence pattern",
@@ -58,8 +94,8 @@ test("LearningObjectValidator rejects learning objects with confidence below min
     recommendation: "Collect more evidence.",
     validatedBy: "none",
     promotionStatus: "draft",
-    createdAt: Date.now(),
-  });
+    createdAt: new Date().toISOString(),
+  }));
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.confidence_below_floor");
@@ -68,7 +104,7 @@ test("LearningObjectValidator rejects learning objects with confidence below min
 
 test("LearningObjectValidator preserves validatedBy when already set to human_review", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     learningObjectId: "learning_preserve_validated",
     learningType: "failure_pattern",
     title: "Pattern with pre-existing validator",
@@ -79,8 +115,8 @@ test("LearningObjectValidator preserves validatedBy when already set to human_re
     recommendation: "Approved by reviewer.",
     validatedBy: "human_review", // Already has a value - should be preserved
     promotionStatus: "draft",
-    createdAt: Date.now(),
-  });
+    createdAt: new Date().toISOString(),
+  }));
 
   assert.equal(result.valid, true);
   assert.equal(result.learningObject.validatedBy, "human_review", "validatedBy should be preserved when not 'none'");
@@ -89,7 +125,7 @@ test("LearningObjectValidator preserves validatedBy when already set to human_re
 
 test("LearningObjectValidator preserves promotionStatus when already validated", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     learningObjectId: "learning_already_validated",
     learningType: "user_correction",
     title: "Previously validated correction",
@@ -100,8 +136,8 @@ test("LearningObjectValidator preserves promotionStatus when already validated",
     recommendation: "Apply this fix.",
     validatedBy: "none",
     promotionStatus: "validated", // Already validated - should be preserved
-    createdAt: Date.now(),
-  });
+    createdAt: new Date().toISOString(),
+  }));
 
   assert.equal(result.valid, true);
   assert.equal(result.learningObject.validatedBy, "evidence");
@@ -110,7 +146,7 @@ test("LearningObjectValidator preserves promotionStatus when already validated",
 
 test("LearningObjectValidator preserves both validatedBy and promotionStatus when already set", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     learningObjectId: "learning_both_preserved",
     learningType: "recovery_playbook",
     title: "Fully processed playbook",
@@ -121,8 +157,8 @@ test("LearningObjectValidator preserves both validatedBy and promotionStatus whe
     recommendation: "Use when encountering this error.",
     validatedBy: "human_review", // Non-none value
     promotionStatus: "validated", // Non-draft value
-    createdAt: Date.now(),
-  });
+    createdAt: new Date().toISOString(),
+  }));
 
   assert.equal(result.valid, true);
   assert.equal(result.learningObject.validatedBy, "human_review", "validatedBy should be preserved");

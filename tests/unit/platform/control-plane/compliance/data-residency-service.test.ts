@@ -215,16 +215,13 @@ test("DataResidencyService.checkResidency records violation when non-compliant",
   const mockDb = createMockDb();
   const service = new DataResidencyService(mockDb as any, mockStore as any);
 
-  // EU has crossBorderTransfersAllowed=false, so data in eu-west-1 should trigger a violation
-  // (the service considers this a cross-border transfer restriction violation)
   service.checkResidency({
     tenantId: "tenant-123",
-    category: "business",  // Using business to isolate the cross-border transfer check
+    category: "personal",
     currentRegion: "eu-west-1",
   });
 
   const violations = mockStore.compliance.listResidencyViolationsByTenant("tenant-123");
-  // The service adds violation for EU due to crossBorderTransfersAllowed=false
   assert.ok(violations.length >= 1);
 });
 
@@ -266,11 +263,11 @@ test("DataResidencyService.listResidencyViolations returns open violations", () 
   const mockDb = createMockDb();
   const service = new DataResidencyService(mockDb as any, mockStore as any);
 
-  // Create a violation - EU jurisdiction has crossBorderTransfersAllowed=false
+  // Create a violation under the current personal-data localization rule.
   service.checkResidency({
     tenantId: "tenant-123",
-    category: "business",
-    currentRegion: "eu-west-1",  // EU jurisdiction triggers cross-border violation
+    category: "personal",
+    currentRegion: "eu-west-1",
   });
 
   const violations = service.listResidencyViolations("tenant-123", false);
@@ -283,10 +280,10 @@ test("DataResidencyService.listResidencyViolations includes resolved when reques
   const mockDb = createMockDb();
   const service = new DataResidencyService(mockDb as any, mockStore as any);
 
-  // Create a violation - EU jurisdiction has crossBorderTransfersAllowed=false
+  // Create a violation under the current personal-data localization rule.
   service.checkResidency({
     tenantId: "tenant-123",
-    category: "business",
+    category: "personal",
     currentRegion: "eu-west-1",
   });
 
@@ -300,10 +297,10 @@ test("DataResidencyService.resolveViolation marks violation as resolved", () => 
   const mockDb = createMockDb();
   const service = new DataResidencyService(mockDb as any, mockStore as any);
 
-  // Create a violation - EU jurisdiction has crossBorderTransfersAllowed=false
+  // Create a violation under the current personal-data localization rule.
   service.checkResidency({
     tenantId: "tenant-123",
-    category: "business",
+    category: "personal",
     currentRegion: "eu-west-1",
   });
 
@@ -430,10 +427,10 @@ test("DataResidencyService.isTenantCompliant returns false when violations exist
   const mockDb = createMockDb();
   const service = new DataResidencyService(mockDb as any, mockStore as any);
 
-  // Non-compliant placement - EU has crossBorderTransfersAllowed=false
+  // Non-compliant placement under the current personal-data localization rule.
   service.checkResidency({
     tenantId: "tenant-123",
-    category: "business",
+    category: "personal",
     currentRegion: "eu-west-1",
   });
 
@@ -446,10 +443,10 @@ test("DataResidencyService.getTenantComplianceSummary returns correct summary", 
   const mockDb = createMockDb();
   const service = new DataResidencyService(mockDb as any, mockStore as any);
 
-  // Non-compliant placement - EU has crossBorderTransfersAllowed=false
+  // Non-compliant placement under the current personal-data localization rule.
   service.checkResidency({
     tenantId: "tenant-123",
-    category: "business",
+    category: "personal",
     currentRegion: "eu-west-1",
   });
 

@@ -216,7 +216,6 @@ test("ConfigOptimizerService.optimize handles undefined projectedLoad", () => {
     key: "pool",
     currentValue: 100,
     recommendedValue: 50,
-    projectedLoad: undefined,
     currentLoad: 50,
   });
 
@@ -230,7 +229,6 @@ test("ConfigOptimizerService.optimize handles undefined currentLoad", () => {
     currentValue: 100,
     recommendedValue: 50,
     projectedLoad: 60,
-    currentLoad: undefined,
   });
 
   assert.equal(result.urgency, "low"); // delta = 0

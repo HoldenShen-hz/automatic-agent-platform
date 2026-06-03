@@ -144,7 +144,9 @@ SBOM scan error still load plugin
 A manual markdown is not enough. In the end they must enter:
 
 ```text
-issue-ledger.jsonl
+artifacts/assurance/issues.raw.jsonl
+artifacts/assurance/issues.normalized.jsonl
+artifacts/assurance/issues.deduped.jsonl
 ```
 
 Each issue must have:
@@ -1494,10 +1496,20 @@ Output:
 artifacts/release/evidence-bundle.json
 artifacts/release/evidence-bundle.sig
 artifacts/release/rc-check-report.json
-artifacts/release/contract-drift-report.json
-artifacts/release/security-audit-report.json
-artifacts/release/eval-redteam-report.json
-artifacts/release/release-claim-report.json
+artifacts/assurance/audit-coverage-scorecard.json
+artifacts/assurance/eval-oracle-report.json
+artifacts/assurance/redteam-report.json
+artifacts/assurance/golden-replay-report.json
+artifacts/assurance/review-ledger.normalized.jsonl
+artifacts/assurance/review-evidence-readiness-report.json
+artifacts/assurance/historical-promises.jsonl
+artifacts/assurance/assumptions.jsonl
+artifacts/assurance/issues.deduped.jsonl
+artifacts/assurance/test-to-issue-map.json
+artifacts/assurance/historical-issue-regression-map.json
+artifacts/assurance/completeness-coverage-matrix.json
+artifacts/assurance/seeded-defect-report.json
+artifacts/assurance/assurance-full-report.json
 ```
 
 ---
@@ -1810,7 +1822,7 @@ Every P0 audit gate must have a seeded defect fixture to prove the gate can real
 ### 24.2 Seeded Defect Directories
 
 ```text
-tests/fixtures/audit-seeds/
+tests/fixtures/seeded-defects/
   tenant-isolation/
   secret-sinks/
   lease-fencing/
@@ -2802,8 +2814,9 @@ Automatically generate coverage scoring to prevent "looks like a lot of scripts 
 ### 20.11.1 Output
 
 ```text
+artifacts/assurance/audit-coverage-scorecard.json
+artifacts/assurance/audit-coverage-scorecard.md
 artifacts/assurance/coverage-scorecard.json
-artifacts/assurance/coverage-scorecard.md
 ```
 
 ### 20.11.2 Scoring Dimensions
@@ -2891,13 +2904,21 @@ npm run assurance:full
 Output:
 
 ```text
-artifacts/assurance/nightly/YYYY-MM-DD/
-  issue-ledger.jsonl
-  p0-blockers.json
-  contract-drift-report.json
-  security-audit-report.json
-  eval-oracle-report.json
-  historical-promise-report.json
+artifacts/assurance/
+  assurance-full-report.json
+  static-audit-report.json
+  static-audit-report.md
+  static-audit-findings.jsonl
+  review-ledger.normalized.jsonl
+  review-evidence-readiness-report.json
+  historical-promises.jsonl
+  assumptions.jsonl
+  issues.raw.jsonl
+  issues.normalized.jsonl
+  issues.deduped.jsonl
+  historical-issue-regression-map.json
+  completeness-coverage-matrix.json
+  audit-coverage-scorecard.json
   coverage-scorecard.json
 ```
 

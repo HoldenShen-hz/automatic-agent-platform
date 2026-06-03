@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { EvalRunService } from "../../../../../../src/platform/five-plane-orchestration/harness/evaluation/eval-run-service.js";
-import { HarnessRuntimeService, type ConstraintPack } from "../../../../../../src/platform/five-plane-orchestration/harness/index.js";
+import {
+  HarnessRuntimeService,
+  type ConstraintPack,
+  type HarnessRunRuntimeState,
+} from "../../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createConstraintPack(requiredEvidence: readonly string[] = ["evidence-1"]): ConstraintPack {
   return {
@@ -22,7 +26,7 @@ function createConstraintPack(requiredEvidence: readonly string[] = ["evidence-1
   };
 }
 
-function createRun(evaluatorScore: number, producedEvidenceRefs: readonly string[]) {
+function createRun(evaluatorScore: number, producedEvidenceRefs: readonly string[]): HarnessRunRuntimeState {
   const runtime = new HarnessRuntimeService();
   let run = runtime.createRun({
     taskId: "task-1",
@@ -42,7 +46,7 @@ function createRun(evaluatorScore: number, producedEvidenceRefs: readonly string
       decisionId: "decision-1",
       harnessDecisionId: "decision-1",
       decisionInputBundleId: "dib-1",
-      decisionKind: "accept",
+      decisionKind: "approve" as const,
       decision: "accept",
       deciderType: "system",
       deciderRef: "test",
@@ -62,7 +66,7 @@ function createRun(evaluatorScore: number, producedEvidenceRefs: readonly string
       learnedActions: [],
       createdAt: "2026-01-01T00:00:00.000Z",
     },
-  };
+  } as unknown as HarnessRunRuntimeState;
 }
 
 test("EvalRunService reports passing runs with complete evidence", () => {
@@ -100,7 +104,7 @@ test("EvalRunService does not treat feedback signals as evidence refs", () => {
           ...run.feedbackEnvelope,
           signals: ["evidence-1", ...run.feedbackEnvelope.signals],
         },
-  };
+  } as unknown as HarnessRunRuntimeState;
 
   const report = new EvalRunService().evaluate(pollutedSignalsRun);
 

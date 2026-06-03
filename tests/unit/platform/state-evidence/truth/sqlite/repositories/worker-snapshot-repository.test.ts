@@ -16,7 +16,7 @@ const mockExecute = test.mock;
 function createMockWorkerSnapshot(overrides: Partial<WorkerSnapshotRecord> = {}): WorkerSnapshotRecord {
   return {
     workerId: "worker-1",
-    status: "active",
+    status: "idle",
     placement: "local",
     isolationLevel: "standard",
     repoVersion: null,
@@ -35,8 +35,8 @@ function createMockWorkerSnapshot(overrides: Partial<WorkerSnapshotRecord> = {})
     repoCacheHitRate: null,
     registrationVerifiedAt: null,
     registrationChallengeId: null,
-    capabilitiesJson: null,
-    runningExecutionsJson: null,
+    capabilitiesJson: "[]",
+    runningExecutionsJson: "[]",
     maxConcurrency: 5,
     queueAffinity: null,
     runtimeInstanceId: "instance-1",
@@ -49,6 +49,7 @@ function createMockWorkerSnapshot(overrides: Partial<WorkerSnapshotRecord> = {})
     lastProgressAt: "2026-04-26T12:00:00.000Z",
     lastHeartbeatAt: "2026-04-26T12:00:00.000Z",
     updatedAt: "2026-04-26T12:00:00.000Z",
+    version: 1,
     ...overrides,
   };
 }
@@ -80,7 +81,7 @@ function createMockCoordinatorInstance(overrides: Partial<CoordinatorInstanceRec
     activeDispatchCount: 3,
     backlogCount: 7,
     cpuPct: 35.0,
-    shardJson: null,
+    shardJson: "{}",
     lastHeartbeatAt: "2026-04-26T12:00:00.000Z",
     metadataJson: null,
     createdAt: "2026-04-26T10:00:00.000Z",
@@ -218,11 +219,11 @@ test("CoordinatorInstanceRecord has correct structure", () => {
 
 test("WorkerSnapshotRecord default values", () => {
   const snapshot = createMockWorkerSnapshot({
-    placement: undefined,
-    isolationLevel: undefined,
+    placement: null,
+    isolationLevel: null,
   });
-  assert.equal(snapshot.placement, undefined);
-  assert.equal(snapshot.isolationLevel, undefined);
+  assert.equal(snapshot.placement, null);
+  assert.equal(snapshot.isolationLevel, null);
 });
 
 test("WorkerSnapshotRecord with all optional fields", () => {

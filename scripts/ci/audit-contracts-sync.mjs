@@ -180,11 +180,7 @@ function findLayers(spec) {
   return {
     doc: findDoc(spec),
     ts: findCodeLayer(["src"], spec.tsTokens, (file) => /\.(?:[cm]?ts|tsx|[cm]?js|jsx)$/.test(file)),
-    schema: findCodeLayer(
-      ["src", "schemas"],
-      spec.schemaTokens,
-      (file) => normalize(file).includes("schema") || normalize(file).includes("openapi"),
-    ),
+    schema: findCodeLayer(["src", "schemas", "eval"], spec.schemaTokens),
     test: findCodeLayer(["tests"], spec.testTokens),
   };
 }

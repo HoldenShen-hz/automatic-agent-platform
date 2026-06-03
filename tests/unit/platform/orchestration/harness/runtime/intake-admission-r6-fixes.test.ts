@@ -3,13 +3,29 @@ import test from "node:test";
 
 import { IntakeAdmissionService } from "../../../../../../src/platform/five-plane-orchestration/harness/runtime/intake-admission-service.js";
 import { createPrincipalRef } from "../../../../../../src/platform/contracts/executable-contracts/index.js";
+import type {
+  BudgetIntent,
+  BudgetResourceKind,
+  PrincipalRef,
+  UserConfirmationReceipt,
+} from "../../../../../../src/platform/contracts/executable-contracts/index.js";
 
 function createRiskPreview(input: { riskClass: "low" | "medium" | "high" | "critical"; reasons: readonly string[] }) {
   return input;
 }
 
-function createBudgetIntent(input: { amount: number; currency: string; resourceKinds: readonly string[] }) {
+function createBudgetIntent(input: { amount: number; currency: string; resourceKinds: readonly BudgetResourceKind[] }): BudgetIntent {
   return input;
+}
+
+function createConfirmationReceipt(principal: PrincipalRef, riskClass: UserConfirmationReceipt["riskClass"]): UserConfirmationReceipt {
+  return {
+    receiptId: `rcpt-${riskClass}`,
+    confirmedBy: principal,
+    riskClass,
+    confirmedAt: new Date().toISOString(),
+    state: "confirmed",
+  };
 }
 
 /**
@@ -34,6 +50,7 @@ test("R6-1: admit() creates ClarificationSession when confirmationReceipt is abs
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "platform",
     goal: "maybe ship the runtime contract",
     inputs: {},
     riskPreview: createRiskPreview({ riskClass: "medium", reasons: [] }),
@@ -48,6 +65,7 @@ test("R6-1: admit() creates ClarificationSession when confirmationReceipt is abs
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "platform",
     goal: "maybe ship the runtime contract",
     inputs: {},
     riskPreview: createRiskPreview({ riskClass: "medium", reasons: [] }),
@@ -55,7 +73,7 @@ test("R6-1: admit() creates ClarificationSession when confirmationReceipt is abs
     budgetIntent: createBudgetIntent({ amount: 100, currency: "USD", resourceKinds: ["token"] }),
     idempotencyKey: "r6-1-test-2",
     traceId: "trace-2",
-    confirmationReceipt: { receiptId: "rcpt-1", issuedAt: new Date().toISOString(), issuedBy: principal },
+    confirmationReceipt: createConfirmationReceipt(principal, "medium"),
   });
 
   // Without receipt (medium risk), clarification session should be created
@@ -72,13 +90,14 @@ test("R6-1: resumeClarification transitions session to confirmed and creates Con
     roles: ["operator"],
   });
 
-  const confirmationReceipt = { receiptId: "rcpt-1", issuedAt: new Date().toISOString(), issuedBy: principal };
+  const confirmationReceipt = createConfirmationReceipt(principal, "medium");
 
   // First admit without confirmation to create clarification session
   service.admit({
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "platform",
     goal: "maybe ship the runtime contract",
     inputs: {},
     riskPreview: createRiskPreview({ riskClass: "medium", reasons: [] }),
@@ -112,6 +131,7 @@ test("R6-2: admit() throws when high risk task lacks confirmationReceipt", () =>
         tenantId: "tenant-1",
         principal,
         source: "nl",
+        domainId: "platform",
         goal: "ship the runtime contract",
         inputs: {},
         riskPreview: createRiskPreview({ riskClass: "high", reasons: [] }),
@@ -138,6 +158,7 @@ test("R6-2: admit() throws when critical risk task lacks confirmationReceipt", (
         tenantId: "tenant-1",
         principal,
         source: "nl",
+        domainId: "platform",
         goal: "ship the runtime contract",
         inputs: {},
         riskPreview: createRiskPreview({ riskClass: "critical", reasons: [] }),
@@ -162,6 +183,7 @@ test("R6-2: admit() succeeds when high risk task has confirmationReceipt", () =>
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "platform",
     goal: "ship the runtime contract",
     inputs: {},
     riskPreview: createRiskPreview({ riskClass: "high", reasons: [] }),
@@ -169,7 +191,7 @@ test("R6-2: admit() succeeds when high risk task has confirmationReceipt", () =>
     budgetIntent: createBudgetIntent({ amount: 100, currency: "USD", resourceKinds: ["token"] }),
     idempotencyKey: "r6-2-high-with-receipt",
     traceId: "trace-1",
-    confirmationReceipt: { receiptId: "rcpt-high", issuedAt: new Date().toISOString(), issuedBy: principal },
+    confirmationReceipt: createConfirmationReceipt(principal, "high"),
   });
   assert.ok(result.harnessRun != null);
   assert.equal(result.harnessRun.status, "admitted");
@@ -192,6 +214,7 @@ test("R6-12: policyGuard evaluation returns actual allowed value based on risk c
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "platform",
     goal: "ship the runtime contract",
     inputs: {},
     riskPreview: createRiskPreview({ riskClass: "critical", reasons: [] }),
@@ -199,7 +222,7 @@ test("R6-12: policyGuard evaluation returns actual allowed value based on risk c
     budgetIntent: createBudgetIntent({ amount: 100, currency: "USD", resourceKinds: ["token"] }),
     idempotencyKey: "r6-12-no-approval",
     traceId: "trace-1",
-    confirmationReceipt: { receiptId: "rcpt-critical", issuedAt: new Date().toISOString(), issuedBy: principal },
+    confirmationReceipt: createConfirmationReceipt(principal, "critical"),
   });
 
   // The harness run should have policyGuard with actual evaluation
@@ -224,6 +247,7 @@ test("R6-9: validateBudgetReservation ensures hard cap satisfies budget intent",
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "platform",
     goal: "run a task",
     inputs: {},
     riskPreview: createRiskPreview({ riskClass: "low", reasons: [] }),
@@ -253,6 +277,7 @@ test("R6-11: intent extraction with confidence scoring detects ambiguous input",
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "platform",
     goal: "maybe fix something or perhaps update it later when possible",
     inputs: {},
     riskPreview: createRiskPreview({ riskClass: "medium", reasons: [] }),

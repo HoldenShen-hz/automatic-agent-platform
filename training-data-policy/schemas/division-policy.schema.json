@@ -21,7 +21,7 @@
     },
     "policyMode": {
       "type": "string",
-      "enum": ["redacted_only", "restricted"]
+      "enum": ["redacted_only", "restricted", "no_train"]
     },
     "policyModeRef": {
       "type": "string",
@@ -33,6 +33,20 @@
         "type": "string",
         "minLength": 1
       }
+    },
+    "restrictedClasses": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "heldoutTrainingPolicy": {
+      "type": "string",
+      "enum": ["no_train", "redacted_only", "restricted"]
+    },
+    "requiresModelDataTombstone": {
+      "type": "boolean"
     },
     "forbiddenSources": {
       "type": "array",

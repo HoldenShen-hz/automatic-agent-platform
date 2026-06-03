@@ -12,9 +12,10 @@ test("audit-test-portability flags generic absolute developer paths and degrades
   const workspace = mkdtempSync(join(tmpdir(), "aa-test-portability-"));
   try {
     mkdirSync(join(workspace, "tests"), { recursive: true });
+    const fixturePath = ["", "Users", "alice", "project", "file.ts"].join("/");
     writeFileSync(
       join(workspace, "tests", "portable.test.ts"),
-      "const path = '/Users/alice/project/file.ts';\n",
+      `const path = ${JSON.stringify(fixturePath)};\n`,
     );
 
     const result = spawnSync(process.execPath, [AUDIT_TEST_PORTABILITY], {

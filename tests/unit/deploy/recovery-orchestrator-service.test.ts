@@ -10,6 +10,7 @@ import test from "node:test";
 import { RecoveryOrchestratorService } from "../../../src/platform/five-plane-execution/ha/recovery-orchestrator-service.js";
 import type { RecoveryCadence, RecoveryReport, RecoveryWorker } from "../../../src/platform/contracts/types/recovery-cadence.js";
 import { buildRecoveryCadence } from "../../../src/platform/contracts/types/recovery-cadence.js";
+import { waitForMs } from "../../helpers/wait.js";
 
 function createMockWorker(workerId: string, cadence: RecoveryCadence, itemsRecovered = 0): RecoveryWorker {
   return {
@@ -63,7 +64,7 @@ test("RecoveryOrchestratorService runs workers in parallel", async () => {
     runRecoveryCycle: async () => {
       worker1Started = true;
       // timing-contract: simulates slow worker latency in parallel orchestration.
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await waitForMs(50);
       return {
         workerId: "slow-worker",
         workerType: "test",
@@ -82,7 +83,7 @@ test("RecoveryOrchestratorService runs workers in parallel", async () => {
     getRecoveryCadence: () => buildRecoveryCadence({ intervalMs: 1000, priority: "normal" }),
     runRecoveryCycle: async () => {
       worker2Started = true;
-      await new Promise(resolve => setTimeout(resolve, 20));
+      await waitForMs(20);
       return {
         workerId: "fast-worker",
         workerType: "test",

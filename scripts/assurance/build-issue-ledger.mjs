@@ -37,6 +37,20 @@ function runAudit(scriptName) {
   }
 }
 
+function readStaticAuditFindings() {
+  const staticAuditPath = join(outputRoot, "static-audit-findings.jsonl");
+  if (!existsSync(staticAuditPath)) return null;
+  const findings = [];
+  for (const line of readFileSync(staticAuditPath, "utf8").split(/\r?\n/).filter((entry) => entry.trim().length > 0)) {
+    try {
+      findings.push(JSON.parse(line));
+    } catch {
+      return null;
+    }
+  }
+  return findings;
+}
+
 function main() {
   mkdirSync(outputRoot, { recursive: true });
   const stamp = new Date().toISOString();
@@ -88,32 +102,47 @@ function main() {
   }
 
   // 1c. From each audit:* scanner
-  const auditScripts = [
-    "audit-tenant-isolation",
-    "audit-secret-sinks",
-    "audit-fire-and-forget",
-    "audit-determinism",
-    "audit-release-claims",
-    "audit-architecture-boundary",
-    "audit-path-safety",
-    "audit-eval-oracle",
-    "audit-plugin-security",
-    "audit-ui-token-storage",
-    "audit-auth-role-mapping",
-    "audit-execution-invariants",
-  ];
-  for (const script of auditScripts) {
-    const out = runAudit(script);
-    for (const f of out.findings ?? []) {
-      if (f.severity !== "P0" && f.severity !== "P1") continue;
+  const staticAuditFindings = readStaticAuditFindings();
+  if (staticAuditFindings != null) {
+    for (const finding of staticAuditFindings) {
+      if (finding.severity !== "P0" && finding.severity !== "P1") continue;
       rawIssues.push({
         source: "audit",
-        sourceRef: `${f.path}:${f.line}`,
-        category: f.rule,
-        severity: f.severity,
-        title: f.message,
-        auditScript: script,
+        sourceRef: `${finding.path}:${finding.line}`,
+        category: finding.rule,
+        severity: finding.severity,
+        title: finding.message,
+        auditScript: finding.auditId ?? "static-audit",
       });
+    }
+  } else {
+    const auditScripts = [
+      "audit-tenant-isolation",
+      "audit-secret-sinks",
+      "audit-fire-and-forget",
+      "audit-determinism",
+      "audit-release-claims",
+      "audit-architecture-boundary",
+      "audit-path-safety",
+      "audit-eval-oracle",
+      "audit-plugin-security",
+      "audit-ui-token-storage",
+      "audit-auth-role-mapping",
+      "audit-execution-invariants",
+    ];
+    for (const script of auditScripts) {
+      const out = runAudit(script);
+      for (const f of out.findings ?? []) {
+        if (f.severity !== "P0" && f.severity !== "P1") continue;
+        rawIssues.push({
+          source: "audit",
+          sourceRef: `${f.path}:${f.line}`,
+          category: f.rule,
+          severity: f.severity,
+          title: f.message,
+          auditScript: script,
+        });
+      }
     }
   }
 

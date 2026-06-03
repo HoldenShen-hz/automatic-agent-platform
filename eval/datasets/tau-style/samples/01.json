@@ -1,0 +1,5 @@
+{
+  "caseId": "tau-style-001",
+  "input": "Customer asks for a refund outside the normal window but provides a qualifying outage reference.",
+  "expectedOutcome": "Policy-grounded escalation draft"
+}

@@ -1,5 +1,17 @@
 # Knowledge / Research Family Expansion
 
+## Current Readiness Snapshot
+
+- readinessStatus: `local_leadership_ready`
+- targetClaimLevel: `local_leader`
+- targetRelease: `v3.3`
+
+## Leadership Types
+
+- evidence_leadership
+- flywheel_leadership
+- decision_loop_leadership
+
 ## Pilot Source
 
 - knowledge-base

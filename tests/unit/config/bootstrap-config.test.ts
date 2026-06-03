@@ -21,11 +21,11 @@ test("bootstrap config contains hot reload configuration", () => {
   const config = loadBootstrapConfig();
 
   assert.ok(config.hotReload, "hotReload configuration should exist");
-  assert.equal(config.hotReload.enabled, true, "hotReload.enabled should be true");
+  assert.equal(config.hotReload.enabled, false, "hotReload.enabled should default to false");
 
   assert.ok(Array.isArray(config.hotReload.watchPaths), "hotReload.watchPaths should be an array");
   assert.ok(config.hotReload.watchPaths.includes("config/"), "should watch config/");
-  assert.ok(config.hotReload.watchPaths.includes("src/"), "should watch src/");
+  assert.ok(config.hotReload.watchPaths.includes("domains/"), "should watch domains/");
 
   assert.ok(config.hotReload.debounceMs, "hotReload.debounceMs should be defined");
   assert.ok(config.hotReload.debounceMs >= 100, "debounceMs should be at least 100ms");

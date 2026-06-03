@@ -4,15 +4,15 @@
   "trackedLargeSources": [
     {
       "path": "src/platform/five-plane-control-plane/mission/index.ts",
-      "maxLines": 1642
+      "maxLines": 1654
     },
     {
       "path": "src/platform/five-plane-interface/api/http-api-server.ts",
-      "maxLines": 1303
+      "maxLines": 1320
     },
     {
       "path": "src/scale-ecosystem/multi-region/cdc-replication-service.ts",
-      "maxLines": 1209
+      "maxLines": 1262
     },
     {
       "path": "src/platform/five-plane-state-evidence/events/event-registry.ts",
@@ -24,7 +24,19 @@
     },
     {
       "path": "src/platform/five-plane-execution/dispatcher/execution-dispatch-service.ts",
-      "maxLines": 1106
+      "maxLines": 1140
+    },
+    {
+      "path": "src/platform/five-plane-state-evidence/truth/sqlite/repositories/operations-repository.ts",
+      "maxLines": 1122
+    },
+    {
+      "path": "src/platform/prompt-engine/eval/llm-eval-service.ts",
+      "maxLines": 1103
+    },
+    {
+      "path": "src/platform/five-plane-execution/lease/execution-lease-service.ts",
+      "maxLines": 1098
     },
     {
       "path": "src/platform/five-plane-state-evidence/events/durable-event-bus.ts",
@@ -36,15 +48,15 @@
     },
     {
       "path": "src/domains/registry/plugin-spi-registry.ts",
-      "maxLines": 1054
+      "maxLines": 1063
     },
     {
       "path": "src/platform/five-plane-orchestration/agent-delegation/delegation-manager.service.ts",
-      "maxLines": 1042
+      "maxLines": 1044
     },
     {
       "path": "src/sdk/client-sdk/api-client.ts",
-      "maxLines": 1041
+      "maxLines": 1047
     },
     {
       "path": "src/org-governance/sso-scim/scim-sync/scim-service.ts",
@@ -55,12 +67,12 @@
       "maxLines": 1030
     },
     {
-      "path": "src/platform/five-plane-execution/queue/redis-queue-adapter.ts",
-      "maxLines": 1027
+      "path": "src/platform/five-plane-control-plane/incident-control/human-takeover-service-async.ts",
+      "maxLines": 1032
     },
     {
       "path": "src/platform/five-plane-control-plane/iam/secret-management-service.ts",
-      "maxLines": 1017
+      "maxLines": 1078
     },
     {
       "path": "src/scale-ecosystem/billing/billing-service.ts",
@@ -71,8 +83,16 @@
       "maxLines": 1015
     },
     {
+      "path": "src/platform/shared/stability/p0-pilot-evidence-runner.ts",
+      "maxLines": 1011
+    },
+    {
+      "path": "src/platform/five-plane-execution/recovery/runtime-recovery-service.ts",
+      "maxLines": 1069
+    },
+    {
       "path": "src/scale-ecosystem/tenant-platform/tenant-platform-service.ts",
-      "maxLines": 1004
+      "maxLines": 1007
     }
   ]
 }

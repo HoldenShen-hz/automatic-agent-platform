@@ -74,6 +74,7 @@ export interface QuorumVote {
   readonly vote: "promote" | "demote" | "abstain";
   readonly weight: number;
   readonly timestamp: string;
+  readonly dedupeKey: string;
   readonly reason?: string;
 }
 
@@ -280,9 +281,15 @@ export class RegionFailoverController {
   /**
    * Cast a quorum vote for failover consensus
    */
-  public castVote(partitionKey: string, vote: QuorumVote): void {
+  public castVote(partitionKey: string, vote: QuorumVote, dedupeKey: string): void {
+    if (typeof dedupeKey !== "string" || dedupeKey.trim().length === 0 || dedupeKey !== vote.dedupeKey) {
+      throw new Error("region_failover.vote_dedupe_key_required");
+    }
     const key = partitionKey ?? "global";
     const votes = this.quorumVotes.get(key) ?? [];
+    if (votes.some((existing) => existing.dedupeKey === dedupeKey)) {
+      return;
+    }
     // Replace existing vote from same region
     const filtered = votes.filter((v) => v.regionId !== vote.regionId);
     filtered.push(vote);

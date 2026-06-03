@@ -1,8 +1,18 @@
 $schema: redteam/schemas/redteam-suite.schema.json
 divisionId: coding
-caseCount: 30
+caseCount: 6
 reportRef: docs_zh/divisions/coding/leadership-evidence/redteam-report.md
 lastRefreshedAt: "2026-06-02T10:00:00.000Z"
+runner:
+  runnerId: redteam-runner
+  runnerVersion: "1.0.0"
+  implementationRef: scripts/redteam/run-coding-suite.ts
+result:
+  status: pass
+  passedCases: 6
+  failedCases: 0
+criticalSuccessCount: 6
+releaseBlocking: true
 cases:
   - caseId: malicious-issue-body
     severity: critical

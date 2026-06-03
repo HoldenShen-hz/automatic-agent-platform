@@ -4,26 +4,20 @@
     "changed": [
       {
         "changes": [
-          "roi:=>roi/divisions/coding.yaml"
+          "roi:=>roi/divisions/research.yaml"
         ],
-        "divisionId": "coding"
+        "divisionId": "research"
       },
       {
         "changes": [
-          "roi:=>roi/divisions/customer-service.yaml"
+          "roi:=>roi/divisions/support.yaml"
         ],
-        "divisionId": "customer-service"
-      },
-      {
-        "changes": [
-          "roi:=>roi/divisions/knowledge-base.yaml"
-        ],
-        "divisionId": "knowledge-base"
+        "divisionId": "support"
       }
     ],
     "removed": []
   },
-  "generatedAt": "2026-06-01T19:15:16.543Z",
+  "generatedAt": "2026-06-02T21:12:49.670Z",
   "orphans": {
     "sourceModules": [
       "agriculture",
@@ -1031,6 +1025,7 @@
         "docs_en/contracts/architecture_governance_and_versioning_contract.md",
         "docs_en/contracts/delegated_governance_contract.md",
         "docs_en/contracts/environment_and_configuration_governance_contract.md",
+        "docs_en/contracts/family-governance-competitive-calibration.md",
         "docs_en/contracts/governance_control_plane_contract.md",
         "docs_en/contracts/prompt_model_policy_governance_contract.md",
         "docs_en/governance/autonomy_boundary_policy.md",
@@ -1053,6 +1048,7 @@
         "docs_zh/contracts/architecture_governance_and_versioning_contract.md",
         "docs_zh/contracts/delegated_governance_contract.md",
         "docs_zh/contracts/environment_and_configuration_governance_contract.md",
+        "docs_zh/contracts/family-governance-competitive-calibration.md",
         "docs_zh/contracts/governance_control_plane_contract.md",
         "docs_zh/contracts/prompt_model_policy_governance_contract.md",
         "docs_zh/governance/autonomy_boundary_policy.md",
@@ -1951,10 +1947,14 @@
       "docRefs": [
         "docs_en/architecture/v3.0-domain-research.md",
         "docs_en/divisions/family-expansion/knowledge-research-expansion.md",
+        "docs_en/divisions/research/leadership-evidence/eval-report.md",
+        "docs_en/divisions/research/leadership-evidence/redteam-report.md",
         "docs_en/domains/academic-research/domain-spec.md",
         "docs_en/domains/industry-research/domain-spec.md",
         "docs_zh/architecture/v3.0-domain-research.md",
         "docs_zh/divisions/family-expansion/knowledge-research-expansion.md",
+        "docs_zh/divisions/research/leadership-evidence/eval-report.md",
+        "docs_zh/divisions/research/leadership-evidence/redteam-report.md",
         "docs_zh/domains/academic-research/domain-spec.md",
         "docs_zh/domains/industry-research/domain-spec.md"
       ],
@@ -1967,7 +1967,7 @@
       "hasEval": true,
       "hasOwner": true,
       "hasRedTeam": true,
-      "hasRoiBaseline": false,
+      "hasRoiBaseline": true,
       "hasScenarioCard": true,
       "hasTrainingPolicy": true,
       "legacyFamily": "research",
@@ -1977,7 +1977,9 @@
         "redteam/divisions/research/redteam-suite.yaml"
       ],
       "riskLevel": "medium",
-      "roiRefs": [],
+      "roiRefs": [
+        "roi/divisions/research.yaml"
+      ],
       "scenarioRefs": [
         "config/division-coverage/scenarios/research-conclusion-to-experiment.yaml"
       ],
@@ -2230,7 +2232,12 @@
       ],
       "coverageCardPath": "config/division-coverage/divisions/support.yaml",
       "divisionId": "support",
-      "docRefs": [],
+      "docRefs": [
+        "docs_en/divisions/support/leadership-evidence/eval-report.md",
+        "docs_en/divisions/support/leadership-evidence/redteam-report.md",
+        "docs_zh/divisions/support/leadership-evidence/eval-report.md",
+        "docs_zh/divisions/support/leadership-evidence/redteam-report.md"
+      ],
       "evalRefs": [
         "eval/divisions/support/eval-suite.yaml"
       ],
@@ -2240,7 +2247,7 @@
       "hasEval": true,
       "hasOwner": true,
       "hasRedTeam": true,
-      "hasRoiBaseline": false,
+      "hasRoiBaseline": true,
       "hasScenarioCard": true,
       "hasTrainingPolicy": true,
       "legacyFamily": "customer-ops",
@@ -2250,7 +2257,9 @@
         "redteam/divisions/support/redteam-suite.yaml"
       ],
       "riskLevel": "medium",
-      "roiRefs": [],
+      "roiRefs": [
+        "roi/divisions/support.yaml"
+      ],
       "scenarioRefs": [
         "config/division-coverage/scenarios/customer-complaint-escalation.yaml"
       ],
@@ -2308,7 +2317,9 @@
       "divisionId": "yono",
       "docRefs": [
         "docs_en/reference/yono_business_detailed_design_v1_0.md",
-        "docs_zh/reference/yono_business_detailed_design_v1_0.md"
+        "docs_en/threat-models/dataflow-10-yono-market.md",
+        "docs_zh/reference/yono_business_detailed_design_v1_0.md",
+        "docs_zh/threat-models/dataflow-10-yono-market.md"
       ],
       "evalRefs": [],
       "familyId": null,
@@ -2339,7 +2350,7 @@
     "blockedDivisions": 35,
     "orphanSourceModules": 23,
     "p0Divisions": 5,
-    "roiTrackedDivisions": 3,
+    "roiTrackedDivisions": 5,
     "totalDivisions": 56
   }
 }

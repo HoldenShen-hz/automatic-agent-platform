@@ -3,46 +3,70 @@ classes:
   - riskClass: R0
     label: Read-only
     definition: Read-only observation or lookup with no durable side effect.
+    definitionRef: docs_zh/governance/tool-risk-registry.md#r0-read-only
     examples:
       - retrieve_sources
       - read_order
+    mitigations:
+      - schema-validated tool arguments
+      - structured audit trace
     defaultPolicy: allow
   - riskClass: R1
     label: Draft-only
     definition: Creates non-executing drafts or recommendations.
+    definitionRef: docs_zh/governance/tool-risk-registry.md#r1-draft-only
     examples:
       - draft_conclusion
       - analyze_failure
+    mitigations:
+      - non-executing output only
+      - provenance required
     defaultPolicy: allow_with_receipt
   - riskClass: R2
     label: Internal Write
     definition: Writes to internal state or local workspace but remains reversible.
+    definitionRef: docs_zh/governance/tool-risk-registry.md#r2-internal-write
     examples:
       - apply_patch
       - run_targeted_tests
       - create_handoff_draft
+    mitigations:
+      - reversible change plan
+      - post-action verification
     defaultPolicy: allow_with_verification
   - riskClass: R3
     label: External Write
     definition: Writes to external systems or creates durable review artifacts.
+    definitionRef: docs_zh/governance/tool-risk-registry.md#r3-external-write
     examples:
       - create_pr_draft
       - draft_refund
       - assign_ticket
+    mitigations:
+      - HITL or prepared action
+      - rollback policy required
     defaultPolicy: hitl_or_prepared_action
   - riskClass: R4
     label: Destructive
     definition: Deletes, overwrites, or executes high-blast-radius actions.
+    definitionRef: docs_zh/governance/tool-risk-registry.md#r4-destructive
     examples:
       - destructive_shell
       - force_merge
+    mitigations:
+      - explicit owner approval
+      - blast-radius verification
     defaultPolicy: hitl_required
   - riskClass: R5
     label: Regulated / Financial / Legal
     definition: High-impact regulated or financial actions that cannot run autonomously.
+    definitionRef: docs_zh/governance/tool-risk-registry.md#r5-regulated
     examples:
       - finalize_refund
       - final_legal_answer
+    mitigations:
+      - autonomous deny-by-default
+      - regulated evidence receipt
     defaultPolicy: autonomous_denied
 defaults:
   requiresHitlFor:

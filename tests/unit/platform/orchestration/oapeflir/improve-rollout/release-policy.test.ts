@@ -3,6 +3,31 @@ import test from "node:test";
 
 import type { ReleasePolicy, ReleasePolicyEvaluation, PolicyCheckResult, ReleaseAction } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/release-policy.js";
 
+function makeTrafficAllocation(
+  overrides: Partial<ReleasePolicy["trafficAllocation"]>,
+): ReleasePolicy["trafficAllocation"] {
+  return {
+    canary_5: 0,
+    off: 0,
+    stable: 0,
+    suggest: 0,
+    L0_off: 0,
+    L1_evaluate: 0,
+    L2_canary: 0,
+    L3_partial: 0,
+    L4_stable: 0,
+    L5_full: 0,
+    shadow: 0,
+    evaluate_0: 0,
+    partial_25: 0,
+    partial_50: 0,
+    partial_75: 0,
+    stable_75: 0,
+    stable_100: 0,
+    ...overrides,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // ReleasePolicy
 // ---------------------------------------------------------------------------
@@ -12,8 +37,8 @@ test("ReleasePolicy minimal construction", () => {
     policyId: "policy_1",
     name: "Test Policy",
     description: "A test release policy",
-    targetLevels: ["canary"],
-    trafficAllocation: { canary: 5, staging: 20, GA: 75 },
+    targetLevels: ["canary_5"],
+    trafficAllocation: makeTrafficAllocation({ canary_5: 5, partial_25: 20, stable_100: 75 }),
     minimumObservationWindowMs: 60000,
     rollbackFailureRateThreshold: 0.05,
     rollbackLatencyMultiplierThreshold: 1.5,
@@ -22,8 +47,8 @@ test("ReleasePolicy minimal construction", () => {
   };
   assert.equal(policy.policyId, "policy_1");
   assert.equal(policy.name, "Test Policy");
-  assert.deepEqual(policy.targetLevels, ["canary"]);
-  assert.equal(policy.trafficAllocation.canary, 5);
+  assert.deepEqual(policy.targetLevels, ["canary_5"]);
+  assert.equal(policy.trafficAllocation.canary_5, 5);
   assert.equal(policy.requiresHumanApproval, false);
   assert.equal(policy.active, true);
 });
@@ -33,8 +58,8 @@ test("ReleasePolicy with multiple targetLevels", () => {
     policyId: "policy_multi",
     name: "Multi-Level Policy",
     description: "Policy targeting multiple levels",
-    targetLevels: ["canary", "staging", "GA"],
-    trafficAllocation: { canary: 10, staging: 30, GA: 60 },
+    targetLevels: ["canary_5", "partial_25", "stable_100"],
+    trafficAllocation: makeTrafficAllocation({ canary_5: 10, partial_25: 30, stable_100: 60 }),
     minimumObservationWindowMs: 120000,
     rollbackFailureRateThreshold: 0.03,
     rollbackLatencyMultiplierThreshold: 1.3,
@@ -50,15 +75,15 @@ test("ReleasePolicy allows 100% traffic to single level", () => {
     policyId: "policy_full",
     name: "Full GA Policy",
     description: "All traffic to GA",
-    targetLevels: ["GA"],
-    trafficAllocation: { GA: 100 },
+    targetLevels: ["stable_100"],
+    trafficAllocation: makeTrafficAllocation({ stable_100: 100 }),
     minimumObservationWindowMs: 0,
     rollbackFailureRateThreshold: 0.1,
     rollbackLatencyMultiplierThreshold: 2.0,
     requiresHumanApproval: false,
     active: true,
   };
-  assert.equal(policy.trafficAllocation.GA, 100);
+  assert.equal(policy.trafficAllocation.stable_100, 100);
 });
 
 test("ReleasePolicy inactive policy", () => {
@@ -66,8 +91,8 @@ test("ReleasePolicy inactive policy", () => {
     policyId: "policy_inactive",
     name: "Inactive Policy",
     description: "This policy is disabled",
-    targetLevels: ["canary"],
-    trafficAllocation: { canary: 5, staging: 20, GA: 75 },
+    targetLevels: ["canary_5"],
+    trafficAllocation: makeTrafficAllocation({ canary_5: 5, partial_25: 20, stable_100: 75 }),
     minimumObservationWindowMs: 60000,
     rollbackFailureRateThreshold: 0.05,
     rollbackLatencyMultiplierThreshold: 1.5,
@@ -133,8 +158,8 @@ test("ReleasePolicyEvaluation passed", () => {
       policyId: "policy_eval_1",
       name: "Eval Policy",
       description: "An evaluation test",
-      targetLevels: ["canary"],
-      trafficAllocation: { canary: 5, staging: 20, GA: 75 },
+      targetLevels: ["canary_5"],
+      trafficAllocation: makeTrafficAllocation({ canary_5: 5, partial_25: 20, stable_100: 75 }),
       minimumObservationWindowMs: 60000,
       rollbackFailureRateThreshold: 0.05,
       rollbackLatencyMultiplierThreshold: 1.5,
@@ -163,8 +188,8 @@ test("ReleasePolicyEvaluation failed", () => {
       policyId: "policy_eval_2",
       name: "Eval Policy 2",
       description: "An evaluation test that fails",
-      targetLevels: ["canary"],
-      trafficAllocation: { canary: 5, staging: 20, GA: 75 },
+      targetLevels: ["canary_5"],
+      trafficAllocation: makeTrafficAllocation({ canary_5: 5, partial_25: 20, stable_100: 75 }),
       minimumObservationWindowMs: 60000,
       rollbackFailureRateThreshold: 0.05,
       rollbackLatencyMultiplierThreshold: 1.5,
@@ -193,8 +218,8 @@ test("ReleasePolicyEvaluation with multiple checks", () => {
       policyId: "policy_eval_3",
       name: "Eval Policy 3",
       description: "Multiple checks",
-      targetLevels: ["canary", "staging"],
-      trafficAllocation: { canary: 10, staging: 40, GA: 50 },
+      targetLevels: ["canary_5", "partial_25"],
+      trafficAllocation: makeTrafficAllocation({ canary_5: 10, partial_25: 40, stable_100: 50 }),
       minimumObservationWindowMs: 120000,
       rollbackFailureRateThreshold: 0.03,
       rollbackLatencyMultiplierThreshold: 1.4,
@@ -263,8 +288,8 @@ test("ReleasePolicy rollback thresholds can be high", () => {
     policyId: "policy_lenient",
     name: "Lenient Policy",
     description: "High thresholds for testing",
-    targetLevels: ["GA"],
-    trafficAllocation: { GA: 100, canary: 0, staging: 0 },
+    targetLevels: ["stable_100"],
+    trafficAllocation: makeTrafficAllocation({ stable_100: 100, canary_5: 0, partial_25: 0 }),
     minimumObservationWindowMs: 0,
     rollbackFailureRateThreshold: 0.5,
     rollbackLatencyMultiplierThreshold: 5.0,
@@ -280,8 +305,8 @@ test("ReleasePolicy rollback thresholds can be zero", () => {
     policyId: "policy_strict",
     name: "Strict Policy",
     description: "Zero tolerance",
-    targetLevels: ["canary"],
-    trafficAllocation: { canary: 5, staging: 20, GA: 75 },
+    targetLevels: ["canary_5"],
+    trafficAllocation: makeTrafficAllocation({ canary_5: 5, partial_25: 20, stable_100: 75 }),
     minimumObservationWindowMs: 300000,
     rollbackFailureRateThreshold: 0,
     rollbackLatencyMultiplierThreshold: 1.0,

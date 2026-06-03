@@ -1,0 +1,11 @@
+$schema: training-data-policy/schemas/division-policy.schema.json
+divisionId: finance-accounting
+policyMode: no_train
+policyModeRef: training-data-policy/policy-modes.md
+heldoutTrainingPolicy: no_train
+requiresModelDataTombstone: true
+allowedSources: []
+forbiddenSources:
+  - bookkeeping_ledger
+  - invoice_data
+  - production_finance_output

@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent-platform.local/schemas/leadership-claim-allowlist.schema.json",
+  "type": "object",
+  "required": [
+    "$schema",
+    "version",
+    "updatedAt",
+    "entries"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "config/division-coverage/schemas/leadership-claim-allowlist.schema.json"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "filePath",
+          "matchedText",
+          "reason",
+          "owner",
+          "expiresAt"
+        ],
+        "properties": {
+          "filePath": {
+            "type": "string",
+            "minLength": 1
+          },
+          "matchedText": {
+            "type": "string",
+            "minLength": 1
+          },
+          "claimLevel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "designed",
+              "pilot_ready",
+              "local_leader",
+              "industry_comparable",
+              "industry_leading",
+              null
+            ]
+          },
+          "surface": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "docs",
+              "ui",
+              "release_note",
+              "sales_material",
+              "readme",
+              null
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replacementSuggestion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

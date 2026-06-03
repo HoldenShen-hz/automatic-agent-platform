@@ -3,11 +3,14 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 
+import { createConfigReadPolicy } from "../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { loadRiskConfig } from "../../../src/platform/five-plane-control-plane/risk-control/risk-config-loader.js";
 
-const riskConfig = loadRiskConfig();
+const configRoot = resolve(process.cwd(), "config");
+const riskConfigPath = resolve(configRoot, "risk/default.json");
+const riskConfig = loadRiskConfig(riskConfigPath, createConfigReadPolicy(configRoot));
 const rawRiskConfig = JSON.parse(
-  readFileSync(resolve(process.cwd(), "config/risk/default.json"), "utf-8"),
+  readFileSync(riskConfigPath, "utf-8"),
 ) as { riskCategories: string[] };
 
 test("risk-config exposes the canonical weighted factor model", () => {

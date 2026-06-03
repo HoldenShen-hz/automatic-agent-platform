@@ -499,6 +499,20 @@ export interface FamilyLeadershipReadinessDTO {
   readonly internalMappings: readonly LeadershipMetricMappingDTO[];
   readonly mvpThresholds: readonly LeadershipEvidenceThresholdDTO[];
   readonly leadershipThresholds: readonly LeadershipEvidenceThresholdDTO[];
+  readonly familyPolicy: {
+    readonly claimReviewOwner: string;
+    readonly claimExpiryDays: number;
+    readonly revokeOnExpiry: boolean;
+    readonly noGoBoundaryRef: string | null;
+    readonly leadershipTypes: readonly string[];
+    readonly scoreWeights: {
+      readonly capability: number;
+      readonly safety: number;
+      readonly evidence: number;
+      readonly operation: number;
+      readonly flywheel: number;
+    } | null;
+  };
 }
 
 export interface LeadershipClaimRecordDTO {
@@ -510,11 +524,15 @@ export interface LeadershipClaimRecordDTO {
   readonly claimText: string;
   readonly allowedSurfaces: readonly LeadershipClaimSurfaceDTO[];
   readonly evidenceRefs: readonly string[];
+  readonly owner: string | null;
+  readonly requestedBy: string | null;
+  readonly submittedAt: string | null;
   readonly reviewedBy: readonly string[];
   readonly expiresAt: string | null;
   readonly status: LeadershipClaimStatusDTO;
   readonly effectiveStatus: LeadershipClaimStatusDTO;
   readonly effectiveStatusReasonCode: string | null;
+  readonly freshnessStatus: "fresh" | "expiring_soon" | "expired";
   readonly revokedBy: string | null;
   readonly revokedAt: string | null;
   readonly replacementRequired: boolean;
@@ -523,10 +541,13 @@ export interface LeadershipClaimRecordDTO {
 export interface LeadershipClaimAllowlistEntryDTO {
   readonly filePath: string;
   readonly matchedText: string;
+  readonly claimLevel: LeadershipClaimLevelDTO | null;
+  readonly surface: LeadershipClaimSurfaceDTO | null;
   readonly reason: string;
   readonly owner: string;
   readonly expiresAt: string | null;
   readonly expired: boolean;
+  readonly replacementSuggestion: string | null;
 }
 
 export interface LeadershipClaimScannerHitDTO {
@@ -547,6 +568,7 @@ export interface LeadershipClaimReviewRequestDTO {
   readonly scenarioId: string | null;
   readonly requestedClaimLevel: LeadershipClaimLevelDTO;
   readonly requestedSurfaces: readonly LeadershipClaimSurfaceDTO[];
+  readonly evidenceRefs: readonly string[];
   readonly requestedBy: string;
   readonly rationale: string;
   readonly requestedAt: string;
@@ -565,6 +587,7 @@ export interface LeadershipNoGoActionDTO {
   readonly scopes: readonly string[];
   readonly enforcementSurfaces: readonly string[];
   readonly blockModes: readonly string[];
+  readonly sources: readonly string[];
 }
 
 export interface LeadershipClaimsConsoleDTO {
@@ -585,6 +608,7 @@ export interface LeadershipClaimsConsoleDTO {
     readonly expiredAllowlistCount: number;
     readonly revokedClaimCount: number;
     readonly expiredClaimCount: number;
+    readonly upcomingExpiryCount: number;
   };
 }
 

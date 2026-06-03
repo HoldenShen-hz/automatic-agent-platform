@@ -18,6 +18,18 @@ export interface NoGoPolicyAction {
   readonly scopes: readonly string[];
   readonly enforcementSurfaces: readonly NoGoEnforcementSurface[];
   readonly blockModes: readonly string[];
+  readonly sources: readonly string[];
+}
+
+export interface NoGoExceptionPolicy {
+  readonly requiresPreparedAction: boolean;
+  readonly requiresNamedApprover: boolean;
+  readonly requiresExpiry: boolean;
+  readonly requiresAuditEvent: boolean;
+  readonly requiresPostActionVerification: boolean;
+  readonly forbidsBlanketApproval: boolean;
+  readonly requiresMultiApproverByRiskClass: Readonly<Record<string, number>>;
+  readonly forbiddenBehaviors: readonly string[];
 }
 
 export interface NoGoPolicyRegistryOptions {
@@ -30,6 +42,7 @@ export interface NoGoPolicyMatchRequest {
   readonly familyId?: string | null;
   readonly enforcementSurface?: NoGoEnforcementSurface | null;
   readonly blockMode?: string | null;
+  readonly source?: string | null;
 }
 
 function resolvePlatformRoot(platformRoot?: string): string {
@@ -56,6 +69,28 @@ export class NoGoPolicyRegistry {
     return [...globalActions, ...familyActions];
   }
 
+  public getExceptionPolicy(): NoGoExceptionPolicy {
+    const config = this.readYamlObject(join(this.policyRoot, "no-go-actions.yaml"));
+    const raw = isPlainObject(config.exceptionPolicy) ? config.exceptionPolicy : {};
+    const counts = isPlainObject(raw.requiresMultiApproverByRiskClass)
+      ? Object.fromEntries(
+        Object.entries(raw.requiresMultiApproverByRiskClass)
+          .filter(([, value]) => typeof value === "number")
+          .map(([key, value]) => [key, value]),
+      )
+      : {};
+    return {
+      requiresPreparedAction: raw.requiresPreparedAction === true,
+      requiresNamedApprover: raw.requiresNamedApprover === true,
+      requiresExpiry: raw.requiresExpiry === true,
+      requiresAuditEvent: raw.requiresAuditEvent === true,
+      requiresPostActionVerification: raw.requiresPostActionVerification === true,
+      forbidsBlanketApproval: raw.forbidsBlanketApproval === true,
+      requiresMultiApproverByRiskClass: counts as Readonly<Record<string, number>>,
+      forbiddenBehaviors: toStringArray(raw.forbiddenBehaviors),
+    };
+  }
+
   public findMatchingActions(input: NoGoPolicyMatchRequest): NoGoPolicyAction[] {
     const familyId = input.familyId?.trim() ?? null;
     return this.listActions().filter((action) => {
@@ -66,6 +101,9 @@ export class NoGoPolicyRegistry {
         return false;
       }
       if (input.blockMode != null && !action.blockModes.includes(input.blockMode)) {
+        return false;
+      }
+      if (input.source != null && action.sources.length > 0 && !action.sources.includes(input.source)) {
         return false;
       }
       return true;
@@ -81,6 +119,7 @@ export class NoGoPolicyRegistry {
       scopes: toStringArray(action.scopes),
       enforcementSurfaces: toStringArray(action.enforcementSurfaces) as NoGoEnforcementSurface[],
       blockModes: toStringArray(action.blockModes),
+      sources: toStringArray(action.sources),
     };
   }
 

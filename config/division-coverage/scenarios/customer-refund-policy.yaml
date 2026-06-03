@@ -20,6 +20,15 @@ inputDataTypes:
 outputActions:
   - refund_draft
   - customer_response
+outputActionBindings:
+  - outputActionId: refund_draft
+    bindingType: tool_action
+    toolId: refund
+    actionId: draft_refund
+  - outputActionId: customer_response
+    bindingType: tool_action
+    toolId: refund
+    actionId: draft_refund
 toolActions:
   - toolId: order
     actionId: read_order

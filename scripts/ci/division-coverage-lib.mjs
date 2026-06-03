@@ -74,7 +74,13 @@ export const DEFAULT_ALIAS_ENTRIES = Object.freeze([
   { alias: "livestream", canonical: "live-streaming", mode: "deprecated_alias", removalTargetVersion: "v3.5" },
   { alias: "it-ops", canonical: "it-operations", mode: "deprecated_alias", removalTargetVersion: "v3.5" },
   { alias: "finance-accounting", canonical: "financial-services", mode: "family_rollup_only", removalTargetVersion: "v3.6" },
-  { alias: "research", canonical: "industry-research", mode: "ambiguous_alias", removalTargetVersion: "v3.6" },
+  {
+    alias: "research",
+    canonical: "industry-research",
+    mode: "ambiguous_alias",
+    ambiguousCandidates: ["academic-research", "industry-research"],
+    removalTargetVersion: "v3.6",
+  },
 ]);
 
 export function resolvePlatformRoot(platformRoot = DEFAULT_PLATFORM_ROOT) {

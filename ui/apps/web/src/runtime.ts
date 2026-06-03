@@ -14,7 +14,6 @@ import {
   createRuntimeWSClient,
   createTenantInterceptor,
   createTraceInterceptor,
-  DEFAULT_RUNTIME_API_BASE_URL,
   fetchContractVersion,
   type RESTClient,
   type WSClient,
@@ -49,6 +48,7 @@ type Constructable<TValue, TArgs extends readonly unknown[]> = new(...args: TArg
 type CallableFactory<TValue, TArgs extends readonly unknown[]> = (...args: TArgs) => TValue;
 const STATIC_BOOTSTRAP_SESSION_REFRESH_TOKEN = "bootstrap-session";
 const MAX_BOOTSTRAP_TOKEN_LIFETIME_MS = 15 * 60 * 1000;
+const DEFAULT_RUNTIME_API_BASE_URL = "/api";
 
 const runtimeFetch: typeof fetch = (...args) => globalThis.fetch(...args);
 

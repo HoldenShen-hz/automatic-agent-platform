@@ -126,7 +126,7 @@ const RULES = [
     severity: "P0",
     description:
       "Delegate-vote / castVote / recordVote path does not carry a dedupeKey (P0 per §9.3).",
-    regex: /\b(?:delegateVote|castVote|recordVote|delegateCastVote)\s*\([^)]*\)(?![^\n]{0,300}?(?:dedupeKey|dedupe_key|deduplicationKey))/,
+    regex: /\b(?:delegateVote|castVote|recordVote|delegateCastVote)\s*\(/,
   },
   // 8. Manual-takeover / human-takeover path that does not write an
   //    audit record (P0 per §9.3 "manual takeover").
@@ -254,8 +254,13 @@ function findFindings(filePath, allowlist, noGoPolicy) {
         const window = lines.slice(Math.max(0, i - 5), Math.min(lines.length, i + 30)).join("\n");
         if (/\b(?:hitlApprove|requireHitl|requestHumanApproval|hitl\.approve|approvalCenter\.request)\b/.test(window)) continue;
       }
-      // delegate_vote_no_dedupe: already enforced by the negative
-      // lookahead in the regex.
+      // delegate_vote_no_dedupe: the vote path must carry a dedupe
+      // field in its parameter list or immediately-enforced local
+      // validation path.
+      if (r.rule === "auth_role.delegate_vote_no_dedupe") {
+        const window = lines.slice(Math.max(0, i - 1), Math.min(lines.length, i + 10)).join("\n");
+        if (/\b(?:dedupeKey|dedupe_key|deduplicationKey)\b/.test(window)) continue;
+      }
       // manual_takeover_no_audit: same audit-window check as
       // break_glass.
       if (r.rule === "auth_role.manual_takeover_no_audit") {

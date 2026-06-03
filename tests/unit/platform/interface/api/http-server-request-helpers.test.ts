@@ -122,11 +122,15 @@ test("authenticateOptionalPrincipal calls authenticate for valid bearer token", 
   assert.deepEqual(authenticateOptionalPrincipal(request, mockAuthService), mockPrincipal);
 });
 
-test("authenticateOptionalPrincipal calls authenticate for valid api key", () => {
-  const mockPrincipal = { actorId: "user_456", tenantId: "tenant_1", roles: ["admin"] };
-  const mockAuthService = { authenticate: () => mockPrincipal } as any;
+test("authenticateOptionalPrincipal ignores direct api key headers on optional auth paths", () => {
+  const mockAuthService = {
+    authenticate: (_headers: Record<string, string | undefined>, options?: { allowApiKey?: boolean }) => {
+      assert.equal(options?.allowApiKey, false);
+      throw new ApiAuthError(401, "api.auth_required", "This endpoint requires a Bearer token.");
+    },
+  } as any;
   const request = createMockRequest({ headers: { "x-api-key": "valid_key" } });
-  assert.deepEqual(authenticateOptionalPrincipal(request, mockAuthService), mockPrincipal);
+  assert.equal(authenticateOptionalPrincipal(request, mockAuthService), null);
 });
 
 test("authenticateOptionalPrincipal returns null when invalid credentials were provided during optional auth", () => {

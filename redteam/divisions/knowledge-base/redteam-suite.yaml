@@ -1,8 +1,18 @@
 $schema: redteam/schemas/redteam-suite.schema.json
 divisionId: knowledge-base
-caseCount: 30
+caseCount: 5
 reportRef: docs_zh/divisions/knowledge-base/leadership-evidence/redteam-report.md
 lastRefreshedAt: "2026-06-02T10:15:00.000Z"
+runner:
+  runnerId: redteam-runner
+  runnerVersion: "1.0.0"
+  implementationRef: scripts/redteam/run-knowledge-base-suite.ts
+result:
+  status: pass
+  passedCases: 5
+  failedCases: 0
+criticalSuccessCount: 5
+releaseBlocking: true
 cases:
   - caseId: fake-citation
     severity: critical

@@ -6,8 +6,7 @@
  * Per docs_zh/contracts/assurance-pipeline-contract.md §3.1.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 
 const repoRoot = resolve(process.cwd());
 const base = (() => {
@@ -15,10 +14,6 @@ const base = (() => {
   if (idx >= 0 && process.argv[idx + 1]) return process.argv[idx + 1];
   return "origin/main";
 })();
-
-const FOCUS_GLOBS = [
-  "src/", "tests/", "docs_zh/", "ui/", "scripts/", "schemas/", "config/", "package.json", ".github/",
-];
 
 function getChangedFiles() {
   try {
@@ -59,8 +54,9 @@ function classify(changedFiles) {
 }
 
 function runAudit(script, focusPath) {
+  const scriptFile = script.startsWith("audit:") ? script.replace("audit:", "audit-") : script;
   try {
-    const out = execFileSync("node", [`scripts/ci/${script}.mjs`, "--path", focusPath], {
+    const out = execFileSync("node", [`scripts/ci/${scriptFile}.mjs`, "--path", focusPath], {
       cwd: repoRoot,
       encoding: "utf8",
     });
@@ -70,6 +66,26 @@ function runAudit(script, focusPath) {
   }
 }
 
+function runNpmScript(scriptName) {
+  try {
+    execFileSync("npm", ["run", scriptName], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: "pipe",
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e), status: e.status ?? 1 };
+  }
+}
+
+function addCheck(checks, check) {
+  if (checks.some((entry) => entry.id === check.id)) {
+    return;
+  }
+  checks.push(check);
+}
+
 function main() {
   const changed = getChangedFiles();
   const buckets = classify(changed);
@@ -77,47 +93,76 @@ function main() {
 
   const checks = [];
   if (buckets.code.length > 0) {
-    checks.push({ id: "audit:fire-and-forget", focus: "src" });
-    checks.push({ id: "audit:determinism", focus: "src" });
+    addCheck(checks, { id: "audit:fire-and-forget", kind: "audit", focus: "src" });
+    addCheck(checks, { id: "audit:determinism", kind: "audit", focus: "src" });
   }
   if (buckets.docs.length > 0) {
-    checks.push({ id: "audit:release-claims", focus: "docs_zh" });
+    addCheck(checks, { id: "audit:docs-sync", kind: "audit", focus: "." });
+    addCheck(checks, { id: "audit:leadership-claims", kind: "audit", focus: "." });
+    addCheck(checks, { id: "audit:release-claims", kind: "audit", focus: "." });
   }
   if (buckets.config.length > 0) {
-    checks.push({ id: "audit:ci-supply-chain", focus: "scripts" });
+    addCheck(checks, { id: "audit:ci-supply-chain", kind: "audit", focus: "." });
   }
   if (buckets.routes.length > 0) {
-    checks.push({ id: "audit:tenant-isolation", focus: "src" });
+    addCheck(checks, { id: "audit:tenant-isolation", kind: "audit", focus: "src" });
   }
   if (buckets.schemas.length > 0) {
-    checks.push({ id: "audit:contracts-sync", focus: "docs_zh/contracts" });
+    addCheck(checks, { id: "audit:contracts-sync", kind: "audit", focus: "." });
   }
   if (buckets.workflows.length > 0) {
-    checks.push({ id: "audit:ci-supply-chain", focus: "scripts" });
+    addCheck(checks, { id: "audit:ci-supply-chain", kind: "audit", focus: "." });
+    addCheck(checks, { id: "audit:leadership-claims", kind: "audit", focus: "." });
   }
   if (buckets.redteam.length > 0) {
-    checks.push({ id: "audit:eval-oracle", focus: "." });
+    addCheck(checks, { id: "audit:eval-oracle", kind: "audit", focus: "." });
+  }
+  if (buckets.tests.length > 0) {
+    addCheck(checks, { id: "test:unit", kind: "npm" });
+    addCheck(checks, { id: "test:invariants", kind: "npm" });
   }
 
   const results = [];
   let blockerCount = 0;
   for (const check of checks) {
+    if (check.kind === "npm") {
+      const r = runNpmScript(check.id);
+      if (!r.ok) {
+        blockerCount += 1;
+      }
+      results.push({
+        id: check.id,
+        kind: check.kind,
+        ok: r.ok,
+        blockerFindings: 0,
+        findingCount: 0,
+        exitStatus: r.ok ? 0 : (r.status ?? 1),
+      });
+      continue;
+    }
+
     const r = runAudit(check.id, check.focus);
     const findings = r.ok ? (r.report?.findings?.filter?.((f) => f.severity === "P0") ?? []) : [];
-    if (findings.length > 0) blockerCount += findings.length;
+    if (!r.ok || findings.length > 0) {
+      blockerCount += Math.max(findings.length, 1);
+    }
     results.push({
       id: check.id,
+      kind: check.kind,
       focus: check.focus,
       ok: r.ok,
       blockerFindings: findings.length,
       findingCount: r.ok ? (r.report?.findingCount ?? 0) : -1,
+      exitStatus: r.ok ? 0 : (r.status ?? 1),
     });
   }
 
   const report = {
     generatedAt: stamp,
+    mode: "delta",
     base,
     changedFileCount: changed.length,
+    changedFiles: changed,
     buckets,
     executedChecks: results,
     blockerCount,

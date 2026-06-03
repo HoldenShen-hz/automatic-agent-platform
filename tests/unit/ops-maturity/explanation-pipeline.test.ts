@@ -48,14 +48,13 @@ test("StageRationale optional fields are set when provided via options", () => {
     alternatives: ["retry_same_plan", "downgrade_mode"],
     confidence: 0.85,
     decisionInputRef: "input:123",
-    versionLockRef: "version:456",
     visibilityLabels: ["internal", "privileged"],
   });
 
   assert.deepEqual(bundle.rationale.alternatives, ["retry_same_plan", "downgrade_mode"]);
   assert.equal(bundle.rationale.confidence, 0.85);
   assert.equal(bundle.rationale.decisionInputRef, "input:123");
-  assert.equal(bundle.rationale.versionLockRef, "version:456");
+  assert.match(bundle.rationale.versionLockRef ?? "", /^vlock:[0-9a-f]{64}$/);
   assert.deepEqual(bundle.rationale.visibilityLabels, ["internal", "privileged"]);
 });
 

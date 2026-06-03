@@ -1,0 +1,11 @@
+$schema: training-data-policy/schemas/division-policy.schema.json
+divisionId: financial-services
+policyMode: no_train
+policyModeRef: training-data-policy/policy-modes.md
+heldoutTrainingPolicy: no_train
+requiresModelDataTombstone: true
+allowedSources: []
+forbiddenSources:
+  - transaction_data
+  - account_holder_pii
+  - production_financial_output

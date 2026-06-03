@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 
 import { ApiAuthService } from "../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+
+function createBearerHeaders(service: ApiAuthService, apiKey: string): Record<string, string> {
+  return {
+    authorization: `Bearer ${service.exchangeApiKey(apiKey).accessToken}`,
+  };
+}
 
 // ============================================================================
 // API Key Validator Tests
@@ -97,36 +103,35 @@ test("invalid api key with correct length is rejected", () => {
 });
 
 test("expired api key is rejected via token expiration", () => {
-  const service = new ApiAuthService({
-    apiKeys: [
-      {
-        apiKey: "expirable-key",
-        actorId: "expirable-actor",
-        roles: ["viewer"],
+  mock.timers.enable({ apis: ["Date"] });
+  try {
+    const service = new ApiAuthService({
+      apiKeys: [
+        {
+          apiKey: "expirable-key",
+          actorId: "expirable-actor",
+          roles: ["viewer"],
+        },
+      ],
+      jwtSecret: "test-secret",
+      tokenTtlMs: 1, // 1ms TTL - essentially immediately expired
+    });
+
+    const result = service.exchangeApiKey("expirable-key");
+
+    mock.timers.tick(10);
+
+    assert.throws(
+      () => service.authenticate({ authorization: `Bearer ${result.accessToken}` }),
+      (error: unknown) => {
+        const err = error as { code?: string; statusCode?: number };
+        return err.code === "api.token_expired" && err.statusCode === 401;
       },
-    ],
-    jwtSecret: "test-secret",
-    tokenTtlMs: 1, // 1ms TTL - essentially immediately expired
-  });
-
-  // Exchange the key
-  const result = service.exchangeApiKey("expirable-key");
-
-  // Wait a tiny bit to ensure the token is expired
-  const start = Date.now();
-  while (Date.now() - start < 10) {
-    // busy wait 10ms
+      "token with expired TTL should be rejected",
+    );
+  } finally {
+    mock.timers.reset();
   }
-
-  // The exchanged token should be expired since TTL is 1ms
-  assert.throws(
-    () => service.authenticate({ authorization: `Bearer ${result.accessToken}` }),
-    (error: unknown) => {
-      const err = error as { code?: string; statusCode?: number };
-      return err.code === "api.token_expired" && err.statusCode === 401;
-    },
-    "token with expired TTL should be rejected",
-  );
 });
 
 test("api key permissions are checked via requireRole", () => {
@@ -142,12 +147,13 @@ test("api key permissions are checked via requireRole", () => {
   });
 
   // Viewer key should pass for viewer role
-  const viewerResult = service.requireRole({ "x-api-key": "viewer-only-key" }, "viewer");
+  const viewerHeaders = createBearerHeaders(service, "viewer-only-key");
+  const viewerResult = service.requireRole(viewerHeaders, "viewer");
   assert.equal(viewerResult.actorId, "viewer-actor", "actorId should match for viewer role check");
 
   // Viewer key should fail for operator role
   assert.throws(
-    () => service.requireRole({ "x-api-key": "viewer-only-key" }, "operator"),
+    () => service.requireRole(viewerHeaders, "operator"),
     (error: unknown) => {
       const err = error as { code?: string; statusCode?: number };
       return err.code === "api.forbidden" && err.statusCode === 403;
@@ -157,7 +163,7 @@ test("api key permissions are checked via requireRole", () => {
 
   // Viewer key should fail for admin role
   assert.throws(
-    () => service.requireRole({ "x-api-key": "viewer-only-key" }, "admin"),
+    () => service.requireRole(viewerHeaders, "admin"),
     (error: unknown) => {
       const err = error as { code?: string; statusCode?: number };
       return err.code === "api.forbidden" && err.statusCode === 403;
@@ -179,16 +185,17 @@ test("operator api key has correct permissions", () => {
   });
 
   // Operator key should pass for viewer role
-  const viewerResult = service.requireRole({ "x-api-key": "operator-key" }, "viewer");
+  const operatorHeaders = createBearerHeaders(service, "operator-key");
+  const viewerResult = service.requireRole(operatorHeaders, "viewer");
   assert.equal(viewerResult.actorId, "operator-actor");
 
   // Operator key should pass for operator role
-  const operatorResult = service.requireRole({ "x-api-key": "operator-key" }, "operator");
+  const operatorResult = service.requireRole(operatorHeaders, "operator");
   assert.equal(operatorResult.actorId, "operator-actor");
 
   // Operator key should fail for admin role
   assert.throws(
-    () => service.requireRole({ "x-api-key": "operator-key" }, "admin"),
+    () => service.requireRole(operatorHeaders, "admin"),
     (error: unknown) => {
       const err = error as { code?: string; statusCode?: number };
       return err.code === "api.forbidden" && err.statusCode === 403;
@@ -210,15 +217,16 @@ test("admin api key has all permissions", () => {
   });
 
   // Admin key should pass for viewer role
-  const viewerResult = service.requireRole({ "x-api-key": "admin-key-full-access" }, "viewer");
+  const adminHeaders = createBearerHeaders(service, "admin-key-full-access");
+  const viewerResult = service.requireRole(adminHeaders, "viewer");
   assert.equal(viewerResult.actorId, "admin-actor");
 
   // Admin key should pass for operator role
-  const operatorResult = service.requireRole({ "x-api-key": "admin-key-full-access" }, "operator");
+  const operatorResult = service.requireRole(adminHeaders, "operator");
   assert.equal(operatorResult.actorId, "admin-actor");
 
   // Admin key should pass for admin role
-  const adminResult = service.requireRole({ "x-api-key": "admin-key-full-access" }, "admin");
+  const adminResult = service.requireRole(adminHeaders, "admin");
   assert.equal(adminResult.actorId, "admin-actor");
 });
 
@@ -266,7 +274,7 @@ test("whitespace-only api key is rejected", () => {
   );
 });
 
-test("api key with trimmed whitespace is accepted", () => {
+test("api key with trimmed whitespace is accepted only for explicit api-key auth flows", () => {
   const service = new ApiAuthService({
     apiKeys: [
       {
@@ -278,7 +286,6 @@ test("api key with trimmed whitespace is accepted", () => {
     jwtSecret: "test-secret",
   });
 
-  // The authenticate method trims whitespace from API keys
-  const result = service.authenticate({ "x-api-key": "  trim-test-key  " });
+  const result = service.authenticate({ "x-api-key": "  trim-test-key  " }, { allowApiKey: true });
   assert.equal(result.actorId, "trim-actor", "trimmed key should be accepted");
 });

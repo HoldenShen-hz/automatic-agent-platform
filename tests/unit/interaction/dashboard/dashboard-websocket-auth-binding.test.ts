@@ -26,7 +26,7 @@ test("DashboardWebSocketServer registerClient binds principal and tenantId into 
     schemaVersion: "2.0",
     missedEvents: 0,
     authorizedChannels: ["global"],
-    recoveryRequired: false,
+    recoveryRequired: true,
   });
 });
 

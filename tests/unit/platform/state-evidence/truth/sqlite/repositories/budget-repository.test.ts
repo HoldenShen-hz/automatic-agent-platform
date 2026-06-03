@@ -5,6 +5,7 @@ import test from "node:test";
 import { BudgetRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/budget-repository.js";
 import { SqliteDatabase } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../../helpers/fs.js";
+import type { BudgetSettlement } from "../../../../../../../src/platform/contracts/executable-contracts/contract-models.js";
 
 function seedHarnessRunFixture(
   db: SqliteDatabase,
@@ -156,7 +157,7 @@ test("BudgetRepository updateLedgerWithSettle returns success=false on version m
     reservedAmount: 50,
     settledAmount: 10,
     releasedAmount: 5,
-    status: "active" as const,
+    status: "open" as const,
     version: 5,
   };
 
@@ -164,20 +165,21 @@ test("BudgetRepository updateLedgerWithSettle returns success=false on version m
     budgetReservationId: "res-1",
     budgetLedgerId: "ledger-1",
     harnessRunId: "run-1",
-    nodeRunId: null,
+    nodeRunId: "node-run-1",
     amount: 25,
     resourceKind: "compute" as const,
-    status: "active" as const,
+    status: "reserved" as const,
     expiresAt: "2026-05-01T00:00:00.000Z",
     createdAt: "2026-04-27T10:00:00.000Z",
     version: 0,
   };
 
-  const settlement = {
+  const settlement: BudgetSettlement = {
     budgetSettlementId: "set-1",
     budgetReservationId: "res-1",
     actualAmount: 20,
-    settlementKind: "settle",
+    settlementKind: "final",
+    evidenceRefs: [],
     createdAt: "2026-04-27T10:00:00.000Z",
   };
 
@@ -207,7 +209,7 @@ test("BudgetRepository updateLedgerWithSettle returns success=true on version ma
     reservedAmount: 50,
     settledAmount: 10,
     releasedAmount: 5,
-    status: "active" as const,
+    status: "open" as const,
     version: 5,
   };
 
@@ -215,20 +217,21 @@ test("BudgetRepository updateLedgerWithSettle returns success=true on version ma
     budgetReservationId: "res-1",
     budgetLedgerId: "ledger-1",
     harnessRunId: "run-1",
-    nodeRunId: null,
+    nodeRunId: "node-run-1",
     amount: 25,
     resourceKind: "compute" as const,
-    status: "active" as const,
+    status: "reserved" as const,
     expiresAt: "2026-05-01T00:00:00.000Z",
     createdAt: "2026-04-27T10:00:00.000Z",
     version: 0,
   };
 
-  const settlement = {
+  const settlement: BudgetSettlement = {
     budgetSettlementId: "set-1",
     budgetReservationId: "res-1",
     actualAmount: 20,
-    settlementKind: "settle",
+    settlementKind: "final",
+    evidenceRefs: [],
     createdAt: "2026-04-27T10:00:00.000Z",
   };
 
@@ -269,10 +272,10 @@ test("BudgetRepository updateLedgerWithReservation returns success=true on versi
     budgetReservationId: "res-1",
     budgetLedgerId: "ledger-1",
     harnessRunId: "run-1",
-    nodeRunId: null,
+    nodeRunId: "node-run-1",
     amount: 25,
     resourceKind: "compute" as const,
-    status: "active" as const,
+    status: "reserved" as const,
     expiresAt: "2026-05-01T00:00:00.000Z",
     createdAt: "2026-04-27T10:00:00.000Z",
     version: 0,
@@ -306,7 +309,7 @@ test("BudgetRepository updateLedgerWithRelease returns success=false on version 
     reservedAmount: 50,
     settledAmount: 10,
     releasedAmount: 5,
-    status: "active" as const,
+    status: "open" as const,
     version: 5,
   };
 
@@ -314,20 +317,21 @@ test("BudgetRepository updateLedgerWithRelease returns success=false on version 
     budgetReservationId: "res-1",
     budgetLedgerId: "ledger-1",
     harnessRunId: "run-1",
-    nodeRunId: null,
+    nodeRunId: "node-run-1",
     amount: 25,
     resourceKind: "compute" as const,
-    status: "active" as const,
+    status: "reserved" as const,
     expiresAt: "2026-05-01T00:00:00.000Z",
     createdAt: "2026-04-27T10:00:00.000Z",
     version: 0,
   };
 
-  const settlement = {
+  const settlement: BudgetSettlement = {
     budgetSettlementId: "set-1",
     budgetReservationId: "res-1",
     actualAmount: 0,
     settlementKind: "release_unused",
+    evidenceRefs: [],
     createdAt: "2026-04-27T10:00:00.000Z",
   };
 
@@ -356,7 +360,7 @@ test("BudgetRepository updateLedgerWithRelease returns success=true on version m
     reservedAmount: 50,
     settledAmount: 10,
     releasedAmount: 5,
-    status: "active" as const,
+    status: "open" as const,
     version: 5,
   };
 
@@ -364,20 +368,21 @@ test("BudgetRepository updateLedgerWithRelease returns success=true on version m
     budgetReservationId: "res-1",
     budgetLedgerId: "ledger-1",
     harnessRunId: "run-1",
-    nodeRunId: null,
+    nodeRunId: "node-run-1",
     amount: 25,
     resourceKind: "compute" as const,
-    status: "active" as const,
+    status: "reserved" as const,
     expiresAt: "2026-05-01T00:00:00.000Z",
     createdAt: "2026-04-27T10:00:00.000Z",
     version: 0,
   };
 
-  const settlement = {
+  const settlement: BudgetSettlement = {
     budgetSettlementId: "set-1",
     budgetReservationId: "res-1",
     actualAmount: 0,
     settlementKind: "release_unused",
+    evidenceRefs: [],
     createdAt: "2026-04-27T10:00:00.000Z",
   };
 
@@ -410,7 +415,7 @@ test("BudgetRepository insertLedger does not throw", () => {
     reservedAmount: 0,
     settledAmount: 0,
     releasedAmount: 0,
-    status: "active" as const,
+    status: "open" as const,
     version: 0,
   };
 
@@ -430,10 +435,10 @@ test("BudgetRepository insertReservation does not throw", () => {
     budgetReservationId: "res-new",
     budgetLedgerId: "ledger-1",
     harnessRunId: "run-1",
-    nodeRunId: null,
+    nodeRunId: "node-run-1",
     amount: 25,
     resourceKind: "compute" as const,
-    status: "active" as const,
+    status: "reserved" as const,
     expiresAt: "2026-05-01T00:00:00.000Z",
     createdAt: "2026-04-27T10:00:00.000Z",
     version: 0,
@@ -485,7 +490,7 @@ test("BudgetRepository integration - full ledger lifecycle", () => {
       reservedAmount: 100,
       settledAmount: 20,
       releasedAmount: 10,
-      status: "active",
+      status: "open",
       version: 0,
     };
 
@@ -505,10 +510,10 @@ test("BudgetRepository integration - full ledger lifecycle", () => {
       budgetReservationId: "res-integration-1",
       budgetLedgerId: "ledger-integration-1",
       harnessRunId: "run-integration",
-      nodeRunId: null,
+      nodeRunId: "node-run-1",
       amount: 50,
       resourceKind: "compute",
-      status: "active",
+      status: "reserved",
       expiresAt: "2026-05-01T00:00:00.000Z",
       createdAt: now,
       version: 0,
@@ -532,7 +537,8 @@ test("BudgetRepository integration - full ledger lifecycle", () => {
         budgetSettlementId: "set-integration-1",
         budgetReservationId: "res-integration-1",
         actualAmount: 40,
-        settlementKind: "settle",
+        settlementKind: "final",
+        evidenceRefs: [],
         createdAt: now,
       },
     );
@@ -547,7 +553,7 @@ test("BudgetRepository integration - full ledger lifecycle", () => {
     const settlements = repo.listSettlementsByReservation("res-integration-1");
     assert.ok(Array.isArray(settlements));
     assert.equal(settlements.length, 1);
-    assert.equal(settlements[0].budgetSettlementId, "set-integration-1");
+    assert.equal(settlements[0]?.budgetSettlementId, "set-integration-1");
 
   } finally {
     cleanupPath(workspace);

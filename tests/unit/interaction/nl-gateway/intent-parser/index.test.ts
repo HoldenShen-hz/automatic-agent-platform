@@ -223,7 +223,7 @@ test("detectInputLanguage does not infer German from unrelated umlauts", () => {
 test("parseIntentTokensWithModel ignores null entries in array responses", async () => {
   const result = await parseIntentTokensWithModel("create a task", {
     parser: {
-      parseWithLlm: async () => [null, { intentType: "task_create", confidence: 0.95 }],
+      parseWithLlm: async () => [null, { intentType: "task_create", confidence: 0.95 }] as unknown as readonly ParsedIntentToken[],
     },
   });
   assert.equal(result[0]!.intentType, "task_create");

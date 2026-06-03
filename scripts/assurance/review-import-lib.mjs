@@ -449,6 +449,121 @@ function buildCoverageEntry(relativePath, detectedRows, importedRows, normalized
   };
 }
 
+const REVIEWER_PATTERNS = [
+  /(?:^|\n)\s*(?:>+\s*)?(?:\*\*)?(?:Reviewer|reviewer|Reviewed by|reviewed by|复核人|审查人|审核人)(?:\*\*)?\s*[:：]\s*([^\n]+)/g,
+];
+
+const CHECKLIST_PATTERNS = {
+  reviewedFiles: [/reviewed files/i, /审阅文件| reviewed file /i, /覆盖文件|检查文件|reviewed sources?/i],
+  reviewedContracts: [/reviewed contracts/i, /审阅合同|检查合同|contract 审查|contract review/i],
+  reviewedTests: [/reviewed tests/i, /审阅测试|定向测试|回归测试|tests?\//i],
+  reviewedCIGates: [/reviewed ci gates/i, /ci gates?/i, /审核 ci|检查 ci|rc:check|ci:baseline|\.github\/workflows/i],
+  unverifiedAssumptions: [/unverified assumptions/i, /未知假设|未验证假设|依赖假设|assumption/i],
+  foundIssues: [/found issues/i, /发现问题|问题清单|问题表/i],
+  missedAreas: [/missed areas/i, /blind spot/i, /未覆盖|盲区|遗漏范围/i],
+  confidenceScore: [/confidence score/i, /置信度|confidence[:：]\s*\d/i],
+};
+
+const BLIND_SPOT_PATTERNS = {
+  missedPaths: [/missed areas/i, /blind spot/i, /未覆盖哪些路径|未覆盖范围|遗漏范围/i],
+  assumptionDependent: [/unverified assumptions/i, /依赖假设|结论依赖假设|assumption/i],
+  nonAutomatedChecks: [/无法自动验证/i, /cannot be automatically verified/i, /manual verification required/i],
+  runtimeOrChaos: [/runtime\/chaos/i, /chaos test/i, /runtime test/i, /需要 runtime/i, /需要 chaos/i],
+};
+
+function matchesAnyPattern(text, patterns) {
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+function extractReviewerNames(content) {
+  const reviewers = new Set();
+  for (const pattern of REVIEWER_PATTERNS) {
+    pattern.lastIndex = 0;
+    let match;
+    while ((match = pattern.exec(content)) !== null) {
+      const reviewer = match[1]
+        .split(/[，,;/]/)[0]
+        .replace(/[`*]/g, "")
+        .trim();
+      if (reviewer.length > 0) {
+        reviewers.add(reviewer);
+      }
+    }
+  }
+  return [...reviewers];
+}
+
+function parseConfidenceScore(content) {
+  const patterns = [
+    /confidence score\s*[:：]\s*(\d+(?:\.\d+)?)/i,
+    /置信度\s*[:：]\s*(\d+(?:\.\d+)?)/i,
+    /confidence\s*[:：]\s*(\d+(?:\.\d+)?)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = content.match(pattern);
+    if (!match) {
+      continue;
+    }
+    const score = Number(match[1]);
+    if (Number.isFinite(score)) {
+      return score;
+    }
+  }
+  return null;
+}
+
+function buildReviewEvidenceEntry(relativePath, content, findings) {
+  const reviewers = extractReviewerNames(content);
+  const checklist = {
+    reviewedFiles: matchesAnyPattern(content, CHECKLIST_PATTERNS.reviewedFiles),
+    reviewedContracts: matchesAnyPattern(content, CHECKLIST_PATTERNS.reviewedContracts),
+    reviewedTests: matchesAnyPattern(content, CHECKLIST_PATTERNS.reviewedTests),
+    reviewedCIGates: matchesAnyPattern(content, CHECKLIST_PATTERNS.reviewedCIGates),
+    unverifiedAssumptions: matchesAnyPattern(content, CHECKLIST_PATTERNS.unverifiedAssumptions),
+    foundIssues: findings.length > 0 || matchesAnyPattern(content, CHECKLIST_PATTERNS.foundIssues),
+    missedAreas: matchesAnyPattern(content, CHECKLIST_PATTERNS.missedAreas),
+    confidenceScore: matchesAnyPattern(content, CHECKLIST_PATTERNS.confidenceScore),
+  };
+  const blindSpotDeclaration = {
+    missedPaths: matchesAnyPattern(content, BLIND_SPOT_PATTERNS.missedPaths),
+    assumptionDependent: matchesAnyPattern(content, BLIND_SPOT_PATTERNS.assumptionDependent),
+    nonAutomatedChecks: matchesAnyPattern(content, BLIND_SPOT_PATTERNS.nonAutomatedChecks),
+    runtimeOrChaos: matchesAnyPattern(content, BLIND_SPOT_PATTERNS.runtimeOrChaos),
+  };
+  const p0FindingCount = findings.filter((finding) => finding.severity === "P0").length;
+  const independentReviewMarker =
+    /independent reviewer|independent review|dual-person|双人独立审查|双人复核|独立复核|三路并行专家审查|parallel expert reviewers/i.test(
+      content,
+    );
+  const checklistPresent = Object.values(checklist).every(Boolean);
+  const blindSpotPresent =
+    blindSpotDeclaration.missedPaths &&
+    (blindSpotDeclaration.assumptionDependent || checklist.unverifiedAssumptions) &&
+    (blindSpotDeclaration.nonAutomatedChecks || blindSpotDeclaration.runtimeOrChaos);
+  const dualPersonRequired = p0FindingCount > 0;
+  const dualPersonSatisfied = !dualPersonRequired || reviewers.length >= 2 || independentReviewMarker;
+
+  return {
+    sourceFile: relativePath,
+    findingCount: findings.length,
+    p0FindingCount,
+    reviewers,
+    reviewerCount: reviewers.length,
+    confidenceScore: parseConfidenceScore(content),
+    checklist,
+    blindSpotDeclaration: {
+      ...blindSpotDeclaration,
+      present: blindSpotPresent,
+    },
+    dualPersonReview: {
+      required: dualPersonRequired,
+      satisfied: dualPersonSatisfied,
+      independentReviewMarker,
+    },
+    releaseEvidenceEligible: checklistPresent && blindSpotPresent && dualPersonSatisfied,
+  };
+}
+
 function writeJson(targetPath, value) {
   mkdirSync(dirname(targetPath), { recursive: true });
   writeFileSync(targetPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
@@ -468,6 +583,7 @@ export function buildReviewImportArtifacts(options = {}) {
   const reviewFiles = collectReviewFiles(reviewsRoot);
   const rawFindings = [];
   const coverageEntries = [];
+  const reviewEvidenceEntries = [];
   const filesWithParseWarnings = [];
   const unscannedReviewFiles = [];
 
@@ -504,6 +620,7 @@ export function buildReviewImportArtifacts(options = {}) {
     coverageEntries.push(
       buildCoverageEntry(relativePath, parsed.length, imported.length, imported.length, parsed.length - imported.length, dropReasons),
     );
+    reviewEvidenceEntries.push(buildReviewEvidenceEntry(relativePath, content, imported));
     rawFindings.push(...imported);
   }
 
@@ -569,27 +686,45 @@ export function buildReviewImportArtifacts(options = {}) {
         ? "pass"
         : "partial",
   };
+  const reviewEvidenceReadinessReport = {
+    generatedAt: options.generatedAt ?? new Date().toISOString(),
+    reviewSources: reviewEvidenceEntries,
+    summary: {
+      totalSources: reviewEvidenceEntries.length,
+      eligibleSources: reviewEvidenceEntries.filter((entry) => entry.releaseEvidenceEligible).length,
+      blindSpotDeclarationPresentCount: reviewEvidenceEntries.filter((entry) => entry.blindSpotDeclaration.present).length,
+      checklistCompleteCount: reviewEvidenceEntries.filter((entry) =>
+        Object.values(entry.checklist).every(Boolean)
+      ).length,
+      dualPersonRequiredCount: reviewEvidenceEntries.filter((entry) => entry.dualPersonReview.required).length,
+      dualPersonSatisfiedCount: reviewEvidenceEntries.filter((entry) => entry.dualPersonReview.satisfied).length,
+    },
+  };
 
   const rawPath = join(outputDir, "review-ledger.raw.jsonl");
   const normalizedPath = join(outputDir, "review-ledger.normalized.jsonl");
   const coveragePath = join(outputDir, "review-source-coverage-report.json");
   const conflictsPath = join(outputDir, "review-conflict-resolution-report.jsonl");
+  const reviewEvidencePath = join(outputDir, "review-evidence-readiness-report.json");
 
   writeJsonl(rawPath, rawFindings);
   writeJsonl(normalizedPath, normalizedFindings);
   writeJson(coveragePath, coverageReport);
   writeJsonl(conflictsPath, conflictRecords);
+  writeJson(reviewEvidencePath, reviewEvidenceReadinessReport);
 
   return {
     rawFindings,
     normalizedFindings,
     coverageReport,
     conflictRecords,
+    reviewEvidenceReadinessReport,
     outputs: {
       rawPath,
       normalizedPath,
       coveragePath,
       conflictsPath,
+      reviewEvidencePath,
     },
   };
 }

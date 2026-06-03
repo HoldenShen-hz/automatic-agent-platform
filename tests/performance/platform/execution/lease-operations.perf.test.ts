@@ -310,7 +310,9 @@ test("Performance: Lease lookup by execution ID", { timeout: 60000 }, (t) => {
   const start = Date.now();
 
   for (let i = 0; i < iterations; i++) {
-    service.validateWriteAccess(executionIds[i % executionIds.length], `worker-${i % 10}`, 1);
+    const executionId = executionIds[i % executionIds.length];
+    assert.ok(executionId, "expected seeded execution id");
+    service.validateWriteAccess(executionId, `worker-${i % 10}`, 1);
   }
 
   const elapsed = Date.now() - start;

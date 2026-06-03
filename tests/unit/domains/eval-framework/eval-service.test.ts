@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { LlmEvalService, type EvalSuiteKind, type QualityVerdict, type EvalCaseDefinition } from "../../../../src/platform/prompt-engine/eval/llm-eval-service.js";
+import { getActiveTelemetryContext } from "../../../../src/platform/shared/observability/otel-tracer.js";
 
 // ── Mock Database ─────────────────────────────────────────────────────────────
 
@@ -415,6 +416,43 @@ test("LlmEvalService.runAbTest compares control vs treatment", async () => {
   assert.ok(result.treatmentAvgScore >= 0.35 && result.treatmentAvgScore <= 0.65);
   assert.notEqual(result.controlAvgScore, result.treatmentAvgScore);
   assert.ok(Math.abs(result.improvement) < 0.3);
+});
+
+test("LlmEvalService.runAbTest opens eval.case spans for per-case evaluation", async () => {
+  const db = createMockDb();
+  const service = new LlmEvalService(db as never);
+  const suite = service.defineSuite({
+    name: "Span Test",
+    kind: "ab_test",
+    cases: [{ id: "c1", input: "x", expectedOutput: "y" }],
+  });
+  const seenContexts: string[] = [];
+
+  await service.runAbTest(suite.id, {
+    controlModelId: "claude-control",
+    treatmentModelId: "gpt-treatment",
+    controlPromptVersion: "p1",
+    treatmentPromptVersion: "p2",
+    minSampleSize: 1,
+    significanceThreshold: 0.1,
+  }, {
+    llmEvaluator: {
+      async evaluateCase(input) {
+        const activeContext = getActiveTelemetryContext();
+        seenContexts.push(`${input.arm}:${activeContext?.traceId ?? "missing"}:${activeContext?.spanId ?? "missing"}`);
+        return {
+          actualOutput: `${input.arm}:ok`,
+          score: input.arm === "treatment" ? 0.95 : 0.7,
+          latencyMs: 5,
+        };
+      },
+    },
+  });
+
+  assert.equal(seenContexts.length, 2);
+  for (const context of seenContexts) {
+    assert.doesNotMatch(context, /missing/);
+  }
 });
 
 test("LlmEvalService.runCiGate fails closed when no evaluator is configured", () => {

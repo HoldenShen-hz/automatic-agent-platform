@@ -3,21 +3,15 @@
   "changed": [
     {
       "changes": [
-        "roi:=>roi/divisions/coding.yaml"
+        "roi:=>roi/divisions/research.yaml"
       ],
-      "divisionId": "coding"
+      "divisionId": "research"
     },
     {
       "changes": [
-        "roi:=>roi/divisions/customer-service.yaml"
+        "roi:=>roi/divisions/support.yaml"
       ],
-      "divisionId": "customer-service"
-    },
-    {
-      "changes": [
-        "roi:=>roi/divisions/knowledge-base.yaml"
-      ],
-      "divisionId": "knowledge-base"
+      "divisionId": "support"
     }
   ],
   "removed": []

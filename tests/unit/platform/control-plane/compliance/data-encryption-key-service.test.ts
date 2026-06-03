@@ -150,9 +150,9 @@ test("DataEncryptionKeyService.createDek rotates existing active DEK", () => {
   assert.equal(secondDek.version, 2);
   assert.equal(secondDek.status, "active");
 
-  // First DEK should now be rotating
+  // First DEK is retired immediately once the replacement becomes active.
   const firstDekUpdated = service.getDek(firstDek.keyId);
-  assert.equal(firstDekUpdated!.status, "rotating");
+  assert.equal(firstDekUpdated!.status, "rotated");
 });
 
 test("DataEncryptionKeyService.rotateDek creates new version", () => {

@@ -12,12 +12,12 @@ function createMockAgentExecutionRecord(overrides: Partial<AgentExecutionRecord>
     agentId: "agent-1",
     workflowId: null,
     roleId: "executor",
-    runKind: "step",
+    runKind: "task_run",
     runtimeInstanceId: "instance-1",
     restartedFromRuntimeInstanceId: null,
     restartGeneration: 0,
     status: "executing",
-    planJson: null,
+    planJson: "{}",
     currentStepId: "step-1",
     lastToolName: "tool_call",
     toolCallCount: 5,
@@ -280,7 +280,7 @@ test("listAgentExecutionRecordsByTask without tenantId", () => {
 });
 
 test("AgentExecutionRecord runKind values", () => {
-  const runKinds = ["step", "loop", "recovery"] as const;
+  const runKinds = ["task_run", "node_run", "replay"] as const;
   for (const runKind of runKinds) {
     const record = createMockAgentExecutionRecord({ runKind });
     assert.equal(record.runKind, runKind);

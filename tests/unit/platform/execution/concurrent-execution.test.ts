@@ -162,12 +162,12 @@ test("[CONCURRENCY] concurrent ack/nack on same job - only one succeeds [concurr
       Promise.resolve().then(() => { dequeueResult.nack("error"); return "nack"; }),
     ]);
 
-    // Check final state - job should be either completed or back to waiting
+    // Check final state - concurrent ack/nack may settle as completed or scheduled for retry.
     const finalJob = adapter.getJob(job.id);
     assert.ok(finalJob, "Job should still exist");
     assert.ok(
-      finalJob!.status === "completed" || finalJob!.status === "waiting",
-      `Job status should be completed or waiting, got ${finalJob!.status}`,
+      finalJob!.status === "completed" || finalJob!.status === "delayed",
+      `Job status should be completed or delayed, got ${finalJob!.status}`,
     );
   } finally {
     db.close();

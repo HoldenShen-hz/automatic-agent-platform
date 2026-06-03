@@ -1,0 +1,7 @@
+{
+  "caseId": "tau-120",
+  "customerIntent": "refund",
+  "policyRef": "policy-1",
+  "requiresHitl": true,
+  "jurisdiction": "regulated"
+}

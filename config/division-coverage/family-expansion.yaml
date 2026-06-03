@@ -1,0 +1,104 @@
+version: 1
+updatedAt: "2026-06-03T00:00:00Z"
+families:
+  - familyId: engineering
+    leadershipTypes:
+      - capability_leadership
+      - evidence_leadership
+      - safety_leadership
+    pilotDivisions: [coding, data-engineering]
+    targetDivisions: [devops, engineering-ops, quality-assurance]
+    requiredEvidence:
+      - issue-to-patch heldout
+      - patch correctness
+      - PR acceptance
+      - AWI red-team
+    blockedRisks:
+      - untrusted source to shell
+      - auto-merge without review
+      - production IaC write without approval
+    targetRelease: "v3.3"
+  - familyId: knowledge-research
+    leadershipTypes:
+      - evidence_leadership
+      - flywheel_leadership
+      - decision_loop_leadership
+    pilotDivisions: [knowledge-base, research]
+    targetDivisions: [academic-research, industry-research, analytics]
+    requiredEvidence:
+      - citation grounding
+      - claim-to-source traceability
+      - experiment link coverage
+      - stale source detection
+    blockedRisks:
+      - ungrounded citation
+      - stale source reuse
+      - opaque conclusion without evidence
+    targetRelease: "v3.3"
+  - familyId: enterprise-ops
+    leadershipTypes:
+      - workflow_leadership
+      - sla_leadership
+      - policy_adherence_leadership
+    pilotDivisions: [customer-service, support]
+    targetDivisions: [user-operations, project-management, operations]
+    requiredEvidence:
+      - policy adherence evaluation
+      - SLA handoff audit
+      - ROI report
+      - escalation drill evidence
+    blockedRisks:
+      - refund or order mutation without policy proof
+      - handoff without accountable owner
+      - SLA breach without alerting
+    targetRelease: "v3.4"
+  - familyId: gtm-content
+    leadershipTypes:
+      - controlled_content_leadership
+      - brand_governance_leadership
+      - roi_attribution_leadership
+    pilotDivisions: [advertising, content]
+    targetDivisions: [ecommerce]
+    requiredEvidence:
+      - brand safety evaluation
+      - copyright risk screening
+      - CRM draft-only compliance
+      - campaign ROI attribution
+    blockedRisks:
+      - public publishing without review
+      - CRM critical write without approval
+      - customer commitment without accountable owner
+    targetRelease: "v3.4"
+  - familyId: creative-production
+    leadershipTypes:
+      - multimodal_evidence_leadership
+      - asset_governance_leadership
+    pilotDivisions: [design]
+    targetDivisions: [live-streaming, content]
+    requiredEvidence:
+      - visual grounding evaluation
+      - visual regression evidence
+      - asset provenance
+      - copyright review outcome
+    blockedRisks:
+      - asset publish without provenance
+      - visual drift without diff review
+      - multimodal output without human sign-off
+    targetRelease: "v3.4"
+  - familyId: regulated
+    leadershipTypes:
+      - safety_governance_leadership
+      - audit_leadership
+      - hitl_leadership
+    pilotDivisions: [legal, security]
+    targetDivisions: [finance-accounting, financial-services, healthcare]
+    requiredEvidence:
+      - HITL coverage
+      - audit export completeness
+      - data residency proof
+      - restricted data red-team
+    blockedRisks:
+      - autonomous final decision
+      - unrestricted model routing
+      - external write without prepared action approval
+    targetRelease: "v3.4"

@@ -25,7 +25,7 @@
 
 | ID | Threat | Boundary | Failure mode | Required gate |
 |---|---|---|---|---|
-| THR-1.1 | Unauthenticated caller reaches a P0 route | auth | cross-tenant data leak | `audit:tenant-isolation`, `audit:auth-role-mapping` (TODO) |
+| THR-1.1 | Unauthenticated caller reaches a P0 route | auth | cross-tenant data leak | `audit:tenant-isolation`, `audit:auth-role-mapping` |
 | THR-1.2 | Tenant A's `tenantId` is accepted on tenant B's request | tenant | data integrity | `audit:tenant-isolation`, `tests/invariants/deny-by-default.test.ts` |
 | THR-1.3 | Route bypasses input validation and reaches repository | service | injection / data corruption | `audit:fire-and-forget` (silent drops) + `audit:determinism` (audit trail) |
 | THR-1.4 | Repository runs unscoped query | repository | cross-tenant leak | `audit:tenant-isolation` (rule: `tenant_isolation.repo_missing_tenant`) |
@@ -60,6 +60,6 @@ test:redteam:p0                 # §12.3
 - audit:contracts-sync ✅
 - audit:fire-and-forget ✅
 - audit:determinism ✅
-- audit:auth-role-mapping ❌ (TODO per §9.3)
+- audit:auth-role-mapping ✅
 - test:invariants ✅ (28 tests)
-- test:redteam:p0 ❌ (no redteam/p0 tests yet)
+- test:redteam:p0 ✅

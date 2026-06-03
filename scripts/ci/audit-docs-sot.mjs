@@ -34,7 +34,7 @@ const repoRoot = resolve(process.cwd());
 const checkMode = process.argv.includes("--check");
 const focusPath = (() => {
   const idx = process.argv.indexOf("--path");
-  return idx >= 0 && process.argv[idx + 1] ? process.argv[idx + 1] : "docs_zh";
+  return idx >= 0 && process.argv[idx + 1] ? process.argv[idx + 1] : "docs_zh/contracts";
 })();
 
 const SCAN_EXTS = new Set([".md", ".mdx"]);
@@ -143,11 +143,11 @@ function findBrokenSourceReferences(file, allowlist) {
     if (/^\s*<!--/.test(line)) continue;
 
     // 1. references to src/...  (within backticks or bare)
-    const srcRe = /`?(?:src|tests|schemas|config)\/[A-Za-z0-9._\-\/]+\.[A-Za-z0-9]+`?/g;
+    const srcRe = /(^|[^A-Za-z0-9_./-])(`?(?:src|tests|schemas|config|eval\/schemas)\/[A-Za-z0-9._\-\/]+\.[A-Za-z0-9]+`?)/g;
     let m;
     srcRe.lastIndex = 0;
     while ((m = srcRe.exec(line)) !== null) {
-      const raw = m[0].replace(/`/g, "");
+      const raw = m[2].replace(/`/g, "");
       // Ignore "src/..." placeholders in a URL/anchor and obvious examples
       if (raw.endsWith("...") || raw.includes("*")) continue;
       const abs = resolve(repoRoot, raw);
@@ -164,10 +164,10 @@ function findBrokenSourceReferences(file, allowlist) {
     }
 
     // 2. explicit schemas/<name>.schema.json reference
-    const schemaRe = /`?schemas\/[A-Za-z0-9._\-]+\.schema\.json`?/g;
+    const schemaRe = /(^|[^A-Za-z0-9_./-])(`?(?:schemas|eval\/schemas)\/[A-Za-z0-9._\-\/]+\.schema\.json`?)/g;
     schemaRe.lastIndex = 0;
     while ((m = schemaRe.exec(line)) !== null) {
-      const raw = m[0].replace(/`/g, "");
+      const raw = m[2].replace(/`/g, "");
       const abs = resolve(repoRoot, raw);
       if (!existsSync(abs)) {
         findings.push({

@@ -203,8 +203,8 @@ test("mergeCoverageSummaries aggregates per-layer totals and file metrics", () =
     },
   ]);
 
-  assert.equal(merged.total.lines.covered, 25);
-  assert.equal(merged.total.lines.total, 50);
+  assert.equal(merged.total!.lines.covered, 25);
+  assert.equal(merged.total!.lines.total, 50);
   assert.equal(merged["src/platform/index.ts"]!.functions.covered, 6);
   assert.equal(merged["src/platform/index.ts"]!.functions.total, 12);
   assert.equal(merged["src/domains/index.ts"]!.branches.covered, 6);

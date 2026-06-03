@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { ProviderCredentialPool } from "../../../../../src/platform/model-gateway/provider-registry/provider-credential-pool.js";
 import type { ProviderCredentialRecordInput } from "../../../../../src/platform/model-gateway/provider-registry/provider-credential-pool-support.js";
+import { waitForMs } from "../../../../helpers/wait.js";
 
 function createCredential(overrides: Partial<ProviderCredentialRecordInput> = {}): ProviderCredentialRecordInput {
   return {
@@ -312,7 +313,7 @@ test("ProviderCredentialPool.selectCredential after cooldown returns credential"
 
   // Wait for cooldown to expire
   // timing-contract: cooldown recovery is based on elapsed wall-clock time.
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await waitForMs(100);
 
   // Now should work
   const selection2 = await pool.selectCredential({ now: new Date(Date.now() + 200).toISOString() });

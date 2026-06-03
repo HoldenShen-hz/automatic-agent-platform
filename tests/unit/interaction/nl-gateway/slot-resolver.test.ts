@@ -47,15 +47,15 @@ test("resolveRequiredSlots uses normalized value", () => {
   assert.equal(result.resolved["money"], 500);
 });
 
-test("resolveRequiredSlots deduplicates same entity type", () => {
+test("resolveRequiredSlots treats duplicate entity types as ambiguous and keeps slot unresolved", () => {
   const entities = [
     makeEntity("date", "2026-04-29"),
     makeEntity("date", "2026-05-01"),
   ];
   const result = resolveRequiredSlots(entities, ["date"]);
 
-  // First occurrence wins
-  assert.equal(result.resolved["date"], "2026-04-29");
+  assert.deepEqual(result.missing, ["date"]);
+  assert.equal("date" in result.resolved, false);
 });
 
 test("resolveRequiredSlots empty requiredEntityTypes", () => {

@@ -191,7 +191,7 @@ test("blocks absolute path to /tmp", async () => {
 test("blocks absolute path to user home directory", async () => {
   const workspace = await createWorkspace();
   try {
-    const result = checkPath("/home/user/.ssh/id_rsa", [workspace.path]);
+    const result = checkPath("/srv/user/.ssh/id_rsa", [workspace.path]);
     assert.equal(result.allowed, false, "Home directory path should be blocked");
     assert.strictEqual(result.reasonCode, "tool.path_scope_denied");
   } finally {

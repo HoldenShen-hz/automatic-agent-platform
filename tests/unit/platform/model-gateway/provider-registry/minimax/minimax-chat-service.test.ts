@@ -24,18 +24,20 @@ test("MiniMaxMessage role accepts valid values", () => {
 test("MiniMaxTool type is function", () => {
   const tool: MiniMaxTool = {
     type: "function",
-    name: "get_weather",
-    description: "Get weather for a location",
-    input_schema: {
-      type: "object",
-      properties: {
-        location: { type: "string" },
+    function: {
+      name: "get_weather",
+      description: "Get weather for a location",
+      parameters: {
+        type: "object",
+        properties: {
+          location: { type: "string" },
+        },
+        required: ["location"],
       },
-      required: ["location"],
     },
   };
   assert.equal(tool.type, "function");
-  assert.equal(tool.name, "get_weather");
+  assert.equal(tool.function.name, "get_weather");
 });
 
 test("MiniMaxChatCompletionRequest accepts valid structure", () => {
@@ -66,9 +68,12 @@ test("MiniMaxMessage with empty content is valid", () => {
 test("MiniMaxTool without description is valid", () => {
   const tool: MiniMaxTool = {
     type: "function",
-    name: "simple_tool",
-    input_schema: { type: "object" },
+    function: {
+      name: "simple_tool",
+      description: "",
+      parameters: { type: "object" },
+    },
   };
-  assert.equal(tool.name, "simple_tool");
-  assert.equal(tool.description, undefined);
+  assert.equal(tool.function.name, "simple_tool");
+  assert.equal(tool.function.description, "");
 });

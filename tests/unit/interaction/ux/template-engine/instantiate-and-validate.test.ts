@@ -18,6 +18,7 @@ const createTemplate = (overrides: Partial<InteractionTemplate> = {}): Interacti
   riskProfile: "medium",
   version: "1.0.0",
   catalogTags: ["advertising"],
+  requiredCapabilities: [],
   marketplaceBinding: {
     listingId: "listing_tpl_001",
     channel: "marketplace",
@@ -34,6 +35,7 @@ const createTemplate = (overrides: Partial<InteractionTemplate> = {}): Interacti
       label: "Target Audience",
       type: "string",
       required: true,
+      options: [],
     },
     {
       name: "budget",
@@ -41,6 +43,7 @@ const createTemplate = (overrides: Partial<InteractionTemplate> = {}): Interacti
       type: "number",
       required: false,
       defaultValue: 1000,
+      options: [],
     },
     {
       name: "channels",

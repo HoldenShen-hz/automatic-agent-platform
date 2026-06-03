@@ -4,13 +4,17 @@ import { fileURLToPath } from "node:url";
 
 export const BLOCKED_TERMS = [
   "industry-leading",
+  "benchmark-leading",
   "行业领先",
+  "基准领先",
   "production-ready",
   "企业级就绪",
   "best-in-class",
   "state-of-the-art",
   "regulated-ready",
   "fully autonomous",
+  "完全自主",
+  "全自主",
 ];
 
 const GOVERNANCE_VOCAB_FILES = new Set([
@@ -18,8 +22,22 @@ const GOVERNANCE_VOCAB_FILES = new Set([
   "docs_en/contracts/assurance-pipeline-contract.md",
   "docs_zh/contracts/coverage-scorecard-contract.md",
   "docs_en/contracts/coverage-scorecard-contract.md",
+  "docs_zh/contracts/release_rollout_and_rollback_contract.md",
+  "docs_en/contracts/release_rollout_and_rollback_contract.md",
+  "docs_zh/contracts/ring_model_contract.md",
+  "docs_en/contracts/ring_model_contract.md",
   "docs_zh/reference/automatic_agent_system_full_review_audit_methodology_v1_3_with_tests_relationship.md",
   "docs_en/reference/automatic_agent_system_full_review_audit_methodology_v1_3_with_tests_relationship.md",
+  "docs_zh/reference/automatic_agent_platform_v3_3_detailed_todolist.md",
+  "docs_en/reference/automatic_agent_platform_v3_3_detailed_todolist.md",
+  "docs_zh/releases/automatic_agent_platform_v3_3_release_readiness.md",
+  "docs_en/releases/automatic_agent_platform_v3_3_release_readiness.md",
+  "docs_zh/governance/autonomy_boundary_policy.md",
+  "docs_en/governance/autonomy_boundary_policy.md",
+  "docs_zh/governance/rollout_release_policy.md",
+  "docs_en/governance/rollout_release_policy.md",
+  "docs_zh/adr/075-controlled-rollout-release.md",
+  "docs_zh/reviews/platforme-full-review-e.md",
 ]);
 
 const GOVERNANCE_VOCAB_PATTERNS = [
@@ -186,6 +204,10 @@ function loadYamlObject(path) {
   return existsSync(path) ? parseLimitedYaml(readFileSync(path, "utf8")) : {};
 }
 
+const ALLOWLIST_SCHEMA_REF = "config/division-coverage/schemas/leadership-claim-allowlist.schema.json";
+const CLAIM_LEVELS = new Set(["designed", "pilot_ready", "local_leader", "industry_comparable", "industry_leading"]);
+const CLAIM_SURFACES = new Set(["docs", "ui", "release_note", "sales_material", "readme"]);
+
 function normalizeIsoOrNull(value) {
   if (typeof value !== "string" || value.trim().length === 0) {
     return null;
@@ -198,16 +220,30 @@ function isExpired(iso, now) {
   return iso != null && Date.parse(iso) < now.getTime();
 }
 
+function normalizeForComparison(value) {
+  return String(value)
+    .toLowerCase()
+    .replace(/[“”"'"`]/g, "")
+    .replace(/[\s_-]+/g, " ")
+    .trim();
+}
+
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export function inferClaimSurface(filePath) {
   const normalized = filePath.replace(/\\/g, "/");
+  const baseName = basename(normalized).toLowerCase();
+  if (baseName.startsWith("readme")) {
+    return "readme";
+  }
   if (normalized.startsWith("ui/")) {
     return "ui";
   }
-  const baseName = basename(normalized).toLowerCase();
+  if (normalized.includes("/sales/") || baseName.includes("sales")) {
+    return "sales_material";
+  }
   if (baseName.includes("release") || baseName.includes("changelog")) {
     return "release_note";
   }
@@ -262,15 +298,59 @@ function isGovernanceVocabularyUse(relativePath, excerpt) {
   return GOVERNANCE_VOCAB_PATTERNS.some((pattern) => pattern.test(excerpt));
 }
 
+function assertIsoString(value, code) {
+  if (normalizeIsoOrNull(value) == null) {
+    throw new Error(`${code}:${String(value ?? "")}`);
+  }
+}
+
+function validateAllowlistDocument(document) {
+  if (!isPlainObject(document)) {
+    throw new Error("audit.leadership_claims.invalid_allowlist_document");
+  }
+  if (document.$schema !== ALLOWLIST_SCHEMA_REF) {
+    throw new Error(`audit.leadership_claims.invalid_allowlist_schema_ref:${String(document.$schema ?? "")}`);
+  }
+  if (!Number.isInteger(document.version) || document.version < 1) {
+    throw new Error(`audit.leadership_claims.invalid_allowlist_version:${String(document.version ?? "")}`);
+  }
+  assertIsoString(document.updatedAt, "audit.leadership_claims.invalid_allowlist_updated_at");
+  for (const entry of toObjectArray(document.entries)) {
+    if (typeof entry.filePath !== "string" || entry.filePath.trim().length === 0) {
+      throw new Error("audit.leadership_claims.invalid_allowlist_file_path");
+    }
+    if (typeof entry.matchedText !== "string" || entry.matchedText.trim().length === 0) {
+      throw new Error(`audit.leadership_claims.invalid_allowlist_matched_text:${entry.filePath}`);
+    }
+    if (entry.claimLevel != null && !CLAIM_LEVELS.has(entry.claimLevel)) {
+      throw new Error(`audit.leadership_claims.invalid_allowlist_claim_level:${entry.filePath}:${entry.claimLevel}`);
+    }
+    if (entry.surface != null && !CLAIM_SURFACES.has(entry.surface)) {
+      throw new Error(`audit.leadership_claims.invalid_allowlist_surface:${entry.filePath}:${entry.surface}`);
+    }
+    if (typeof entry.reason !== "string" || entry.reason.trim().length === 0) {
+      throw new Error(`audit.leadership_claims.invalid_allowlist_reason:${entry.filePath}`);
+    }
+    if (typeof entry.owner !== "string" || entry.owner.trim().length === 0) {
+      throw new Error(`audit.leadership_claims.invalid_allowlist_owner:${entry.filePath}`);
+    }
+    assertIsoString(entry.expiresAt, `audit.leadership_claims.invalid_allowlist_expires_at:${entry.filePath}`);
+  }
+}
+
 function loadAllowlist(configRoot, now) {
   const allowlist = loadYamlObject(join(configRoot, "claims", "allowlist.yaml"));
+  validateAllowlistDocument(allowlist);
   return toObjectArray(allowlist.entries).map((entry) => ({
     filePath: typeof entry.filePath === "string" ? entry.filePath.replace(/\\/g, "/") : "",
     matchedText: typeof entry.matchedText === "string" ? entry.matchedText : "",
+    claimLevel: typeof entry.claimLevel === "string" ? entry.claimLevel : null,
+    surface: typeof entry.surface === "string" ? entry.surface : null,
     reason: typeof entry.reason === "string" ? entry.reason : "unspecified",
     owner: typeof entry.owner === "string" ? entry.owner : "unassigned-owner",
     expiresAt: normalizeIsoOrNull(entry.expiresAt),
     expired: isExpired(normalizeIsoOrNull(entry.expiresAt), now),
+    replacementSuggestion: typeof entry.replacementSuggestion === "string" ? entry.replacementSuggestion : null,
   }));
 }
 
@@ -280,7 +360,9 @@ function loadApprovedClaims(configRoot, dataRoot, now) {
   return toObjectArray(claims.claims)
     .map((claim) => ({
       claimId: typeof claim.claimId === "string" ? claim.claimId : "unknown-claim",
+      claimLevel: typeof claim.claimLevel === "string" ? claim.claimLevel : null,
       claimText: typeof claim.claimText === "string" ? claim.claimText : "",
+      normalizedClaimText: normalizeForComparison(typeof claim.claimText === "string" ? claim.claimText : ""),
       status: typeof claim.status === "string" ? claim.status : "draft",
       expiresAt: normalizeIsoOrNull(claim.expiresAt),
       allowedSurfaces: toStringArray(claim.allowedSurfaces),
@@ -301,15 +383,37 @@ function loadStatusOverrides(dataRoot) {
   );
 }
 
+function inferClaimLevelFromTerm(term) {
+  if (term === "industry-leading" || term === "行业领先" || term === "benchmark-leading" || term === "基准领先") {
+    return "industry_leading";
+  }
+  if (term === "production-ready" || term === "企业级就绪") {
+    return "industry_comparable";
+  }
+  return null;
+}
+
 function resolveMatchDisposition(relativePath, matchedText, surface, content, allowlistEntries, approvedClaims) {
-  const allowlistEntry = allowlistEntries.find((entry) => entry.filePath === relativePath && entry.matchedText === matchedText);
+  const inferredClaimLevel = inferClaimLevelFromTerm(matchedText);
+  const allowlistEntry = allowlistEntries.find((entry) => (
+    entry.filePath === relativePath
+    && entry.matchedText === matchedText
+    && (entry.surface == null || entry.surface === surface)
+    && (entry.claimLevel == null || entry.claimLevel === inferredClaimLevel)
+  ));
   if (allowlistEntry != null) {
     return allowlistEntry.expired
-      ? { status: "expired_allowlist", claimId: null, reason: allowlistEntry.reason }
+      ? { status: "expired_allowlist", claimId: null, reason: allowlistEntry.replacementSuggestion ?? allowlistEntry.reason }
       : { status: "allowlisted", claimId: null, reason: allowlistEntry.reason };
   }
 
-  const approvedClaim = approvedClaims.find((claim) => claim.allowedSurfaces.includes(surface) && claim.claimText.length > 0 && content.includes(claim.claimText));
+  const normalizedContent = normalizeForComparison(content);
+  const approvedClaim = approvedClaims.find((claim) => (
+    claim.allowedSurfaces.includes(surface)
+    && claim.normalizedClaimText.length > 0
+    && normalizedContent.includes(claim.normalizedClaimText)
+    && (inferredClaimLevel == null || claim.claimLevel == null || claim.claimLevel === inferredClaimLevel)
+  ));
   if (approvedClaim != null) {
     return { status: "approved_claim", claimId: approvedClaim.claimId, reason: "approved_claim_text" };
   }
@@ -321,7 +425,7 @@ export function buildLeadershipClaimScanReport(options = {}) {
   const rootDir = resolve(options.rootDir ?? process.cwd());
   const configRoot = resolve(options.configRoot ?? join(rootDir, "config", "division-coverage"));
   const dataRoot = resolve(options.dataRoot ?? join(rootDir, "data"));
-  const scanRoots = options.scanRoots ?? ["README.md", "docs_zh", "docs_en", "ui"];
+  const scanRoots = options.scanRoots ?? ["README.md", "docs_zh", "docs_en", "ui", "release_notes", "marketing", "sales"];
   const now = options.now instanceof Date ? options.now : new Date();
   const schemaPath = join(configRoot, "schemas", "leadership-claim.schema.json");
   const schema = existsSync(schemaPath) ? JSON.parse(readFileSync(schemaPath, "utf8")) : {};
@@ -383,10 +487,27 @@ export function runLeadershipClaimAudit(options = {}) {
   return { report, failed };
 }
 
+function parseCliOptions(argv) {
+  const options = {};
+  for (const arg of argv) {
+    if (arg.startsWith("--roots=")) {
+      const roots = arg.slice("--roots=".length).split(",").map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+      options.scanRoots = roots;
+    } else if (arg.startsWith("--root-dir=")) {
+      options.rootDir = arg.slice("--root-dir=".length);
+    } else if (arg.startsWith("--config-root=")) {
+      options.configRoot = arg.slice("--config-root=".length);
+    } else if (arg.startsWith("--data-root=")) {
+      options.dataRoot = arg.slice("--data-root=".length);
+    }
+  }
+  return options;
+}
+
 const isEntrypoint = process.argv[1] != null && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 
 if (isEntrypoint) {
-  const { report, failed } = runLeadershipClaimAudit();
+  const { report, failed } = runLeadershipClaimAudit(parseCliOptions(process.argv.slice(2)));
   if (failed) {
     console.error("[audit:leadership-claims] blocked or expired claim language detected");
     for (const hit of report.hits.filter((entry) => entry.status === "blocked" || entry.status === "expired_allowlist")) {

@@ -51,6 +51,7 @@ function createTestPack(overrides: Partial<BusinessPackManifest> = {}): Business
   return {
     packId: "test-pack",
     version: "1.0.0",
+    domainId: "test",
     domain: "test",
     owner: "test@example.com",
     capabilities: [
@@ -84,7 +85,7 @@ test("SdkWorkbenchService creates snapshot with multiple plugins and packs", () 
 
   assert.equal(snapshot.pluginIds.length, 2);
   assert.equal(snapshot.packIds.length, 2);
-  assert.ok(snapshot.installPlans.length, 2);
+  assert.equal(snapshot.installPlans.length, 2);
 });
 
 test("SdkWorkbenchService deduplicates capability catalog", () => {
@@ -115,7 +116,7 @@ test("SdkWorkbenchService handles empty plugin list", () => {
   });
 
   assert.deepEqual(snapshot.pluginIds, []);
-  assert.ok(snapshot.installPlans.length, 1);
+  assert.equal(snapshot.installPlans.length, 1);
   assert.equal(snapshot.installPlans[0]?.ready, false);
 });
 
@@ -128,7 +129,7 @@ test("SdkWorkbenchService handles empty pack list", () => {
     availableContracts: [],
   });
 
-  assert.ok(snapshot.pluginIds.length, 1);
+  assert.equal(snapshot.pluginIds.length, 1);
   assert.deepEqual(snapshot.packIds, []);
   assert.deepEqual(snapshot.installPlans, []);
 });

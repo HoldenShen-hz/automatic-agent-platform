@@ -123,6 +123,8 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+const commandExecutorLifecycleLogger = new StructuredLogger({ retentionLimit: 100 });
+
 /**
  * Terminates a process and all its child processes recursively.
  * Uses SIGTERM first for graceful shutdown, then escalates to SIGKILL if needed.
@@ -171,7 +173,11 @@ function killProcessTree(child: ChildProcess, forceKillAfterDelayMs: number = 50
       child.once("close", () => clearTimeout(escalationTimer));
     }
   } catch (err) {
-    console.warn("command_executor: process kill failed, forcing SIGKILL", { error: err instanceof Error ? err.message : String(err) });
+    commandExecutorLifecycleLogger.warn("command_executor: process kill failed, forcing SIGKILL", {
+      error: err instanceof Error ? err.message : String(err),
+      pid,
+      killPgid,
+    });
     // Fallback to SIGKILL immediately
     try {
       if (killPgid) {

@@ -8,6 +8,7 @@ import { ExecutionRepository } from "../../../../../../../src/platform/five-plan
 import { SqliteDatabase } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../../helpers/fs.js";
 import type { ExecutionTicketRecord, ExecutionLeaseRecord, WorkerRegistrationChallengeRecord } from "../../../../../../../src/platform/contracts/types/domain.js";
+import type { ExecutionRecord } from "../../../../../../../src/platform/contracts/types/domain/execution-types.js";
 
 function createTestTask(
   db: SqliteDatabase,
@@ -45,11 +46,12 @@ function createTestExecution(
 ): void {
   const execRepo = new ExecutionRepository(db.connection);
   createTestTask(db, taskId, now);
-  execRepo.insertExecution({
+  const execution: ExecutionRecord = {
     id: execId,
     taskId,
     workflowId: "single_agent_minimal",
     parentExecutionId: null,
+    harnessRunId: null,
     agentId: "agent-1",
     roleId: "general_executor",
     runKind: "task_run",
@@ -59,6 +61,8 @@ function createTestExecution(
     attempt: 1,
     timeoutMs: 60000,
     budgetUsdLimit: 1.0,
+    budgetReservationId: null,
+    budgetLedgerId: null,
     requiresApproval: 0,
     sandboxMode: "workspace_write",
     allowedToolsJson: "[]",
@@ -71,7 +75,32 @@ function createTestExecution(
     finishedAt: null,
     createdAt: now,
     updatedAt: now,
-  });
+  };
+  execRepo.insertExecution(execution);
+}
+
+function createExecutionTicket(overrides: Partial<ExecutionTicketRecord> = {}): ExecutionTicketRecord {
+  const now = overrides.createdAt ?? "2026-04-14T10:00:00.000Z";
+  return {
+    id: "ticket-default",
+    executionId: "exec-default",
+    taskId: "task-default",
+    tenantId: "tenant-default",
+    priority: "normal",
+    queueName: "default",
+    requiredCapabilitiesJson: "[]",
+    dispatchAfter: now,
+    attempt: 1,
+    status: "pending",
+    assignedWorkerId: null,
+    leaseId: null,
+    claimedAt: null,
+    consumedAt: null,
+    invalidatedAt: null,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
 }
 
 test("ExecutionTicketRepository insertWorkerRegistrationChallenge works", () => {
@@ -164,24 +193,16 @@ test("ExecutionTicketRepository insertExecutionTicket and getExecutionTicket wor
 
     createTestExecution(db, "exec-ticket-1", "task-ticket-1", now);
 
-    const ticket: ExecutionTicketRecord = {
+    const ticket: ExecutionTicketRecord = createExecutionTicket({
       id: "ticket-get-1",
       executionId: "exec-ticket-1",
       taskId: "task-ticket-1",
+      tenantId: "tenant-ticket-1",
       priority: "high",
-      queueName: "default",
-      requiredCapabilitiesJson: "[]",
-      dispatchAfter: now,
-      attempt: 1,
-      status: "pending",
-      assignedWorkerId: null,
-      leaseId: null,
-      claimedAt: null,
-      consumedAt: null,
-      invalidatedAt: null,
       createdAt: now,
       updatedAt: now,
-    };
+      dispatchAfter: now,
+    });
 
     repo.insertExecutionTicket(ticket);
 
@@ -207,24 +228,15 @@ test("ExecutionTicketRepository claimExecutionTicket updates status to claimed",
 
     createTestExecution(db, "exec-claim-1", "task-claim-1", now);
 
-    repo.insertExecutionTicket({
+    repo.insertExecutionTicket(createExecutionTicket({
       id: "ticket-claim-1",
       executionId: "exec-claim-1",
       taskId: "task-claim-1",
-      priority: "normal",
-      queueName: "default",
-      requiredCapabilitiesJson: "[]",
-      dispatchAfter: now,
-      attempt: 1,
-      status: "pending",
-      assignedWorkerId: null,
-      leaseId: null,
-      claimedAt: null,
-      consumedAt: null,
-      invalidatedAt: null,
+      tenantId: "tenant-claim-1",
       createdAt: now,
       updatedAt: now,
-    });
+      dispatchAfter: now,
+    }));
 
     repo.claimExecutionTicket("ticket-claim-1", "worker-1", now);
 
@@ -249,24 +261,15 @@ test("ExecutionTicketRepository consumeExecutionTicket updates status to consume
 
     createTestExecution(db, "exec-consume-1", "task-consume-1", now);
 
-    repo.insertExecutionTicket({
+    repo.insertExecutionTicket(createExecutionTicket({
       id: "ticket-consume-1",
       executionId: "exec-consume-1",
       taskId: "task-consume-1",
-      priority: "normal",
-      queueName: "default",
-      requiredCapabilitiesJson: "[]",
-      dispatchAfter: now,
-      attempt: 1,
-      status: "pending",
-      assignedWorkerId: null,
-      leaseId: null,
-      claimedAt: null,
-      consumedAt: null,
-      invalidatedAt: null,
+      tenantId: "tenant-consume-1",
       createdAt: now,
       updatedAt: now,
-    });
+      dispatchAfter: now,
+    }));
 
     repo.consumeExecutionTicket("ticket-consume-1", now);
 
@@ -291,24 +294,15 @@ test("ExecutionTicketRepository invalidateExecutionTicket updates status to canc
 
     createTestExecution(db, "exec-invalidate-1", "task-invalidate-1", now);
 
-    repo.insertExecutionTicket({
+    repo.insertExecutionTicket(createExecutionTicket({
       id: "ticket-invalidate-1",
       executionId: "exec-invalidate-1",
       taskId: "task-invalidate-1",
-      priority: "normal",
-      queueName: "default",
-      requiredCapabilitiesJson: "[]",
-      dispatchAfter: now,
-      attempt: 1,
-      status: "pending",
-      assignedWorkerId: null,
-      leaseId: null,
-      claimedAt: null,
-      consumedAt: null,
-      invalidatedAt: null,
+      tenantId: "tenant-invalidate-1",
       createdAt: now,
       updatedAt: now,
-    });
+      dispatchAfter: now,
+    }));
 
     repo.invalidateExecutionTicket("ticket-invalidate-1", now);
 
@@ -334,47 +328,31 @@ test("ExecutionTicketRepository listPendingExecutionTickets returns pending tick
     createTestExecution(db, "exec-pending-1", "task-pending-1", now);
     createTestExecution(db, "exec-pending-2", "task-pending-2", now);
 
-    repo.insertExecutionTicket({
+    repo.insertExecutionTicket(createExecutionTicket({
       id: "ticket-pending-1",
       executionId: "exec-pending-1",
       taskId: "task-pending-1",
+      tenantId: "tenant-pending-1",
       priority: "high",
-      queueName: "default",
-      requiredCapabilitiesJson: "[]",
       dispatchAfter: past,
-      attempt: 1,
-      status: "pending",
-      assignedWorkerId: null,
-      leaseId: null,
-      claimedAt: null,
-      consumedAt: null,
-      invalidatedAt: null,
       createdAt: now,
       updatedAt: now,
-    });
+    }));
 
-    repo.insertExecutionTicket({
+    repo.insertExecutionTicket(createExecutionTicket({
       id: "ticket-pending-2",
       executionId: "exec-pending-2",
       taskId: "task-pending-2",
-      priority: "normal",
-      queueName: "default",
-      requiredCapabilitiesJson: "[]",
+      tenantId: "tenant-pending-2",
       dispatchAfter: past,
-      attempt: 1,
-      status: "consumed", // already consumed
-      assignedWorkerId: null,
-      leaseId: null,
-      claimedAt: null,
-      consumedAt: null,
-      invalidatedAt: null,
+      status: "consumed",
       createdAt: now,
       updatedAt: now,
-    });
+    }));
 
     const results = repo.listPendingExecutionTickets();
     assert.equal(results.length, 1);
-    assert.equal(results[0].id, "ticket-pending-1");
+    assert.equal(results[0]?.id, "ticket-pending-1");
   } finally {
     cleanupPath(workspace);
   }
@@ -487,7 +465,7 @@ test("ExecutionTicketRepository listExpiredExecutionLeases returns expired lease
 
     const results = repo.listExpiredExecutionLeases(now);
     assert.equal(results.length, 1);
-    assert.equal(results[0].id, "lease-expired-1");
+    assert.equal(results[0]?.id, "lease-expired-1");
   } finally {
     cleanupPath(workspace);
   }

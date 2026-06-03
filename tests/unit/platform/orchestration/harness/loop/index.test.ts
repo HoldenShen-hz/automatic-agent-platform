@@ -7,10 +7,19 @@ function createMockConstraintPack(overrides: Partial<ConstraintPack["budget"]> =
   return {
     policyIds: [],
     approvalMode: "none",
-    autonomyMode: "manual",
-    toolPolicy: { allowedTools: [] },
+    autonomyMode: "manual-only",
+    tool_policy: { allowedTools: [] },
     risk_policy: { maxRiskScore: 100, escalationThreshold: 80 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
+    sandboxRequirement: {
+      sandboxMode: "ephemeral",
+      timeoutMs: 60_000,
+    },
+    approvalRequirement: {
+      requiredForRiskClass: ["high", "critical"],
+      approverRoles: ["operator"],
+      escalationTimeoutMs: 30_000,
+    },
     budget: {
       maxSteps: 30,
       maxDurationMs: 60000,
@@ -20,11 +29,11 @@ function createMockConstraintPack(overrides: Partial<ConstraintPack["budget"]> =
   };
 }
 
-test("HarnessLoopController constructor computes maxIterations from budget.maxSteps / 3", () => {
+test("HarnessLoopController constructor computes maxIterations directly from budget.maxSteps", () => {
   const pack = createMockConstraintPack({ maxSteps: 30 });
   const controller = new HarnessLoopController(pack);
   const guards = controller.getGuards();
-  assert.equal(guards.maxIterations, 10, "maxIterations should be floor(30/3) = 10");
+  assert.equal(guards.maxIterations, 30, "maxIterations should match maxSteps exactly");
 });
 
 test("HarnessLoopController constructor keeps at least one iteration for very small maxSteps", () => {
@@ -105,7 +114,7 @@ test("HarnessLoopController recordReplan increments replanCount", () => {
 });
 
 test("HarnessLoopController shouldContinue returns false when guard is violated", () => {
-  const pack = createMockConstraintPack({ maxSteps: 6 }); // maxIterations = 2
+  const pack = createMockConstraintPack({ maxSteps: 2 });
   const controller = new HarnessLoopController(pack);
 
   controller.recordIteration();

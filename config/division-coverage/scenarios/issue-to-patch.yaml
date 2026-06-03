@@ -22,6 +22,19 @@ outputActions:
   - patch_draft
   - test_report
   - pr_draft
+outputActionBindings:
+  - outputActionId: patch_draft
+    bindingType: tool_action
+    toolId: shell
+    actionId: apply_patch
+  - outputActionId: test_report
+    bindingType: tool_action
+    toolId: test-runner
+    actionId: run_targeted_tests
+  - outputActionId: pr_draft
+    bindingType: tool_action
+    toolId: github
+    actionId: create_pr_draft
 toolActions:
   - toolId: github
     actionId: create_pr_draft

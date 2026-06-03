@@ -13,7 +13,7 @@ function makeTestProfile(overrides: Partial<EdgeRuntimeProfile> = {}): EdgeRunti
     edgeNodeId: "edge-001",
     deviceId: "device-001",
     deviceAttestation: {
-      attestedAt: "2026-04-20T00:00:00.000Z",
+      attestedAt: new Date(Date.now() - 60_000).toISOString(),
       status: "valid",
     },
     capabilities: ["offline", "compute"],
@@ -209,7 +209,11 @@ test("EdgeRuntimeSyncService sync applies central wins policy on digest mismatch
   const mergedPayload = JSON.parse(decision!.mergedPayload!);
   assert.equal(mergedPayload.localField, "edge");
   assert.equal(mergedPayload.remoteField, "cloud");
-  assert.equal(mergedPayload.shared, "edge");
+  assert.deepEqual(mergedPayload.shared, {
+    conflict: true,
+    edge: "edge",
+    cloud: "cloud",
+  });
   assert.equal(mergedPayload._merged, true);
 });
 

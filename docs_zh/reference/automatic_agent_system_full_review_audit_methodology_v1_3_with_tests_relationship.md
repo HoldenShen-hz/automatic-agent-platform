@@ -144,7 +144,9 @@ SBOM scan error still load plugin
 人工 markdown 不够。最终要进入：
 
 ```text
-issue-ledger.jsonl
+artifacts/assurance/issues.raw.jsonl
+artifacts/assurance/issues.normalized.jsonl
+artifacts/assurance/issues.deduped.jsonl
 ```
 
 每条 issue 必须有：
@@ -1494,10 +1496,20 @@ P0 alert without runbook
 artifacts/release/evidence-bundle.json
 artifacts/release/evidence-bundle.sig
 artifacts/release/rc-check-report.json
-artifacts/release/contract-drift-report.json
-artifacts/release/security-audit-report.json
-artifacts/release/eval-redteam-report.json
-artifacts/release/release-claim-report.json
+artifacts/assurance/audit-coverage-scorecard.json
+artifacts/assurance/eval-oracle-report.json
+artifacts/assurance/redteam-report.json
+artifacts/assurance/golden-replay-report.json
+artifacts/assurance/review-ledger.normalized.jsonl
+artifacts/assurance/review-evidence-readiness-report.json
+artifacts/assurance/historical-promises.jsonl
+artifacts/assurance/assumptions.jsonl
+artifacts/assurance/issues.deduped.jsonl
+artifacts/assurance/test-to-issue-map.json
+artifacts/assurance/historical-issue-regression-map.json
+artifacts/assurance/completeness-coverage-matrix.json
+artifacts/assurance/seeded-defect-report.json
+artifacts/assurance/assurance-full-report.json
 ```
 
 ---
@@ -1810,7 +1822,7 @@ console.log(env[k]);
 ### 24.2 种子漏洞目录
 
 ```text
-tests/fixtures/audit-seeds/
+tests/fixtures/seeded-defects/
   tenant-isolation/
   secret-sinks/
   lease-fencing/
@@ -2802,8 +2814,9 @@ docs_zh/quality/issue-ledger/automatic-agent-system-issues.md
 ### 20.11.1 输出
 
 ```text
+artifacts/assurance/audit-coverage-scorecard.json
+artifacts/assurance/audit-coverage-scorecard.md
 artifacts/assurance/coverage-scorecard.json
-artifacts/assurance/coverage-scorecard.md
 ```
 
 ### 20.11.2 评分维度
@@ -2891,13 +2904,21 @@ npm run assurance:full
 输出：
 
 ```text
-artifacts/assurance/nightly/YYYY-MM-DD/
-  issue-ledger.jsonl
-  p0-blockers.json
-  contract-drift-report.json
-  security-audit-report.json
-  eval-oracle-report.json
-  historical-promise-report.json
+artifacts/assurance/
+  assurance-full-report.json
+  static-audit-report.json
+  static-audit-report.md
+  static-audit-findings.jsonl
+  review-ledger.normalized.jsonl
+  review-evidence-readiness-report.json
+  historical-promises.jsonl
+  assumptions.jsonl
+  issues.raw.jsonl
+  issues.normalized.jsonl
+  issues.deduped.jsonl
+  historical-issue-regression-map.json
+  completeness-coverage-matrix.json
+  audit-coverage-scorecard.json
   coverage-scorecard.json
 ```
 

@@ -91,6 +91,14 @@ test("approval routing uses configured FX snapshot and configurable route TTL", 
 test("approval routing fails closed when SoD removes the last approver", () => {
   const service = new ApprovalRoutingService({
     orgNodes: [createOrgNode({ ownerUserIds: ["platform_admin"] })],
+    fxRatesToCny: {
+      USD: {
+        rate: 7.01,
+        asOf: "2026-05-20T00:00:00.000Z",
+        source: "fx.snapshot.test",
+      },
+      CNY: { rate: 1, source: "fx.identity.cny" },
+    },
   });
 
   assert.throws(

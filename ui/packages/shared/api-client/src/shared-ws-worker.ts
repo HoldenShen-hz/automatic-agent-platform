@@ -18,6 +18,10 @@ type WorkerOutboundMessage =
   | { readonly capability: string; readonly type: "status"; readonly status: WSStatus }
   | { readonly capability: string; readonly type: "event"; readonly event: WorkerSocketEvent };
 
+type WorkerOutboundPayload =
+  | { readonly type: "status"; readonly status: WSStatus }
+  | { readonly type: "event"; readonly event: WorkerSocketEvent };
+
 type SharedWorkerConnectEvent = MessageEvent & { readonly ports: readonly MessagePort[] };
 
 declare const self: typeof globalThis & {
@@ -91,16 +95,19 @@ function getPortState(port: MessagePort): WorkerPortState {
 
 function withCapability(
   port: MessagePort,
-  message: Omit<WorkerOutboundMessage, "capability">,
+  message: WorkerOutboundPayload,
 ): WorkerOutboundMessage | null {
   const capability = portStates.get(port)?.capability;
   if (capability == null) {
     return null;
   }
-  return { capability, ...message };
+  if (message.type === "status") {
+    return { capability, type: "status", status: message.status };
+  }
+  return { capability, type: "event", event: message.event };
 }
 
-function broadcast(message: Omit<WorkerOutboundMessage, "capability">): void {
+function broadcast(message: WorkerOutboundPayload): void {
   for (const port of portStates.keys()) {
     const scoped = withCapability(port, message);
     if (scoped != null) {

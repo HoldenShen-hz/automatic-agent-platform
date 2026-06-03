@@ -273,16 +273,19 @@ test("SyncBackedAsyncService asPromise returns a new Promise each time", async (
     public async inc(): Promise<number> {
       return this.asPromise((sync) => sync.inc());
     }
+    public readValue(): Promise<number> {
+      return this.asPromise((sync) => sync.n);
+    }
   }
   const service = new IncrementAsync();
-  const p1 = service.asPromise((sync) => sync.n);
-  const p2 = service.asPromise((sync) => sync.n);
+  const p1 = service.readValue();
+  const p2 = service.readValue();
   // Both should resolve to 0 (not yet incremented)
   assert.equal(await p1, 0);
   assert.equal(await p2, 0);
   // Now increment
   await service.inc();
-  const p3 = service.asPromise((sync) => sync.n);
+  const p3 = service.readValue();
   assert.equal(await p3, 1);
 });
 

@@ -66,7 +66,7 @@ test("ExplanationPipelineService.generate stores version lock when generating ex
   assert.equal(verified, true);
 });
 
-test("ExplanationPipelineService.generate accepts custom versionLockRef", () => {
+test("ExplanationPipelineService.generate rejects inconsistent custom versionLockRef", () => {
   const service = new ExplanationPipelineService();
   const customLockRef = "vlock:custom_12345";
   const request = {
@@ -78,9 +78,10 @@ test("ExplanationPipelineService.generate accepts custom versionLockRef", () => 
     decision: "accept" as const,
   };
 
-  const bundle = service.generate(request, "L2", { versionLockRef: customLockRef });
-
-  assert.equal(bundle.versionLockRef, customLockRef);
+  assert.throws(
+    () => service.generate(request, "L2", { versionLockRef: customLockRef }),
+    /explanation\.version_lock_mismatch/,
+  );
 });
 
 test("ExplanationPipelineService.verifyVersionLock returns false for tampered version lock", () => {
@@ -153,8 +154,8 @@ test("ExplanationPipelineService.generate records audit entry with user context"
   const auditTrail = service.getAuditTrail(bundle.rationale.rationaleId);
 
   assert.equal(auditTrail[0]!.userId, "user_123");
-  assert.equal(auditTrail[0]!.ipAddress, "192.168.1.1");
-  assert.equal(auditTrail[0]!.userAgent, "TestAgent/1.0");
+  assert.match(auditTrail[0]!.ipAddress ?? "", /^ipv4:/);
+  assert.match(auditTrail[0]!.userAgent ?? "", /^TestAgent\/1\.0 \[redacted\]#/);
 });
 
 test("ExplanationPipelineService.generate sets audience based on depth", () => {

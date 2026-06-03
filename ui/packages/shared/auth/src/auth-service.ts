@@ -152,7 +152,7 @@ export class AuthService {
         || typeof parsed.redirectUri !== "string"
         || typeof parsed.codeVerifier !== "string"
       ) {
-        storage.removeItem(PENDING_CODE_FLOW_STORAGE_KEY);
+        storage?.removeItem(PENDING_CODE_FLOW_STORAGE_KEY);
         return null;
       }
       this.pendingCodeFlow = {
@@ -162,7 +162,7 @@ export class AuthService {
       };
       return this.pendingCodeFlow;
     } catch {
-      storage.removeItem(PENDING_CODE_FLOW_STORAGE_KEY);
+      storage?.removeItem(PENDING_CODE_FLOW_STORAGE_KEY);
       return null;
     }
   }

@@ -8,7 +8,6 @@ import {
   ConversationTemplateStepSchema,
   type ConversationTemplate,
   type ConversationTemplateStep,
-  type ConversationTemplateIntent,
 } from "../../../../src/platform/prompt-engine/conversation-template-service.js";
 
 test("ConversationTemplateRegistry allows custom initial templates", () => {
@@ -148,6 +147,9 @@ test("ConversationTemplateExecutor can use custom registry", () => {
           allowSkip: false,
         },
       ],
+      estimatedDurationMinutes: 2,
+      tags: ["executor", "test"],
+      isActive: true,
     },
   ];
 
@@ -356,7 +358,7 @@ test("ConversationTemplateRegistry can override existing template", () => {
 test("ConversationTemplateRegistry handles multiple intents correctly", () => {
   const registry = new ConversationTemplateRegistry();
 
-  const intents: ConversationTemplateIntent[] = [
+  const intents: Array<ConversationTemplate["intent"]> = [
     "task_create",
     "task_query",
     "task_modify",

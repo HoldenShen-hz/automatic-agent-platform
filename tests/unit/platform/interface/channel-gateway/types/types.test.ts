@@ -11,9 +11,7 @@ import type {
 
 test("ChannelGatewayServiceOptions interface structure", () => {
   // Test that the options interface can be satisfied
-  const options: ChannelGatewayServiceOptions = {
-    fetchImpl: undefined,
-  };
+  const options: ChannelGatewayServiceOptions = {};
   assert.ok(options);
 });
 

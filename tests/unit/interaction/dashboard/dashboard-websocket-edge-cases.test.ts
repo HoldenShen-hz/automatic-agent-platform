@@ -139,7 +139,7 @@ test("DashboardWebSocketServer broadcast handles empty message payload", () => {
 
   const sentCount = server.broadcast(message);
 
-  assert.equal(sentCount, 2);
+  assert.equal(sentCount, 0);
 });
 
 test("DashboardWebSocketServer getConnectedClients returns correct structure", () => {

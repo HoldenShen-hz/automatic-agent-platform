@@ -6,13 +6,14 @@ import { BillingRepository } from "../../../../../../../src/platform/five-plane-
 import { TaskRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/task-repository.js";
 import { SqliteDatabase } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../../helpers/fs.js";
+import type { TaskStatus } from "../../../../../../../src/platform/contracts/types/status.js";
 
 function createTestTask(
   taskRepo: TaskRepository,
   taskId: string,
   now: string,
   tenantId: string | null = null,
-  status = "in_progress",
+  status: TaskStatus = "in_progress",
 ): void {
   taskRepo.insertTask({
     id: taskId,
@@ -761,7 +762,7 @@ test("BillingRepository insertLedgerEntry and listLedgerEntriesForAccount round-
       stepId: null,
       metricType: "api_call",
       quantity: 1,
-      source: "ledger_test",
+      source: "admin",
       unitPriceUsd: 0.01,
       capturedAt: now,
     });

@@ -1,5 +1,16 @@
 # Creative / Production Family Expansion
 
+## Current Readiness Snapshot
+
+- readinessStatus: `governance_ready`
+- targetClaimLevel: `designed`
+- targetRelease: `v3.4`
+
+## Leadership Types
+
+- multimodal_evidence_leadership
+- asset_governance_leadership
+
 ## Pilot Source
 
 - design

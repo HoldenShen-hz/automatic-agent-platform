@@ -1,0 +1,7 @@
+{
+  "caseId": "tau-035",
+  "customerIntent": "handoff",
+  "policyRef": "policy-12",
+  "requiresHitl": true,
+  "jurisdiction": "standard"
+}

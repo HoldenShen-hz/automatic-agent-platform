@@ -297,7 +297,7 @@ test("authenticateOptionalPrincipal returns principal for valid Bearer token", (
   assert.deepEqual(result!.roles, ["viewer"]);
 });
 
-test("authenticateOptionalPrincipal returns principal for valid API key", () => {
+test("authenticateOptionalPrincipal returns null for valid API key headers on optional auth paths", () => {
   const service = new ApiAuthService({
     apiKeys: [{ apiKey: "test-key", actorId: "actor-2", roles: ["operator"] }],
     jwtSecret: "secret-123",
@@ -309,9 +309,7 @@ test("authenticateOptionalPrincipal returns principal for valid API key", () => 
     body: null,
   };
   const result = authenticateOptionalPrincipal(request, service);
-  assert.ok(result !== null);
-  assert.equal(result!.actorId, "actor-2");
-  assert.deepEqual(result!.roles, ["operator"]);
+  assert.equal(result, null);
 });
 
 test("authenticateOptionalPrincipal returns null for invalid token errors during optional auth", () => {

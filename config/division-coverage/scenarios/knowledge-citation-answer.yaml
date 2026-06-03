@@ -20,6 +20,14 @@ inputDataTypes:
 outputActions:
   - citation_answer
   - evidence_graph
+outputActionBindings:
+  - outputActionId: citation_answer
+    bindingType: tool_action
+    toolId: knowledge-search
+    actionId: draft_conclusion
+  - outputActionId: evidence_graph
+    bindingType: derived_artifact
+    notes: built from verified citation chain
 toolActions:
   - toolId: knowledge-search
     actionId: retrieve_sources

@@ -8,7 +8,42 @@ import {
   parseLearningArtifact,
   type LearningArtifact,
 } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-artifact-model.js";
-import { LearningObjectSchema } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-object-model.js";
+import { parseLearningObject, type LearningObject } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-object-model.js";
+
+function createLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
+  const learningObjectId = overrides.learningObjectId ?? overrides.objectId ?? "lo_test";
+  const learningType = overrides.learningType ?? overrides.kind ?? "failure_pattern";
+  const title = overrides.title ?? "Test Strategy";
+  const summary = overrides.summary ?? "A test strategy for unit testing";
+  const evidenceRefs = overrides.evidenceRefs ?? ["evidence_1", "evidence_2"];
+  const sourceSignalIds = overrides.sourceSignalIds ?? ["signal_1"];
+  const recommendation = overrides.recommendation ?? "Use this pattern in similar cases";
+
+  return parseLearningObject({
+    learningObjectId,
+    objectId: overrides.objectId ?? learningObjectId,
+    learningType,
+    kind: overrides.kind ?? learningType,
+    title,
+    summary,
+    content: overrides.content ?? {
+      title,
+      summary,
+      evidenceRefs,
+      sourceSignalIds,
+      recommendation,
+    },
+    confidence: overrides.confidence ?? 0.85,
+    evidenceRefs,
+    sourceSignalIds,
+    recommendation,
+    validatedBy: overrides.validatedBy ?? "none",
+    promotionStatus: overrides.promotionStatus ?? "draft",
+    status: overrides.status ?? "created",
+    createdAt: overrides.createdAt ?? new Date().toISOString(),
+    ...overrides,
+  });
+}
 
 test("ArtifactFormatSchema accepts valid formats", () => {
   assert.equal(ArtifactFormatSchema.parse("json"), "json");
@@ -75,15 +110,9 @@ test("LearningArtifactSchema rejects negative version", () => {
 });
 
 test("createLearningArtifact creates valid artifact from learning object", async () => {
-  const learningObject = LearningObjectSchema.parse({
+  const learningObject = createLearningObject({
     learningObjectId: "lo_create_test",
-    learningType: "failure_pattern",
-    title: "Test Strategy",
-    summary: "A test strategy for unit testing",
-    recommendation: "Use this pattern in similar cases",
-    evidenceRefs: ["evidence_1", "evidence_2"],
-    confidence: 0.85,
-    createdAt: Date.now(),
+    createdAt: new Date().toISOString(),
   });
 
   const artifact = await createLearningArtifact(learningObject, "test-namespace");
@@ -101,15 +130,16 @@ test("createLearningArtifact creates valid artifact from learning object", async
 });
 
 test("createLearningArtifact uses specified format", async () => {
-  const learningObject = LearningObjectSchema.parse({
+  const learningObject = createLearningObject({
     learningObjectId: "lo_format_test",
     learningType: "user_correction",
+    kind: "user_correction",
     title: "Format Test",
     summary: "Testing format option",
     recommendation: "Recommendation here",
     evidenceRefs: [],
     confidence: 0.9,
-    createdAt: Date.now(),
+    createdAt: new Date().toISOString(),
   });
 
   const artifact = await createLearningArtifact(learningObject, "test-namespace", "markdown");
@@ -118,15 +148,16 @@ test("createLearningArtifact uses specified format", async () => {
 });
 
 test("createLearningArtifact includes correct content structure", async () => {
-  const learningObject = LearningObjectSchema.parse({
+  const learningObject = createLearningObject({
     learningObjectId: "lo_content_test",
     learningType: "recovery_playbook",
+    kind: "recovery_playbook",
     title: "Content Test",
     summary: "Summary for content",
     recommendation: "Recommendation here",
     evidenceRefs: ["ref1"],
     confidence: 0.7,
-    createdAt: Date.now(),
+    createdAt: new Date().toISOString(),
   });
 
   const artifact = await createLearningArtifact(learningObject, "content-test");
@@ -140,15 +171,14 @@ test("createLearningArtifact includes correct content structure", async () => {
 });
 
 test("createLearningArtifact computes valid checksum", async () => {
-  const learningObject = LearningObjectSchema.parse({
+  const learningObject = createLearningObject({
     learningObjectId: "lo_checksum_test",
-    learningType: "failure_pattern",
     title: "Checksum Test",
     summary: "Testing checksum",
     recommendation: "Check this",
     evidenceRefs: [],
     confidence: 0.8,
-    createdAt: Date.now(),
+    createdAt: new Date().toISOString(),
   });
 
   const artifact = await createLearningArtifact(learningObject, "checksum-test");
@@ -196,15 +226,16 @@ test("parseLearningArtifact throws on invalid input", () => {
 });
 
 test("createLearningArtifact tokenSize approximates content length divided by 4", async () => {
-  const learningObject = LearningObjectSchema.parse({
+  const learningObject = createLearningObject({
     learningObjectId: "lo_token_test",
     learningType: "user_correction",
+    kind: "user_correction",
     title: "Token Size Test",
     summary: "Token calculation test",
     recommendation: "Test recommendation",
     evidenceRefs: [],
     confidence: 0.85,
-    createdAt: Date.now(),
+    createdAt: new Date().toISOString(),
   });
 
   const artifact = await createLearningArtifact(learningObject, "token-test");

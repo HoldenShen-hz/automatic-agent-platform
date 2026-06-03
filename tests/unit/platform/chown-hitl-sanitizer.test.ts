@@ -237,6 +237,14 @@ test("R30-32 approval routing audit record ids stay unique across repeated reque
     orgNodes: [
       { orgNodeId: "team-1", nodeType: "team", active: true, ownerUserIds: ["owner-1"], displayName: "Team 1", parentOrgNodeId: null, costCenter: "", metadata: {} },
     ],
+    fxRatesToCny: {
+      USD: {
+        rate: 7.01,
+        asOf: "2026-05-11T00:00:00.000Z",
+        source: "fx.snapshot.test",
+      },
+      CNY: { rate: 1, source: "fx.identity.cny" },
+    },
   });
 
   const first = service.route(createRouteRequest(), "2026-05-11T00:00:00.000Z", "2026-05-11T00:00:00.000Z");

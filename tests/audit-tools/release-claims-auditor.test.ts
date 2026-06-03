@@ -32,7 +32,7 @@ describe("audit-tool: release-claims self-test", () => {
     const out = runAudit("tests/fixtures/seeded-defects/release-claims/positive.md");
     const findings = out.findings.filter((f) => f.path.endsWith("positive.md"));
     assert.ok(findings.length >= 1, `expected at least 1 P0 finding, got ${findings.length}`);
-    assert.equal(findings[0].severity, "P0");
+    assert.equal(findings[0]?.severity, "P0");
   });
 
   it("negative seed: claim with evidenceRef is downgraded to P3 (or absent)", () => {
@@ -40,6 +40,12 @@ describe("audit-tool: release-claims self-test", () => {
     const findings = out.findings.filter((f) => f.path.endsWith("negative.md"));
     const p0 = findings.find((f) => f.severity === "P0");
     assert.equal(p0, undefined, `unexpected P0 finding on anchored claim: ${JSON.stringify(findings)}`);
+  });
+
+  it("negative seed: enum-style gate labels are not treated as release claims", () => {
+    const out = runAudit("tests/fixtures/seeded-defects/release-claims/negative-enum.md");
+    const findings = out.findings.filter((f) => f.path.endsWith("negative-enum.md"));
+    assert.equal(findings.length, 0, `unexpected findings on enum-style label: ${JSON.stringify(findings)}`);
   });
 
   it("evasion seed: claim broken across formatting is still flagged", () => {

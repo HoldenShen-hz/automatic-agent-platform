@@ -4,6 +4,7 @@ import test from "node:test";
 import { ApprovalRoutingService } from "../../../src/org-governance/approval-routing/approval-routing-service.js";
 import type { ApprovalDelegation } from "../../../src/org-governance/approval-routing/delegation/index.js";
 import type { OrgNode } from "../../../src/org-governance/org-model/org-node/index.js";
+import type { ApprovalRoutingServiceOptions } from "../../../src/org-governance/approval-routing/approval-routing-service.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test fixtures
@@ -44,13 +45,39 @@ const DEPT_2 = createOrgNode({ orgNodeId: "dept_2", nodeType: "department", pare
 const TEAM_1 = createOrgNode({ orgNodeId: "team_1", nodeType: "team", parentOrgNodeId: "dept_1", ownerUserIds: ["team_mgr"] });
 
 const orgNodes: OrgNode[] = [DEPT_1, DEPT_2, TEAM_1];
+const TEST_FX_RATES: NonNullable<ApprovalRoutingServiceOptions["fxRatesToCny"]> = {
+  CNY: {
+    rate: 1,
+    asOf: "2026-04-20T00:00:00.000Z",
+    source: "test.fx.identity-cny",
+  },
+  USD: {
+    rate: 7.2,
+    asOf: "2026-04-20T00:00:00.000Z",
+    source: "test.fx.usd-cny",
+  },
+};
+
+function createApprovalRoutingService(
+  options: Omit<ApprovalRoutingServiceOptions, "fxRatesToCny"> & {
+    readonly fxRatesToCny?: ApprovalRoutingServiceOptions["fxRatesToCny"];
+  },
+): ApprovalRoutingService {
+  return new ApprovalRoutingService({
+    ...options,
+    fxRatesToCny: {
+      ...TEST_FX_RATES,
+      ...(options.fxRatesToCny ?? {}),
+    },
+  });
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // route() Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("ApprovalRoutingService.route returns direct route without delegation or escalation", () => {
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const result = service.route({
     requesterId: "user_1",
@@ -67,7 +94,7 @@ test("ApprovalRoutingService.route returns direct route without delegation or es
 });
 
 test("ApprovalRoutingService.route applies delegation when in scope and active", () => {
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     delegations: [createDelegation({ scopeNodeIds: ["dept_1"] })],
   });
@@ -85,7 +112,7 @@ test("ApprovalRoutingService.route applies delegation when in scope and active",
 });
 
 test("ApprovalRoutingService.route does not apply inactive delegation", () => {
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     delegations: [createDelegation({ scopeNodeIds: ["dept_1"], active: false })],
   });
@@ -102,7 +129,7 @@ test("ApprovalRoutingService.route does not apply inactive delegation", () => {
 });
 
 test("ApprovalRoutingService.route does not apply expired delegation", () => {
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     delegations: [createDelegation({
       scopeNodeIds: ["dept_1"],
@@ -123,7 +150,7 @@ test("ApprovalRoutingService.route does not apply expired delegation", () => {
 });
 
 test("ApprovalRoutingService.route does not apply delegation outside scope", () => {
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     delegations: [createDelegation({ scopeNodeIds: ["other_dept"] })],
   });
@@ -140,7 +167,7 @@ test("ApprovalRoutingService.route does not apply delegation outside scope", () 
 });
 
 test("ApprovalRoutingService.route applies escalation when threshold exceeded", () => {
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     escalationRules: [
       {
@@ -165,7 +192,7 @@ test("ApprovalRoutingService.route applies escalation when threshold exceeded", 
 });
 
 test("ApprovalRoutingService.route does not escalate when time threshold not met", () => {
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     escalationRules: [
       {
@@ -189,7 +216,7 @@ test("ApprovalRoutingService.route does not escalate when time threshold not met
 });
 
 test("ApprovalRoutingService.route does not escalate for low risk when rule targets high/critical", () => {
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     escalationRules: [
       {
@@ -212,7 +239,7 @@ test("ApprovalRoutingService.route does not escalate for low risk when rule targ
 });
 
 test("ApprovalRoutingService.route combines delegation and escalation", () => {
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     delegations: [createDelegation({ scopeNodeIds: ["dept_1"] })],
     escalationRules: [
@@ -242,7 +269,7 @@ test("ApprovalRoutingService.route handles node without ownerUserIds", () => {
     createOrgNode({ orgNodeId: "empty_dept", nodeType: "department", parentOrgNodeId: null, ownerUserIds: [] }),
   ];
 
-  const service = new ApprovalRoutingService({ orgNodes: nodesWithoutOwner });
+  const service = createApprovalRoutingService({ orgNodes: nodesWithoutOwner });
 
   const result = service.route({
     requesterId: "user_1",
@@ -255,7 +282,7 @@ test("ApprovalRoutingService.route handles node without ownerUserIds", () => {
 });
 
 test("ApprovalRoutingService.route applies SoD policy to filter initiator", () => {
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     delegations: [],
     escalationRules: [],
@@ -276,7 +303,7 @@ test("ApprovalRoutingService.route applies SoD policy to filter initiator", () =
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("ApprovalRoutingService.getAmountThresholdMatrix returns empty by default", () => {
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
   const matrix = service.getAmountThresholdMatrix();
   assert.deepEqual(matrix, []);
 });
@@ -287,7 +314,7 @@ test("ApprovalRoutingService.getAmountThresholdMatrix returns configured rules",
     { maxAmountUsd: 5000, targetNodeTypes: ["team"] as const },
   ];
 
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     amountThresholdRules: rules,
   });
@@ -303,7 +330,7 @@ test("ApprovalRoutingService.getAmountThresholdMatrix returns configured rules",
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("ApprovalRoutingService.planChain creates sequential chain by default", () => {
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const plan = service.planChain({
     requesterId: "user_1",
@@ -320,7 +347,7 @@ test("ApprovalRoutingService.planChain creates sequential chain by default", () 
 
 test("ApprovalRoutingService.planChain creates parallel chain", () => {
   // Use team_1 which has multiple ownerUserIds for parallel chain testing
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const plan = service.planChain({
     requesterId: "user_1",
@@ -336,7 +363,7 @@ test("ApprovalRoutingService.planChain creates parallel chain", () => {
 });
 
 test("ApprovalRoutingService.planChain includes conditional approvers", () => {
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const plan = service.planChain({
     requesterId: "user_1",
@@ -354,7 +381,7 @@ test("ApprovalRoutingService.planChain includes conditional approvers", () => {
 });
 
 test("ApprovalRoutingService.planChain calculates deadline correctly", () => {
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const plan = service.planChain({
     requesterId: "user_1",
@@ -372,7 +399,7 @@ test("ApprovalRoutingService.planChain calculates deadline correctly", () => {
 });
 
 test("ApprovalRoutingService.planChain sets escalation target", () => {
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     escalationRules: [
       {
@@ -395,7 +422,7 @@ test("ApprovalRoutingService.planChain sets escalation target", () => {
 });
 
 test("ApprovalRoutingService.planChain generates unique stepIds", () => {
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const plan = service.planChain({
     requesterId: "user_1",
@@ -410,7 +437,7 @@ test("ApprovalRoutingService.planChain generates unique stepIds", () => {
 });
 
 test("ApprovalRoutingService.planChain with empty conditionalApproverIds", () => {
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const plan = service.planChain({
     requesterId: "user_1",
@@ -432,7 +459,7 @@ test("ApprovalRoutingService.planChain with empty conditionalApproverIds", () =>
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("ApprovalRoutingService applies delegation and escalation", () => {
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     delegations: [createDelegation({
       scopeNodeIds: ["dept_1"],

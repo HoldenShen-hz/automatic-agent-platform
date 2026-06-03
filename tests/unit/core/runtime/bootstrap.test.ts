@@ -14,10 +14,13 @@ import {
   type GracefulShutdownOptions,
 } from "../../../../src/platform/five-plane-execution/startup/graceful-shutdown.js";
 
-type GracefulShutdownPrivate = GracefulShutdown & {
-  handlers: ShutdownHandler[];
-  signalListeners: Map<string, () => void>;
-};
+function getInternalHandlers(shutdown: GracefulShutdown): ShutdownHandler[] {
+  return Reflect.get(shutdown as object, "handlers") as ShutdownHandler[];
+}
+
+function getSignalListeners(shutdown: GracefulShutdown): Map<string, () => void> {
+  return Reflect.get(shutdown as object, "signalListeners") as Map<string, () => void>;
+}
 
 test("GracefulShutdown constructor creates instance with defaults", () => {
   const shutdown = new GracefulShutdown();
@@ -47,7 +50,7 @@ test("GracefulShutdown accepts handlers in constructor", () => {
 test("addHandler adds a handler to the list", () => {
   const shutdown = new GracefulShutdown({ registerSignalHandlers: false });
   shutdown.addHandler({ name: "test", handler: async () => {} });
-  assert.strictEqual((shutdown as GracefulShutdownPrivate).handlers.length, 1);
+  assert.strictEqual(getInternalHandlers(shutdown).length, 1);
 });
 
 test("addHandler rejects new handlers when shutting down", async () => {
@@ -61,7 +64,7 @@ test("addHandler rejects new handlers when shutting down", async () => {
 test("registerSignalHandlers registers handlers", () => {
   const shutdown = new GracefulShutdown({ registerSignalHandlers: false });
   shutdown.registerSignalHandlers();
-  assert.strictEqual((shutdown as GracefulShutdownPrivate).signalListeners.size, 2);
+  assert.strictEqual(getSignalListeners(shutdown).size, 2);
   shutdown.unregisterSignalHandlers();
 });
 
@@ -69,7 +72,7 @@ test("registerSignalHandlers is idempotent", () => {
   const shutdown = new GracefulShutdown({ registerSignalHandlers: false });
   shutdown.registerSignalHandlers();
   shutdown.registerSignalHandlers(); // Should not throw
-  assert.strictEqual((shutdown as GracefulShutdownPrivate).signalListeners.size, 2);
+  assert.strictEqual(getSignalListeners(shutdown).size, 2);
   shutdown.unregisterSignalHandlers();
 });
 
@@ -77,7 +80,7 @@ test("unregisterSignalHandlers clears listeners", () => {
   const shutdown = new GracefulShutdown({ registerSignalHandlers: false });
   shutdown.registerSignalHandlers();
   shutdown.unregisterSignalHandlers();
-  assert.strictEqual((shutdown as GracefulShutdownPrivate).signalListeners.size, 0);
+  assert.strictEqual(getSignalListeners(shutdown).size, 0);
 });
 
 test("shutdown executes all handlers in reverse order", async () => {

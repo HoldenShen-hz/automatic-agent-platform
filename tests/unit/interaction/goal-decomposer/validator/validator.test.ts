@@ -39,6 +39,42 @@ function makeDecomposition(overrides: Partial<GoalDecomposition> = {}): GoalDeco
     requiresHumanReview: false,
     depthUsed: 1,
     maxDepthReached: false,
+    lifecycleState: "decomposed",
+    goalGraphDraft: {
+      goalId: "goal-1",
+      lifecycleState: "decomposed",
+      constraintEnvelope: {
+        budgetLimitUsd: null,
+        riskTolerance: "high",
+        requiresApproval: false,
+        requiredPermissions: [],
+        requiredCapabilities: [],
+      },
+      plannerIntent: "template",
+      evidenceRefs: [],
+    },
+    taskGraphDraft: {
+      graphId: "graph-1",
+      goalId: "goal-1",
+      tasks: [makeTask({ taskId: "task-1" }), makeTask({ taskId: "task-2" })],
+      dependencyGraph: [makeDependency({ fromTask: "task-1", toTask: "task-2" })],
+      normalized: true,
+      validationMessages: [],
+      worstPathTaskIds: [],
+    },
+    plannerHandoff: {
+      handoffId: "handoff-1",
+      goalId: "goal-1",
+      state: "ready_for_planner",
+      graphId: "graph-1",
+      constraintEnvelope: {
+        budgetLimitUsd: null,
+        riskTolerance: "high",
+        requiresApproval: false,
+        requiredPermissions: [],
+        requiredCapabilities: [],
+      },
+    },
     ...overrides,
   };
 }
@@ -140,7 +176,7 @@ test("validateGoalDecomposition returns no findings for valid confidence 1", () 
 
 test("validateGoalDecomposition handles task with no dependsOn", () => {
   const decomposition = makeDecomposition({
-    tasks: [makeTask({ taskId: "t1", dependsOn: undefined })],
+    tasks: [makeTask({ taskId: "t1" })],
     dependencyGraph: [],
   });
 

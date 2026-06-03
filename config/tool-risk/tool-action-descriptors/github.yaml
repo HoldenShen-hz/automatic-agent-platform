@@ -6,10 +6,29 @@ actions:
     reversible: true
     requiresHITL: false
     requiresPreparedAction: true
-    rollbackPolicyRef: docs_zh/pilots/engineering-pilot.md
+    rollbackPolicyRef: docs_zh/governance/rollback-policies/engineering-change-rollback.md
     dataClassesTouched:
       - source_code
       - metadata
     allowedFamilies:
       - engineering
     trustedSourcesOnly: true
+    mitigations:
+      - protected_branch_review
+      - patch_gate_receipt
+  - actionId: force_merge
+    riskClass: R4
+    sideEffect: external_write
+    reversible: false
+    requiresHITL: true
+    requiresPreparedAction: true
+    rollbackPolicyRef: docs_zh/governance/rollback-policies/engineering-change-rollback.md
+    dataClassesTouched:
+      - source_code
+      - metadata
+    allowedFamilies:
+      - engineering
+    trustedSourcesOnly: true
+    mitigations:
+      - protected_branch_review
+      - emergency_rollback_plan

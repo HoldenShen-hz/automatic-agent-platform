@@ -61,6 +61,12 @@ function makeMinimalProposal(overrides: Partial<HrRoleProposal> = {}): HrRolePro
   return { ...defaultProposal, ...overrides };
 }
 
+function makeApprovalServiceMock(
+  createRequest: (input: Omit<ApprovalRequest, "approvalId" | "createdAt">) => ApprovalRequest,
+): ApprovalService {
+  return { createRequest } as unknown as ApprovalService;
+}
+
 test("HrRoleGovernanceService validateProposal detects missing scope responsibilities", () => {
   const registry = makeMockDivision([]);
   const service = new HrRoleGovernanceService(registry, null);
@@ -286,10 +292,12 @@ test("HrRoleGovernanceService submitProposal returns null approvalRequest when v
   const registry = makeMockDivision([
     { id: "existing_role", name: "Existing Role", tools: ["read"] },
   ]);
-  const mockApprovalService = {
-    createRequest: () => ({ id: "approval_1" } as unknown as ApprovalRequest),
-  };
-  const service = new HrRoleGovernanceService(registry, mockApprovalService as Pick<ApprovalService, "createRequest">);
+  const mockApprovalService = makeApprovalServiceMock((input) => ({
+    approvalId: "approval_1",
+    createdAt: new Date().toISOString(),
+    ...input,
+  }));
+  const service = new HrRoleGovernanceService(registry, mockApprovalService);
 
   const result = service.submitProposal({
     gapAnalysisRequest: {

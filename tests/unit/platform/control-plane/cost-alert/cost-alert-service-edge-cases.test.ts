@@ -27,6 +27,15 @@ const mockStore = {
 
 import { CostAlertService } from "../../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-service.js";
 
+function hasOpenAlertForSubject(
+  service: CostAlertService,
+  executionId: string | null,
+  taskId: string | null,
+  stepId: string | null,
+): boolean {
+  return Reflect.get(service as object, "hasOpenAlertForSubject").call(service, executionId, taskId, stepId) as boolean;
+}
+
 function createPolicy(scope: BudgetScope, scopeId: string, limit: number): BudgetPolicy {
   return {
     scope,
@@ -325,12 +334,10 @@ test("CostAlertService dedupes open alerts by exact subject token instead of sub
     enabled: true,
     tenantBudgetPolicies: { "tenant-1": policy },
   };
-  const service = new CostAlertService(db, mockStore, config) as CostAlertService & {
-    hasOpenAlertForSubject(executionId: string | null, taskId: string | null, stepId: string | null): boolean;
-  };
+  const service = new CostAlertService(db, mockStore, config);
 
-  assert.equal(service.hasOpenAlertForSubject(null, "task-1", null), false);
-  assert.equal(service.hasOpenAlertForSubject(null, "task-12", null), true);
+  assert.equal(hasOpenAlertForSubject(service, null, "task-1", null), false);
+  assert.equal(hasOpenAlertForSubject(service, null, "task-12", null), true);
 });
 
 test("CostAlertService handles infinity limit", () => {

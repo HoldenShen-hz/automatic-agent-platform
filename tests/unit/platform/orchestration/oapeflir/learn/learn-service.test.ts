@@ -14,12 +14,13 @@ import { FailurePatternMiner } from "../../../../../../src/platform/five-plane-o
 import { LearningObjectValidator } from "../../../../../../src/platform/five-plane-orchestration/learn/learning-object-validator.js";
 import { StrategyLearningService } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/strategy-learning-service.js";
 import type { LearningSignal } from "../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
+import type { LearningObject } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-object-model.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: create minimal LearningSignal for testing
 // ─────────────────────────────────────────────────────────────────────────────
 
-function createLearningSignal(overrides: Partial<LearningSignal> = {}): LearningSignal {
+function createLearningSignal(overrides: Partial<LearningSignal> & Record<string, unknown> = {}): LearningSignal {
   return {
     learningSignalId: "signal_test_1",
     taskId: "task_learning_test",
@@ -32,6 +33,42 @@ function createLearningSignal(overrides: Partial<LearningSignal> = {}): Learning
     relatedSignalIds: [],
     evidence: { source: "execution", category: "test" },
     generatedAt: Date.now(),
+    ...overrides,
+  } as LearningSignal;
+}
+
+function createLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
+  const learningObjectId = overrides.learningObjectId ?? overrides.objectId ?? "obj_test";
+  const learningType = overrides.learningType ?? overrides.kind ?? "failure_pattern";
+  const title = overrides.title ?? overrides.content?.title ?? validContent.title;
+  const summary = overrides.summary ?? overrides.content?.summary ?? validContent.summary;
+  const evidenceRefs = overrides.evidenceRefs ?? overrides.content?.evidenceRefs ?? validContent.evidenceRefs;
+  const sourceSignalIds = overrides.sourceSignalIds ?? overrides.content?.sourceSignalIds ?? validContent.sourceSignalIds;
+  const recommendation = overrides.recommendation ?? overrides.content?.recommendation ?? validContent.recommendation;
+
+  return {
+    learningObjectId,
+    objectId: overrides.objectId ?? learningObjectId,
+    learningType,
+    kind: overrides.kind ?? learningType,
+    title,
+    summary,
+    content: {
+      title,
+      summary,
+      evidenceRefs,
+      sourceSignalIds,
+      recommendation,
+      ...overrides.content,
+    },
+    confidence: overrides.confidence ?? 0.8,
+    evidenceRefs,
+    sourceSignalIds,
+    recommendation,
+    validatedBy: overrides.validatedBy ?? "none",
+    promotionStatus: overrides.promotionStatus ?? "draft",
+    status: overrides.status ?? "created",
+    createdAt: overrides.createdAt ?? new Date().toISOString(),
     ...overrides,
   };
 }
@@ -51,7 +88,7 @@ const validContent = {
 
 test("LearningObjectValidator detects password in text", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_pwd",
     kind: "failure_pattern",
     content: {
@@ -63,7 +100,7 @@ test("LearningObjectValidator detects password in text", () => {
     confidence: 0.8,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.secret_detected");
@@ -71,7 +108,7 @@ test("LearningObjectValidator detects password in text", () => {
 
 test("LearningObjectValidator detects API key in text", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_api",
     kind: "failure_pattern",
     content: {
@@ -83,7 +120,7 @@ test("LearningObjectValidator detects API key in text", () => {
     confidence: 0.8,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.secret_detected");
@@ -91,7 +128,7 @@ test("LearningObjectValidator detects API key in text", () => {
 
 test("LearningObjectValidator detects email address in text", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_email",
     kind: "failure_pattern",
     content: {
@@ -103,7 +140,7 @@ test("LearningObjectValidator detects email address in text", () => {
     confidence: 0.8,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.pii_detected");
@@ -111,7 +148,7 @@ test("LearningObjectValidator detects email address in text", () => {
 
 test("LearningObjectValidator detects credit card pattern", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_cc",
     kind: "failure_pattern",
     content: {
@@ -123,7 +160,7 @@ test("LearningObjectValidator detects credit card pattern", () => {
     confidence: 0.8,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.pii_detected");
@@ -131,7 +168,7 @@ test("LearningObjectValidator detects credit card pattern", () => {
 
 test("LearningObjectValidator detects SSN pattern", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_ssn",
     kind: "failure_pattern",
     content: {
@@ -143,7 +180,7 @@ test("LearningObjectValidator detects SSN pattern", () => {
     confidence: 0.8,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.pii_detected");
@@ -151,7 +188,7 @@ test("LearningObjectValidator detects SSN pattern", () => {
 
 test("LearningObjectValidator detects secret in recommendation", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_secret",
     kind: "failure_pattern",
     content: {
@@ -163,7 +200,7 @@ test("LearningObjectValidator detects secret in recommendation", () => {
     confidence: 0.8,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.secret_detected");
@@ -171,7 +208,7 @@ test("LearningObjectValidator detects secret in recommendation", () => {
 
 test("LearningObjectValidator accepts safe content", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_safe",
     kind: "failure_pattern",
     content: {
@@ -184,7 +221,7 @@ test("LearningObjectValidator accepts safe content", () => {
     confidence: 0.8,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, true);
   assert.equal(result.reasonCode, "learning.validated");
@@ -192,7 +229,7 @@ test("LearningObjectValidator accepts safe content", () => {
 
 test("LearningObjectValidator detects credential in title", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_cred",
     kind: "failure_pattern",
     content: {
@@ -204,7 +241,7 @@ test("LearningObjectValidator detects credential in title", () => {
     confidence: 0.8,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.secret_detected");
@@ -216,7 +253,7 @@ test("LearningObjectValidator detects credential in title", () => {
 
 test("LearningObjectValidator rejects failure_pattern below 0.5", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_fp_low",
     kind: "failure_pattern",
     content: {
@@ -228,7 +265,7 @@ test("LearningObjectValidator rejects failure_pattern below 0.5", () => {
     confidence: 0.49,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.confidence_below_floor");
@@ -236,7 +273,7 @@ test("LearningObjectValidator rejects failure_pattern below 0.5", () => {
 
 test("LearningObjectValidator accepts failure_pattern at 0.5", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_fp_50",
     kind: "failure_pattern",
     content: {
@@ -248,14 +285,14 @@ test("LearningObjectValidator accepts failure_pattern at 0.5", () => {
     confidence: 0.5,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, true);
 });
 
 test("LearningObjectValidator accepts failure_pattern above 0.5", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_fp_above",
     kind: "failure_pattern",
     content: {
@@ -267,14 +304,14 @@ test("LearningObjectValidator accepts failure_pattern above 0.5", () => {
     confidence: 0.8,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, true);
 });
 
 test("LearningObjectValidator rejects user_correction below 0.9", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_uc_low",
     kind: "user_correction",
     content: {
@@ -286,7 +323,7 @@ test("LearningObjectValidator rejects user_correction below 0.9", () => {
     confidence: 0.85,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.confidence_below_floor");
@@ -294,7 +331,7 @@ test("LearningObjectValidator rejects user_correction below 0.9", () => {
 
 test("LearningObjectValidator accepts user_correction at 0.9", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_uc_90",
     kind: "user_correction",
     content: {
@@ -306,14 +343,14 @@ test("LearningObjectValidator accepts user_correction at 0.9", () => {
     confidence: 0.9,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, true);
 });
 
 test("LearningObjectValidator rejects recovery_playbook below 0.7", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_rp_low",
     kind: "recovery_playbook",
     content: {
@@ -325,7 +362,7 @@ test("LearningObjectValidator rejects recovery_playbook below 0.7", () => {
     confidence: 0.65,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.confidence_below_floor");
@@ -333,7 +370,7 @@ test("LearningObjectValidator rejects recovery_playbook below 0.7", () => {
 
 test("LearningObjectValidator accepts recovery_playbook at 0.7", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_rp_70",
     kind: "recovery_playbook",
     content: {
@@ -345,7 +382,7 @@ test("LearningObjectValidator accepts recovery_playbook at 0.7", () => {
     confidence: 0.7,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, true);
 });
@@ -356,7 +393,7 @@ test("LearningObjectValidator accepts recovery_playbook at 0.7", () => {
 
 test("LearningObjectValidator requires evidenceRefs in content", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_no_evidence",
     kind: "failure_pattern",
     content: {
@@ -369,7 +406,7 @@ test("LearningObjectValidator requires evidenceRefs in content", () => {
     confidence: 0.8,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, false);
   assert.equal(result.reasonCode, "learning.missing_evidence");
@@ -377,7 +414,7 @@ test("LearningObjectValidator requires evidenceRefs in content", () => {
 
 test("LearningObjectValidator sets quarantine status on invalid objects", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_quarantine",
     kind: "failure_pattern",
     content: {
@@ -389,7 +426,7 @@ test("LearningObjectValidator sets quarantine status on invalid objects", () => 
     confidence: 0.3,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, false);
   const learningObj = result.learningObject as { promotionStatus?: string };
@@ -399,7 +436,7 @@ test("LearningObjectValidator sets quarantine status on invalid objects", () => 
 test("LearningObjectValidator.validateMany filters invalid objects", () => {
   const validator = new LearningObjectValidator();
   const objects = [
-    {
+    createLearningObject({
       objectId: "valid_1",
       kind: "failure_pattern",
       content: {
@@ -412,8 +449,8 @@ test("LearningObjectValidator.validateMany filters invalid objects", () => {
       confidence: 0.8,
       status: "created",
       createdAt: new Date().toISOString(),
-    },
-    {
+    }),
+    createLearningObject({
       objectId: "invalid_1",
       kind: "failure_pattern",
       content: {
@@ -426,8 +463,8 @@ test("LearningObjectValidator.validateMany filters invalid objects", () => {
       confidence: 0.8,
       status: "created",
       createdAt: new Date().toISOString(),
-    },
-    {
+    }),
+    createLearningObject({
       objectId: "valid_2",
       kind: "user_correction",
       content: {
@@ -440,7 +477,7 @@ test("LearningObjectValidator.validateMany filters invalid objects", () => {
       confidence: 0.95,
       status: "created",
       createdAt: new Date().toISOString(),
-    },
+    }),
   ];
 
   const validated = validator.validateMany(objects);
@@ -460,7 +497,7 @@ test("LearningObjectValidator.validateMany handles empty array", () => {
 test("LearningObjectValidator.validateMany returns all valid when all pass", () => {
   const validator = new LearningObjectValidator();
   const objects = [
-    {
+    createLearningObject({
       objectId: "obj_a",
       kind: "failure_pattern",
       content: {
@@ -473,8 +510,8 @@ test("LearningObjectValidator.validateMany returns all valid when all pass", () 
       confidence: 0.8,
       status: "created",
       createdAt: new Date().toISOString(),
-    },
-    {
+    }),
+    createLearningObject({
       objectId: "obj_b",
       kind: "recovery_playbook",
       content: {
@@ -487,7 +524,7 @@ test("LearningObjectValidator.validateMany returns all valid when all pass", () 
       confidence: 0.85,
       status: "created",
       createdAt: new Date().toISOString(),
-    },
+    }),
   ];
 
   const validated = validator.validateMany(objects);
@@ -497,7 +534,7 @@ test("LearningObjectValidator.validateMany returns all valid when all pass", () 
 
 test("LearningObjectValidator sets validated status on successful validation", () => {
   const validator = new LearningObjectValidator();
-  const result = validator.validate({
+  const result = validator.validate(createLearningObject({
     objectId: "obj_validated",
     kind: "failure_pattern",
     content: {
@@ -510,7 +547,7 @@ test("LearningObjectValidator sets validated status on successful validation", (
     confidence: 0.8,
     status: "created",
     createdAt: new Date().toISOString(),
-  });
+  }));
 
   assert.equal(result.valid, true);
   const learningObj = result.learningObject as { promotionStatus?: string; validatedBy?: string };
@@ -606,8 +643,9 @@ test("FailurePatternMiner.mine preserves evidenceRefs from signal", () => {
   const objects = miner.mine(signals);
 
   assert.ok(objects.length > 0);
-  const obj = objects[0] as { evidenceRefs?: string[] };
-  assert.ok(obj.evidenceRefs?.length >= 1);
+  const obj = objects[0];
+  assert.ok(obj != null);
+  assert.ok(obj.evidenceRefs.length >= 1);
 });
 
 test("FailurePatternMiner.mine produces consistent ID format", () => {

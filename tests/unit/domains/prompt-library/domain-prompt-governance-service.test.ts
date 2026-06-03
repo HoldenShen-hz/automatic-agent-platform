@@ -206,7 +206,7 @@ test("DomainPromptGovernanceService.activate throws for non-approved release", (
     evalEvidence: ["eval_passed"],
   });
 
-  (service as { releases: Map<string, unknown> }).releases.set(approved.releaseId, {
+  (service as unknown as { releases: Map<string, unknown> }).releases.set(approved.releaseId, {
     ...approved,
     status: "draft",
   });

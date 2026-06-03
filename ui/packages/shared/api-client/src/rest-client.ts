@@ -550,8 +550,8 @@ export class DefaultRESTClient implements RESTClient {
       path,
       method: "GET",
       headers: options?.headers ?? new Headers(),
-      timeoutMs: options?.timeoutMs,
-      signal: options?.signal,
+      ...(options?.timeoutMs == null ? {} : { timeoutMs: options.timeoutMs }),
+      ...(options?.signal == null ? {} : { signal: options.signal }),
     });
   }
 
@@ -561,8 +561,8 @@ export class DefaultRESTClient implements RESTClient {
       method: "POST",
       headers: options?.headers ?? new Headers(),
       body,
-      timeoutMs: options?.timeoutMs,
-      signal: options?.signal,
+      ...(options?.timeoutMs == null ? {} : { timeoutMs: options.timeoutMs }),
+      ...(options?.signal == null ? {} : { signal: options.signal }),
     });
   }
 
@@ -572,8 +572,8 @@ export class DefaultRESTClient implements RESTClient {
       method: "PUT",
       headers: options?.headers ?? new Headers(),
       body,
-      timeoutMs: options?.timeoutMs,
-      signal: options?.signal,
+      ...(options?.timeoutMs == null ? {} : { timeoutMs: options.timeoutMs }),
+      ...(options?.signal == null ? {} : { signal: options.signal }),
     });
   }
 
@@ -583,8 +583,8 @@ export class DefaultRESTClient implements RESTClient {
       method: "PATCH",
       headers: options?.headers ?? new Headers(),
       body,
-      timeoutMs: options?.timeoutMs,
-      signal: options?.signal,
+      ...(options?.timeoutMs == null ? {} : { timeoutMs: options.timeoutMs }),
+      ...(options?.signal == null ? {} : { signal: options.signal }),
     });
   }
 
@@ -593,8 +593,8 @@ export class DefaultRESTClient implements RESTClient {
       path,
       method: "DELETE",
       headers: options?.headers ?? new Headers(),
-      timeoutMs: options?.timeoutMs,
-      signal: options?.signal,
+      ...(options?.timeoutMs == null ? {} : { timeoutMs: options.timeoutMs }),
+      ...(options?.signal == null ? {} : { signal: options.signal }),
     });
   }
 

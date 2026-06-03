@@ -1,0 +1,11 @@
+$schema: training-data-policy/schemas/division-policy.schema.json
+divisionId: healthcare
+policyMode: no_train
+policyModeRef: training-data-policy/policy-modes.md
+heldoutTrainingPolicy: no_train
+requiresModelDataTombstone: true
+allowedSources: []
+forbiddenSources:
+  - patient_record
+  - clinical_summary
+  - production_healthcare_output

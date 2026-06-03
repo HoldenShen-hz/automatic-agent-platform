@@ -17,7 +17,10 @@
 | `source` | `string` | Source description |
 | `taskCount` | `integer >= 1` | Number of samples |
 | `split` | `train \| heldout \| release \| shadow` | Dataset usage |
+| `samples` | `string` | Repository-local path to the sample file or sample directory |
+| `sampleCount` | `integer >= 1` | Declared sample count for the frozen snapshot |
 | `contaminationStatus` | `clean \| suspected \| unknown` | Contamination status |
+| `contaminationEvidence` | `string[]` | Evidence refs backing the contamination decision |
 | `privacyStatus` | `public \| internal \| redacted \| restricted` | Privacy level |
 | `labelingMethod` | `string` | Labeling method |
 | `allowedForTraining` | `boolean` | Whether training use is allowed |
@@ -28,8 +31,9 @@
 ## 3. Rules
 
 - The schema is currently fail-close with `additionalProperties: false`.
+- `samples` must resolve to a real repository file or directory; a dataset without a resolvable sample path must not be consumed by the release gate.
 - `frozenHash` means the dataset content, index, and card are all bound to one frozen snapshot; it must be recalculated after any card change.
-- `contaminationStatus=clean` may only be claimed when contamination-check evidence exists; otherwise use `suspected` or `unknown`.
+- `contaminationStatus=clean` may only be claimed when `contaminationEvidence` is non-empty; otherwise use `suspected` or `unknown`.
 - `allowedForReleaseGate=true` does not imply automatic release gate pass; threshold evaluation and scenario-owner judgment still apply.
 
 ## 4. Legacy / Scope Notes

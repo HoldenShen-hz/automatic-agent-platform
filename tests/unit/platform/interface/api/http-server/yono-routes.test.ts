@@ -18,11 +18,16 @@ function createMockAuthServiceViewer(): ApiAuthService {
   } as unknown as ApiAuthService;
 }
 
-function createMockContext(pathname = "/v1/yono/markets", segments: string[] = [], headers: Record<string, string | undefined> = {}, body: string | null = null): RouteContext {
+function createMockContext(
+  pathname = "/v1/yono/markets",
+  segments: string[] = [],
+  headers: Record<string, string | undefined> | string[] = {},
+  body: string | null = null,
+): RouteContext {
   const routePathname = pathname.split("?")[0] ?? pathname;
   return {
     requestId: "req-123",
-    request: { method: "GET", url: pathname, headers, body } as never,
+    request: { method: "GET", url: pathname, headers: Array.isArray(headers) ? {} : headers, body } as never,
     route: { pathname: routePathname, segments },
     principal: null,
   };

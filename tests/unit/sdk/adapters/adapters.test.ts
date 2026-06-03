@@ -12,29 +12,28 @@ import { createCrmAdapterPlugin } from "../../../../src/plugins/adapters/crm-ada
 import { createGameDevAdapterPlugin } from "../../../../src/plugins/adapters/game-dev-adapter.js";
 import { createGithubAdapterPlugin, verifyPluginSignature } from "../../../../src/plugins/adapters/github-adapter.js";
 import { PolicyDeniedError } from "../../../../src/platform/contracts/errors.js";
+import { createJsonFetch } from "../../../helpers/fetch.js";
 
 function createMockFetch(responseBody: unknown = { ok: true }) {
-  return async (_input: string | URL, _init?: RequestInit) => ({
-    ok: true,
-    status: 200,
-    headers: { get: () => null },
-    text: async () => JSON.stringify(responseBody),
-  }) as Response;
+  return createJsonFetch(responseBody);
 }
 
 test("CRM adapter execute returns structured response (issue #2008)", async () => {
-  const adapter = createCrmAdapterPlugin();
+  const adapter = createCrmAdapterPlugin({
+    fetchImplementation: createMockFetch({ records: [] }),
+  });
   await adapter.authenticate({ token: "crm-test-token" });
 
   const result = await adapter.execute("get_contacts", { limit: 10 });
 
-  assert.equal(result.ok, false);
+  assert.equal(result.ok, true);
   assert.ok("data" in result);
 });
 
 test("CRM adapter execute checks egress policy (issue #2008)", async () => {
   const adapter = createCrmAdapterPlugin({
     apiBaseUrl: "https://api.hubspot.com",
+    fetchImplementation: createMockFetch({ records: [] }),
     policy: {
       evaluate: (url: string) => ({
         allowed: url.includes("hubspot.com"),
@@ -47,7 +46,7 @@ test("CRM adapter execute checks egress policy (issue #2008)", async () => {
   // Egress is allowed, but this unit test does not provide a live CRM endpoint.
   await adapter.authenticate({ token: "crm-test-token" });
   const result1 = await adapter.execute("get_contacts", {});
-  assert.equal(result1.ok, false);
+  assert.equal(result1.ok, true);
 
   // With restrictive policy, should deny
   const restrictedAdapter = createCrmAdapterPlugin({
@@ -124,9 +123,16 @@ test("Game Dev adapter execute requires authentication (issue #2014)", async () 
 });
 
 test("GitHub adapter execute validates repository parameter (issue #2020)", async () => {
+  let capturedUrl = "";
   const adapter = createGithubAdapterPlugin({
     apiBaseUrl: "https://api.github.com",
-    fetchImplementation: createMockFetch({ issueId: 1 }),
+    fetchImplementation: async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify({ issueId: 1 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    },
   });
 
   await adapter.authenticate({ token: "ghp_test_token" });
@@ -141,11 +147,22 @@ test("GitHub adapter execute validates repository parameter (issue #2020)", asyn
     body: "Test body",
   });
 
-  assert.ok("endpoint" in result);
+  assert.equal(result.repository, "owner/repo");
+  assert.equal(result.requestSummary.endpointTemplate, "/repos/{repository}/issues");
+  assert.ok(capturedUrl.includes("/repos/owner/repo/issues"));
 });
 
 test("GitHub adapter execute builds correct endpoint for create_issue (issue #2020)", async () => {
-  const adapter = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ issueId: 2 }) });
+  let capturedUrl = "";
+  const adapter = createGithubAdapterPlugin({
+    fetchImplementation: async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify({ issueId: 2 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    },
+  });
 
   await adapter.authenticate({ token: "ghp_test_token" });
 
@@ -156,13 +173,21 @@ test("GitHub adapter execute builds correct endpoint for create_issue (issue #20
     labels: ["bug", "high-priority"],
   });
 
-  const endpoint = (result as Record<string, unknown>).endpoint as string;
-  assert.ok(endpoint.includes("owner/repo"));
-  assert.ok(endpoint.includes("issues"));
+  assert.equal(result.requestSummary.endpointTemplate, "/repos/{repository}/issues");
+  assert.ok(capturedUrl.includes("/repos/owner/repo/issues"));
 });
 
 test("GitHub adapter execute builds correct endpoint for get_file (issue #2020)", async () => {
-  const adapter = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ content: "ok" }) });
+  let capturedUrl = "";
+  const adapter = createGithubAdapterPlugin({
+    fetchImplementation: async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify({ content: "ok" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    },
+  });
 
   await adapter.authenticate({ token: "ghp_test_token" });
 
@@ -172,10 +197,9 @@ test("GitHub adapter execute builds correct endpoint for get_file (issue #2020)"
     ref: "main",
   });
 
-  const endpoint = (result as Record<string, unknown>).endpoint as string;
-  assert.ok(endpoint.includes("owner/repo"));
-  assert.ok(endpoint.includes("contents"));
-  assert.ok(endpoint.includes("src/index.ts"));
+  assert.equal(result.requestSummary.endpointTemplate, "/repos/{repository}/contents/{path}");
+  assert.ok(capturedUrl.includes("/repos/owner/repo/contents/src/index.ts"));
+  assert.ok(capturedUrl.includes("ref=main"));
 });
 
 test("GitHub adapter execute requires authentication (issue #2020)", async () => {
@@ -192,9 +216,16 @@ test("GitHub adapter execute requires authentication (issue #2020)", async () =>
 });
 
 test("GitHub adapter execute checks egress policy", async () => {
+  let capturedUrl = "";
   const adapter = createGithubAdapterPlugin({
     apiBaseUrl: "https://api.github.com",
-    fetchImplementation: createMockFetch({ issueId: 3 }),
+    fetchImplementation: async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify({ issueId: 3 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    },
     policy: {
       evaluate: (url: string) => ({
         allowed: url.includes("github.com"),
@@ -212,7 +243,8 @@ test("GitHub adapter execute checks egress policy", async () => {
     body: "Test",
   });
 
-  assert.ok("endpoint" in result);
+  assert.equal(result.requestSummary.endpointTemplate, "/repos/{repository}/issues");
+  assert.ok(capturedUrl.includes("/repos/owner/repo/issues"));
   assert.equal((result as { status: number }).status, 200);
 });
 

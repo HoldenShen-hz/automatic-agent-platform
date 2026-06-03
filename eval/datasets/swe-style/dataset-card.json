@@ -4,13 +4,18 @@
   "scenarioId": "issue-to-patch",
   "version": "2026.06",
   "source": "internal_repository_snapshots",
-  "taskCount": 60,
+  "taskCount": 61,
   "split": "heldout",
+  "samples": "eval/datasets/swe-style/samples",
+  "sampleCount": 61,
   "contaminationStatus": "clean",
+  "contaminationEvidence": [
+    "docs_zh/divisions/coding/leadership-evidence/eval-report.md"
+  ],
   "privacyStatus": "restricted",
   "labelingMethod": "maintainer_review",
   "allowedForTraining": false,
   "allowedForReleaseGate": true,
   "retentionPolicyRef": "training-data-policy/retention.yaml",
-  "frozenHash": "sha256:d82768d7443b71698c976596676eee5c4cef0ffe4d3a41e95b6bcc87f36313d9"
+  "frozenHash": "sha256:4f3eca5cf1458d5e00d37628b4bec07cc7ab785499d6afff87b5d33f2d683f2a"
 }

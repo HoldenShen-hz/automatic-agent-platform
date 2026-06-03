@@ -21,7 +21,7 @@ class FakeMessagePort {
   public start(): void {}
 
   public dispatch(message: { capability: string; type: "status"; status: WSStatus } | { capability: string; type: "event"; event: WSEventEnvelope }): void {
-    const event = { data: message, currentTarget: this } as MessageEvent<typeof message>;
+    const event = { data: message, currentTarget: this } as unknown as MessageEvent<typeof message>;
     for (const listener of this.listeners) {
       listener(event);
     }

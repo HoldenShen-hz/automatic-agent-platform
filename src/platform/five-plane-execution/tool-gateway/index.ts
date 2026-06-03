@@ -276,6 +276,27 @@ export class ToolGateway {
   }
 
   private assertNoGoAllowed(phase: "prepare" | "commit", context: ToolGatewayActionContext): void {
+    if (
+      context.requestSource === "untrusted"
+      && context.preparedActionApproved !== true
+      && (
+        context.blockMode === "autonomous_final_decision"
+        || context.blockMode === "autonomous_external_write"
+        || context.modelRoutingMode === "unrestricted"
+      )
+    ) {
+      throw this.buildGovernanceError(
+        context,
+        phase,
+        `tool_gateway.workflow_injection_denied:${context.toolName}:${context.actionId ?? "unknown"}`,
+        "tool_gateway.workflow_injection_denied",
+        {
+          blockMode: context.blockMode ?? null,
+          modelRoutingMode: context.modelRoutingMode ?? null,
+          requestSource: context.requestSource,
+        },
+      );
+    }
     const blockMode = this.resolveBlockMode(context);
     if ((context.familyId?.trim() ?? "") !== "regulated" || blockMode == null) {
       return;
@@ -284,8 +305,13 @@ export class ToolGateway {
       ...(context.familyId != null ? { familyId: context.familyId } : {}),
       enforcementSurface: "ToolRisk",
       blockMode,
+      ...(context.requestSource != null ? { source: context.requestSource } : {}),
     });
-    if (matches.length === 0 || context.preparedActionApproved === true) {
+    if (matches.length === 0) {
+      return;
+    }
+    if (context.preparedActionApproved === true) {
+      this.recordNoGoExceptionUsage(context, phase, matches, blockMode);
       return;
     }
     const actionIds = matches.map((action) => action.id).join(", ");
@@ -380,5 +406,41 @@ export class ToolGateway {
       context.traceId,
     ) ?? null;
     return new ToolGatewayGovernanceError(message, governanceCode, receipt, outboxRecord);
+  }
+
+  private recordNoGoExceptionUsage(
+    context: ToolGatewayActionContext,
+    phase: "prepare" | "commit",
+    matches: readonly { id: string }[],
+    blockMode: string,
+  ): void {
+    const receipt = createBaseReceiptMinimal({
+      tenantId: context.tenantId,
+      missionId: context.missionId,
+      traceId: context.traceId,
+      actorId: context.actorId,
+      actionType: `tool.${phase}_exception:${context.toolName}`,
+      status: "prepared",
+      ...(context.taskId != null ? { taskId: context.taskId } : {}),
+      ...(context.sessionId != null ? { sessionId: context.sessionId } : {}),
+      ...(context.schemaVersion != null ? { schemaVersion: context.schemaVersion } : {}),
+      ...(context.evidenceIds != null ? { evidenceIds: context.evidenceIds } : {}),
+    });
+    this.outbox?.writeOutboxEntry(
+      context.executionId != null ? "execution" : "task",
+      context.executionId ?? context.taskId ?? receipt.receiptId,
+      "tool_gateway:no_go_exception_used",
+      {
+        receipt,
+        toolName: context.toolName,
+        actionId: context.actionId ?? null,
+        phase,
+        familyId: context.familyId ?? null,
+        divisionId: context.divisionId ?? null,
+        blockMode,
+        ruleIds: matches.map((action) => action.id),
+      },
+      context.traceId,
+    );
   }
 }

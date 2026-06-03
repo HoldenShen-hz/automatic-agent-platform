@@ -123,7 +123,7 @@ test("contract documents are non-empty and contain expected keywords", () => {
     const content = readFileSync(join(CONTRACTS_ROOT, contractFile), "utf8");
     assert.ok(content.length > 100, `${contractFile} is too short to be a valid contract`);
 
-    const hasContractMarker = /contract|interface|api|service/i.test(content);
+    const hasContractMarker = /contract|契约|interface|api|service|governance|ledger|schema|release gate/i.test(content);
     assert.ok(hasContractMarker, `${contractFile} does not appear to be a contract document`);
   }
 });

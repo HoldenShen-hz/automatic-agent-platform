@@ -28,6 +28,7 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..", "..");
 const fixtureDir = join(repoRoot, "tests", "fixtures", "seeded-defects", "redteam");
+const reportPath = join(repoRoot, "artifacts", "assurance", "redteam-report.json");
 
 interface AuditFinding {
   rule: string;
@@ -57,6 +58,14 @@ function listSeeds(): string[] {
 }
 
 describe("audit-tool: redteam self-test (§12.3)", () => {
+  it("writes the methodology report artifact", () => {
+    const out = runAudit("tests/fixtures/seeded-defects/redteam/negative");
+    assert.ok(existsSync(reportPath), "expected redteam-report.json to be written");
+    const report = JSON.parse(readFileSync(reportPath, "utf8")) as AuditReport & { scannedPath: string };
+    assert.equal(report.scannedPath, "tests/fixtures/seeded-defects/redteam/negative");
+    assert.equal(report.findingCount, out.findingCount);
+  });
+
   it("pos/neg/evasion seeds are all present in tests/fixtures/seeded-defects/redteam/", () => {
     const seeds = listSeeds();
     assert.ok(seeds.length >= 4, `expected at least 4 seed entries, got ${seeds.length}`);
@@ -114,7 +123,7 @@ describe("audit-tool: redteam self-test (§12.3)", () => {
     assert.ok(existsSync(manifestPath), "manifest.json missing");
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     assert.equal(manifest.expectedGate, "audit-redteam");
-    const kinds = new Set((manifest.seeds ?? []).map((s) => s.kind));
+    const kinds = new Set((manifest.seeds ?? []).map((seed: { kind: string }) => seed.kind));
     assert.ok(kinds.has("positive"), "manifest missing positive seed");
     assert.ok(kinds.has("negative"), "manifest missing negative seed");
     assert.ok(kinds.has("evasion"), "manifest missing evasion seed");

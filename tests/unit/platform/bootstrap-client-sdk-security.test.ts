@@ -49,7 +49,7 @@ test("1989..1995: security/bootstrap configs, architecture readiness guards, div
     bootstrapDefault.readinessGates,
     ["config_loaded", "service_registry_ready", "startup_targets_registered"],
   );
-  assert.equal(bootstrapDefault.hotReload.enabled, true);
+  assert.equal(bootstrapDefault.hotReload.enabled, false);
   assert.equal(bootstrapDefault.hotReload.reloadStrategies.config, "incremental");
   assert.equal(bootstrapDefault.impactAnalysis.enabled, true);
   assert.equal(bootstrapDefault.impactAnalysis.thresholds.maxImpactScore, 80);

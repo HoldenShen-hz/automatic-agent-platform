@@ -7,7 +7,7 @@ import { createDashboardRoutes } from "../../../../../../src/platform/five-plane
 import { createIncidentRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/incident-routes.js";
 import { createPromptRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/prompt-routes.js";
 import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
-import type { IncidentFacadeService } from "../../../../../../src/platform/five-plane-interface/api/facade-interfaces.js";
+import type { IncidentCase as FacadeIncidentCase, IncidentFacadeService } from "../../../../../../src/platform/five-plane-interface/api/facade-interfaces.js";
 import type { MissionControlService } from "../../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
 import type { ApiResponsePayload, RouteContext, RouteDefinition } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
@@ -45,24 +45,56 @@ function createContext(url: string, pathname: string, segments: string[]): Route
   };
 }
 
+function toFacadeIncident(incident: ReturnType<IncidentCaseService["openIncident"]>): FacadeIncidentCase {
+  return {
+    incidentId: incident.incidentId,
+    severity: incident.severity,
+    status:
+      incident.status === "open"
+        ? "open"
+        : incident.status === "acknowledged" || incident.status === "triaged"
+          ? "acknowledged"
+          : incident.status === "resolved" || incident.status === "closed"
+            ? "resolved"
+            : "mitigating",
+    title: incident.title,
+    linkedEvidenceRefs: incident.linkedEvidenceRefs,
+    owner: incident.owner,
+    createdAt: incident.createdAt,
+    updatedAt: incident.updatedAt,
+    resolvedAt: incident.resolvedAt,
+  };
+}
+
+function createIncidentFacade(backingService: IncidentCaseService): IncidentFacadeService {
+  return {
+    listIncidents: (limit, tenantId) => backingService.listIncidents(limit, tenantId).map(toFacadeIncident),
+    listIncidentsPaginated: (limit, tenantId, cursor) => {
+      const result = backingService.listIncidentsPaginated(limit, tenantId, cursor);
+      return {
+        incidents: result.incidents.map(toFacadeIncident),
+        nextToken: result.nextToken,
+      };
+    },
+    getIncident: (incidentId, tenantId) => {
+      const incident = backingService.getIncident(incidentId, tenantId);
+      return incident == null ? null : toFacadeIncident(incident);
+    },
+    openIncident: (input) => toFacadeIncident(backingService.openIncident(input)),
+    acknowledge: (incidentId, owner, tenantId) => toFacadeIncident(backingService.acknowledge(incidentId, owner, tenantId)),
+    startMitigation: (incidentId, tenantId) => toFacadeIncident(backingService.startMitigation(incidentId, tenantId)),
+    resolve: (incidentId, tenantId) => toFacadeIncident(backingService.resolve(incidentId, tenantId)),
+  };
+}
+
 test("R20-30 incident routes return and consume cursor pagination", async () => {
   const backingService = new IncidentCaseService();
   backingService.openIncident({ severity: "high", title: "Incident A" });
   backingService.openIncident({ severity: "high", title: "Incident B" });
   backingService.openIncident({ severity: "high", title: "Incident C" });
-  const incidentService: IncidentFacadeService = {
-    listIncidents: (limit, tenantId) => backingService.listIncidents(limit, tenantId),
-    listIncidentsPaginated: (limit, tenantId, cursor) => backingService.listIncidentsPaginated(limit, tenantId, cursor),
-    getIncident: (incidentId, tenantId) => backingService.getIncident(incidentId, tenantId),
-    openIncident: (input) => backingService.openIncident(input),
-    acknowledge: (incidentId, owner, tenantId) => backingService.acknowledge(incidentId, owner, tenantId),
-    startMitigation: (incidentId, tenantId) => backingService.startMitigation(incidentId, tenantId),
-    resolve: (incidentId, tenantId) => backingService.resolve(incidentId, tenantId),
-  };
-
   const routes = createIncidentRoutes({
     authService: createMockAuthService(),
-    incidentService,
+    incidentService: createIncidentFacade(backingService),
   });
 
   const firstResponse = await callRoute(routes, createContext("http://localhost/v1/incidents?limit=2", "/v1/incidents", ["v1", "incidents"]));

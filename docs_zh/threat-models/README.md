@@ -5,10 +5,10 @@
 
 | # | Dataflow | File | Required gates | Coverage |
 |---|---|---|---|---|
-| 1 | User Request → Auth → Tenant Guard → Route → Service → Repository | [dataflow-1-user-request.md](./dataflow-1-user-request.md) | tenant-isolation, secret-sinks, contracts-sync, fire-and-forget, determinism | ✅ 5/6 (缺 auth-role-mapping) |
+| 1 | User Request → Auth → Tenant Guard → Route → Service → Repository | [dataflow-1-user-request.md](./dataflow-1-user-request.md) | tenant-isolation, secret-sinks, contracts-sync, fire-and-forget, determinism | ✅ 6/6 |
 | 2 | Task Intake → Planner → Execution → Tool → SideEffect → Receipt | [dataflow-2-task-intake.md](./dataflow-2-task-intake.md) | lease-fencing, side-effect-receipt, receipt-verification, audit-chain, event-outbox, plugin-security | ✅ 6/6 |
 | 3 | Observation → Feedback → Learning → Knowledge Promotion → Memory | [dataflow-3-observation-feedback.md](./dataflow-3-observation-feedback.md) | secret-sinks, tenant-isolation, event-outbox, audit-chain, receipt-verification | ✅ 5/5 |
-| 4 | Eval Dataset → Runner → Judge → Report → Release Gate | [dataflow-4-eval-dataset.md](./dataflow-4-eval-dataset.md) | eval-oracle, golden:strict, redteam:p0, evidence:bundle:* | ⚠️ 2/5 (redteam/p0 + golden:strict 缺测试) |
+| 4 | Eval Dataset → Runner → Judge → Report → Release Gate | [dataflow-4-eval-dataset.md](./dataflow-4-eval-dataset.md) | eval-oracle, golden:strict, redteam:p0, evidence:bundle:* | ✅ 5/5 |
 | 5 | Plugin Manifest → Signature → SBOM → Registry → Execution | [dataflow-5-plugin-manifest.md](./dataflow-5-plugin-manifest.md) | plugin-security, audit-chain, receipt-verification, event-outbox | ✅ 4/4 |
 | 6 | Secret Provider → Runtime Config → Logger/Event/Span sinks | [dataflow-6-secret-provider.md](./dataflow-6-secret-provider.md) | secret-sinks, audit-chain, determinism | ✅ 3/3 |
 | 7 | WebSocket Subscribe → Broadcast → Client Cache | [dataflow-7-websocket-subscribe.md](./dataflow-7-websocket-subscribe.md) | tenant-isolation, ui-token-storage, secret-sinks | ✅ 3/3 |
@@ -18,14 +18,12 @@
 
 ## 总结
 
-- **完全覆盖**（5/5 gate 已实现）: 7 条 (1, 2, 3, 5, 6, 7, 9, 10)
-- **部分覆盖**（1-2 gate 缺）: 1 条 (4 — eval)
-- **唯一仍缺** gate: `audit:auth-role-mapping` (§9.3, Dataflow 1)
-- **eval 数据流**: redteam/p0 + golden:strict 需要更多测试（与本仓代码现状一致）
+- **完全覆盖**（所列 gate 已落地并已有定向验证）: 10 条
+- **部分覆盖**: 0 条
+- `audit:auth-role-mapping` 已实现并可通过自测/仓内扫描
+- `test:redteam:p0` 与 `test:golden:strict` 已可直接跑通
 
 ## 后续 action item
 
-1. 实现 `audit:auth-role-mapping` (§9.3) — P0
-2. 给 tests/redteam/p0 加至少 1 个 P0 test — P1
-3. 给 tests/golden 配套的 strict runner 实际跑通 — P2
-4. 把 10 条 dataflow 文档纳入 `assurance:inventory` 的产物清单
+1. 把 10 条 dataflow 文档纳入 `assurance:inventory` 的产物清单
+2. 持续把 dataflow 级 gate 结果回写到 nightly assurance 报告

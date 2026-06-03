@@ -19,6 +19,22 @@ import type {
   StageEvaluation,
   PreparedEdit,
 } from "../../../../../../src/platform/five-plane-execution/tool-executor/edit-replacement/edit-replacement-types.js";
+import type { SandboxPolicy } from "../../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
+
+function createSandboxPolicy(mode: SandboxPolicy["mode"] = "workspace_write"): SandboxPolicy {
+  return {
+    policyId: "policy-test",
+    mode,
+    allowedRoots: ["/src"],
+    deniedRoots: [],
+    realpathEnforced: true,
+    symlinkPolicy: "deny",
+    processRuleMode: "deny",
+    timeLimitMs: 30_000,
+    memoryLimitBytes: 0,
+    cpuLimitFraction: 0,
+  };
+}
 
 test("EditReplacementAttemptLevel has correct values [edit-replacement-types]", () => {
   const levels: EditReplacementAttemptLevel[] = [
@@ -57,7 +73,7 @@ test("EditReplacementRequest structure [edit-replacement-types]", () => {
     executionId: "exec-789",
     traceId: "trace-abc",
     toolName: "edit",
-    sandboxPolicy: { mode: "container" },
+    sandboxPolicy: createSandboxPolicy(),
     filePath: "/src/file.ts",
     oldString: "old content",
     newString: "new content",
@@ -96,7 +112,7 @@ test("EditBatchRequest extends EditReplacementRequest [edit-replacement-types]",
     executionId: null,
     traceId: "trace-abc",
     toolName: "batch_edit",
-    sandboxPolicy: { mode: "container" },
+    sandboxPolicy: createSandboxPolicy(),
     filePath: "/src/file.ts",
     edits: [
       { oldString: "a", newString: "b" },
@@ -253,8 +269,11 @@ test("PreparedEdit structure [edit-replacement-types]", () => {
 
 test("EditReplacementResult structure [edit-replacement-types]", () => {
   const result: EditReplacementResult = {
+    callId: "call-123",
+    toolName: "edit",
+    status: "succeeded",
     success: true,
-    value: "file content",
+    output: "file content",
     metadata: {
       filePath: "/src/test.ts",
       warnings: [],
@@ -268,6 +287,10 @@ test("EditReplacementResult structure [edit-replacement-types]", () => {
       similarityScore: null,
       appliedRange: null,
     },
+    artifacts: [],
+    durationMs: 12,
+    error: null,
+    executionReceipt: null,
     attempts: [],
     warnings: [],
     matchLevel: "exact",
@@ -281,8 +304,11 @@ test("EditReplacementResult structure [edit-replacement-types]", () => {
 
 test("EditBatchResult structure [edit-replacement-types]", () => {
   const result: EditBatchResult = {
+    callId: "call-456",
+    toolName: "batch_edit",
+    status: "succeeded",
     success: true,
-    value: "batch result",
+    output: "batch result",
     metadata: {
       filePath: "/src/test.ts",
       warnings: [],
@@ -296,6 +322,10 @@ test("EditBatchResult structure [edit-replacement-types]", () => {
       appliedEditCount: 2,
       rolledBack: false,
     },
+    artifacts: [],
+    durationMs: 20,
+    error: null,
+    executionReceipt: null,
     edits: [],
     warnings: [],
   };

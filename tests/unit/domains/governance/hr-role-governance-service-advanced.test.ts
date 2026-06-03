@@ -16,7 +16,10 @@ import {
   type SubmitHrRoleProposalRequest,
 } from "../../../../src/domains/governance/hr-role-governance-service.js";
 import type { DivisionRegistry } from "../../../../src/domains/governance/division-loader.js";
-import type { ApprovalService } from "../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import type {
+  ApprovalRequest,
+  ApprovalService,
+} from "../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 
 /** Minimal DivisionRegistry for testing */
 function makeMockDivision(
@@ -74,6 +77,12 @@ function makeGapAnalysisRequest(overrides: Partial<HrGapAnalysisRequest> = {}): 
   };
 }
 
+function makeApprovalServiceMock(
+  createRequest: (input: Omit<ApprovalRequest, "approvalId" | "createdAt">) => ApprovalRequest,
+): ApprovalService {
+  return { createRequest } as unknown as ApprovalService;
+}
+
 test("HrRoleGovernanceService submitProposal returns gap analysis and validation without approval service", () => {
   const registry = makeMockDivision([
     { id: "role_reader", name: "Reader", tools: ["read"] },
@@ -95,21 +104,13 @@ test("HrRoleGovernanceService submitProposal creates approval request when valid
     { id: "role_reader", name: "Reader", tools: ["read"] },
   ]);
 
-  const mockApprovalService = {
-    createRequest: (input: { taskId: string; reason: string; riskLevel: string; options: string[]; context: Record<string, unknown>; timeoutPolicy: string }) => {
-      return {
-        approvalId: "approval_001",
-        taskId: input.taskId,
-        reason: input.reason,
-        riskLevel: input.riskLevel,
-        options: input.options,
-        context: input.context,
-        timeoutPolicy: input.timeoutPolicy,
-      };
-    },
-  };
+  const mockApprovalService = makeApprovalServiceMock((input) => ({
+    approvalId: "approval_001",
+    createdAt: new Date().toISOString(),
+    ...input,
+  }));
 
-  const service = new HrRoleGovernanceService(registry, mockApprovalService as Pick<ApprovalService, "createRequest">);
+  const service = new HrRoleGovernanceService(registry, mockApprovalService);
 
   const result = service.submitProposal({
     gapAnalysisRequest: makeGapAnalysisRequest(),
@@ -123,13 +124,11 @@ test("HrRoleGovernanceService submitProposal creates approval request when valid
 
 test("HrRoleGovernanceService submitProposal does not create approval request when validation fails", () => {
   const registry = makeMockDivision([]);
-  const mockApprovalService = {
-    createRequest: () => {
-      throw new Error("Should not be called");
-    },
-  };
+  const mockApprovalService = makeApprovalServiceMock(() => {
+    throw new Error("Should not be called");
+  });
 
-  const service = new HrRoleGovernanceService(registry, mockApprovalService as Pick<ApprovalService, "createRequest">);
+  const service = new HrRoleGovernanceService(registry, mockApprovalService);
 
   const result = service.submitProposal({
     gapAnalysisRequest: makeGapAnalysisRequest(),

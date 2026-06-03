@@ -54,7 +54,7 @@ test("WorkflowRepository insertWorkflowState inserts a workflow record", () => {
       divisionId: "general-ops",
       workflowId: "wf-1",
       currentStepIndex: 0,
-      status: "in_progress",
+      status: "running",
       outputsJson: "{}",
       lastErrorCode: null,
       retryCount: 0,
@@ -68,7 +68,7 @@ test("WorkflowRepository insertWorkflowState inserts a workflow record", () => {
     const result = repo.getWorkflowState("task-wf-1");
     assert.ok(result);
     assert.equal(result.taskId, "task-wf-1");
-    assert.equal(result.status, "in_progress");
+    assert.equal(result.status, "running");
     assert.equal(result.currentStepIndex, 0);
   } finally {
     cleanupPath(workspace);
@@ -106,9 +106,10 @@ test("WorkflowRepository insertStepOutput inserts a step output record", () => {
     const stepOutput: StepOutputRecord = {
       id: "step-output-1",
       taskId: "task-step-1",
+      nodeRunId: "node-run-1",
       stepId: "step-1",
       roleId: "agent",
-      status: "completed",
+      status: "succeeded",
       dataJson: '{"result":"success"}',
       summary: "Step completed successfully",
       artifactsJson: "[]",
@@ -126,7 +127,7 @@ test("WorkflowRepository insertStepOutput inserts a step output record", () => {
       divisionId: "general-ops",
       workflowId: "wf-1",
       currentStepIndex: 1,
-      status: "in_progress",
+      status: "running",
       outputsJson: "{}",
       lastErrorCode: null,
       retryCount: 0,
@@ -162,7 +163,7 @@ test("WorkflowRepository listWorkflowStates returns all workflows", () => {
       divisionId: "general-ops",
       workflowId: "wf-1",
       currentStepIndex: 0,
-      status: "in_progress",
+      status: "running",
       outputsJson: "{}",
       lastErrorCode: null,
       retryCount: 0,
@@ -210,7 +211,7 @@ test("WorkflowRepository updateWorkflowState updates workflow fields", () => {
       divisionId: "general-ops",
       workflowId: "wf-1",
       currentStepIndex: 0,
-      status: "in_progress",
+      status: "running",
       outputsJson: "{}",
       lastErrorCode: null,
       retryCount: 0,
@@ -221,7 +222,7 @@ test("WorkflowRepository updateWorkflowState updates workflow fields", () => {
 
     repo.updateWorkflowState(
       "task-update-1",
-      "in_progress",
+      "running",
       2,
       '{"step2":"done"}',
       later,
@@ -254,7 +255,7 @@ test("WorkflowRepository updateWorkflowStateCas returns 1 on successful update",
       divisionId: "general-ops",
       workflowId: "wf-1",
       currentStepIndex: 0,
-      status: "in_progress",
+      status: "running",
       outputsJson: "{}",
       lastErrorCode: null,
       retryCount: 0,
@@ -266,8 +267,8 @@ test("WorkflowRepository updateWorkflowStateCas returns 1 on successful update",
     const updated = repo.updateWorkflowStateCas(
       "task-cas-1",
       0, // expectedVersion
-      "in_progress", // expectedStatus
-      "in_progress",
+      "running", // expectedStatus
+      "running",
       1,
       '{"step1":"done"}',
       now,
@@ -301,7 +302,7 @@ test("WorkflowRepository updateWorkflowStateCas returns 0 on CAS failure", () =>
       divisionId: "general-ops",
       workflowId: "wf-1",
       currentStepIndex: 0,
-      status: "in_progress",
+      status: "running",
       outputsJson: "{}",
       lastErrorCode: null,
       retryCount: 0,
@@ -314,8 +315,8 @@ test("WorkflowRepository updateWorkflowStateCas returns 0 on CAS failure", () =>
     const updated = repo.updateWorkflowStateCas(
       "task-cas-fail-1",
       5, // wrong expected version
-      "in_progress",
-      "in_progress",
+      "running",
+      "running",
       1,
       '{"step1":"done"}',
       now,
@@ -350,7 +351,7 @@ test("WorkflowRepository updateWorkflowRecoveryState updates all recovery fields
       divisionId: "general-ops",
       workflowId: "wf-1",
       currentStepIndex: 0,
-      status: "in_progress",
+      status: "running",
       outputsJson: "{}",
       lastErrorCode: null,
       retryCount: 0,
@@ -361,11 +362,11 @@ test("WorkflowRepository updateWorkflowRecoveryState updates all recovery fields
 
     repo.updateWorkflowRecoveryState({
       taskId: "task-recovery-1",
-      status: "in_progress",
+      status: "running",
       currentStepIndex: 1,
       outputsJson: '{"partial":"result"}',
       updatedAt: now,
-      resumableFromStep: 0,
+      resumableFromStep: "step-0",
       retryCount: 2,
       lastErrorCode: "STEP_TIMEOUT",
     });

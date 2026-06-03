@@ -321,7 +321,9 @@ test("[PERF-LOGGER-13] structured logger concurrent writes from multiple instanc
     // Concurrent-like: interleave writes
     for (let i = 0; i < entriesPerLogger; i++) {
       for (let j = 0; j < loggerCount; j++) {
-        loggers[j].info(`message-${i}-from-${j}`);
+        const logger = loggers[j];
+        assert.ok(logger, "logger instance should exist");
+        logger.info(`message-${i}-from-${j}`);
       }
     }
 

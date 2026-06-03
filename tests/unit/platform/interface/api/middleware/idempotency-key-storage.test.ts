@@ -1,5 +1,4 @@
 import { describe, it, beforeEach, afterEach, mock } from "node:test";
-import assert from "node:assert/strict";
 import assert, {
   strictEqual,
   deepStrictEqual,
@@ -150,18 +149,15 @@ describe("InMemoryIdempotencyStorage", () => {
     it("should respect maxDelete limit", async () => {
       // Use a fresh storage and direct entries manipulation to avoid internal cleanup
       const testStorage = new InMemoryIdempotencyStorage();
-      // @ts-expect-error - accessing private member for testing
-      testStorage["entries"].set("key-1", {
+      Reflect.get(testStorage, "entries").set("key-1", {
         ...createEntry("POST", 200, null),
         expiresAt: Date.now() - 100, // expired
       });
-      // @ts-expect-error - accessing private member for testing
-      testStorage["entries"].set("key-2", {
+      Reflect.get(testStorage, "entries").set("key-2", {
         ...createEntry("POST", 200, null),
         expiresAt: Date.now() + 60_000, // not expired
       });
-      // @ts-expect-error - accessing private member for testing
-      testStorage["entries"].set("key-3", {
+      Reflect.get(testStorage, "entries").set("key-3", {
         ...createEntry("POST", 200, null),
         expiresAt: Date.now() - 100, // expired
       });
@@ -203,21 +199,31 @@ describe("InMemoryIdempotencyStorage", () => {
 
 describe("RedisIdempotencyStorage", () => {
   const redisConfig = { host: "127.0.0.1" };
-  // Mock Redis client for testing
-  const mockRedis = {
-    get: mock.fn(() => Promise.resolve(null)),
-    set: mock.fn(() => Promise.resolve("OK")),
-    del: mock.fn(() => Promise.resolve(1)),
-  };
+
+  function createStorageWithMockClient(mockClient?: {
+    get?: (...args: unknown[]) => Promise<unknown>;
+    set?: (...args: unknown[]) => Promise<unknown>;
+    del?: (...args: unknown[]) => Promise<unknown>;
+    scan?: (...args: unknown[]) => Promise<unknown>;
+  }): RedisIdempotencyStorage {
+    const storage = new RedisIdempotencyStorage(redisConfig);
+    storage["redis"].disconnect();
+    if (mockClient != null) {
+      Reflect.set(storage, "redis", mockClient);
+    }
+    return storage;
+  }
 
   it("should build key with prefix", async () => {
     const storage = new RedisIdempotencyStorage({ ...redisConfig, keyPrefix: "test:" });
+    storage["redis"].disconnect();
     const built = storage["buildKey"]("abc");
     strictEqual(built, "test:abc");
   });
 
   it("should default keyPrefix to idempotency:", () => {
     const storage = new RedisIdempotencyStorage(redisConfig);
+    storage["redis"].disconnect();
     const built = storage["buildKey"]("abc");
     strictEqual(built, "idempotency:abc");
   });
@@ -235,8 +241,7 @@ describe("RedisIdempotencyStorage", () => {
       del: mock.fn(() => Promise.resolve(1)),
       set: mock.fn(() => Promise.resolve("OK")),
     };
-    const storage = new RedisIdempotencyStorage(redisConfig);
-    storage["redis"] = mockClient as any;
+    const storage = createStorageWithMockClient(mockClient);
 
     const result = await storage.get("key-1");
     strictEqual(result, null);
@@ -248,8 +253,7 @@ describe("RedisIdempotencyStorage", () => {
       set: mock.fn(() => Promise.resolve("OK")),
       del: mock.fn(() => Promise.resolve(1)),
     };
-    const storage = new RedisIdempotencyStorage(redisConfig);
-    storage["redis"] = mockClient as any;
+    const storage = createStorageWithMockClient(mockClient);
 
     await storage.set("key-1", createEntry("POST", 201, null), 60_000);
     ok(mockClient.set.mock.calls.length > 0);
@@ -261,17 +265,49 @@ describe("RedisIdempotencyStorage", () => {
       set: mock.fn(() => Promise.resolve("OK")),
       del: mock.fn(() => Promise.resolve(1)),
     };
-    const storage = new RedisIdempotencyStorage(redisConfig);
-    storage["redis"] = mockClient as any;
+    const storage = createStorageWithMockClient(mockClient);
 
     await storage.delete("key-1");
     strictEqual(mockClient.del.mock.calls.length, 1);
   });
 
-  it("should cleanup returns 0 (Redis handles expiry via PX)", async () => {
-    const storage = new RedisIdempotencyStorage(redisConfig);
+  it("should cleanup scan and delete only expired or corrupt entries", async () => {
+    const mockClient = {
+      scan: mock.fn(async (...args: unknown[]) => {
+        const [cursor] = args as [string];
+        return (
+        cursor === "0"
+          ? (["1", ["idempotency:expired", "idempotency:fresh", "idempotency:corrupt"]] as const)
+          : (["0", []] as const)
+        );
+      }),
+      get: mock.fn(async (...args: unknown[]) => {
+        const [key] = args as [string];
+        if (key === "idempotency:expired") {
+          return JSON.stringify({
+            ...createEntry("POST", 200, null),
+            expiresAt: Date.now() - 1_000,
+          } satisfies IdempotencyEntry);
+        }
+        if (key === "idempotency:fresh") {
+          return JSON.stringify({
+            ...createEntry("POST", 200, null),
+            expiresAt: Date.now() + 60_000,
+          } satisfies IdempotencyEntry);
+        }
+        return "not-json";
+      }),
+      del: mock.fn(() => Promise.resolve(1)),
+      set: mock.fn(() => Promise.resolve("OK")),
+    };
+    const storage = createStorageWithMockClient(mockClient);
     const result = await storage.cleanup();
-    strictEqual(result, 0);
+    strictEqual(result, 2);
+    strictEqual(mockClient.del.mock.calls.length, 2);
+    deepStrictEqual(
+      mockClient.del.mock.calls.map((call) => call.arguments.at(0)),
+      ["idempotency:expired", "idempotency:corrupt"],
+    );
   });
 
   it("should return null for invalid JSON in Redis", async () => {
@@ -280,8 +316,7 @@ describe("RedisIdempotencyStorage", () => {
       set: mock.fn(() => Promise.resolve("OK")),
       del: mock.fn(() => Promise.resolve(1)),
     };
-    const storage = new RedisIdempotencyStorage(redisConfig);
-    storage["redis"] = mockClient as any;
+    const storage = createStorageWithMockClient(mockClient);
 
     const result = await storage.get("key-1");
     strictEqual(result, null);

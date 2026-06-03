@@ -34,12 +34,12 @@
 | Layer | 职责 | npm 脚本 | 关键产物 |
 |---|---|---|---|
 | 1 Inventory | 全仓文件/合同/事件/指标/测试/文档/config/workflow 索引 | `assurance:inventory` | `artifacts/assurance/source-inventory.json`, `routes.json`, `contracts.json`, `events.json`, `metrics.json`, `tests.json` |
-| 2 Historical Promises | 抽取 must/done/final/production-ready 等承诺 | `assurance:historical-promises`, `audit:historical-promises` | `artifacts/assurance/historical-promises.jsonl` |
+| 2 Historical Promises | 抽取 must/done/final/production-ready 等承诺，并归档 assumptions | `assurance:historical-promises`, `assurance:assumptions`, `audit:historical-promises` | `artifacts/assurance/historical-promises.jsonl`, `assumptions.jsonl` |
 | 3 Static Audit | contract/secret/tenant/path/import/determinism 扫描 | `audit:contracts-sync`, `audit:secret-sinks`, `audit:tenant-isolation`, `audit:plugin-security`, `audit:path-safety`, `audit:architecture-boundary`, `audit:fire-and-forget`, `audit:determinism`, `audit:release-claims` | `artifacts/assurance/static-audit-report.json` |
 | 4 Dynamic Invariant | invariant/chaos/multi-tenant/replay 测试 | `test:invariants`, `test:chaos:p0`, `test:regression:p0` | `artifacts/assurance/invariant-test-report.json` |
 | 5 Eval/Redteam/Golden Anti-fake | expected-as-actual/judge 读自评分检测 | `audit:eval-oracle`, `test:redteam:p0`, `test:golden:strict` | `artifacts/assurance/eval-oracle-report.json` |
-| 6 Issue Ledger | 归一化 + 去重 + epic 化 | `assurance:issue-ledger` | `artifacts/assurance/issues.{raw,normalized,deduped}.jsonl` |
-| 7 Coverage Scorecard | 10 维度评分，判定 release blocked | `assurance:coverage-scorecard` | `artifacts/assurance/audit-coverage-scorecard.{json,md}` |
+| 6 Issue Ledger | 归一化 + 去重 + epic 化，并补 test↔issue / 历史回归映射 | `assurance:issue-ledger`, `assurance:test-to-issue`, `assurance:historical-regression-map` | `artifacts/assurance/issues.{raw,normalized,deduped}.jsonl`, `historical-issue-regression-map.{json,md}` |
+| 7 Coverage Scorecard | 10 维度评分 + completeness coverage matrix，判定 release blocked | `assurance:coverage-scorecard`, `assurance:completeness-matrix` | `artifacts/assurance/audit-coverage-scorecard.{json,md}`, `completeness-coverage-matrix.{json,md}` |
 | 8 Evidence Bundle | 签名归档、verifier 验签 | `evidence:bundle:create`, `evidence:bundle:verify` | `artifacts/release/evidence-bundle.json`, `.sig` |
 
 ## 3. PR / Nightly / Release 三个调度场景的差异
@@ -76,7 +76,7 @@ PR 必须阻断：
 npm run assurance:full
 ```
 
-输出到 `artifacts/assurance/nightly/YYYY-MM-DD/`。
+输出到 `artifacts/assurance/`。
 
 ### 3.3 Release rc:check
 
@@ -128,11 +128,20 @@ P0 audit gate lacks seeded defect test
   "validationRunId": "...",
   "includedReports": [
     "artifacts/release/rc-check-report.json",
-    "artifacts/release/contract-drift-report.json",
-    "artifacts/release/security-audit-report.json",
-    "artifacts/release/eval-redteam-report.json",
-    "artifacts/release/release-claim-report.json",
-    "artifacts/assurance/audit-coverage-scorecard.json"
+    "artifacts/assurance/audit-coverage-scorecard.json",
+    "artifacts/assurance/eval-oracle-report.json",
+    "artifacts/assurance/redteam-report.json",
+    "artifacts/assurance/golden-replay-report.json",
+    "artifacts/assurance/review-ledger.normalized.jsonl",
+    "artifacts/assurance/review-evidence-readiness-report.json",
+    "artifacts/assurance/historical-promises.jsonl",
+    "artifacts/assurance/assumptions.jsonl",
+    "artifacts/assurance/issues.deduped.jsonl",
+    "artifacts/assurance/test-to-issue-map.json",
+    "artifacts/assurance/historical-issue-regression-map.json",
+    "artifacts/assurance/completeness-coverage-matrix.json",
+    "artifacts/assurance/seeded-defect-report.json",
+    "artifacts/assurance/assurance-full-report.json"
   ]
 }
 ```

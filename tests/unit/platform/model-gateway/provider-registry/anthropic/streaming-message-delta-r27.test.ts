@@ -5,6 +5,7 @@ import {
   AnthropicChatService,
   type AnthropicChatCompletionRequest,
 } from "../../../../../../src/platform/model-gateway/provider-registry/anthropic/anthropic-chat-service.js";
+import type { ProviderCredentialPool } from "../../../../../../src/platform/model-gateway/provider-registry/provider-credential-pool.js";
 
 const FAKE_API_KEY = "test-api-key-anthropic";
 const FAKE_MODEL = "claude-sonnet-4-20251120";
@@ -66,7 +67,7 @@ test("Anthropic streaming preserves stop_reason and usage from message_delta (R2
   const service = new AnthropicChatService({
     apiKey: FAKE_API_KEY,
     fetchImpl: mockFetch,
-    credentialPool: mockCredentialPool as unknown as import("../../../../../../../src/platform/model-gateway/provider-registry/provider-credential-pool.js").ProviderCredentialPool,
+    credentialPool: mockCredentialPool as unknown as ProviderCredentialPool,
   });
 
   const request: AnthropicChatCompletionRequest = {
@@ -89,9 +90,17 @@ test("Anthropic streaming preserves stop_reason and usage from message_delta (R2
   });
 
   assert.ok(finalChunk !== null, "Should emit a final stream chunk");
-  assert.equal(finalChunk.content, "Hello from Claude");
-  assert.equal(finalChunk.stopReason, "max_tokens");
-  assert.deepEqual(finalChunk.usage, {
+  if (finalChunk == null) {
+    throw new Error("missing final chunk");
+  }
+  const emitted = finalChunk as unknown as {
+    content: string;
+    stopReason: string;
+    usage: { input_tokens: number; output_tokens: number };
+  };
+  assert.equal(emitted.content, "Hello from Claude");
+  assert.equal(emitted.stopReason, "max_tokens");
+  assert.deepEqual(emitted.usage, {
     input_tokens: 17,
     output_tokens: 29,
   });

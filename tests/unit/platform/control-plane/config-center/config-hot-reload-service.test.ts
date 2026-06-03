@@ -2,11 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ConfigHotReloadService } from "../../../../../src/platform/five-plane-control-plane/config-center/config-hot-reload-service.js";
 
-type ConfigHotReloadServicePrivate = ConfigHotReloadService & {
-  _initialized: boolean;
-  subscriptions: Map<string, { active?: boolean }>;
-  watchedFiles: Set<string>;
-};
+function getHotReloadInitialized(service: ConfigHotReloadService): boolean {
+  return Reflect.get(service as object, "_initialized") as boolean;
+}
+
+function getHotReloadSubscriptions(service: ConfigHotReloadService): Map<string, { active?: boolean }> {
+  return Reflect.get(service as object, "subscriptions") as Map<string, { active?: boolean }>;
+}
+
+function getWatchedFiles(service: ConfigHotReloadService): Set<string> {
+  return Reflect.get(service as object, "watchedFiles") as Set<string>;
+}
 
 test("ConfigHotReloadService can be instantiated", () => {
   const service = new ConfigHotReloadService({ enableFileWatcher: false });
@@ -16,9 +22,9 @@ test("ConfigHotReloadService can be instantiated", () => {
 test("ConfigHotReloadService initialize can be called multiple times safely", async () => {
   const service = new ConfigHotReloadService({ enableFileWatcher: false });
   await service.initialize();
-  assert.equal((service as ConfigHotReloadServicePrivate)._initialized, true);
+  assert.equal(getHotReloadInitialized(service), true);
   await service.initialize();
-  assert.equal((service as ConfigHotReloadServicePrivate)._initialized, true);
+  assert.equal(getHotReloadInitialized(service), true);
   service.shutdown();
 });
 
@@ -43,10 +49,10 @@ test("ConfigHotReloadService unsubscribe removes subscription", () => {
     async () => {},
   );
   service.unsubscribe(subscriptionId);
-  assert.equal((service as ConfigHotReloadServicePrivate).subscriptions.has(subscriptionId), false);
+  assert.equal(getHotReloadSubscriptions(service).has(subscriptionId), false);
   service.pauseSubscription(subscriptionId);
   service.resumeSubscription(subscriptionId);
-  assert.equal((service as ConfigHotReloadServicePrivate).subscriptions.has(subscriptionId), false);
+  assert.equal(getHotReloadSubscriptions(service).has(subscriptionId), false);
 });
 
 test("ConfigHotReloadService pauseSubscription deactivates subscription", () => {
@@ -58,7 +64,7 @@ test("ConfigHotReloadService pauseSubscription deactivates subscription", () => 
     async () => {},
   );
   service.pauseSubscription(subscriptionId);
-  assert.equal((service as ConfigHotReloadServicePrivate).subscriptions.get(subscriptionId)?.active, false);
+  assert.equal(getHotReloadSubscriptions(service).get(subscriptionId)?.active, false);
   service.shutdown();
 });
 
@@ -72,7 +78,7 @@ test("ConfigHotReloadService resumeSubscription reactivates subscription", () =>
   );
   service.pauseSubscription(subscriptionId);
   service.resumeSubscription(subscriptionId);
-  assert.equal((service as ConfigHotReloadServicePrivate).subscriptions.get(subscriptionId)?.active, true);
+  assert.equal(getHotReloadSubscriptions(service).get(subscriptionId)?.active, true);
   service.shutdown();
 });
 
@@ -192,17 +198,17 @@ test("ConfigHotReloadService shutdown clears subscriptions and stops watchers", 
     ["platform"],
     async () => {},
   );
-  assert.equal((service as ConfigHotReloadServicePrivate).subscriptions.size, 1);
+  assert.equal(getHotReloadSubscriptions(service).size, 1);
   service.shutdown();
-  assert.equal((service as ConfigHotReloadServicePrivate).subscriptions.size, 0);
-  assert.equal((service as ConfigHotReloadServicePrivate)._initialized, false);
+  assert.equal(getHotReloadSubscriptions(service).size, 0);
+  assert.equal(getHotReloadInitialized(service), false);
 });
 
 test("ConfigHotReloadService watchFile adds file to watched set", () => {
   const service = new ConfigHotReloadService({ enableFileWatcher: false });
   const filePath = "/tmp/nonexistent-config-file.json";
   service.watchFile(filePath);
-  assert.equal((service as ConfigHotReloadServicePrivate).watchedFiles.has(filePath), true);
+  assert.equal(getWatchedFiles(service).has(filePath), true);
   service.unwatchFile(filePath);
   service.shutdown();
 });
@@ -212,6 +218,6 @@ test("ConfigHotReloadService unwatchFile removes file from watched set", () => {
   const filePath = "/tmp/nonexistent-config-file.json";
   service.watchFile(filePath);
   service.unwatchFile(filePath);
-  assert.equal((service as ConfigHotReloadServicePrivate).watchedFiles.has(filePath), false);
+  assert.equal(getWatchedFiles(service).has(filePath), false);
   service.shutdown();
 });

@@ -55,7 +55,6 @@ class MockQueueAdapter implements QueueAdapter {
       delayed: 0,
       active: 0,
       completed: 0,
-      failed: 0,
       deadLetter: 0,
     };
   }

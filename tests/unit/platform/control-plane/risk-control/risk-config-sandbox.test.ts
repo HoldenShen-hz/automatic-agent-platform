@@ -120,7 +120,7 @@ test("loadRiskConfig uses normalized path from sandbox policy", () => {
   }
 });
 
-test("loadRiskConfig without sandbox policy bypasses path validation", () => {
+test("loadRiskConfig without sandbox policy fails closed", () => {
   const tempDir = mkdtempSync(join("/", "tmp", "risk-sandbox-test-"));
   const configDir = join(tempDir, "riskdir");
   mkdirSync(configDir, { recursive: true });
@@ -129,10 +129,13 @@ test("loadRiskConfig without sandbox policy bypasses path validation", () => {
     const configPath = join(configDir, "risk-config.json");
     writeFileSync(configPath, JSON.stringify(createValidRiskConfig()), "utf-8");
 
-    // Without sandbox policy, should still work
-    const config = loadRiskConfig(configPath);
-    assert.ok(config);
-    assert.equal(config.factorWeights.confidence, 0.1);
+    assert.throws(
+      () => loadRiskConfig(configPath),
+      (error: unknown) =>
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "config.risk_sandbox_policy_required",
+    );
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }

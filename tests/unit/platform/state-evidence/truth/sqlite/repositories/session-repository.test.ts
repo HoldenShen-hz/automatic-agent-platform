@@ -249,7 +249,7 @@ test("SessionRepository insertMessage and listMessagesBySession work", () => {
     const message: MessageRecord = {
       id: "message-1",
       sessionId: "session-message-1",
-      direction: "incoming",
+      direction: "inbound",
       messageType: "text",
       content: "Hello world",
       partsJson: null,
@@ -261,7 +261,7 @@ test("SessionRepository insertMessage and listMessagesBySession work", () => {
 
     const results = repo.listMessagesBySession("session-message-1");
     assert.equal(results.length, 1);
-    assert.equal(results[0].content, "Hello world");
+    assert.equal(results[0]?.content, "Hello world");
   } finally {
     cleanupPath(workspace);
   }
@@ -280,12 +280,12 @@ test("SessionRepository upsertGatewayTarget and getGatewayTarget work", () => {
     const target: GatewayTargetRecord = {
       targetId: "gateway-target-1",
       channel: "slack",
-      targetKind: "channel",
+      targetKind: "room",
       externalTargetId: "C012345",
       displayName: "#general",
       aliasesJson: "[]",
       metadataJson: "{}",
-      source: "workspace",
+      source: "directory",
       lastSeenAt: now,
       createdAt: now,
       updatedAt: now,
@@ -316,12 +316,12 @@ test("SessionRepository upsertGatewayTarget updates existing target", () => {
     repo.upsertGatewayTarget({
       targetId: "gateway-upsert-1",
       channel: "slack",
-      targetKind: "channel",
+      targetKind: "room",
       externalTargetId: "C111",
       displayName: "#old-name",
       aliasesJson: "[]",
       metadataJson: "{}",
-      source: "workspace",
+      source: "directory",
       lastSeenAt: now,
       createdAt: now,
       updatedAt: now,
@@ -330,12 +330,12 @@ test("SessionRepository upsertGatewayTarget updates existing target", () => {
     repo.upsertGatewayTarget({
       targetId: "gateway-upsert-1",
       channel: "slack",
-      targetKind: "channel",
+      targetKind: "room",
       externalTargetId: "C111",
       displayName: "#new-name",
       aliasesJson: "[]",
       metadataJson: "{}",
-      source: "workspace",
+      source: "directory",
       lastSeenAt: later,
       createdAt: now,
       updatedAt: later,
@@ -362,12 +362,12 @@ test("SessionRepository listGatewayTargetsByChannel returns targets", () => {
     repo.upsertGatewayTarget({
       targetId: "gateway-list-1",
       channel: "slack",
-      targetKind: "channel",
+      targetKind: "room",
       externalTargetId: "C001",
       displayName: "#engineering",
       aliasesJson: "[]",
       metadataJson: "{}",
-      source: "workspace",
+      source: "directory",
       lastSeenAt: now,
       createdAt: now,
       updatedAt: now,
@@ -376,12 +376,12 @@ test("SessionRepository listGatewayTargetsByChannel returns targets", () => {
     repo.upsertGatewayTarget({
       targetId: "gateway-list-2",
       channel: "slack",
-      targetKind: "channel",
+      targetKind: "room",
       externalTargetId: "C002",
       displayName: "#general",
       aliasesJson: "[]",
       metadataJson: "{}",
-      source: "workspace",
+      source: "directory",
       lastSeenAt: now,
       createdAt: now,
       updatedAt: now,
@@ -390,12 +390,12 @@ test("SessionRepository listGatewayTargetsByChannel returns targets", () => {
     repo.upsertGatewayTarget({
       targetId: "gateway-list-3",
       channel: "teams",
-      targetKind: "channel",
+      targetKind: "room",
       externalTargetId: "T001",
       displayName: "General",
       aliasesJson: "[]",
       metadataJson: "{}",
-      source: "workspace",
+      source: "directory",
       lastSeenAt: now,
       createdAt: now,
       updatedAt: now,
@@ -442,7 +442,7 @@ test("SessionRepository insertSessionEvent and listSessionEvents work", () => {
 
     const results = repo.listSessionEvents("session-event-1");
     assert.equal(results.length, 1);
-    assert.equal(results[0].eventType, "session.started");
+    assert.equal(results[0]?.eventType, "session.started");
   } finally {
     cleanupPath(workspace);
   }
@@ -474,8 +474,11 @@ test("SessionRepository insertCompactionRecord works", () => {
       id: "compaction-1",
       sessionId: "session-compaction-1",
       taskId: "task-compaction-1",
-      stage: "eager",
+      harnessRunId: null,
+      nodeRunId: null,
+      stage: "trim",
       sourceMessageIdsJson: '["msg-1","msg-2"]',
+      coveredMessageRange: null,
       summaryText: "Conversation summary",
       summaryRef: null,
       compactionReason: "token_limit",
@@ -489,7 +492,7 @@ test("SessionRepository insertCompactionRecord works", () => {
 
     const results = repo.listCompactionRecordsBySession("session-compaction-1");
     assert.equal(results.length, 1);
-    assert.equal(results[0].compactionReason, "token_limit");
+    assert.equal(results[0]?.compactionReason, "token_limit");
   } finally {
     cleanupPath(workspace);
   }

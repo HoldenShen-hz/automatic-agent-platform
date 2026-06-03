@@ -8,12 +8,10 @@
   "split": "heldout",
   "samples": "tests/fixtures/seeded-defects/dataset/negative/samples",
   "sampleCount": 60,
-  "contaminationStatus": {
-    "status": "clean",
-    "evidence": [
-      "docs_zh/divisions/coding/leadership-evidence/dataset-contamination-report.md"
-    ]
-  },
+  "contaminationStatus": "clean",
+  "contaminationEvidence": [
+    "docs_zh/divisions/coding/leadership-evidence/dataset-contamination-report.md"
+  ],
   "privacyStatus": "restricted",
   "labelingMethod": "maintainer_review",
   "allowedForTraining": false,

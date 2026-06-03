@@ -5,6 +5,7 @@ import { ChannelGatewayRetryExecutor } from "../../../../../src/platform/five-pl
 import { ChannelGatewayService } from "../../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-service.js";
 import type { GatewayStoragePort } from "../../../../../src/platform/five-plane-interface/channel-gateway/storage-port.js";
 import type { GatewayTargetRecord } from "../../../../../src/platform/contracts/types/domain.js";
+import { waitForMs } from "../../../../helpers/wait.js";
 
 // Minimal mock implementations
 const mockStoragePort: GatewayStoragePort = {
@@ -70,7 +71,7 @@ test("ChannelGatewayRetryExecutor runOnce returns busy when already running", as
       if (firstCall) {
         firstCall = false;
         // timing-contract: retry timeout behavior depends on real timer expiry.
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await waitForMs(50);
       }
       return {
         scanned: 0,

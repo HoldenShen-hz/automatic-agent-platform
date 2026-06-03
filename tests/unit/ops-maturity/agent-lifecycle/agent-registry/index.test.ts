@@ -56,8 +56,8 @@ test("listActiveAgents filters active and canary agents", () => {
   ] as any[];
   const result = listActiveAgents(agents);
   assert.equal(result.length, 2);
-  assert.equal(result[0].agentId, "2");
-  assert.equal(result[1].agentId, "3");
+  assert.equal(result[0]?.agentId, "2");
+  assert.equal(result[1]?.agentId, "3");
 });
 
 test("listActiveAgents returns empty array for no active agents", () => {

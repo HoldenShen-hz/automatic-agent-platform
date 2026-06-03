@@ -167,9 +167,10 @@ test("SqliteQueueAdapter nack requeues job [sqlite-queue-adapter.unit]", () => {
     r1.nack("test error");
 
     const requeued = h.adapter.getJob(job.id);
-    assert.equal(requeued?.status, "waiting");
+    assert.equal(requeued?.status, "delayed");
     assert.equal(requeued?.attempts, 1);
     assert.equal(requeued?.lastError, "test error");
+    assert.ok(requeued?.delayUntil);
   } finally {
     h.db.close();
     cleanupPath(h.workspace);
@@ -182,9 +183,12 @@ test("SqliteQueueAdapter nack after max attempts moves to dead letter [sqlite-qu
     const job = h.adapter.enqueue({ queueName: "tasks", payload: {}, maxAttempts: 2 });
 
     const r1 = h.adapter.dequeue("tasks");
+    assert.ok(r1);
     r1.nack("first fail");
 
+    h.adapter.retryJob(job.id);
     const r2 = h.adapter.dequeue("tasks");
+    assert.ok(r2);
     r2.nack("second fail");
 
     const dlqJob = h.adapter.getJob(job.id);

@@ -13,6 +13,14 @@ import {
 } from "../../../../../src/ops-maturity/edge-runtime/sync-queue/index.js";
 
 describe("validateSyncQueueChain", () => {
+  function makeEnvelope(overrides: Partial<EdgeSyncEnvelope> = {}): EdgeSyncEnvelope {
+    return {
+      envelopeId: "env-1",
+      priority: 1,
+      ...overrides,
+    };
+  }
+
   test("returns valid result for empty array", () => {
     const result = validateSyncQueueChain([]);
 
@@ -23,7 +31,7 @@ describe("validateSyncQueueChain", () => {
 
   test("returns valid result for single envelope with no prev_hash", () => {
     const items: EdgeSyncEnvelope[] = [
-      { envelopeId: "env-1", priority: 1, prev_hash: undefined },
+      makeEnvelope(),
     ];
 
     const result = validateSyncQueueChain(items);
@@ -40,7 +48,6 @@ describe("validateSyncQueueChain", () => {
         priority: 3,
         sequence_no: 3,
         createdAt: "2026-04-20T00:02:00.000Z",
-        prev_hash: undefined,
       },
       {
         envelopeId: "env-2",
@@ -86,7 +93,6 @@ describe("validateSyncQueueChain", () => {
         priority: 1,
         sequence_no: 1,
         createdAt: "2026-04-20T00:00:00.000Z",
-        prev_hash: undefined,
       },
       {
         envelopeId: "env-2",
@@ -108,7 +114,6 @@ describe("validateSyncQueueChain", () => {
       {
         envelopeId: "env-1",
         priority: 1,
-        prev_hash: undefined,
         side_effect_dependency_refs: [],
       },
       {
@@ -130,7 +135,6 @@ describe("validateSyncQueueChain", () => {
       {
         envelopeId: "env-1",
         priority: 1,
-        prev_hash: undefined,
         side_effect_dependency_refs: ["env-2"],
       },
       {
@@ -152,7 +156,6 @@ describe("validateSyncQueueChain", () => {
       {
         envelopeId: "env-root",
         priority: 2,
-        prev_hash: undefined,
         side_effect_dependency_refs: [],
       },
       {
@@ -181,7 +184,6 @@ describe("validateSyncQueueChain", () => {
         envelopeId: "env-1",
         priority: 2,
         createdAt: "2026-04-20T00:00:00.000Z",
-        prev_hash: undefined,
       },
     ];
 
@@ -213,7 +215,6 @@ describe("validateSyncQueueChain", () => {
       {
         envelopeId: "env-a",
         priority: 4,
-        prev_hash: undefined,
         side_effect_dependency_refs: [],
       },
     ];
@@ -243,12 +244,10 @@ describe("validateSyncQueueChain", () => {
       {
         envelopeId: "env-low",
         priority: 1,
-        prev_hash: undefined,
       },
       {
         envelopeId: "env-high",
         priority: 5,
-        prev_hash: undefined,
       },
     ];
 

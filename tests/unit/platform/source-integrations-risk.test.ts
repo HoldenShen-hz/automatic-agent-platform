@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { ValidationError } from "../../../src/platform/contracts/errors.js";
+import { createConfigReadPolicy } from "../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { loadRiskConfig } from "../../../src/platform/five-plane-control-plane/risk-control/risk-config-loader.js";
 import { createUnhandledRejectionHandler } from "../../../src/platform/five-plane-execution/startup/process-error-handlers.js";
 import { StartupConsistencyChecker } from "../../../src/platform/five-plane-execution/startup/startup-consistency-checker.js";
@@ -69,6 +70,7 @@ test("R31-54/R31-55/R31-57/R31-60/R31-62/R32-01/R32-02/R32-03/R32-04/R32-05/R32-
   const toolContractValidatorSource = readFileSync("src/platform/five-plane-execution/tool-executor/tool-contract-validator.ts", "utf8");
 
   assert.match(evaluatorSource, /new RiskEvaluationEngine/);
+  assert.match(evaluatorSource, /createConfigReadPolicy/);
   assert.match(evaluatorSource, /this\.riskEvaluationEngine\.evaluate/);
   assert.match(outcomeEvaluatorSource, /new DefaultRiskEvaluationProvider/);
   assert.match(outcomeEvaluatorSource, /this\.riskEvaluationProvider\.evaluate/);
@@ -83,7 +85,7 @@ test("R31-54/R31-55/R31-57/R31-60/R31-62/R32-01/R32-02/R32-03/R32-04/R32-05/R32-
   assert.match(toolPathScopeSource, /denying path/);
   assert.match(toolExecutionAccessSource, /allowedTools: \[\]/);
   assert.match(mcpToolGuardSource, /BUILTIN_TOOL_NAMES\.has\(toolName\)/);
-  assert.match(harnessLoopSource, /const rawIterations = Math\.max\(1, Math\.floor\(budget\.maxSteps \/ 3\)\);/);
+  assert.match(harnessLoopSource, /const rawIterations = Math\.max\(1, Math\.floor\(budget\.maxSteps\)\);/);
   assert.match(guardrailSource, /const cooldown = nextCount > this\.maxRepeatedActions/);
   assert.match(webSearchSource, /hostname = new URL\(url\)\.hostname/);
   assert.match(webSearchSource, /catch \{\s+continue;\s+\}/);
@@ -143,7 +145,7 @@ test("R31-56: loadRiskConfig rejects malformed schema with ValidationError", () 
     }));
 
     assert.throws(
-      () => loadRiskConfig(configPath),
+      () => loadRiskConfig(configPath, createConfigReadPolicy(tempDir)),
       (error: unknown) => error instanceof ValidationError && error.code === "risk_config.invalid_schema",
     );
   } finally {

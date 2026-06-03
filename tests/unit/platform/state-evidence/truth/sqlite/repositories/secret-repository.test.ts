@@ -20,14 +20,14 @@ test("SecretRepository upsertSecretRegistryRecord and getSecretRegistryRecord wo
     const secret: SecretRegistryRecord = {
       secretRef: "secret-ref-1",
       displayName: "Database Password",
-      category: "credential",
+      category: "tenant_credential",
       providerKind: "vault",
       scopeType: "workspace",
       scopeRef: "ws-1",
       status: "active",
       rotationPolicyJson: '{"rotation_interval_days":90}',
       metadataJson: '{"owner":"team-a"}',
-      currentVersion: 1,
+      currentVersion: "1",
       lastRotatedAt: now,
       nextRotationDueAt: now,
       createdAt: now,
@@ -39,8 +39,8 @@ test("SecretRepository upsertSecretRegistryRecord and getSecretRegistryRecord wo
     const result = repo.getSecretRegistryRecord("secret-ref-1");
     assert.ok(result);
     assert.equal(result.displayName, "Database Password");
-    assert.equal(result.category, "credential");
-    assert.equal(Number(result.currentVersion), 1);
+    assert.equal(result.category, "tenant_credential");
+    assert.equal(result.currentVersion, "1");
   } finally {
     cleanupPath(workspace);
   }
@@ -60,14 +60,14 @@ test("SecretRepository upsertSecretRegistryRecord updates existing record", () =
     repo.upsertSecretRegistryRecord({
       secretRef: "secret-upsert-1",
       displayName: "Original Name",
-      category: "credential",
+      category: "tenant_credential",
       providerKind: "vault",
       scopeType: "workspace",
       scopeRef: "ws-1",
       status: "active",
       rotationPolicyJson: "{}",
       metadataJson: "{}",
-      currentVersion: 1,
+      currentVersion: "1",
       lastRotatedAt: now,
       nextRotationDueAt: now,
       createdAt: now,
@@ -77,14 +77,14 @@ test("SecretRepository upsertSecretRegistryRecord updates existing record", () =
     repo.upsertSecretRegistryRecord({
       secretRef: "secret-upsert-1",
       displayName: "Updated Name",
-      category: "credential",
+      category: "tenant_credential",
       providerKind: "vault",
       scopeType: "workspace",
       scopeRef: "ws-1",
       status: "active",
       rotationPolicyJson: "{}",
       metadataJson: "{}",
-      currentVersion: 2,
+      currentVersion: "2",
       lastRotatedAt: later,
       nextRotationDueAt: later,
       createdAt: now,
@@ -94,7 +94,7 @@ test("SecretRepository upsertSecretRegistryRecord updates existing record", () =
     const result = repo.getSecretRegistryRecord("secret-upsert-1");
     assert.ok(result);
     assert.equal(result.displayName, "Updated Name");
-    assert.equal(Number(result.currentVersion), 2);
+    assert.equal(result.currentVersion, "2");
   } finally {
     cleanupPath(workspace);
   }
@@ -129,14 +129,14 @@ test("SecretRepository listSecretRegistryRecords returns all records", () => {
     repo.upsertSecretRegistryRecord({
       secretRef: "secret-list-1",
       displayName: "Secret 1",
-      category: "credential",
+      category: "tenant_credential",
       providerKind: "vault",
       scopeType: "workspace",
       scopeRef: "ws-1",
       status: "active",
       rotationPolicyJson: "{}",
       metadataJson: "{}",
-      currentVersion: 1,
+      currentVersion: "1",
       lastRotatedAt: now,
       nextRotationDueAt: now,
       createdAt: now,
@@ -146,14 +146,14 @@ test("SecretRepository listSecretRegistryRecords returns all records", () => {
     repo.upsertSecretRegistryRecord({
       secretRef: "secret-list-2",
       displayName: "Secret 2",
-      category: "api_key",
-      providerKind: "aws",
+      category: "provider_api_key",
+      providerKind: "kms",
       scopeType: "workspace",
       scopeRef: "ws-1",
       status: "active",
       rotationPolicyJson: "{}",
       metadataJson: "{}",
-      currentVersion: 1,
+      currentVersion: "1",
       lastRotatedAt: now,
       nextRotationDueAt: now,
       createdAt: now,

@@ -330,7 +330,7 @@ test("DlqService.discard updates status with reason", () => {
   const discarded = service.discard(record.deadLetterId, "Payload malformed - cannot retry", "op-123");
 
   assert.equal(discarded.status, "discarded");
-  assert.equal(discarded.errorCode, "Payload malformed - cannot retry");
+  assert.equal(discarded.reason, "Payload malformed - cannot retry");
   assert.equal(discarded.operatorActionLog[0]!.action, "manual_discard");
 });
 

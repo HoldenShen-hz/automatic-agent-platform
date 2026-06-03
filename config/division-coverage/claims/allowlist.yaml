@@ -1,3 +1,4 @@
+$schema: config/division-coverage/schemas/leadership-claim-allowlist.schema.json
 version: 1
 updatedAt: "2026-06-01T12:00:00Z"
 entries:

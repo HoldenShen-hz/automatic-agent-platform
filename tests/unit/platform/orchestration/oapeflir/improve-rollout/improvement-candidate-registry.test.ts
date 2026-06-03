@@ -4,22 +4,45 @@ import assert from "node:assert/strict";
 import { ImprovementCandidateRegistry, type RegisterImprovementCandidateInput } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/improvement-candidate-registry.js";
 import type { LearningObject } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-object-model.js";
 
+function createLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
+  const learningObjectId = overrides.learningObjectId ?? overrides.objectId ?? "lo_test";
+  const learningType = overrides.learningType ?? overrides.kind ?? "failure_pattern";
+  const title = overrides.title ?? "Test Pattern";
+  const summary = overrides.summary ?? "A test pattern";
+  const evidenceRefs = overrides.evidenceRefs ?? ["artifact:1"];
+  const sourceSignalIds = overrides.sourceSignalIds ?? ["sig_1"];
+  const recommendation = overrides.recommendation ?? "Use narrower scope";
+
+  return {
+    learningObjectId,
+    objectId: overrides.objectId ?? learningObjectId,
+    learningType,
+    kind: overrides.kind ?? learningType,
+    title,
+    summary,
+    content: overrides.content ?? {
+      title,
+      summary,
+      evidenceRefs,
+      sourceSignalIds,
+      recommendation,
+    },
+    confidence: overrides.confidence ?? 0.9,
+    evidenceRefs,
+    sourceSignalIds,
+    recommendation,
+    validatedBy: overrides.validatedBy ?? "evidence",
+    promotionStatus: overrides.promotionStatus ?? "validated",
+    status: overrides.status ?? "validated",
+    createdAt: overrides.createdAt ?? new Date().toISOString(),
+    ...overrides,
+  };
+}
+
 test("ImprovementCandidateRegistry registers a candidate", () => {
   const registry = new ImprovementCandidateRegistry();
   const learningObjects: LearningObject[] = [
-    {
-      learningObjectId: "lo_1",
-      learningType: "failure_pattern",
-      title: "Test Pattern",
-      summary: "A test pattern",
-      confidence: 0.9,
-      evidenceRefs: ["artifact:1"],
-      sourceSignalIds: ["sig_1"],
-      recommendation: "Use narrower scope",
-      validatedBy: "evidence",
-      promotionStatus: "validated",
-      createdAt: Date.now(),
-    },
+    createLearningObject({ learningObjectId: "lo_1" }),
   ];
 
   const input: RegisterImprovementCandidateInput = {
@@ -136,32 +159,23 @@ test("ImprovementCandidateRegistry uses default expectedBenefit when not provide
 test("ImprovementCandidateRegistry collects evidence refs from learning objects", () => {
   const registry = new ImprovementCandidateRegistry();
   const learningObjects: LearningObject[] = [
-    {
+    createLearningObject({
       learningObjectId: "lo_1",
-      learningType: "failure_pattern",
       title: "Pattern 1",
       summary: "Summary 1",
-      confidence: 0.9,
       evidenceRefs: ["artifact:a", "artifact:b"],
-      sourceSignalIds: ["sig_1"],
-      recommendation: "Rec 1",
-      validatedBy: "evidence",
-      promotionStatus: "validated",
-      createdAt: Date.now(),
-    },
-    {
+    }),
+    createLearningObject({
       learningObjectId: "lo_2",
       learningType: "user_correction",
+      kind: "user_correction",
       title: "Pattern 2",
       summary: "Summary 2",
       confidence: 0.8,
       evidenceRefs: ["artifact:c"],
       sourceSignalIds: ["sig_2"],
       recommendation: "Rec 2",
-      validatedBy: "evidence",
-      promotionStatus: "validated",
-      createdAt: Date.now(),
-    },
+    }),
   ];
 
   const candidate = registry.register({

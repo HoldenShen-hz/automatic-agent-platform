@@ -12,30 +12,13 @@ import test from "node:test";
 
 import { BudgetGuard } from "../../../../src/platform/model-gateway/cost-tracker/budget-guard.js";
 import { ChargebackService } from "../../../../src/platform/model-gateway/cost-tracker/chargeback-service.js";
+import type { CostReportRecord } from "../../../../src/platform/five-plane-interface/api/cost-report-service.js";
 
 // ============================================================================
 // Mock Cost Report Source
 // ============================================================================
 
-interface MockCostReport {
-  reportId: string;
-  tenantId: string | null;
-  periodStart: string;
-  periodEnd: string;
-  totalCostUsd: number;
-  currency: string;
-  resourceCosts: Array<{
-    resourceId: string;
-    resourceType: string;
-    costUsd: number;
-    currency: string;
-    metadata?: Record<string, unknown>;
-  }>;
-  resourceCount: number;
-  submittedBy: string;
-  submittedAt: string;
-  createdAt: string;
-}
+type MockCostReport = CostReportRecord;
 
 function createMockReportSource(reports: MockCostReport[]) {
   return {

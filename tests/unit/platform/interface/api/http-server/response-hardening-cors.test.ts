@@ -23,7 +23,8 @@ import {
   decorateResponseHeaders,
   parseAllowedOrigins,
 } from "../../../../../../src/platform/five-plane-interface/api/http-server/response-hardening.js";
-import type { CorsConfig, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/response-hardening.js";
+import type { CorsConfig } from "../../../../../../src/platform/five-plane-interface/api/http-server/response-hardening.js";
+import type { ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 test("R25-02: normalizeCorsConfig throws when wildcard origins + credentials=true", () => {
   assert.throws(

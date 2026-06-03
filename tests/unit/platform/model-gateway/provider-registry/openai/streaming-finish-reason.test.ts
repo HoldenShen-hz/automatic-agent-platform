@@ -5,6 +5,7 @@ import {
   OpenAIChatService,
   type OpenAIChatCompletionRequest,
 } from "../../../../../../src/platform/model-gateway/provider-registry/openai/openai-chat-service.js";
+import type { ProviderCredentialPool } from "../../../../../../src/platform/model-gateway/provider-registry/provider-credential-pool.js";
 
 const FAKE_API_KEY = "test-api-key-openai";
 const FAKE_MODEL = "gpt-4o";
@@ -114,7 +115,7 @@ test("OpenAI streaming takes final finish_reason from last chunk with non-null v
   const service = new OpenAIChatService({
     apiKey: FAKE_API_KEY,
     fetchImpl: mockFetch,
-    credentialPool: mockCredentialPool as unknown as import("../../../../../../../src/platform/model-gateway/provider-registry/provider-credential-pool.js").ProviderCredentialPool,
+    credentialPool: mockCredentialPool as unknown as ProviderCredentialPool,
   });
 
   const request: OpenAIChatCompletionRequest = {
@@ -131,10 +132,14 @@ test("OpenAI streaming takes final finish_reason from last chunk with non-null v
   // The fix: final finish_reason should be "length" (from last non-null chunk),
   // NOT "stop" (the default initial value) and NOT the null from first chunk.
   assert.ok(finalChunk !== null, "Should have received at least one chunk");
+  if (finalChunk == null) {
+    throw new Error("missing final chunk");
+  }
+  const emitted = finalChunk as unknown as { finishReason: string };
   assert.equal(
-    finalChunk!.finishReason,
+    emitted.finishReason,
     "length",
-    `Expected finish_reason 'length' from last non-null chunk, got '${finalChunk!.finishReason}'`
+    `Expected finish_reason 'length' from last non-null chunk, got '${emitted.finishReason}'`
   );
 });
 
@@ -208,7 +213,7 @@ test("OpenAI streaming preserves content_filter finish_reason", async () => {
   const service = new OpenAIChatService({
     apiKey: FAKE_API_KEY,
     fetchImpl: mockFetch,
-    credentialPool: mockCredentialPool as unknown as import("../../../../../../../src/platform/model-gateway/provider-registry/provider-credential-pool.js").ProviderCredentialPool,
+    credentialPool: mockCredentialPool as unknown as ProviderCredentialPool,
   });
 
   const request: OpenAIChatCompletionRequest = {
@@ -223,10 +228,14 @@ test("OpenAI streaming preserves content_filter finish_reason", async () => {
   });
 
   assert.ok(finalChunk !== null);
+  if (finalChunk == null) {
+    throw new Error("missing final chunk");
+  }
+  const emitted = finalChunk as unknown as { finishReason: string };
   assert.equal(
-    finalChunk!.finishReason,
+    emitted.finishReason,
     "content_filter",
-    `Expected 'content_filter', got '${finalChunk!.finishReason}'`
+    `Expected 'content_filter', got '${emitted.finishReason}'`
   );
 });
 
@@ -317,7 +326,7 @@ test("OpenAI streaming preserves tool_calls finish_reason", async () => {
   const service = new OpenAIChatService({
     apiKey: FAKE_API_KEY,
     fetchImpl: mockFetch,
-    credentialPool: mockCredentialPool as unknown as import("../../../../../../../src/platform/model-gateway/provider-registry/provider-credential-pool.js").ProviderCredentialPool,
+    credentialPool: mockCredentialPool as unknown as ProviderCredentialPool,
   });
 
   const request: OpenAIChatCompletionRequest = {
@@ -332,9 +341,13 @@ test("OpenAI streaming preserves tool_calls finish_reason", async () => {
   });
 
   assert.ok(finalChunk !== null);
+  if (finalChunk == null) {
+    throw new Error("missing final chunk");
+  }
+  const emitted = finalChunk as unknown as { finishReason: string };
   assert.equal(
-    finalChunk!.finishReason,
+    emitted.finishReason,
     "tool_calls",
-    `Expected 'tool_calls', got '${finalChunk!.finishReason}'`
+    `Expected 'tool_calls', got '${emitted.finishReason}'`
   );
 });

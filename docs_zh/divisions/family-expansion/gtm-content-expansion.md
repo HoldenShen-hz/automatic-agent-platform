@@ -1,5 +1,17 @@
 # GTM / Content Family Expansion
 
+## Current Readiness Snapshot
+
+- readinessStatus: `governance_ready`
+- targetClaimLevel: `designed`
+- targetRelease: `v3.4`
+
+## Leadership Types
+
+- controlled_content_leadership
+- brand_governance_leadership
+- roi_attribution_leadership
+
 ## Pilot Source
 
 - advertising

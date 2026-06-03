@@ -20,12 +20,13 @@
  * Output: JSON `findings[]`.
  * Exit code: 1 with --check if any P0 finding.
  */
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { basename, extname, join, relative, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { basename, dirname, extname, join, relative, resolve } from "node:path";
 
 import { parse as parseYaml } from "yaml";
 
 const repoRoot = resolve(process.cwd());
+const outputPath = join(repoRoot, "artifacts", "assurance", "redteam-report.json");
 const checkMode = process.argv.includes("--check");
 const focusPath = (() => {
   const idx = process.argv.indexOf("--path");
@@ -381,6 +382,8 @@ function main() {
     }, {}),
     findings,
   };
+  mkdirSync(dirname(outputPath), { recursive: true });
+  writeFileSync(outputPath, JSON.stringify(report, null, 2) + "\n", "utf8");
   console.log(JSON.stringify(report, null, 2));
   if (checkMode && findings.some((f) => f.severity === "P0")) {
     process.exitCode = 1;

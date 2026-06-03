@@ -9,10 +9,19 @@ function createTestConstraintPack(overrides: Partial<ConstraintPack["budget"]> =
   return {
     policyIds: ["policy-1"],
     approvalMode: "required",
-    autonomyMode: "auto",
-    toolPolicy: { allowedTools: ["tool-a", "tool-b"] },
+    autonomyMode: "supervised_auto",
+    tool_policy: { allowedTools: ["tool-a", "tool-b"] },
     risk_policy: { maxRiskScore: 0.8, escalationThreshold: 0.6 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
+    sandboxRequirement: {
+      sandboxMode: "ephemeral",
+      timeoutMs: 60_000,
+    },
+    approvalRequirement: {
+      requiredForRiskClass: ["high", "critical"],
+      approverRoles: ["operator"],
+      escalationTimeoutMs: 30_000,
+    },
     budget: {
       maxSteps: 30,
       maxCost: 100,
@@ -26,8 +35,7 @@ test("HarnessLoopController constructor sets default guards from constraintPack"
   const pack = createTestConstraintPack({ maxSteps: 30, maxCost: 200, maxDurationMs: 90000 });
   const controller = new HarnessLoopController(pack);
 
-  // maxIterations = floor(maxSteps / 3) = floor(30 / 3) = 10
-  assert.equal(controller.getGuards().maxIterations, 10);
+  assert.equal(controller.getGuards().maxIterations, 30);
   assert.equal(controller.getGuards().maxReplans, 3);
   assert.equal(controller.getGuards().maxCost, 200);
   assert.equal(controller.getGuards().maxDurationMs, 90000);
@@ -108,7 +116,7 @@ test("HarnessLoopController.getGuardViolation returns null when no violations", 
 });
 
 test("HarnessLoopController.getGuardViolation returns violation when maxIterations reached", () => {
-  const pack = createTestConstraintPack({ maxSteps: 3 }); // maxIterations = floor(3/3) = 1
+  const pack = createTestConstraintPack({ maxSteps: 1 });
   const controller = new HarnessLoopController(pack, {}, { iteration: 1 });
 
   assert.equal(controller.getGuardViolation(), "harness.guard.max_iterations_reached");

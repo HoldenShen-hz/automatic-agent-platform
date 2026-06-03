@@ -8,6 +8,7 @@ import {
   verifyPluginSignature,
 } from "../../../../src/plugins/adapters/github-adapter.js";
 import { NetworkEgressPolicyService } from "../../../../src/platform/five-plane-control-plane/iam/network-egress-policy.js";
+import { createJsonFetch } from "../../../helpers/fetch.js";
 
 type GithubExecutionEnvelope = Awaited<ReturnType<ReturnType<typeof createGithubAdapterPlugin>["execute"]>> & {
   requestSummary: {
@@ -18,12 +19,7 @@ type GithubExecutionEnvelope = Awaited<ReturnType<ReturnType<typeof createGithub
 };
 
 function createMockFetch(responseBody: unknown = { ok: true }) {
-  return async (_input: string | URL, _init?: RequestInit) => ({
-    ok: true,
-    status: 200,
-    headers: { get: () => null },
-    text: async () => JSON.stringify(responseBody),
-  }) as Response;
+  return createJsonFetch(responseBody);
 }
 
 function createPolicy(allowedDomains: readonly string[] = ["api.github.com", "github.com"]) {

@@ -58,7 +58,7 @@ function createEdgeProfile(overrides: Partial<EdgeRuntimeProfile> = {}): EdgeRun
     edgeNodeId: overrides.edgeNodeId ?? "edge-node-1",
     deviceId: overrides.deviceId ?? "device-1",
     deviceAttestation: overrides.deviceAttestation ?? {
-      attestedAt: "2026-05-01T00:00:00.000Z",
+      attestedAt: new Date(Date.now() - 60_000).toISOString(),
       status: "valid",
     },
     capabilities: overrides.capabilities ?? ["offline-execution", "local-model"],
@@ -312,12 +312,12 @@ test("R21-15 and R21-16 edge runtime enforces risk gate and performs actual merg
     {
       edgeNodeId: "edge-node-1",
       taskId: "task-sync",
-      createdAt: "2026-05-01T00:00:00.000Z",
+      createdAt: new Date(Date.now() - 30_000).toISOString(),
     } as any,
     "edge-payload",
     1,
     "internal",
-    "2026-05-01T00:00:00.000Z",
+    new Date(Date.now() - 30_000).toISOString(),
   );
   const receipt = service.sync(
     profile,

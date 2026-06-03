@@ -9,18 +9,36 @@ import { KnowledgePromotionService } from "../../../../../../src/platform/five-p
 import type { LearningObject } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-object-model.js";
 
 function createTestLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
+  const learningObjectId = overrides.learningObjectId ?? overrides.objectId ?? "lo_test_1";
+  const learningType = overrides.learningType ?? overrides.kind ?? "failure_pattern";
+  const title = overrides.title ?? "Test Failure Pattern";
+  const summary = overrides.summary ?? "This is a test summary";
+  const evidenceRefs = overrides.evidenceRefs ?? ["signal_1", "signal_2"];
+  const sourceSignalIds = overrides.sourceSignalIds ?? ["feedback_1"];
+  const recommendation = overrides.recommendation ?? "Fix by retrying the operation";
+
   return {
-    learningObjectId: "lo_test_1",
-    learningType: "failure_pattern",
-    title: "Test Failure Pattern",
-    summary: "This is a test summary",
-    confidence: 0.85,
-    evidenceRefs: ["signal_1", "signal_2"],
-    sourceSignalIds: ["feedback_1"],
-    recommendation: "Fix by retrying the operation",
-    validatedBy: "evidence",
-    promotionStatus: "validated",
-    createdAt: Date.now(),
+    learningObjectId,
+    objectId: overrides.objectId ?? learningObjectId,
+    learningType,
+    kind: overrides.kind ?? learningType,
+    title,
+    summary,
+    content: overrides.content ?? {
+      title,
+      summary,
+      evidenceRefs,
+      sourceSignalIds,
+      recommendation,
+    },
+    confidence: overrides.confidence ?? 0.85,
+    evidenceRefs,
+    sourceSignalIds,
+    recommendation,
+    validatedBy: overrides.validatedBy ?? "evidence",
+    promotionStatus: overrides.promotionStatus ?? "validated",
+    status: overrides.status ?? "validated",
+    createdAt: overrides.createdAt ?? new Date().toISOString(),
     ...overrides,
   };
 }

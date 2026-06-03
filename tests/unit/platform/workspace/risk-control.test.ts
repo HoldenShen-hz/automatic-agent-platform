@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { resolve } from "node:path";
 import test from "node:test";
 
+import { createConfigReadPolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import {
   RiskEvaluationEngine,
   loadRiskConfig,
@@ -8,9 +10,12 @@ import {
   type RiskLevel,
 } from "../../../../src/platform/five-plane-control-plane/risk-control/index.js";
 
+const configRoot = resolve(process.cwd(), "config");
+const riskConfigPath = resolve(configRoot, "risk/default.json");
+
 function createEngine(overrides?: { domainProfiles?: ReadonlyMap<string, RiskLevel> }) {
   return new RiskEvaluationEngine({
-    config: loadRiskConfig(),
+    config: loadRiskConfig(riskConfigPath, createConfigReadPolicy(configRoot)),
     ...(overrides?.domainProfiles != null ? { domainRiskProfiles: overrides.domainProfiles } : {}),
   });
 }
@@ -104,7 +109,7 @@ test("RiskEvaluationEngine applies domain overrides only when they raise risk", 
 });
 
 test("loadRiskConfig returns the current canonical matrix", () => {
-  const config = loadRiskConfig();
+  const config = loadRiskConfig(riskConfigPath, createConfigReadPolicy(configRoot));
 
   assert.ok(typeof config.factorWeights.impact === "number");
   assert.ok(typeof config.factorWeights.historicalFailureRate === "number");

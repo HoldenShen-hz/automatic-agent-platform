@@ -330,17 +330,17 @@ test("SandboxPathCheckResult structure is correct", () => {
 });
 
 test("createWorkspaceWritePolicy with different root paths", () => {
-  const policy1 = createWorkspaceWritePolicy("/home/user/workspace");
+  const policy1 = createWorkspaceWritePolicy("/srv/user/workspace");
   const policy2 = createWorkspaceWritePolicy("/tmp/workspace");
 
-  assert.equal(policy1.allowedRoots[0], "/home/user/workspace");
+  assert.equal(policy1.allowedRoots[0], "/srv/user/workspace");
   assert.equal(policy2.allowedRoots[0], "/tmp/workspace");
 
   // Each policy should only allow its own root
   const result1 = checkSandboxPath(policy1, "/tmp/workspace/file");
   assert.equal(result1.allowed, false);
 
-  const result2 = checkSandboxPath(policy2, "/home/user/workspace/file");
+  const result2 = checkSandboxPath(policy2, "/srv/user/workspace/file");
   assert.equal(result2.allowed, false);
 });
 

@@ -10,10 +10,9 @@ import {
   ApprovalFlowEngine,
   FlowType,
   FlowStatus,
-  type ApprovalRequest,
   type ApprovalFlowState,
-  type EscalationContext,
 } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-flow-engine.js";
+import type { ApprovalRequest } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 import { VoteType } from "../../../../../src/platform/five-plane-control-plane/approval-center/quorum-calculator.js";
 import {
   EscalationManager,
@@ -509,6 +508,8 @@ test("ApprovalFlowEngine addFeedback fails for non-pending flow", () => {
     loopId: "loop-1",
     harnessRunId: "harness-1",
     nodeRunId: "node-1",
+    workflowRunId: "harness-1",
+    stepId: "node-1",
     maxIterations: 5,
     currentIteration: 0,
     humanFeedback: [],

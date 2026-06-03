@@ -5,6 +5,7 @@ import {
   MiniMaxChatService,
   type MiniMaxChatCompletionRequest,
 } from "../../../../../../src/platform/model-gateway/provider-registry/minimax/minimax-chat-service.js";
+import type { ProviderCredentialPool } from "../../../../../../src/platform/model-gateway/provider-registry/provider-credential-pool.js";
 
 const FAKE_API_KEY = "test-api-key-minimax";
 const FAKE_MODEL = "abab6.5s";
@@ -69,7 +70,7 @@ test("MiniMax streaming throws MiniMaxAPIError on business error (R27-02)", asyn
   const service = new MiniMaxChatService({
     apiKey: FAKE_API_KEY,
     fetchImpl: mockFetch,
-    credentialPool: mockCredentialPool as unknown as import("../../../../../../../src/platform/model-gateway/provider-registry/provider-credential-pool.js").ProviderCredentialPool,
+    credentialPool: mockCredentialPool as unknown as ProviderCredentialPool,
   });
 
   const request: MiniMaxChatCompletionRequest = {
@@ -151,7 +152,7 @@ test("MiniMax streaming re-throws MiniMaxAPIError from assertMiniMaxBusinessSucc
   const service = new MiniMaxChatService({
     apiKey: FAKE_API_KEY,
     fetchImpl: mockFetch,
-    credentialPool: mockCredentialPool as unknown as import("../../../../../../../src/platform/model-gateway/provider-registry/provider-credential-pool.js").ProviderCredentialPool,
+    credentialPool: mockCredentialPool as unknown as ProviderCredentialPool,
   });
 
   const request: MiniMaxChatCompletionRequest = {

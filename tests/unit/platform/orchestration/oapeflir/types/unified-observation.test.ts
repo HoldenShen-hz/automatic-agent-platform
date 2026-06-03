@@ -44,7 +44,15 @@ test("UnifiedObservationSchema parses valid unified observation", () => {
 test("UnifiedObservationSchema applies defaults for system", () => {
   const data = {
     task: { taskId: "task_456" },
-    system: { healthStatus: "degraded" as const, observedAt: 1234567890 },
+    system: {
+      healthStatus: "degraded" as const,
+      providerHealth: { status: "healthy" as const, successRate: 1, recentCalls: 0 },
+      resourceUtilization: { memoryRssMb: 0, activeProcesses: 0 },
+      queueBacklog: { size: 0, degraded: false },
+      eventBusBacklog: { tier1PendingAcks: 0 },
+      findings: [],
+      observedAt: 1234567890,
+    },
     observedAt: 1234567890,
   };
 
@@ -116,19 +124,21 @@ test("UnifiedObservationSchema accepts unhealthy system health", () => {
 });
 
 test("UnifiedObservation type is correctly inferred", () => {
-  const observation: UnifiedObservation = {
-    task: {
-      taskId: "task_type_check",
-      timestamp: 1234567890,
-    },
+  const observation = UnifiedObservationSchema.parse({
+    task: { taskId: "task_type_check", timestamp: 1234567890 },
     system: {
       healthStatus: "ok",
+      providerHealth: { status: "healthy", successRate: 1, recentCalls: 0 },
+      resourceUtilization: { memoryRssMb: 0, activeProcesses: 0 },
+      queueBacklog: { size: 0, degraded: false },
+      eventBusBacklog: { tier1PendingAcks: 0 },
+      findings: [],
       observedAt: 1234567890,
     },
     observedAt: 1234567890,
-  };
+  }) as UnifiedObservation;
 
-  assert.equal(observation.task.taskId, "task_type_check");
+  assert.equal((observation.task as { taskId: string }).taskId, "task_type_check");
   assert.equal(observation.system.healthStatus, "ok");
 });
 
@@ -187,7 +197,7 @@ test("UnifiedObservationSchema works with complex task data", () => {
   };
 
   const result = UnifiedObservationSchema.parse(data);
-  assert.equal(result.task.taskId, "task_complex");
+  assert.equal((result.task as { taskId: string }).taskId, "task_complex");
   assert.equal(result.system.resourceUtilization.memoryRssMb, 1024);
   assert.equal(result.system.findings[0], "Normal operation");
 });

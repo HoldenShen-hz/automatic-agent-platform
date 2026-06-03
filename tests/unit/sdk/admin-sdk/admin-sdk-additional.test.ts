@@ -370,7 +370,7 @@ test("AdminSdk.getConfig returns configuration", async () => {
     });
 
   try {
-    const result = await sdk.getConfig();
+    const result = await sdk.getConfig<{ maxTasks: number; timeout: number }>();
     assert.equal(result.data.maxTasks, 100);
   } finally {
     globalThis.fetch = originalFetch;
@@ -587,7 +587,7 @@ test("AdminSdk.issueOperationalDirective handles scope with multiple fields", ()
   const sdk = createTestSdk();
 
   const directive = sdk.issueOperationalDirective({
-    type: "resource_release",
+    type: "rollback",
     scope: {
       tenantId: "t_tenant",
       harnessRunId: "harness_123",
@@ -612,7 +612,7 @@ test("AdminSdk.issueDecisionDirective creates escalate decision directive", () =
   const sdk = createTestSdk();
 
   const directive = sdk.issueDecisionDirective({
-    type: "escalate",
+    type: "takeover",
     targetRef: "execution_escalation_123",
     payload: { priority: "high", reason: "SLA breach imminent" },
     reason: "Escalate to senior reviewer",
@@ -624,7 +624,7 @@ test("AdminSdk.issueDecisionDirective creates escalate decision directive", () =
     riskAcknowledged: true,
   });
 
-  assert.equal(directive.type, "escalate");
+  assert.equal(directive.type, "takeover");
   assert.equal(directive.targetRef, "execution_escalation_123");
   assert.deepEqual(directive.payload, { priority: "high", reason: "SLA breach imminent" });
   assert.equal(directive.riskAcknowledged, true);

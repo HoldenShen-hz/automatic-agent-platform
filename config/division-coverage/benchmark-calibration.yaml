@@ -1,0 +1,61 @@
+version: 1
+updatedAt: "2026-06-03T00:00:00Z"
+families:
+  - familyId: engineering
+    owner: "Engineering Eval Owner + Eng Platform Owner"
+    refreshCadence: monthly
+    releaseGateConsumption:
+      - correctness
+      - rollback
+      - unsafe_command
+    claimReviewConsumption:
+      - heldout_scale
+      - pr_acceptance
+      - redteam_outcome
+  - familyId: knowledge-research
+    owner: "Knowledge Eval Owner + Knowledge Governance Owner"
+    refreshCadence: bi-weekly
+    releaseGateConsumption:
+      - stale_source
+      - evidence_completeness
+    claimReviewConsumption:
+      - citation_sample_size
+      - conclusion_traceability
+  - familyId: enterprise-ops
+    owner: "Ops Eval Owner + Service Ops Owner"
+    refreshCadence: bi-weekly
+    releaseGateConsumption:
+      - policy_fail_close
+      - handoff
+      - sla
+    claimReviewConsumption:
+      - pilot_task_volume
+      - roi_outcome
+  - familyId: gtm-content
+    owner: "GTM Governance Owner + Growth Ops Owner"
+    refreshCadence: monthly
+    releaseGateConsumption:
+      - unreviewed_publish
+      - critical_crm_write
+    claimReviewConsumption:
+      - human_review_pass_rate
+      - copyright_closure
+  - familyId: creative-production
+    owner: "Creative Eval Owner + Design Systems Owner"
+    refreshCadence: monthly
+    releaseGateConsumption:
+      - asset_provenance
+      - visual_regression
+    claimReviewConsumption:
+      - multimodal_evidence_completeness
+      - creative_review_outcome
+  - familyId: regulated
+    owner: "Policy Owner + Security Owner"
+    refreshCadence: policy_change_or_monthly
+    releaseGateConsumption:
+      - no_autonomy_guard
+      - hitl_coverage
+      - audit_export_completeness
+    claimReviewConsumption:
+      - advisory_scope_only
+      - audit_traceability

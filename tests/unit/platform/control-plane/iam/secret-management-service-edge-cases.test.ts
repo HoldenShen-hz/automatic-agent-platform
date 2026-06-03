@@ -233,7 +233,7 @@ test("secret management service redacts lease identifiers when leases are missin
   try {
     const service = new SecretManagementService(harness.db, harness.store);
     assert.throws(
-      () => service.revokeSecretLease({ leaseId: "secret_lease_sensitive_identifier", revokedBy: "ops" }),
+      () => service.revokeSecretLease({ leaseId: "secret_lease_sensitive_identifier", revokedBy: "ops", reasonCode: "operator_manual_revoke" }),
       (err: any) => {
         assert.equal(err.code, "secret.lease_not_found:secret_lease_sensitive_identifier");
         assert.equal(String(err.details?.leaseId ?? ""), "secret_lease<redacted>");

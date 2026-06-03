@@ -11,6 +11,9 @@
     "claimText",
     "allowedSurfaces",
     "evidenceRefs",
+    "owner",
+    "requestedBy",
+    "submittedAt",
     "reviewedBy",
     "expiresAt",
     "status"
@@ -68,6 +71,18 @@
         "minLength": 1
       }
     },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requestedBy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "submittedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
     "reviewedBy": {
       "type": "array",
       "minItems": 1,
@@ -83,6 +98,7 @@
     "status": {
       "type": "string",
       "enum": [
+        "draft",
         "approved",
         "rejected",
         "expired",

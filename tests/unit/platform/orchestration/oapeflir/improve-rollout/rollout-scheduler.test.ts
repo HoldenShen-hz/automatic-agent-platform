@@ -3,19 +3,32 @@ import test from "node:test";
 
 import { parseRolloutRecord } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/rollout-record.js";
 import { RolloutScheduler } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/rollout/rollout-scheduler.js";
+import { parseImprovementCandidate } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/improvement-candidate.js";
 
 function createCandidate() {
-  return {
+  return parseImprovementCandidate({
     candidateId: "candidate_1",
     taskId: "task_1",
+    learningObjectId: "learning_1",
+    source: "failure_pattern",
+    targetScope: "platform",
+    priority: "medium",
+    rolloutLevel: "L0_off",
+    metrics: {
+      errorRate: 0,
+      latencyP99: 0,
+      successRate: 1,
+      sampleCount: 0,
+    },
+    guardrails: [],
     sourceSignalRefs: ["artifact:1"],
     sourceLearningObjectIds: ["learning_1"],
     changeScope: "policy" as const,
     description: "Improve planner",
     expectedBenefit: "Fewer retries",
     status: "approved" as const,
-    createdAt: Date.now(),
-  };
+    createdAt: new Date().toISOString(),
+  });
 }
 
 function createRecord(status: "shadow" | "canary_5" | "partial_25" | "stable", transitionedAt: number) {

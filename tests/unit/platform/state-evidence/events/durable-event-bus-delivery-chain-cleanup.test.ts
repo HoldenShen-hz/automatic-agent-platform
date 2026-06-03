@@ -8,6 +8,8 @@ import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-s
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 test("durable event bus cleans deliveryChains after fan-out delivery settles", async () => {
   const workspace = createTempWorkspace("aa-event-bus-delivery-chain-cleanup-");
 

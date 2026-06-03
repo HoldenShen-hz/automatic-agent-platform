@@ -22,4 +22,7 @@ aliases:
   - alias: research
     canonical: industry-research
     mode: ambiguous_alias
+    ambiguousCandidates:
+      - academic-research
+      - industry-research
     removalTargetVersion: v3.6

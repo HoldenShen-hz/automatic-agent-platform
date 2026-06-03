@@ -6,7 +6,7 @@ export interface WaitForConditionOptions {
 
 const DEFAULT_WAIT_TIMEOUT_MS = resolveDefaultWaitTimeoutMs();
 
-function sleep(ms: number): Promise<void> {
+export function waitForMs(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
@@ -24,7 +24,7 @@ export async function waitForCondition(
     if (await predicate()) {
       return;
     }
-    await sleep(intervalMs);
+    await waitForMs(intervalMs);
   }
 
   const description = options.description ?? "condition";

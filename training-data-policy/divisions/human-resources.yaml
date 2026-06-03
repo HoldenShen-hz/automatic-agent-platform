@@ -1,0 +1,11 @@
+$schema: training-data-policy/schemas/division-policy.schema.json
+divisionId: human-resources
+policyMode: no_train
+policyModeRef: training-data-policy/policy-modes.md
+heldoutTrainingPolicy: no_train
+requiresModelDataTombstone: true
+allowedSources: []
+forbiddenSources:
+  - employee_record
+  - compensation_data
+  - production_hr_output

@@ -507,9 +507,19 @@ test("isApproverInGroups returns true for empty groups (any approver)", () => {
 test("isApproverInGroups returns true when approver is in groups", () => {
   const store = createMockStore();
   const db = createMockDb();
-  const service = new MultiPartyApprovalService(db, store as any);
+  const service = new MultiPartyApprovalService(
+    db,
+    store as any,
+    undefined as any,
+    {
+      groupMembers: {
+        admins: ["admin", "operator"],
+        superadmins: ["root"],
+      },
+    },
+  );
 
-  const result = service.isApproverInGroups("admin", ["admin", "superadmin"]);
+  const result = service.isApproverInGroups("admin", ["admins", "superadmins"]);
 
   assert.strictEqual(result, true);
 });
@@ -517,9 +527,19 @@ test("isApproverInGroups returns true when approver is in groups", () => {
 test("isApproverInGroups returns false when approver is not in groups", () => {
   const store = createMockStore();
   const db = createMockDb();
-  const service = new MultiPartyApprovalService(db, store as any);
+  const service = new MultiPartyApprovalService(
+    db,
+    store as any,
+    undefined as any,
+    {
+      groupMembers: {
+        admins: ["admin", "operator"],
+        superadmins: ["root"],
+      },
+    },
+  );
 
-  const result = service.isApproverInGroups("guest", ["admin", "superadmin"]);
+  const result = service.isApproverInGroups("guest", ["admins", "superadmins"]);
 
   assert.strictEqual(result, false);
 });

@@ -88,7 +88,23 @@ test("ToolGateway verify action reports success or failure [index]", () => {
 });
 
 test("ToolGateway blocks regulated autonomous no-go modes unless prepared action is approved [index]", () => {
-  const gateway = new ToolGateway();
+  const written: OutboxRecord[] = [];
+  const gateway = new ToolGateway({
+    outbox: {
+      writeOutboxEntry: (aggregateType, aggregateId, eventType, payload, traceId) => {
+        const record = createOutboxRecord({
+          id: `outbox-${written.length + 1}`,
+          aggregateType,
+          aggregateId,
+          eventType,
+          payloadJson: JSON.stringify(payload),
+          traceId: traceId ?? null,
+        });
+        written.push(record);
+        return record;
+      },
+    },
+  });
   const context = {
     toolName: "web_fetch",
     tenantId: "tenant-3",
@@ -107,6 +123,7 @@ test("ToolGateway blocks regulated autonomous no-go modes unless prepared action
     preparedActionApproved: true,
   });
   assert.equal(approved.receipt.status, "prepared");
+  assert.equal(written.some((record) => record.eventType === "tool_gateway:no_go_exception_used"), true);
 });
 
 test("ToolGateway emits governance denial receipts for tool risk violations [index]", () => {
@@ -179,4 +196,19 @@ test("ToolGateway blocks prepared-action-only R3 actions until approval is prese
   });
 
   assert.equal(approved.receipt.status, "prepared");
+});
+
+test("ToolGateway denies untrusted workflow injection for high-impact autonomous paths [index]", () => {
+  const gateway = new ToolGateway();
+
+  assert.throws(() => gateway.prepareToolAction({
+    toolName: "web_fetch",
+    tenantId: "tenant-injection",
+    missionId: "mission-injection",
+    traceId: "trace-injection",
+    actorId: "runtime",
+    taskId: "task-injection",
+    requestSource: "untrusted",
+    blockMode: "autonomous_external_write",
+  }), /tool_gateway\.workflow_injection_denied/);
 });

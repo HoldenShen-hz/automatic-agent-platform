@@ -5,6 +5,12 @@ import test from "node:test";
 import { ApiAuthError, ApiAuthService } from "../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 import { AppError } from "../../../../../src/platform/contracts/errors.js";
 
+function createBearerHeaders(service: ApiAuthService, apiKey: string): Record<string, string> {
+  return {
+    authorization: `Bearer ${service.exchangeApiKey(apiKey).accessToken}`,
+  };
+}
+
 test("api auth service exchanges api keys and authenticates bearer tokens with sorted roles", () => {
   const service = new ApiAuthService({
     apiKeys: [
@@ -42,6 +48,7 @@ test("api auth service exchanges api keys and authenticates bearer tokens with s
       "x-api-key": "operator-key",
     },
     "operator",
+    { allowApiKey: true },
   );
   assert.equal(headerPrincipal.actorId, "operator-1");
   assert.equal(headerPrincipal.authMethod, "api_key");
@@ -103,9 +110,7 @@ test("api auth service rejects expired, tampered, and under-privileged credentia
   assert.throws(
     () =>
       service.requireRole(
-        {
-          "x-api-key": "viewer-key",
-        },
+        createBearerHeaders(service, "viewer-key"),
         "admin",
       ),
     (error: unknown) =>
@@ -473,7 +478,7 @@ test("api auth service requireRole rejects when principal lacks required role", 
 
   // Authenticate with viewer role, require operator role
   assert.throws(
-    () => service.requireRole({ "x-api-key": "viewer-key" }, "operator"),
+    () => service.requireRole(createBearerHeaders(service, "viewer-key"), "operator"),
     (error: unknown) =>
       (error as any)?.code === "api.forbidden"
       && (error as any)?.statusCode === 403,
@@ -481,7 +486,7 @@ test("api auth service requireRole rejects when principal lacks required role", 
 
   // Authenticate with viewer role, require admin role
   assert.throws(
-    () => service.requireRole({ "x-api-key": "viewer-key" }, "admin"),
+    () => service.requireRole(createBearerHeaders(service, "viewer-key"), "admin"),
     (error: unknown) =>
       (error as any)?.code === "api.forbidden"
       && (error as any)?.statusCode === 403,
@@ -501,13 +506,14 @@ test("api auth service requireRole passes when principal has required role", () 
   });
 
   // Admin has all roles, should pass for any
-  const viewerResult = service.requireRole({ "x-api-key": "admin-key" }, "viewer");
+  const adminHeaders = createBearerHeaders(service, "admin-key");
+  const viewerResult = service.requireRole(adminHeaders, "viewer");
   assert.equal(viewerResult.actorId, "admin-actor");
 
-  const operatorResult = service.requireRole({ "x-api-key": "admin-key" }, "operator");
+  const operatorResult = service.requireRole(adminHeaders, "operator");
   assert.equal(operatorResult.actorId, "admin-actor");
 
-  const adminResult = service.requireRole({ "x-api-key": "admin-key" }, "admin");
+  const adminResult = service.requireRole(adminHeaders, "admin");
   assert.equal(adminResult.actorId, "admin-actor");
 });
 
@@ -528,11 +534,13 @@ test("api auth service requireRole applies role hierarchy for admin-only and ope
     jwtSecret: "test-secret",
   });
 
-  assert.equal(service.requireRole({ "x-api-key": "admin-only-key" }, "viewer").actorId, "admin-only-actor");
-  assert.equal(service.requireRole({ "x-api-key": "admin-only-key" }, "operator").actorId, "admin-only-actor");
-  assert.equal(service.requireRole({ "x-api-key": "operator-only-key" }, "viewer").actorId, "operator-only-actor");
+  const adminOnlyHeaders = createBearerHeaders(service, "admin-only-key");
+  const operatorOnlyHeaders = createBearerHeaders(service, "operator-only-key");
+  assert.equal(service.requireRole(adminOnlyHeaders, "viewer").actorId, "admin-only-actor");
+  assert.equal(service.requireRole(adminOnlyHeaders, "operator").actorId, "admin-only-actor");
+  assert.equal(service.requireRole(operatorOnlyHeaders, "viewer").actorId, "operator-only-actor");
   assert.throws(
-    () => service.requireRole({ "x-api-key": "operator-only-key" }, "admin"),
+    () => service.requireRole(operatorOnlyHeaders, "admin"),
     (error: unknown) =>
       (error as any)?.code === "api.forbidden"
       && (error as any)?.statusCode === 403,

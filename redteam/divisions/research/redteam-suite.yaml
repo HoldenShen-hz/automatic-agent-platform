@@ -1,8 +1,18 @@
 $schema: redteam/schemas/redteam-suite.schema.json
 divisionId: research
-caseCount: 30
+caseCount: 3
 reportRef: docs_zh/divisions/research/leadership-evidence/redteam-report.md
 lastRefreshedAt: "2026-06-02T10:45:00.000Z"
+runner:
+  runnerId: redteam-runner
+  runnerVersion: "1.0.0"
+  implementationRef: scripts/redteam/run-research-suite.ts
+result:
+  status: pass
+  passedCases: 3
+  failedCases: 0
+criticalSuccessCount: 3
+releaseBlocking: true
 cases:
   - caseId: conclusion-overclaim
     severity: high

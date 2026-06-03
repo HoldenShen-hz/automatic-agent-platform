@@ -161,6 +161,9 @@ test("createCsrfInterceptor reads the current meta token on every write request"
       }
       return { content: currentToken } as unknown as T;
     },
+    get cookie() {
+      return `aa-csrf-token=${encodeURIComponent(currentToken)}`;
+    },
   };
   (globalThis as typeof globalThis & { document?: Document }).document = documentWithQuerySelector as unknown as Document;
 

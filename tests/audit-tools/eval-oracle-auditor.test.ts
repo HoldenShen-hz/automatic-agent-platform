@@ -8,15 +8,18 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 import { execFileSync } from "node:child_process";
-import { dirname, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..", "..");
+const reportPath = join(repoRoot, "artifacts", "assurance", "eval-oracle-report.json");
 
 interface AuditReport {
   findings: { rule: string; path: string; severity: string }[];
   findingCount: number;
+  scannedPath?: string;
 }
 
 function runAudit(relativePath: string): AuditReport {
@@ -28,6 +31,14 @@ function runAudit(relativePath: string): AuditReport {
 }
 
 describe("audit-tool: eval-oracle self-test", () => {
+  it("writes the methodology report artifact", () => {
+    const out = runAudit("tests/fixtures/seeded-defects/eval-oracle/negative.ts");
+    assert.ok(existsSync(reportPath), "expected eval-oracle-report.json to be written");
+    const report = JSON.parse(readFileSync(reportPath, "utf8")) as AuditReport;
+    assert.equal(report.scannedPath, "tests/fixtures/seeded-defects/eval-oracle/negative.ts");
+    assert.equal(report.findingCount, out.findingCount);
+  });
+
   it("positive seed: actualOutput = expectedOutput is flagged P0", () => {
     const out = runAudit("tests/fixtures/seeded-defects/eval-oracle/positive.ts");
     const findings = out.findings.filter((f) => f.path.endsWith("positive.ts") && f.severity === "P0");

@@ -115,7 +115,7 @@ test("normalizeError handles plain Error with Task not found prefix", () => {
 });
 
 test("normalizeError handles GatewayRateLimitError", () => {
-  const rateLimitErr = new GatewayRateLimitError("telegram", 10);
+  const rateLimitErr = new GatewayRateLimitError("telegram", 10, 100, 101);
   const result = normalizeError(rateLimitErr);
 
   assert.ok(result instanceof ApiError);

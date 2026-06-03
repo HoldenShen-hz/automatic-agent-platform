@@ -11,6 +11,8 @@ import {
   type StableChaosScenarioResult,
 } from "../../../src/platform/stability/stable-chaos-smoke.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 const TEST_OUTPUT_DIR_PREFIX = "/tmp/stable-chaos-smoke-test-ops-maturity";
 
 function prepareOutputDir(name: string): string {

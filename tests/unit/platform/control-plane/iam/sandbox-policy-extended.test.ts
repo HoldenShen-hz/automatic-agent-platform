@@ -185,15 +185,15 @@ test("checkSandboxPath denies exact match to denied root", () => {
   const policy: SandboxPolicy = {
     policyId: "test",
     mode: "read_only",
-    allowedRoots: ["/home"],
-    deniedRoots: ["/home/.ssh"],
+    allowedRoots: ["/srv"],
+    deniedRoots: ["/srv/.ssh"],
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
     ...SANDBOX_LIMITS,
   };
 
-  const result = checkSandboxPath(policy, "/home/.ssh");
+  const result = checkSandboxPath(policy, "/srv/.ssh");
   assert.equal(result.allowed, false);
   assert.equal(result.reasonCode, "sandbox.path_in_denied_root");
 });
@@ -202,15 +202,15 @@ test("checkSandboxPath denies subpath of denied root", () => {
   const policy: SandboxPolicy = {
     policyId: "test",
     mode: "read_only",
-    allowedRoots: ["/home"],
-    deniedRoots: ["/home/.ssh"],
+    allowedRoots: ["/srv"],
+    deniedRoots: ["/srv/.ssh"],
     realpathEnforced: false,
     symlinkPolicy: "deny",
     processRuleMode: "deny",
     ...SANDBOX_LIMITS,
   };
 
-  const result = checkSandboxPath(policy, "/home/.ssh/id_rsa");
+  const result = checkSandboxPath(policy, "/srv/.ssh/id_rsa");
   assert.equal(result.allowed, false);
   assert.equal(result.reasonCode, "sandbox.path_in_denied_root");
 });
@@ -223,7 +223,7 @@ test("checkSandboxPath allows path within any allowed root", () => {
   const policy: SandboxPolicy = {
     policyId: "test",
     mode: "read_only",
-    allowedRoots: ["/tmp", "/var/tmp", "/home/user"],
+    allowedRoots: ["/tmp", "/var/tmp", "/srv/user"],
     deniedRoots: [],
     realpathEnforced: false,
     symlinkPolicy: "deny",
@@ -237,7 +237,7 @@ test("checkSandboxPath allows path within any allowed root", () => {
   const result2 = checkSandboxPath(policy, "/var/tmp/file.txt");
   assert.equal(result2.allowed, true);
 
-  const result3 = checkSandboxPath(policy, "/home/user/file.txt");
+  const result3 = checkSandboxPath(policy, "/srv/user/file.txt");
   assert.equal(result3.allowed, true);
 });
 
@@ -253,7 +253,7 @@ test("checkSandboxPath denies path not in any allowed root", () => {
     ...SANDBOX_LIMITS,
   };
 
-  const result = checkSandboxPath(policy, "/home/user/file.txt");
+  const result = checkSandboxPath(policy, "/srv/user/file.txt");
   assert.equal(result.allowed, false);
 });
 

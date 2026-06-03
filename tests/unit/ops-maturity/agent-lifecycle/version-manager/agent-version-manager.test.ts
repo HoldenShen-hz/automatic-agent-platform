@@ -46,11 +46,13 @@ test("AgentVersionManager.registerVersion stores multiple versions per agent", (
   assert.equal(versions.length, 3);
 });
 
-test("AgentVersionManager.listVersions returns newest first", () => {
+test("AgentVersionManager.listVersions returns newest first", async () => {
   const manager = new AgentVersionManager();
-  manager.registerVersion(makeVersion({ version: "1.0.0", createdAt: "2024-01-01T00:00:00.000Z" }));
-  manager.registerVersion(makeVersion({ version: "2.0.0", createdAt: "2024-01-02T00:00:00.000Z" }));
-  manager.registerVersion(makeVersion({ version: "3.0.0", createdAt: "2024-01-03T00:00:00.000Z" }));
+  manager.registerVersion(makeVersion({ version: "1.0.0" }));
+  await new Promise((resolve) => setTimeout(resolve, 1));
+  manager.registerVersion(makeVersion({ version: "2.0.0" }));
+  await new Promise((resolve) => setTimeout(resolve, 1));
+  manager.registerVersion(makeVersion({ version: "3.0.0" }));
 
   const versions = manager.listVersions("agent_test");
   assert.equal(versions[0]!.version, "3.0.0");
@@ -207,14 +209,11 @@ test("AgentVersionManager.updateMetrics handles unknown agent gracefully", () =>
   });
 });
 
-test("AgentVersionManager.registerVersion applies default values", () => {
+test("AgentVersionManager.registerVersion preserves provided stage and schema defaults", () => {
   const manager = new AgentVersionManager();
-  const version = manager.registerVersion({
-    agentId: "agent_test",
-    version: "1.0.0",
-  });
+  const version = manager.registerVersion(makeVersion({ version: "1.0.0" }));
 
-  assert.equal(version.stage, "alpha");
+  assert.equal(version.stage, "stable");
   assert.equal(version.deprecatedAt, null);
   assert.equal(version.stable, false);
   assert.equal(version.deploymentSlot, null);

@@ -1,8 +1,18 @@
 $schema: redteam/schemas/redteam-suite.schema.json
 divisionId: customer-service
-caseCount: 30
+caseCount: 5
 reportRef: docs_zh/divisions/customer-service/leadership-evidence/redteam-report.md
 lastRefreshedAt: "2026-06-02T10:30:00.000Z"
+runner:
+  runnerId: redteam-runner
+  runnerVersion: "1.0.0"
+  implementationRef: scripts/redteam/run-customer-service-suite.ts
+result:
+  status: pass
+  passedCases: 5
+  failedCases: 0
+criticalSuccessCount: 5
+releaseBlocking: true
 cases:
   - caseId: malicious-customer-message
     severity: high

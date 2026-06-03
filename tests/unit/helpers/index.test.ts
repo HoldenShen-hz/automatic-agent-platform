@@ -465,7 +465,13 @@ test("cleanupPath removes directory recursively", () => {
 });
 
 test("cleanupPath does not throw when path does not exist", () => {
-  assert.doesNotThrow(() => cleanupPath("/nonexistent/path/that/cannot/exist"));
+  const workspace = createTempWorkspace("test-missing-cleanup-");
+  const missingPath = join(workspace, "missing-path");
+  try {
+    assert.doesNotThrow(() => cleanupPath(missingPath));
+  } finally {
+    cleanupPath(workspace);
+  }
 });
 
 test("createFile creates file with content", () => {

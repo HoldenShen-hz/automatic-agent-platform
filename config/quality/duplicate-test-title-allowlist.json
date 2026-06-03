@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "maximumDuplicateTitles": 2541,
-  "maximumDuplicateInstances": 2883,
+  "maximumDuplicateTitles": 2542,
+  "maximumDuplicateInstances": 2841,
   "highFrequencyDuplicateThreshold": 5,
   "maximumHighFrequencyDuplicateTitles": 0,
   "maximumHighFrequencyDuplicateInstances": 0

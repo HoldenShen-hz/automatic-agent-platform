@@ -11,6 +11,7 @@ import {
   createDefaultApiRateLimiter,
   deriveApiRateLimitDefaultsFromChannelProviders,
 } from "../../../../../src/platform/five-plane-interface/api/http-api-server.js";
+import { DEFAULT_MAX_JSON_BODY_BYTES } from "../../../../../src/platform/five-plane-interface/api/http-server/utils.js";
 import { LOOPBACK_HOST } from "../../../../helpers/network-test-constants.js";
 import { ConfigRolloutService } from "../../../../../src/platform/five-plane-control-plane/config-center/config-rollout-service.js";
 import { TenantBoundaryRegistryService } from "../../../../../src/platform/five-plane-control-plane/tenant/index.js";
@@ -446,6 +447,12 @@ function createTestServer(overrides: Partial<ConstructorParameters<typeof HttpAp
   });
 
   return { server, authService };
+}
+
+function createBearerHeaders(authService: ApiAuthService, apiKey: string): Record<string, string> {
+  return {
+    authorization: `Bearer ${authService.exchangeApiKey(apiKey).accessToken}`,
+  };
 }
 
 function buildBillingWebhookHeaders(body: string, secret = "test-webhook-secret"): Record<string, string> {
@@ -1482,7 +1489,7 @@ test("bearer token authentication works", async () => {
   }
 });
 
-test("x-api-key header authentication works", async () => {
+test("protected routes reject direct x-api-key headers", async () => {
   const { server } = createTestServer();
 
   try {
@@ -1494,7 +1501,7 @@ test("x-api-key header authentication works", async () => {
       },
     });
 
-    assert.equal(response.statusCode, 200);
+    assert.equal(response.statusCode, 401);
   } finally {
     await server.stop();
   }
@@ -1535,7 +1542,7 @@ test("returns 401 for expired tokens", async () => {
 // ─── Body Parsing Tests ──────────────────────────────────────────────────────
 
 test("rejects request body exceeding 1MB limit", async () => {
-  const { server } = createTestServer();
+  const { server, authService } = createTestServer();
 
   // Create a body larger than 1MB
   const largeBody = JSON.stringify({
@@ -1547,7 +1554,7 @@ test("rejects request body exceeding 1MB limit", async () => {
       method: "POST",
       url: "/v1/gateway/messages/send",
       headers: {
-        "x-api-key": "test-operator-key",
+        ...createBearerHeaders(authService, "test-operator-key"),
         "content-type": "application/json",
       },
       body: largeBody,
@@ -1561,13 +1568,14 @@ test("rejects request body exceeding 1MB limit", async () => {
   }
 });
 
-test("accepts request body at exactly 1MB limit", async () => {
+test("accepts request body at the gateway JSON parser byte limit", async () => {
   const { server, authService } = createTestServer();
   const token = authService.exchangeApiKey("test-operator-key").accessToken;
 
-  // Create a body at exactly 1MB
+  // Gateway JSON parsing is guarded by DEFAULT_MAX_JSON_BODY_BYTES.
+  const jsonEnvelopeOverhead = Buffer.byteLength(JSON.stringify({ text: "" }), "utf8");
   const bodyContent = JSON.stringify({
-    text: "x".repeat(1_000_000 - 100), // Adjust for JSON overhead
+    text: "x".repeat(DEFAULT_MAX_JSON_BODY_BYTES - jsonEnvelopeOverhead),
   });
 
   try {
@@ -1582,7 +1590,6 @@ test("accepts request body at exactly 1MB limit", async () => {
       body: bodyContent,
     });
 
-    // Should not be 413 (payload too large)
     assert.notEqual(response.statusCode, 413);
   } finally {
     await server.stop();
@@ -1745,7 +1752,9 @@ test("inject rejects incompatible SDK version headers with compatibility respons
 });
 
 test("inject accepts compatible SDK version headers and surfaces compatibility warnings", async () => {
-  const { server } = createTestServer();
+  const { server } = createTestServer({
+    recommendedSdkVersion: "0.2.0",
+  });
 
   try {
     const response = await server.inject({
@@ -1753,20 +1762,20 @@ test("inject accepts compatible SDK version headers and surfaces compatibility w
       url: "/healthz",
       headers: {
         "x-sdk-version": "0.1.0",
-        "x-contract-version": "0.0.1",
+        "x-contract-version": "2026-04-01",
       },
     });
 
     assert.equal(response.statusCode, 200);
     assert.equal(response.headers["x-sdk-compatibility"], "compatibility_warning");
-    assert.match(response.headers["warning"] ?? "", /compatibility_warning:contract=0.0.1;expected=2026-04-01/);
+    assert.match(response.headers["warning"] ?? "", /compatibility_warning:sdk=0.1.0;recommended=0.2.0/);
   } finally {
     await server.stop();
   }
 });
 
 test("network responses compress large JSON payloads with gzip and preserve headers", async () => {
-  const { server } = createTestServer();
+  const { server, authService } = createTestServer();
 
   try {
     const response = await renderNetworkStyleResponse(server, {
@@ -1774,7 +1783,7 @@ test("network responses compress large JSON payloads with gzip and preserve head
       url: "/v1/openapi.json",
       headers: {
         "accept-encoding": "gzip",
-        "x-api-key": "test-operator-key",
+        ...createBearerHeaders(authService, "test-operator-key"),
       },
     });
 
@@ -1822,7 +1831,7 @@ test("network responses reject oversized content-length before body read", async
 });
 
 test("network responses compress large JSON payloads with brotli when preferred", async () => {
-  const { server } = createTestServer();
+  const { server, authService } = createTestServer();
 
   try {
     const response = await renderNetworkStyleResponse(server, {
@@ -1830,7 +1839,7 @@ test("network responses compress large JSON payloads with brotli when preferred"
       url: "/v1/openapi.json",
       headers: {
         "accept-encoding": "br, gzip",
-        "x-api-key": "test-operator-key",
+        ...createBearerHeaders(authService, "test-operator-key"),
       },
     });
 
@@ -1919,15 +1928,13 @@ test("generates request-id when not provided", async () => {
 // ─── OpenAPI Document Tests ─────────────────────────────────────────────────
 
 test("GET /v1/openapi.json returns OpenAPI document", async () => {
-  const { server } = createTestServer();
+  const { server, authService } = createTestServer();
 
   try {
     const response = await server.inject({
       method: "GET",
       url: "/v1/openapi.json",
-      headers: {
-        "x-api-key": "test-operator-key",
-      },
+      headers: createBearerHeaders(authService, "test-operator-key"),
     });
 
     assert.equal(response.statusCode, 200);
@@ -1979,14 +1986,15 @@ test("tenant-scoped admin cannot access global endpoints", async () => {
 // ─── Gateway Target Directory Service Unavailable ────────────────────────────
 
 test("returns 503 when gateway target directory is not configured", async () => {
+  const authService = new ApiAuthService({
+    apiKeys: [{ apiKey: "test-key", actorId: "test-user", roles: ["viewer", "operator"] }],
+    jwtSecret: "test-secret",
+  });
   const server = new HttpApiServer({
     approvalService: createMockApprovalService(),
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
-    authService: new ApiAuthService({
-      apiKeys: [{ apiKey: "test-key", actorId: "test-user", roles: ["viewer", "operator"] }],
-      jwtSecret: "test-secret",
-    }),
+    authService,
     // gatewayTargetDirectoryService intentionally omitted
   });
 
@@ -1994,7 +2002,7 @@ test("returns 503 when gateway target directory is not configured", async () => 
     const response = await server.inject({
       method: "GET",
       url: "/v1/gateway/targets",
-      headers: { "x-api-key": "test-key" },
+      headers: createBearerHeaders(authService, "test-key"),
     });
 
     assert.equal(response.statusCode, 503);

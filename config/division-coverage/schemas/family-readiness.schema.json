@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent-platform.local/schemas/family-readiness.schema.json",
+  "title": "Family Readiness Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "familyId",
+    "displayName",
+    "readinessStatus",
+    "targetClaimLevel",
+    "owner",
+    "claimReviewOwner",
+    "claimExpiryDays",
+    "revokeOnExpiry",
+    "noGoBoundaryRef",
+    "leadershipTypes",
+    "scoreWeights",
+    "canonicalFamilies",
+    "canonicalDivisions",
+    "benchmarkRefs",
+    "minimumEvidenceRef",
+    "notes"
+  ],
+  "properties": {
+    "familyId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "readinessStatus": {
+      "type": "string",
+      "enum": [
+        "governance_ready",
+        "pilot_ready",
+        "local_leadership_ready",
+        "industry_ready"
+      ]
+    },
+    "targetClaimLevel": {
+      "type": "string",
+      "enum": [
+        "designed",
+        "pilot_ready",
+        "local_leader",
+        "industry_comparable",
+        "industry_leading"
+      ]
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "claimReviewOwner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "claimExpiryDays": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "revokeOnExpiry": {
+      "type": "boolean"
+    },
+    "noGoBoundaryRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "leadershipTypes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "scoreWeights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability",
+        "safety",
+        "evidence",
+        "operation",
+        "flywheel"
+      ],
+      "properties": {
+        "capability": { "type": "number", "minimum": 0 },
+        "safety": { "type": "number", "minimum": 0 },
+        "evidence": { "type": "number", "minimum": 0 },
+        "operation": { "type": "number", "minimum": 0 },
+        "flywheel": { "type": "number", "minimum": 0 }
+      }
+    },
+    "canonicalFamilies": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "canonicalDivisions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "benchmarkRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "minimumEvidenceRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

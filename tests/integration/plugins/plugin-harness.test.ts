@@ -16,6 +16,7 @@ import { PluginSpiRegistry } from "../../../src/domains/registry/plugin-spi-regi
 import { createBuiltinPlugin } from "../../../src/plugins/builtin-plugin-registry.js";
 import { createGithubAdapterPlugin } from "../../../src/plugins/adapters/github-adapter.js";
 import { createOperationsRetrieverPluginWithOptions } from "../../../src/plugins/retrievers/operations-retriever.js";
+import { createJsonFetch } from "../../helpers/fetch.js";
 
 test("PluginHarness: invokeRetriever calls plugin retrieve method", async () => {
   const registry = new PluginSpiRegistry();
@@ -79,12 +80,7 @@ test("PluginHarness: invokeAdapterAuthenticate sets up adapter credentials", asy
   const registry = new PluginSpiRegistry();
 
   const adapter = createGithubAdapterPlugin({
-    fetchImplementation: async () => ({
-      ok: true,
-      status: 201,
-      headers: { get: () => null },
-      text: async () => JSON.stringify({ id: 202 }),
-    }) as Response,
+    fetchImplementation: createJsonFetch({ id: 202 }, { status: 201 }),
   });
   registry.register(adapter, {
     pluginId: "plugin.shared.github_adapter",
@@ -128,12 +124,7 @@ test("PluginHarness: invokeAdapterExecute performs adapter action", async () => 
   const registry = new PluginSpiRegistry();
 
   const adapter = createGithubAdapterPlugin({
-    fetchImplementation: async () => ({
-      ok: true,
-      status: 201,
-      headers: { get: () => null },
-      text: async () => JSON.stringify({ id: 202 }),
-    }) as Response,
+    fetchImplementation: createJsonFetch({ id: 202 }, { status: 201 }),
   });
   registry.register(adapter, {
     pluginId: "plugin.shared.github_adapter",

@@ -128,6 +128,7 @@ test("VcrReplayRecording events have required fields [vcr-replay-fixture-additio
   });
 
   const event = recording.events[0];
+  assert.ok(event != null);
   assert.ok(event.eventType.length > 0);
   assert.ok(event.timestamp.length > 0);
   assert.ok(event.payload);
@@ -195,5 +196,9 @@ test("buildVcrReplayFixture replays seeded timelines deterministically [vcr-repl
 
   assert.deepEqual(replayA, replayB);
   assert.notDeepEqual(replayA, replayC);
-  assert.ok(replayA[1]!.timestamp > replayA[0]!.timestamp);
+  const firstEvent = replayA[0];
+  const secondEvent = replayA[1];
+  assert.ok(firstEvent != null);
+  assert.ok(secondEvent != null);
+  assert.ok(secondEvent.timestamp > firstEvent.timestamp);
 });

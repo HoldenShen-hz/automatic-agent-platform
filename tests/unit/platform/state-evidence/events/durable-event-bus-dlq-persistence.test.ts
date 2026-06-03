@@ -9,6 +9,8 @@ import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 import { type DlqRepository, type ExtendedDeadLetterRecord } from "../../../../../src/platform/five-plane-state-evidence/events/dlq-service.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 /**
  * R12-03: Tests for persistent DLQ with full metadata.
  * Verifies that DLQ entries contain category/reason/retry_count/operator_action_log

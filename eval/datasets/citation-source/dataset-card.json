@@ -4,13 +4,18 @@
   "scenarioId": "knowledge-citation-answer",
   "version": "2026.06",
   "source": "internal_plus_public_corpus",
-  "taskCount": 120,
+  "taskCount": 121,
   "split": "heldout",
+  "samples": "eval/datasets/citation-source/samples",
+  "sampleCount": 121,
   "contaminationStatus": "clean",
+  "contaminationEvidence": [
+    "docs_zh/divisions/knowledge-base/leadership-evidence/eval-report.md"
+  ],
   "privacyStatus": "redacted",
   "labelingMethod": "analyst_double_review",
   "allowedForTraining": false,
   "allowedForReleaseGate": true,
   "retentionPolicyRef": "training-data-policy/retention.yaml",
-  "frozenHash": "sha256:c53dba1e1364c11d566058d1e829a616ce7226614de4ae47f584863b7c573c72"
+  "frozenHash": "sha256:34526dbd98c2508083112929e508cb061837cc41b338c38d39c3b824ed940751"
 }

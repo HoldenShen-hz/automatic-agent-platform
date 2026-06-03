@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
@@ -10,7 +10,7 @@ function writeFile(path: string, content: string) {
   writeFileSync(path, content, "utf8");
 }
 
-const scriptPath = "/Users/holden/Project/automatic_agent/automatic_agent_platform/scripts/assurance/review-import.mjs";
+const scriptPath = resolve(process.cwd(), "scripts/assurance/review-import.mjs");
 
 test("review-import defaults to the implementation repo root when --repo-root is omitted", () => {
   const repoRoot = mkdtempSync(join(tmpdir(), "aa-review-import-cli-"));

@@ -5,6 +5,10 @@ policyModeRef: training-data-policy/policy-modes.md
 allowedSources:
   - public_research
   - redacted_internal_notes
+restrictedClasses:
+  - internal_restricted
+heldoutTrainingPolicy: no_train
+requiresModelDataTombstone: true
 forbiddenSources:
   - heldout_eval
   - restricted_internal_notes

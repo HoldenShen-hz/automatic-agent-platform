@@ -11,7 +11,9 @@ affectedStores:
 requiresModelDataTombstone: true
 customerDeletionPropagation:
   - memory
+  - analytics
   - dashboard_cache
+  - evidence_projection
   - training_export
   - state-evidence
 sourceInvalidationPropagation:

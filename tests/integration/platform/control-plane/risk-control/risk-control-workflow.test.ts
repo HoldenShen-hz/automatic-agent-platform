@@ -13,8 +13,13 @@ import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { mkdtempSync } from "node:fs";
 import { join } from "node:path";
 
+import { createConfigReadPolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { RiskEvaluationEngine } from "../../../../../src/platform/five-plane-control-plane/risk-control/risk-evaluation-engine.js";
 import { loadRiskConfig } from "../../../../../src/platform/five-plane-control-plane/risk-control/risk-config-loader.js";
+
+function loadTempRiskConfig(configPath: string, configRoot: string) {
+  return loadRiskConfig(configPath, createConfigReadPolicy(configRoot));
+}
 
 test("risk-control: load config and evaluate low risk workflow", () => {
   const tempDir = mkdtempSync(join("/", "tmp", "risk-integration-"));
@@ -22,7 +27,7 @@ test("risk-control: load config and evaluate low risk workflow", () => {
     const configPath = join(tempDir, "risk.json");
     writeFileSync(configPath, JSON.stringify(createLowRiskConfig()), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTempRiskConfig(configPath, tempDir);
     const engine = new RiskEvaluationEngine({ config });
 
     const result = engine.evaluate({
@@ -51,7 +56,7 @@ test("risk-control: load config and evaluate high risk workflow", () => {
     const configPath = join(tempDir, "risk.json");
     writeFileSync(configPath, JSON.stringify(createHighRiskConfig()), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTempRiskConfig(configPath, tempDir);
     const engine = new RiskEvaluationEngine({ config });
 
     const result = engine.evaluate({
@@ -110,7 +115,7 @@ test("risk-control: config with custom thresholds affects evaluation", () => {
     };
     writeFileSync(configPath, JSON.stringify(customConfig), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTempRiskConfig(configPath, tempDir);
     const engine = new RiskEvaluationEngine({ config });
 
     // With stricter thresholds (high=0.5), same factors may produce different level
@@ -143,7 +148,7 @@ test("risk-control: config with domain profiles raises risk", () => {
     const configPath = join(tempDir, "risk.json");
     writeFileSync(configPath, JSON.stringify(createStandardConfig()), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTempRiskConfig(configPath, tempDir);
     const domainProfiles = new Map([
       ["sensitive-domain", "high" as const],
     ]);
@@ -188,7 +193,7 @@ test("risk-control: read operation vs delete operation scoring", () => {
     const configPath = join(tempDir, "risk.json");
     writeFileSync(configPath, JSON.stringify(createStandardConfig()), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTempRiskConfig(configPath, tempDir);
     const engine = new RiskEvaluationEngine({ config });
 
     // Read operation - medium risk
@@ -235,7 +240,7 @@ test("risk-control: production vs internal system scoring", () => {
     const configPath = join(tempDir, "risk.json");
     writeFileSync(configPath, JSON.stringify(createStandardConfig()), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTempRiskConfig(configPath, tempDir);
     const engine = new RiskEvaluationEngine({ config });
 
     const internalResult = engine.evaluate({
@@ -274,7 +279,7 @@ test("risk-control: restricted data class increases risk", () => {
     const configPath = join(tempDir, "risk.json");
     writeFileSync(configPath, JSON.stringify(createStandardConfig()), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTempRiskConfig(configPath, tempDir);
     const engine = new RiskEvaluationEngine({ config });
 
     const publicResult = engine.evaluate({
@@ -313,7 +318,7 @@ test("risk-control: tenant vs platform blast radius", () => {
     const configPath = join(tempDir, "risk.json");
     writeFileSync(configPath, JSON.stringify(createStandardConfig()), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTempRiskConfig(configPath, tempDir);
     const engine = new RiskEvaluationEngine({ config });
 
     const tenantResult = engine.evaluate({
@@ -352,7 +357,7 @@ test("risk-control: prior failure rate affects score", () => {
     const configPath = join(tempDir, "risk.json");
     writeFileSync(configPath, JSON.stringify(createStandardConfig()), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTempRiskConfig(configPath, tempDir);
     const engine = new RiskEvaluationEngine({ config });
 
     const lowFailureResult = engine.evaluate({
@@ -391,7 +396,7 @@ test("risk-control: low confidence increases risk", () => {
     const configPath = join(tempDir, "risk.json");
     writeFileSync(configPath, JSON.stringify(createStandardConfig()), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTempRiskConfig(configPath, tempDir);
     const engine = new RiskEvaluationEngine({ config });
 
     const highConfResult = engine.evaluate({

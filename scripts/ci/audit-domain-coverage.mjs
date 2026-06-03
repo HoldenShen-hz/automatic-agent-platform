@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
 import { buildDivisionInventory } from "./audit-division-inventory.mjs";
@@ -20,6 +20,8 @@ import {
 
 const PRODUCTION_READY_EVIDENCE_MAX_AGE_DAYS = 90;
 const PRODUCTION_READY_EVIDENCE_MAX_AGE_MS = PRODUCTION_READY_EVIDENCE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+const SUITE_STALENESS_MAX_AGE_DAYS = 90;
+const SUITE_STALENESS_MAX_AGE_MS = SUITE_STALENESS_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
 const DATASET_CARD_KEYS = [
   "datasetId",
   "divisionId",
@@ -28,7 +30,10 @@ const DATASET_CARD_KEYS = [
   "source",
   "taskCount",
   "split",
+  "samples",
+  "sampleCount",
   "contaminationStatus",
+  "contaminationEvidence",
   "privacyStatus",
   "labelingMethod",
   "allowedForTraining",
@@ -37,7 +42,7 @@ const DATASET_CARD_KEYS = [
   "frozenHash",
 ];
 const REDTEAM_SEVERITY_ENUM = ["critical", "high", "medium", "low"];
-const TRAINING_POLICY_MODE_ENUM = ["redacted_only", "restricted"];
+const TRAINING_POLICY_MODE_ENUM = ["redacted_only", "restricted", "no_train"];
 const ROI_METHOD_ENUM = ["before_after", "ab_test", "assisted_vs_manual", "cohort_comparison"];
 const TRAINING_REVOCATION_STORE_ENUM = [
   "memory",
@@ -130,6 +135,29 @@ function readEvalRunnerRegistry(platformRoot, registryRef) {
     schema: registry.$schema,
     runners,
   };
+}
+
+function countDatasetSamples(platformRoot, samplesRef) {
+  const samplesPath = join(platformRoot, samplesRef);
+  if (!existsSync(samplesPath)) {
+    return { count: 0, error: "missing_samples_path" };
+  }
+  const stats = statSync(samplesPath);
+  if (stats.isFile()) {
+    if (!samplesPath.endsWith(".json")) {
+      return { count: 1, error: null };
+    }
+    const parsed = readJsonFile(samplesPath, null);
+    if (Array.isArray(parsed)) {
+      return { count: parsed.length, error: null };
+    }
+    if (parsed != null && typeof parsed === "object" && Array.isArray(parsed.samples)) {
+      return { count: parsed.samples.length, error: null };
+    }
+    return { count: 0, error: "invalid_samples_file" };
+  }
+  const files = listFiles(samplesPath, 5).filter((path) => path.endsWith(".json"));
+  return { count: files.length, error: null };
 }
 
 function normalizeIsoOrNull(value) {
@@ -267,6 +295,24 @@ function validateEvalDatasetCard(card, path, platformRoot) {
   if (typeof card.taskCount !== "number" || !Number.isInteger(card.taskCount) || card.taskCount < 1) {
     blockers.push(`${path}:invalid_task_count`);
   }
+  if (typeof card.sampleCount !== "number" || !Number.isInteger(card.sampleCount) || card.sampleCount < 1) {
+    blockers.push(`${path}:invalid_sample_count`);
+  }
+  if (typeof card.samples !== "string" || card.samples.trim().length === 0) {
+    blockers.push(`${path}:missing_samples_ref`);
+  } else {
+    const sampleSummary = countDatasetSamples(platformRoot, card.samples);
+    if (sampleSummary.error != null) {
+      blockers.push(`${path}:${sampleSummary.error}`);
+    } else {
+      if (sampleSummary.count !== card.sampleCount) {
+        blockers.push(`${path}:sample_count_mismatch:${sampleSummary.count}:${card.sampleCount}`);
+      }
+      if (sampleSummary.count !== card.taskCount) {
+        blockers.push(`${path}:task_count_mismatch:${sampleSummary.count}:${card.taskCount}`);
+      }
+    }
+  }
   const actualFrozenHash = computeDatasetFrozenHash(join(platformRoot, path), card);
   if (typeof card.frozenHash !== "string" || !/^sha256:[a-f0-9]{64}$/.test(card.frozenHash)) {
     blockers.push(`${path}:invalid_frozen_hash_format`);
@@ -282,7 +328,7 @@ function validateEvalDatasetCard(card, path, platformRoot) {
   return blockers;
 }
 
-function validateEvalSuite(suite, path, platformRoot) {
+function validateEvalSuite(suite, path, platformRoot, now) {
   const blockers = [];
   const allowedKeys = ["$schema", "divisionId", "datasetCardRef", "runnerRegistryRef", "runner", "reportRef", "lastRefreshedAt", "metrics"];
   const unexpectedKeys = getUnexpectedKeys(suite, allowedKeys);
@@ -341,15 +387,30 @@ function validateEvalSuite(suite, path, platformRoot) {
   } else if (normalizeIsoOrNull(suite.lastRefreshedAt) !== reportRefreshTimestamp) {
     blockers.push(`${path}:last_refreshed_at_mismatch`);
   }
+  const refreshedAt = normalizeIsoOrNull(suite.lastRefreshedAt);
+  if (refreshedAt == null || Date.parse(refreshedAt) + SUITE_STALENESS_MAX_AGE_MS < now.getTime()) {
+    blockers.push(`${path}:stale_eval_suite`);
+  }
   if (toStringArray(suite.metrics).length === 0) {
     blockers.push(`${path}:missing_metrics`);
   }
   return blockers;
 }
 
-function validateRedTeamSuite(suite, path, platformRoot) {
+function validateRedTeamSuite(suite, path, platformRoot, now) {
   const blockers = [];
-  const allowedKeys = ["$schema", "divisionId", "caseCount", "reportRef", "lastRefreshedAt", "cases"];
+  const allowedKeys = [
+    "$schema",
+    "divisionId",
+    "caseCount",
+    "reportRef",
+    "lastRefreshedAt",
+    "runner",
+    "result",
+    "criticalSuccessCount",
+    "releaseBlocking",
+    "cases",
+  ];
   const unexpectedKeys = getUnexpectedKeys(suite, allowedKeys);
   if (unexpectedKeys.length > 0) {
     blockers.push(`${path}:unexpected_keys:${unexpectedKeys.join(",")}`);
@@ -373,8 +434,12 @@ function validateRedTeamSuite(suite, path, platformRoot) {
     blockers.push(`${path}:last_refreshed_at_mismatch`);
   }
   const cases = toObjectArray(suite.cases);
-  if (!Number.isInteger(suite.caseCount) || suite.caseCount < cases.length || suite.caseCount < 1) {
+  if (!Number.isInteger(suite.caseCount) || suite.caseCount !== cases.length || suite.caseCount < 1) {
     blockers.push(`${path}:invalid_case_count`);
+  }
+  const refreshedAt = normalizeIsoOrNull(suite.lastRefreshedAt);
+  if (refreshedAt == null || Date.parse(refreshedAt) + SUITE_STALENESS_MAX_AGE_MS < now.getTime()) {
+    blockers.push(`${path}:stale_redteam_suite`);
   }
   for (const entry of cases) {
     if (typeof entry.caseId !== "string" || entry.caseId.trim().length === 0) {
@@ -391,6 +456,57 @@ function validateRedTeamSuite(suite, path, platformRoot) {
     }
     if (toStringArray(entry.evidenceRefs).length === 0) {
       blockers.push(`${path}:missing_evidence_refs:${entry.caseId ?? "unknown"}`);
+    }
+  }
+  return blockers;
+}
+
+function validateScenarioBindings(scenario, path, platformRoot) {
+  const blockers = [];
+  const outputActions = toStringArray(scenario.outputActions);
+  const bindings = toObjectArray(scenario.outputActionBindings);
+  if (outputActions.length === 0) {
+    blockers.push(`${path}:missing_output_actions`);
+    return blockers;
+  }
+  if (bindings.length === 0) {
+    blockers.push(`${path}:missing_output_action_bindings`);
+    return blockers;
+  }
+  const toolActionKeys = new Set(
+    toObjectArray(scenario.toolActions)
+      .map((entry) => {
+        const toolId = typeof entry.toolId === "string" ? entry.toolId : null;
+        const actionId = typeof entry.actionId === "string" ? entry.actionId : null;
+        return toolId != null && actionId != null ? `${toolId}:${actionId}` : null;
+      })
+      .filter((entry) => entry != null),
+  );
+  for (const outputActionId of outputActions) {
+    const binding = bindings.find((entry) => entry.outputActionId === outputActionId);
+    if (binding == null) {
+      blockers.push(`${path}:missing_output_binding:${outputActionId}`);
+      continue;
+    }
+    if (typeof binding.bindingType !== "string") {
+      blockers.push(`${path}:invalid_output_binding_type:${outputActionId}`);
+      continue;
+    }
+    if (binding.bindingType === "tool_action") {
+      const toolId = typeof binding.toolId === "string" ? binding.toolId : null;
+      const actionId = typeof binding.actionId === "string" ? binding.actionId : null;
+      if (toolId == null || actionId == null) {
+        blockers.push(`${path}:invalid_tool_output_binding:${outputActionId}`);
+        continue;
+      }
+      const actionKey = `${toolId}:${actionId}`;
+      if (!toolActionKeys.has(actionKey)) {
+        blockers.push(`${path}:missing_bound_tool_action:${outputActionId}:${actionKey}`);
+        continue;
+      }
+      if (!hasToolDescriptor(platformRoot, toolId, actionId)) {
+        blockers.push(`${path}:missing_descriptor:${toolId}:${actionId}`);
+      }
     }
   }
   return blockers;
@@ -448,7 +564,17 @@ function validateRoiDivisionConfig(config, path, platformRoot) {
 
 function validateTrainingPolicyConfig(config, path) {
   const blockers = [];
-  const allowedKeys = ["$schema", "divisionId", "policyMode", "policyModeRef", "allowedSources", "forbiddenSources"];
+  const allowedKeys = [
+    "$schema",
+    "divisionId",
+    "policyMode",
+    "policyModeRef",
+    "allowedSources",
+    "forbiddenSources",
+    "restrictedClasses",
+    "heldoutTrainingPolicy",
+    "requiresModelDataTombstone",
+  ];
   const unexpectedKeys = getUnexpectedKeys(config, allowedKeys);
   if (unexpectedKeys.length > 0) {
     blockers.push(`${path}:unexpected_keys:${unexpectedKeys.join(",")}`);
@@ -462,8 +588,17 @@ function validateTrainingPolicyConfig(config, path) {
   if (config.policyModeRef !== "training-data-policy/policy-modes.md") {
     blockers.push(`${path}:invalid_policy_mode_ref`);
   }
-  if (toStringArray(config.allowedSources).length === 0) {
+  if (config.policyMode !== "no_train" && toStringArray(config.allowedSources).length === 0) {
     blockers.push(`${path}:missing_allowed_sources`);
+  }
+  if (config.policyMode === "restricted" && toStringArray(config.restrictedClasses).length === 0) {
+    blockers.push(`${path}:missing_restricted_classes`);
+  }
+  if (typeof config.heldoutTrainingPolicy !== "string" || !["no_train", "redacted_only", "restricted"].includes(config.heldoutTrainingPolicy)) {
+    blockers.push(`${path}:invalid_heldout_training_policy`);
+  }
+  if (typeof config.requiresModelDataTombstone !== "boolean") {
+    blockers.push(`${path}:invalid_requires_model_data_tombstone`);
   }
   if (toStringArray(config.forbiddenSources).length === 0) {
     blockers.push(`${path}:missing_forbidden_sources`);
@@ -503,6 +638,29 @@ function validateTrainingRevocationConfig(config, path) {
   }
   if (typeof config.requiresModelDataTombstone !== "boolean") {
     blockers.push(`${path}:invalid_requires_model_data_tombstone`);
+  }
+  return blockers;
+}
+
+function buildFamilyReadinessBlockers(platformRoot, inventoryRecords) {
+  const familyReadiness = loadYamlObject(join(platformRoot, "config", "division-coverage", "family-readiness.yaml"));
+  const blockers = [];
+  for (const family of toObjectArray(familyReadiness.families)) {
+    const familyId = typeof family.familyId === "string" ? family.familyId : "unknown-family";
+    const readinessStatus = typeof family.readinessStatus === "string" ? family.readinessStatus : "governance_ready";
+    for (const divisionId of toStringArray(family.canonicalDivisions)) {
+      const inventoryRecord = inventoryRecords.find((entry) => entry.divisionId === divisionId);
+      if (inventoryRecord == null) {
+        blockers.push(`family_readiness:${familyId}:missing_canonical_division:${divisionId}`);
+        continue;
+      }
+      if (readinessStatus === "pilot_ready" && inventoryRecord.status === "coverage_draft") {
+        blockers.push(`family_readiness:${familyId}:pilot_division_not_ready:${divisionId}`);
+      }
+      if (readinessStatus === "local_leadership_ready" && !["pilot_ready", "production_ready"].includes(inventoryRecord.status)) {
+        blockers.push(`family_readiness:${familyId}:local_leadership_gap:${divisionId}:${inventoryRecord.status}`);
+      }
+    }
   }
   return blockers;
 }
@@ -552,7 +710,7 @@ export function buildDomainCoverageReport(options = {}) {
   }
 
   for (const suite of evalSuites) {
-    blockers.push(...validateEvalSuite(suite.value, normalizeRelativePath(platformRoot, suite.path), platformRoot));
+    blockers.push(...validateEvalSuite(suite.value, normalizeRelativePath(platformRoot, suite.path), platformRoot, now));
   }
 
   for (const divisionId of P0_DIVISION_IDS) {
@@ -569,6 +727,7 @@ export function buildDomainCoverageReport(options = {}) {
   }
 
   for (const scenario of scenarios) {
+    blockers.push(...validateScenarioBindings(scenario.value, normalizeRelativePath(platformRoot, scenario.path), platformRoot));
     for (const action of toObjectArray(scenario.value.toolActions)) {
       const toolId = typeof action.toolId === "string" ? action.toolId : null;
       const actionId = typeof action.actionId === "string" ? action.actionId : null;
@@ -583,7 +742,7 @@ export function buildDomainCoverageReport(options = {}) {
   }
 
   for (const suite of redTeamSuites) {
-    blockers.push(...validateRedTeamSuite(suite.value, normalizeRelativePath(platformRoot, suite.path), platformRoot));
+    blockers.push(...validateRedTeamSuite(suite.value, normalizeRelativePath(platformRoot, suite.path), platformRoot, now));
   }
 
   for (const config of roiDivisionConfigs) {
@@ -603,6 +762,7 @@ export function buildDomainCoverageReport(options = {}) {
   }
 
   blockers.push(...validateTrainingRevocationConfig(revocationPolicy, normalizeRelativePath(platformRoot, revocationPolicyPath)));
+  blockers.push(...buildFamilyReadinessBlockers(platformRoot, inventory.records));
 
   const report = {
     generatedAt: toIsoDate(now),

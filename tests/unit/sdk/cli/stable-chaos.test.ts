@@ -65,7 +65,7 @@ test("stable-chaos passes writer function", () => {
 // ---------------------------------------------------------------------------
 
 test("stable-chaos output dir defaults to data/stable-chaos", () => {
-  const cwd = "/Users/test/project";
+  const cwd = "/workspace/project";
   const defaultDir = "data/stable-chaos";
   const outputDir = `${cwd}/${defaultDir}`;
 
@@ -134,10 +134,10 @@ test("stable-chaos report with failedScenarios = 0 does not trigger exit code", 
 // ---------------------------------------------------------------------------
 
 test("stable-chaos runner receives outputDir in args", () => {
-  const outputDir = "/Users/test/data/stable-chaos";
+  const outputDir = "/workspace/test/data/stable-chaos";
   const runnerArgs = { outputDir };
 
-  assert.equal(runnerArgs.outputDir, "/Users/test/data/stable-chaos");
+  assert.equal(runnerArgs.outputDir, "/workspace/test/data/stable-chaos");
 });
 
 test("stable-chaos runner supports async result", async () => {

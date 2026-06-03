@@ -418,7 +418,7 @@ test("ChineseWallAccessSaga handles step with explicit phase field", () => {
     { stepId: "grant-1", action: "prepare_grant", succeeded: true, phase: "prepare" },
   ]);
 
-  assert.ok(calls[0].startsWith("prepare:"));
+  assert.ok(calls[0]?.startsWith("prepare:"));
 });
 
 test("ChineseWallAccessSaga synthetic compensation step has correct structure", () => {

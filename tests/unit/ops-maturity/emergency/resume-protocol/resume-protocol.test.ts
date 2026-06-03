@@ -8,13 +8,19 @@ import {
 
 function createValidPlan(overrides: Partial<ResumePlan> = {}): ResumePlan {
   return {
+    planId: "plan-1",
     scope: overrides.scope ?? "platform",
+    scopeRef: "platform/root",
     approvedBy: overrides.approvedBy ?? ["op-1", "op-2"],
+    approvalCount: overrides.approvalCount ?? 2,
     approvedRoles: overrides.approvedRoles ?? ["platform_admin", "security_team"],
+    compatibilityCheckRef: "compat-check-1",
+    mode: "break_glass",
     checkpointsVerified: overrides.checkpointsVerified ?? true,
     forensicSnapshotReviewed: overrides.forensicSnapshotReviewed ?? true,
     rollbackPlanReady: overrides.rollbackPlanReady ?? true,
     validationRunPassed: overrides.validationRunPassed ?? true,
+    createdAt: "2026-01-01T00:00:00.000Z",
   };
 }
 

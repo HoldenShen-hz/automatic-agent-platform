@@ -7,6 +7,8 @@ import test from "node:test";
 import {
   canGoBackWizard,
   canAdvanceWizard,
+  WizardSessionSchema,
+  WizardStepSchema,
   serializeWizardSession,
   deserializeWizardSession,
   goBackWizard,
@@ -22,18 +24,29 @@ import {
   type WizardStep,
 } from "../../../../../src/interaction/ux/wizard/index.js";
 
+function makeStep(overrides: Partial<WizardStep> = {}): WizardStep {
+  return WizardStepSchema.parse({
+    stepId: "step_1",
+    title: "Step 1",
+    completed: false,
+    ...overrides,
+  });
+}
+
 // Helper to create a basic session
 const createSession = (overrides: Partial<WizardSession> = {}): WizardSession => ({
-  sessionId: "sess_001",
-  steps: [
-    { stepId: "step_1", title: "Step 1", completed: true },
-    { stepId: "step_2", title: "Step 2", completed: false },
-    { stepId: "step_3", title: "Step 3", completed: false },
-  ],
-  currentStepId: "step_1",
-  answers: {},
-  history: [],
-  visitedStepIds: [],
+  ...WizardSessionSchema.parse({
+    sessionId: "sess_001",
+    steps: [
+      makeStep({ stepId: "step_1", completed: true }),
+      makeStep({ stepId: "step_2", title: "Step 2", completed: false }),
+      makeStep({ stepId: "step_3", title: "Step 3", completed: false }),
+    ],
+    currentStepId: "step_1",
+    answers: {},
+    history: [],
+    visitedStepIds: [],
+  }),
   ...overrides,
 });
 
@@ -57,6 +70,7 @@ test("goBackWizard returns previous step and removes it from history", () => {
   const result = goBackWizard(session);
 
   assert.notEqual(result, null);
+  assert.ok(result);
   assert.equal(result.currentStepId, "step_1");
   assert.deepEqual(result.history, []);
 });
@@ -110,18 +124,22 @@ test("deserializeWizardSession restores step conditions from definitions", () =>
   const conditionFn = (answers: Record<string, unknown>) => answers.showAdvanced === true;
 
   const stepDefinitions: WizardStep[] = [
-    { stepId: "step_1", title: "Step 1", completed: true, condition: undefined },
-    { stepId: "step_2", title: "Step 2", completed: false, condition: conditionFn },
+    makeStep({ stepId: "step_1", completed: true, condition: undefined }),
+    makeStep({ stepId: "step_2", title: "Step 2", completed: false, condition: conditionFn }),
   ];
 
   const session = createSession({ steps: stepDefinitions });
   const json = serializeWizardSession(session);
   const restored = deserializeWizardSession(json, stepDefinitions);
 
-  assert.equal(restored.steps[0].condition, undefined);
+  const firstStep = restored.steps[0];
+  const secondStep = restored.steps[1];
+  assert.ok(firstStep);
+  assert.ok(secondStep);
+  assert.equal(firstStep.condition, undefined);
   // Function reference equality won't work; verify the condition behavior instead
-  assert.equal(restored.steps[1].condition?.({ showAdvanced: true }), true);
-  assert.equal(restored.steps[1].condition?.({ showAdvanced: false }), false);
+  assert.equal(secondStep.condition?.({ showAdvanced: true }), true);
+  assert.equal(secondStep.condition?.({ showAdvanced: false }), false);
 });
 
 test("deserializeWizardSession parses valid JSON", () => {
@@ -134,7 +152,7 @@ test("deserializeWizardSession parses valid JSON", () => {
   });
 
   const stepDefinitions: WizardStep[] = [
-    { stepId: "a", title: "A", completed: false },
+    makeStep({ stepId: "a", title: "A", completed: false }),
   ];
 
   const restored = deserializeWizardSession(json, stepDefinitions);
@@ -145,7 +163,7 @@ test("deserializeWizardSession parses valid JSON", () => {
 test("serializeWizardSession does not include function source", () => {
   // Ensure condition functions are not serialized as [Function] or similar
   const session = createSession({
-    steps: [{ stepId: "x", title: "X", completed: false, condition: () => true }],
+    steps: [makeStep({ stepId: "x", title: "X", completed: false, condition: () => true })],
   });
   const json = serializeWizardSession(session);
 
@@ -163,17 +181,17 @@ test("getVisibleSteps returns all steps when no conditions defined", () => {
 
 test("getVisibleSteps filters steps based on condition", () => {
   const stepDefinitions: WizardStep[] = [
-    { stepId: "basic", title: "Basic", completed: false },
-    { stepId: "advanced", title: "Advanced", completed: false, condition: (answers) => answers.enableAdvanced === true },
+    makeStep({ stepId: "basic", title: "Basic", completed: false }),
+    makeStep({ stepId: "advanced", title: "Advanced", completed: false, condition: (answers) => answers.enableAdvanced === true }),
   ];
 
-  const session: WizardSession = {
+  const session = createSession({
     sessionId: "test",
     steps: stepDefinitions,
     currentStepId: "basic",
     answers: { enableAdvanced: true },
     history: [],
-  };
+  });
 
   const visible = getVisibleSteps(session);
   assert.equal(visible.length, 2);
@@ -183,41 +201,41 @@ test("getVisibleSteps filters steps based on condition", () => {
 
 test("getVisibleSteps excludes steps when condition returns false", () => {
   const stepDefinitions: WizardStep[] = [
-    { stepId: "basic", title: "Basic", completed: false },
-    { stepId: "advanced", title: "Advanced", completed: false, condition: (answers) => answers.enableAdvanced === true },
+    makeStep({ stepId: "basic", title: "Basic", completed: false }),
+    makeStep({ stepId: "advanced", title: "Advanced", completed: false, condition: (answers) => answers.enableAdvanced === true }),
   ];
 
-  const session: WizardSession = {
+  const session = createSession({
     sessionId: "test",
     steps: stepDefinitions,
     currentStepId: "basic",
     answers: { enableAdvanced: false },
     history: [],
-  };
+  });
 
   const visible = getVisibleSteps(session);
   assert.equal(visible.length, 1);
-  assert.equal(visible[0].stepId, "basic");
+  assert.equal(visible[0]?.stepId, "basic");
 });
 
 test("getVisibleSteps handles condition with undefined answers", () => {
   const stepDefinitions: WizardStep[] = [
-    { stepId: "step_1", title: "S1", completed: false },
-    { stepId: "step_2", title: "S2", completed: false, condition: (answers) => answers.flag === true },
+    makeStep({ stepId: "step_1", title: "S1", completed: false }),
+    makeStep({ stepId: "step_2", title: "S2", completed: false, condition: (answers) => answers.flag === true }),
   ];
 
-  const session: WizardSession = {
+  const session = createSession({
     sessionId: "test",
     steps: stepDefinitions,
     currentStepId: "step_1",
     answers: {},
     history: [],
-  };
+  });
 
   const visible = getVisibleSteps(session);
   // step_2 should be hidden because answers.flag is falsy
   assert.equal(visible.length, 1);
-  assert.equal(visible[0].stepId, "step_1");
+  assert.equal(visible[0]?.stepId, "step_1");
 });
 
 test("advanceWizard handles step order correctly", () => {
@@ -232,14 +250,15 @@ test("advanceWizard handles step order correctly", () => {
 test("advanceWizardToNextVisibleStep skips hidden conditional steps", () => {
   const session = createSession({
     steps: [
-      { stepId: "step_1", title: "Step 1", completed: true },
-      { stepId: "hidden", title: "Hidden", completed: false, condition: () => false },
-      { stepId: "step_3", title: "Step 3", completed: false },
+      makeStep({ stepId: "step_1", completed: true }),
+      makeStep({ stepId: "hidden", title: "Hidden", completed: false, condition: () => false }),
+      makeStep({ stepId: "step_3", title: "Step 3", completed: false }),
     ],
   });
 
   const next = advanceWizardToNextVisibleStep(session);
   assert.notEqual(next, null);
+  assert.ok(next);
   assert.equal(next.currentStepId, "step_3");
 });
 
@@ -256,9 +275,9 @@ test("saveWizardSession stamps lastSavedAt", () => {
 test("getWizardProgress reports completion over visible steps", () => {
   const progress = getWizardProgress(createSession({
     steps: [
-      { stepId: "step_1", title: "Step 1", completed: true },
-      { stepId: "step_2", title: "Step 2", completed: false },
-      { stepId: "hidden", title: "Hidden", completed: false, condition: () => false },
+      makeStep({ stepId: "step_1", completed: true }),
+      makeStep({ stepId: "step_2", title: "Step 2", completed: false }),
+      makeStep({ stepId: "hidden", title: "Hidden", completed: false, condition: () => false }),
     ],
   }));
 
@@ -272,6 +291,7 @@ test("goBackWizard restores previous current step", () => {
   const back = goBackWizard(session);
 
   assert.notEqual(back, null);
+  assert.ok(back);
   assert.equal(back.currentStepId, "step_2");
   assert.deepEqual(back.history, ["step_1"]);
 });
@@ -279,12 +299,12 @@ test("goBackWizard restores previous current step", () => {
 test("validateWizardStep reports missing required answers", () => {
   const session = createSession({
     steps: [
-      {
+      makeStep({
         stepId: "risk_setup",
         title: "Risk Setup",
         completed: true,
         requiredAnswerKeys: ["budget", "owner"],
-      },
+      }),
     ],
     currentStepId: "risk_setup",
     answers: { budget: "100" },
@@ -299,14 +319,14 @@ test("validateWizardStep reports missing required answers", () => {
 test("getWizardRiskPreview surfaces medium+ risk steps and review requirement", () => {
   const session = createSession({
     steps: [
-      { stepId: "basic", title: "Basic", completed: true },
-      {
+      makeStep({ stepId: "basic", title: "Basic", completed: true }),
+      makeStep({
         stepId: "governance",
         title: "Governance",
         completed: false,
         riskLevel: "high",
         riskHints: ["human_approval_required"],
-      },
+      }),
     ],
     currentStepId: "basic",
   });

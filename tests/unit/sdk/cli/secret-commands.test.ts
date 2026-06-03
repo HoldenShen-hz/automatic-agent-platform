@@ -11,6 +11,7 @@ import {
   resolveAuthTokenPath,
   verifyAuthToken,
 } from "../../../../src/sdk/cli/secret-commands.js";
+import { readCliProcessEnv } from "../../../../src/sdk/cli/cli-env.js";
 import { cleanupPath } from "../../../helpers/fs.js";
 
 test("generateAuthToken stores salted hash and verifies token", () => {
@@ -25,7 +26,7 @@ test("generateAuthToken stores salted hash and verifies token", () => {
     process.env.AA_SECRET_AUTH_TOKEN_PATH = tokenPath;
     process.env.HOME = workspace;
 
-    const { token } = generateAuthToken();
+    const { token } = generateAuthToken(readCliProcessEnv());
     const stored = readFileSync(tokenPath, "utf8").trim();
     assert.match(stored, /^[0-9a-f]{32}:[0-9a-f]{64}$/);
 
@@ -81,7 +82,8 @@ test("generate-token writes raw token to AA_SECRET_OUTPUT_PATH instead of stdout
     const result = await executeSecretCommand(
       "generate-token",
       { dbPath: join(workspace, "runtime.db"), action: "generate-token" } as never,
-      { authTokenPath: resolveAuthTokenPath(), storedTokenHash: null, providedToken: null },
+      { authTokenPath: resolveAuthTokenPath(readCliProcessEnv()), storedTokenHash: null, providedToken: null },
+      readCliProcessEnv(),
     );
 
     assert.equal(result.success, true);
@@ -120,12 +122,13 @@ test("generate-token requires auth before rotating an existing token", async () 
     process.env.AA_SECRET_AUTH_TOKEN_PATH = tokenPath;
     process.env.AA_SECRET_OUTPUT_PATH = join(workspace, "token.txt");
     process.env.HOME = workspace;
-    generateAuthToken();
+    generateAuthToken(readCliProcessEnv());
 
     const result = await executeSecretCommand(
       "generate-token",
       { dbPath: join(workspace, "runtime.db"), action: "generate-token" } as never,
       { authTokenPath: tokenPath, storedTokenHash: readFileSync(tokenPath, "utf8").trim(), providedToken: null },
+      readCliProcessEnv(),
     );
 
     assert.equal(result.success, false);

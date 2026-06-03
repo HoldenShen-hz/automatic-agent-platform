@@ -4,16 +4,10 @@ import test from "node:test";
 
 import { createGithubAdapterPlugin, type GithubAdapterPluginOptions, verifyPluginSignature } from "../../../../src/plugins/adapters/github-adapter.js";
 import type { NetworkEgressPolicyService } from "../../../../src/platform/five-plane-control-plane/iam/network-egress-policy.js";
+import { createJsonFetch } from "../../../helpers/fetch.js";
 
 function createMockFetch(responseBody: unknown = { ok: true }) {
-  return async (input: string | URL, init?: RequestInit) => ({
-    ok: true,
-    status: 200,
-    url: String(input),
-    init,
-    headers: { get: () => null },
-    text: async () => JSON.stringify(responseBody),
-  }) as Response;
+  return createJsonFetch(responseBody);
 }
 
 function createMockPolicy(allowed: boolean = true): NetworkEgressPolicyService {

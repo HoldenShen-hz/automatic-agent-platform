@@ -27,6 +27,12 @@ test.beforeEach(() => {
   __dangerousResetSessionStoreForTests();
 });
 
+test.afterEach(() => {
+  delete process.env.AA_SESSION_TOKEN_LOOKUP_HMAC_KEY;
+  delete process.env.AA_ALLOW_IN_MEMORY_SESSION_STORE;
+  delete process.env.NODE_ENV;
+});
+
 // ============================================================================
 // Session Creation Tests
 // ============================================================================
@@ -89,6 +95,31 @@ test("createSession generates unique token IDs", () => {
   const session = createSession({ principalId: "user-tokens", principalType: "user" });
 
   assert.notEqual(session.accessToken.tokenId, session.refreshToken.tokenId);
+});
+
+test("createSession requires AA_SESSION_TOKEN_LOOKUP_HMAC_KEY in production", () => {
+  delete process.env.AA_SESSION_TOKEN_LOOKUP_HMAC_KEY;
+  process.env.NODE_ENV = "production";
+  process.env.AA_ALLOW_IN_MEMORY_SESSION_STORE = "1";
+  __dangerousResetSessionStoreForTests();
+
+  assert.throws(
+    () => createSession({ principalId: "prod-user", principalType: "user" }),
+    /session\.token_lookup_hmac_key_required/,
+  );
+});
+
+test("createSession honors configured AA_SESSION_TOKEN_LOOKUP_HMAC_KEY", () => {
+  process.env.AA_SESSION_TOKEN_LOOKUP_HMAC_KEY = "stable-hmac-key";
+  process.env.NODE_ENV = "production";
+  process.env.AA_ALLOW_IN_MEMORY_SESSION_STORE = "1";
+  __dangerousResetSessionStoreForTests();
+
+  const session = createSession({ principalId: "prod-user", principalType: "user" });
+  const result = validateAccessToken(session.accessToken.tokenId);
+
+  assert.equal(result.valid, true);
+  assert.equal(result.session?.sessionId, session.sessionId);
 });
 
 // ============================================================================

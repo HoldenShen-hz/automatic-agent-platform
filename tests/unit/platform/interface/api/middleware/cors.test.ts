@@ -1,5 +1,4 @@
 import { describe, it, mock, beforeEach } from "node:test";
-import assert from "node:assert/strict";
 import assert, { strictEqual, deepStrictEqual, throws, ok } from "node:assert";
 import {
   CorsMiddleware,
@@ -106,14 +105,14 @@ describe("CorsMiddleware", () => {
     it("should expose X-Trace-Id header when enabled", () => {
       const middleware = new CorsMiddleware({ exposeTraceId: true });
       const headers = middleware.getHeaders("https://example.com");
-      ok(headers["Access-Control-Expose-Headers"].includes("X-Trace-Id"));
+      ok((headers["Access-Control-Expose-Headers"] ?? "").includes("X-Trace-Id"));
     });
 
     it("should include allowed methods and headers", () => {
       const middleware = new CorsMiddleware();
       const headers = middleware.getHeaders("https://example.com");
-      ok(headers["Access-Control-Allow-Methods"].includes("GET"));
-      ok(headers["Access-Control-Allow-Headers"].includes("Content-Type"));
+      ok((headers["Access-Control-Allow-Methods"] ?? "").includes("GET"));
+      ok((headers["Access-Control-Allow-Headers"] ?? "").includes("Content-Type"));
     });
   });
 

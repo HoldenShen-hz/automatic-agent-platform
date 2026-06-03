@@ -1,0 +1,5 @@
+{
+  "caseId": "swe-style-001",
+  "input": "Fix the queue retry regression without weakening dead-letter enforcement.",
+  "expectedOutcome": "Patch proposal with regression reasoning"
+}

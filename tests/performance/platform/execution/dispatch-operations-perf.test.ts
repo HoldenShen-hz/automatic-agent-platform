@@ -54,6 +54,7 @@ function seedTaskAndExecution(store: AuthoritativeTaskStore, taskId: string, exe
     taskId,
     workflowId: "dispatch_perf",
     parentExecutionId: null,
+    harnessRunId: null,
     agentId: "agent-dispatch",
     roleId: "general_executor",
     runKind: "task_run",
@@ -63,6 +64,8 @@ function seedTaskAndExecution(store: AuthoritativeTaskStore, taskId: string, exe
     attempt: 1,
     timeoutMs: 60_000,
     budgetUsdLimit: null,
+    budgetReservationId: null,
+    budgetLedgerId: null,
     requiresApproval: 0,
     sandboxMode: "workspace_write",
     allowedToolsJson: "[]",
@@ -115,6 +118,7 @@ function upsertWorkerSnapshot(store: AuthoritativeTaskStore, workerId: string): 
     lastProgressAt: occurredAt,
     lastHeartbeatAt: occurredAt,
     updatedAt: occurredAt,
+    version: 1,
   });
 }
 

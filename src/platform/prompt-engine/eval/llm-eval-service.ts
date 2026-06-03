@@ -14,6 +14,7 @@
 import { createHash } from "node:crypto";
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { startActiveSpan } from "../../shared/observability/otel-tracer.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type { EvalSqlDatabase } from "./eval-storage-port.js";
 import type {
@@ -332,79 +333,88 @@ export class LlmEvalService {
     const treatmentScores: number[] = [];
 
     for (const c of cases) {
-      let controlEvaluation: AbTestCaseEvaluation;
-      let treatmentEvaluation: AbTestCaseEvaluation;
+      await startActiveSpan("eval.case", {
+        tracerName: "automatic-agent-platform.eval",
+        attributes: {
+          "eval.case.id": c.id,
+          "eval.suite.id": suiteId,
+          "eval.control.model_id": config.controlModelId,
+          "eval.treatment.model_id": config.treatmentModelId,
+        },
+      }, async () => {
+        let controlEvaluation: AbTestCaseEvaluation;
+        let treatmentEvaluation: AbTestCaseEvaluation;
 
-      if (useRealLlм) {
-        // R8-08 FIX: Real LLM evaluation
-        const [controlResult, treatmentResult] = await Promise.all([
-          options.llmClient!.evaluate({
+        if (useRealLlм) {
+          // R8-08 FIX: Real LLM evaluation
+          const [controlResult, treatmentResult] = await Promise.all([
+            options.llmClient!.evaluate({
+              modelId: config.controlModelId,
+              promptVersion: config.controlPromptVersion,
+              input: c.input,
+              expectedOutput: c.expectedOutput,
+            }),
+            options.llmClient!.evaluate({
+              modelId: config.treatmentModelId,
+              promptVersion: config.treatmentPromptVersion,
+              input: c.input,
+              expectedOutput: c.expectedOutput,
+            }),
+          ]);
+          controlEvaluation = {
+            actualOutput: controlResult.actualOutput,
+            score: controlResult.score,
+            latencyMs: controlResult.latencyMs,
+          };
+          treatmentEvaluation = {
+            actualOutput: treatmentResult.actualOutput,
+            score: treatmentResult.score,
+            latencyMs: treatmentResult.latencyMs,
+          };
+        } else {
+          // Fallback to deterministic evaluation
+          controlEvaluation = await evaluator.evaluateCase({
+            suite: suite ?? controlRunSuiteFallback(suiteId),
+            caseDefinition: c,
             modelId: config.controlModelId,
             promptVersion: config.controlPromptVersion,
-            input: c.input,
+            arm: "control",
             expectedOutput: c.expectedOutput,
-          }),
-          options.llmClient!.evaluate({
+          });
+          treatmentEvaluation = await evaluator.evaluateCase({
+            suite: suite ?? controlRunSuiteFallback(suiteId),
+            caseDefinition: c,
             modelId: config.treatmentModelId,
             promptVersion: config.treatmentPromptVersion,
-            input: c.input,
+            arm: "treatment",
             expectedOutput: c.expectedOutput,
-          }),
-        ]);
-        controlEvaluation = {
-          actualOutput: controlResult.actualOutput,
-          score: controlResult.score,
-          latencyMs: controlResult.latencyMs,
-        };
-        treatmentEvaluation = {
-          actualOutput: treatmentResult.actualOutput,
-          score: treatmentResult.score,
-          latencyMs: treatmentResult.latencyMs,
-        };
-      } else {
-        // Fallback to deterministic evaluation
-        controlEvaluation = await evaluator.evaluateCase({
-          suite: suite ?? controlRunSuiteFallback(suiteId),
-          caseDefinition: c,
-          modelId: config.controlModelId,
-          promptVersion: config.controlPromptVersion,
-          arm: "control",
-          expectedOutput: c.expectedOutput,
-        });
-        treatmentEvaluation = await evaluator.evaluateCase({
-          suite: suite ?? controlRunSuiteFallback(suiteId),
-          caseDefinition: c,
-          modelId: config.treatmentModelId,
-          promptVersion: config.treatmentPromptVersion,
-          arm: "treatment",
-          expectedOutput: c.expectedOutput,
-        });
-      }
+          });
+        }
 
-      this.recordCaseResult({
-        runId: controlRun.id,
-        caseId: c.id,
-        input: c.input,
-        expectedOutput: c.expectedOutput,
-        actualOutput: serializeEvalOutput(controlEvaluation.actualOutput),
-        score: clampScore(controlEvaluation.score),
-        passed: clampScore(controlEvaluation.score) >= passThreshold,
-        latencyMs: controlEvaluation.latencyMs ?? deterministicLatency(`${c.id}:control`),
-      });
-      this.recordCaseResult({
-        runId: treatmentRun.id,
-        caseId: c.id,
-        input: c.input,
-        expectedOutput: c.expectedOutput,
-        actualOutput: serializeEvalOutput(treatmentEvaluation.actualOutput),
-        score: clampScore(treatmentEvaluation.score),
-        passed: clampScore(treatmentEvaluation.score) >= passThreshold,
-        latencyMs: treatmentEvaluation.latencyMs ?? deterministicLatency(`${c.id}:treatment`),
-      });
+        this.recordCaseResult({
+          runId: controlRun.id,
+          caseId: c.id,
+          input: c.input,
+          expectedOutput: c.expectedOutput,
+          actualOutput: serializeEvalOutput(controlEvaluation.actualOutput),
+          score: clampScore(controlEvaluation.score),
+          passed: clampScore(controlEvaluation.score) >= passThreshold,
+          latencyMs: controlEvaluation.latencyMs ?? deterministicLatency(`${c.id}:control`),
+        });
+        this.recordCaseResult({
+          runId: treatmentRun.id,
+          caseId: c.id,
+          input: c.input,
+          expectedOutput: c.expectedOutput,
+          actualOutput: serializeEvalOutput(treatmentEvaluation.actualOutput),
+          score: clampScore(treatmentEvaluation.score),
+          passed: clampScore(treatmentEvaluation.score) >= passThreshold,
+          latencyMs: treatmentEvaluation.latencyMs ?? deterministicLatency(`${c.id}:treatment`),
+        });
 
-      // Collect individual scores for statistical testing
-      controlScores.push(clampScore(controlEvaluation.score));
-      treatmentScores.push(clampScore(treatmentEvaluation.score));
+        controlScores.push(clampScore(controlEvaluation.score));
+        treatmentScores.push(clampScore(treatmentEvaluation.score));
+      });
     }
 
     const controlCompleted = this.completeRun(controlRun.id);

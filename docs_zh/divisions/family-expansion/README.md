@@ -15,4 +15,4 @@
 
 - 只记录已与 `config/quality/division-catalog.json` 对齐后的扩展计划。
 - 不在这里重定义 runtime family；这里只写 governance grouping 到 canonical division 的扩展策略。
-- 任何新增 family report，都必须标明 `pilot source`、`target divisions`、`blocked risks`、`required evidence`。
+- 任何新增 family report，都必须标明 `current readiness snapshot`、`leadership types`、`pilot source`、`target divisions`、`blocked risks`、`required evidence`。

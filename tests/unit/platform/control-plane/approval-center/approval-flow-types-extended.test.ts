@@ -96,6 +96,8 @@ test("HumanFeedback with modify_directly type", () => {
 test("FeedbackLoop interface structure", () => {
   const loop: FeedbackLoop = {
     loopId: "loop-123",
+    harnessRunId: "hr-123",
+    nodeRunId: "node-123",
     workflowRunId: "wf-456",
     stepId: "step-789",
     maxIterations: 5,
@@ -114,6 +116,8 @@ test("FeedbackLoop interface structure", () => {
 test("FeedbackLoop with feedback items", () => {
   const loop: FeedbackLoop = {
     loopId: "loop-123",
+    harnessRunId: "hr-123",
+    nodeRunId: "node-123",
     workflowRunId: "wf-456",
     stepId: "step-789",
     maxIterations: 5,
@@ -482,6 +486,8 @@ test("ApprovalFlowState with feedbackLoop", () => {
     delegation: null,
     feedbackLoop: {
       loopId: "loop-123",
+      harnessRunId: "hr-123",
+      nodeRunId: "node-123",
       workflowRunId: "wf-456",
       stepId: "step-789",
       maxIterations: 5,

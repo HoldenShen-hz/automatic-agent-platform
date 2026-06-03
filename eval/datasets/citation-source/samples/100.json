@@ -1,0 +1,7 @@
+{
+  "caseId": "cite-100",
+  "question": "What evidence supports knowledge claim 100?",
+  "expectedSource": "source-11",
+  "freshnessDays": 11,
+  "category": "freshness"
+}

@@ -45,6 +45,9 @@ test("buildLeadershipClaimScanReport respects allowlist and approved claims and 
   try {
     writeFile(join(configRoot, "schemas", "leadership-claim.schema.json"), JSON.stringify({ $id: "aa://leadership-claim.schema.json" }));
     writeFile(join(configRoot, "claims", "allowlist.yaml"), [
+      "$schema: config/division-coverage/schemas/leadership-claim-allowlist.schema.json",
+      "version: 1",
+      "updatedAt: \"2026-05-01T00:00:00Z\"",
       "entries:",
       "  - filePath: docs_zh/reference/claim-gate.md",
       "    matchedText: industry-leading",
@@ -94,7 +97,12 @@ test("buildLeadershipClaimScanReport ignores governance vocabulary references in
 
   try {
     writeFile(join(configRoot, "schemas", "leadership-claim.schema.json"), JSON.stringify({ $id: "aa://leadership-claim.schema.json" }));
-    writeFile(join(configRoot, "claims", "allowlist.yaml"), "entries: []");
+    writeFile(join(configRoot, "claims", "allowlist.yaml"), [
+      "$schema: config/division-coverage/schemas/leadership-claim-allowlist.schema.json",
+      "version: 1",
+      "updatedAt: \"2026-05-01T00:00:00Z\"",
+      "entries: []",
+    ].join("\n"));
     writeFile(join(configRoot, "claims", "records.yaml"), "claims: []");
     writeFile(
       join(workspace, "docs_en", "reference", "automatic_agent_system_full_review_audit_methodology_v1_3_with_tests_relationship.md"),
@@ -130,6 +138,9 @@ test("buildLeadershipClaimScanReport fails expired allowlist entries instead of 
     writeFile(join(configRoot, "schemas", "leadership-claim.schema.json"), JSON.stringify({ $id: "aa://leadership-claim.schema.json" }));
     writeFile(join(configRoot, "claims", "records.yaml"), "claims: []");
     writeFile(join(configRoot, "claims", "allowlist.yaml"), [
+      "$schema: config/division-coverage/schemas/leadership-claim-allowlist.schema.json",
+      "version: 1",
+      "updatedAt: \"2026-05-01T00:00:00Z\"",
       "entries:",
       "  - filePath: docs_zh/reference/expired.md",
       "    matchedText: production-ready",
@@ -162,7 +173,12 @@ test("buildLeadershipClaimScanReport does not grandfather config-approved claims
 
   try {
     writeFile(join(configRoot, "schemas", "leadership-claim.schema.json"), JSON.stringify({ $id: "aa://leadership-claim.schema.json" }));
-    writeFile(join(configRoot, "claims", "allowlist.yaml"), "entries: []");
+    writeFile(join(configRoot, "claims", "allowlist.yaml"), [
+      "$schema: config/division-coverage/schemas/leadership-claim-allowlist.schema.json",
+      "version: 1",
+      "updatedAt: \"2026-05-01T00:00:00Z\"",
+      "entries: []",
+    ].join("\n"));
     writeFile(join(configRoot, "claims", "records.yaml"), [
       "claims:",
       "  - claimId: coding-ui-approved",
@@ -193,6 +209,29 @@ test("buildLeadershipClaimScanReport does not grandfather config-approved claims
 
     assert.equal(report.summary.blockedCount, 1);
     assert.equal(report.hits[0]?.status, "blocked");
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("buildLeadershipClaimScanReport rejects allowlist documents without the canonical schema envelope", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-leadership-audit-bad-allowlist-"));
+  const configRoot = join(workspace, "config", "division-coverage");
+  const dataRoot = join(workspace, "data");
+  const now = new Date("2026-05-31T00:00:00.000Z");
+
+  try {
+    writeFile(join(configRoot, "schemas", "leadership-claim.schema.json"), JSON.stringify({ $id: "aa://leadership-claim.schema.json" }));
+    writeFile(join(configRoot, "claims", "allowlist.yaml"), "entries: []\n");
+    writeFile(join(configRoot, "claims", "records.yaml"), "claims: []\n");
+
+    assert.throws(() => buildLeadershipClaimScanReport({
+      rootDir: workspace,
+      configRoot,
+      dataRoot,
+      scanRoots: ["docs_zh"],
+      now,
+    }), /invalid_allowlist_schema_ref/);
   } finally {
     rmSync(workspace, { recursive: true, force: true });
   }

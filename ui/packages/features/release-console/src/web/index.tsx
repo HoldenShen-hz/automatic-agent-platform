@@ -96,10 +96,13 @@ export function LeadershipClaimsWebView(): ReactElement {
                   title={`${family.displayName} · ${family.readinessStatus}`}
                   status={family.targetClaimLevel}
                   description={[
-                    `Owner: ${family.owner}`,
+                    `Owner: ${family.owner} / Claim review owner: ${family.familyPolicy.claimReviewOwner}`,
+                    `Target claim: ${family.targetClaimLevel}`,
+                    `Leadership types: ${family.familyPolicy.leadershipTypes.join(", ") || "n/a"}`,
                     `Divisions: ${family.canonicalDivisions.join(", ") || "n/a"}`,
                     `MVP thresholds: ${family.mvpThresholds.map((item) => `${item.label} ${item.requirement}`).join(" / ") || "n/a"}`,
                     `Leadership thresholds: ${family.leadershipThresholds.map((item) => `${item.label} ${item.requirement}`).join(" / ") || "n/a"}`,
+                    `No-go boundary: ${family.familyPolicy.noGoBoundaryRef ?? "n/a"}`,
                   ].join("\n")}
                 />
               ))}
@@ -116,7 +119,10 @@ export function LeadershipClaimsWebView(): ReactElement {
                   description={[
                     claim.claimText,
                     `Evidence: ${claim.evidenceRefs.join(", ") || "n/a"}`,
+                    `Owner: ${claim.owner ?? "n/a"} / Requested by: ${claim.requestedBy ?? "n/a"}`,
+                    `Submitted: ${claim.submittedAt ?? "n/a"}`,
                     `Expires: ${claim.expiresAt ?? "none"}`,
+                    `Freshness: ${claim.freshnessStatus}`,
                     `Reason: ${claim.effectiveStatusReasonCode ?? "n/a"}`,
                     `Revoked by: ${claim.revokedBy ?? "n/a"}`,
                   ].join("\n")}
@@ -145,6 +151,26 @@ export function LeadershipClaimsWebView(): ReactElement {
             </div>
           </GovernanceSection>
 
+          <GovernanceSection title="Allowlist entries">
+            <div style={{ display: "grid", gap: 12 }}>
+              {vm.leadershipClaims.allowlist.map((entry) => (
+                <GovernanceRow
+                  key={`${entry.filePath}:${entry.matchedText}`}
+                  title={`${entry.expired ? "expired_allowlist" : "allowlist"} · ${entry.matchedText}`}
+                  status={entry.expired ? "expired_allowlist" : "allowlisted"}
+                  description={[
+                    `${entry.filePath}`,
+                    `Owner: ${entry.owner}`,
+                    `Claim level: ${entry.claimLevel ?? "n/a"} / Surface: ${entry.surface ?? "n/a"}`,
+                    `Expires: ${entry.expiresAt ?? "n/a"}`,
+                    `Replacement: ${entry.replacementSuggestion ?? "n/a"}`,
+                    `Reason: ${entry.reason}`,
+                  ].join("\n")}
+                />
+              ))}
+            </div>
+          </GovernanceSection>
+
           <GovernanceSection title="Review requests">
             <div style={{ display: "grid", gap: 12 }}>
               {vm.leadershipClaims.reviewRequests.map((request) => (
@@ -155,6 +181,7 @@ export function LeadershipClaimsWebView(): ReactElement {
                   description={[
                     `${request.requestedBy} / ${request.rationale}`,
                     `Surfaces: ${request.requestedSurfaces.join(", ")}`,
+                    `Evidence: ${request.evidenceRefs.join(", ") || "n/a"}`,
                     `Decision: ${request.decisionReasonCode ?? "pending"}`,
                   ].join("\n")}
                   action={
@@ -186,6 +213,7 @@ export function LeadershipClaimsWebView(): ReactElement {
                     `Scopes: ${action.scopes.join(", ") || "n/a"}`,
                     `Surfaces: ${action.enforcementSurfaces.join(", ") || "n/a"}`,
                     `Block modes: ${action.blockModes.join(", ") || "n/a"}`,
+                    `Sources: ${action.sources.join(", ") || "n/a"}`,
                   ].join("\n")}
                 />
               ))}

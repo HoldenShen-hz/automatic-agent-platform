@@ -13,6 +13,8 @@ import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/tru
 import { AuthoritativeTaskStore } from "../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "./fs.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 export interface IntegrationContext {
   /** Path to temporary workspace */
   workspace: string;

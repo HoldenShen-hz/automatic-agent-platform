@@ -10,7 +10,7 @@ test("normalizePath returns /workspace prefix for paths within workspace", () =>
 });
 
 test("normalizePath converts backslashes to forward slashes", () => {
-  const result = normalizePath("C:\\Users\\project\\file.ts", "/workspace");
+  const result = normalizePath("C:\\dev\\project\\file.ts", "/workspace");
   assert.ok(!result.includes("\\"));
 });
 
@@ -42,7 +42,7 @@ test("isWithinWorkspace returns true for paths inside workspace", () => {
 
 test("isWithinWorkspace returns false for paths outside workspace", () => {
   assert.equal(isWithinWorkspace("/tmp/file.ts", "/workspace"), false);
-  assert.equal(isWithinWorkspace("/home/user/file.ts", "/workspace"), false);
+  assert.equal(isWithinWorkspace("/srv/user/file.ts", "/workspace"), false);
 });
 
 test("getWorkspaceRelativePath extracts relative path", () => {

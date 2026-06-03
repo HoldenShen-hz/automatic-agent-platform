@@ -16,6 +16,7 @@ import { PluginSpiRegistry } from "../../../src/domains/registry/plugin-spi-regi
 import { createBuiltinPlugin } from "../../../src/plugins/builtin-plugin-registry.js";
 import { createGithubAdapterPlugin } from "../../../src/plugins/adapters/github-adapter.js";
 import { createOperationsRetrieverPluginWithOptions } from "../../../src/plugins/retrievers/operations-retriever.js";
+import { createJsonFetch } from "../../helpers/fetch.js";
 
 test("plugin execution integration: coding retriever retrieves knowledge", async () => {
   const registry = new PluginSpiRegistry();
@@ -105,12 +106,7 @@ test("plugin execution integration: github adapter authenticates and executes", 
   const registry = new PluginSpiRegistry();
 
   const githubAdapter = createGithubAdapterPlugin({
-    fetchImplementation: async () => ({
-      ok: true,
-      status: 201,
-      headers: { get: () => null },
-      text: async () => JSON.stringify({ id: 101, number: 42 }),
-    }) as Response,
+    fetchImplementation: createJsonFetch({ id: 101, number: 42 }, { status: 201 }),
   });
   assert.ok(githubAdapter);
   registry.register(githubAdapter, {

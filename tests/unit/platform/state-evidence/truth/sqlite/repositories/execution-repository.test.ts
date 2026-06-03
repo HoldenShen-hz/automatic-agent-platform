@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ExecutionRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/execution-repository.js";
+import type {
+  ExecutionPrecheckRecord,
+  ExecutionRecord,
+} from "../../../../../../../src/platform/contracts/types/domain/execution-types.js";
 
 // Test type exports and structure from the execution-repository
 // We test the structure and types without needing actual database connections
@@ -68,11 +72,12 @@ test("ExecutionRepository insertExecution accepts ExecutionRecord type", () => {
   const repo = new ExecutionRepository(mockConn);
 
   // Create a mock execution record
-  const mockExecution = {
+  const mockExecution: ExecutionRecord = {
     id: "exec-123",
     taskId: "task-456",
     workflowId: "wf-789",
     parentExecutionId: null,
+    harnessRunId: null,
     agentId: "agent-1",
     roleId: "role-1",
     runKind: "task_run" as const,
@@ -82,6 +87,8 @@ test("ExecutionRepository insertExecution accepts ExecutionRecord type", () => {
     attempt: 1,
     timeoutMs: 3600000,
     budgetUsdLimit: null,
+    budgetReservationId: null,
+    budgetLedgerId: null,
     requiresApproval: 0,
     sandboxMode: null,
     allowedToolsJson: null,
@@ -173,14 +180,14 @@ test("ExecutionRepository insertExecutionPrecheck accepts record", () => {
 
   const repo = new ExecutionRepository(mockConn);
 
-  const precheck = {
+  const precheck: ExecutionPrecheckRecord = {
     id: "precheck-1",
     executionId: "exec-123",
-    allowed: true,
+    allowed: 1,
     reasonCode: null,
     resolvedBudgetUsd: null,
     resolvedTimeoutMs: 3600000,
-    resolvedSandboxMode: null,
+    resolvedSandboxMode: "workspace_write",
     resolvedToolsJson: null,
     resolvedPathsJson: null,
     checkedAt: "2026-04-26T10:00:00.000Z",

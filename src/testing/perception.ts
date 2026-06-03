@@ -23,7 +23,7 @@ export function seedPerceptionDataset(db: SqliteDatabase, store: AuthoritativeTa
       {
         title: "Database latency increased",
         summary: "Write latency increased after an upstream schema rollout.",
-        rawRef: "https://example.test/db-latency",
+        rawRef: "https://example.invalid/db-latency",
         relevanceScore: 0.92,
         importance: 0.97,
         tags: ["incident", "database"],
@@ -33,7 +33,7 @@ export function seedPerceptionDataset(db: SqliteDatabase, store: AuthoritativeTa
       {
         title: "Support queue growth",
         summary: "Inbound support queue grew by 25% after pricing announcement.",
-        rawRef: "https://example.test/support-queue",
+        rawRef: "https://example.invalid/support-queue",
         relevanceScore: 0.84,
         importance: 0.77,
         tags: ["support", "pricing"],
@@ -43,7 +43,7 @@ export function seedPerceptionDataset(db: SqliteDatabase, store: AuthoritativeTa
       {
         title: "Expired low-signal mention",
         summary: "An older mention that should not survive the current brief window.",
-        rawRef: "https://example.test/expired",
+        rawRef: "https://example.invalid/expired",
         relevanceScore: 0.5,
         importance: 0.2,
         tags: ["noise"],

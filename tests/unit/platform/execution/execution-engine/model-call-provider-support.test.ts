@@ -186,10 +186,9 @@ test("isRetryableProviderError returns true for unknown error [model-call-provid
 
 test("sleep resolves after specified milliseconds [model-call-provider-support]", async () => {
   const start = Date.now();
-  // timing-contract: validates exported sleep helper waits approximately the requested duration.
-  await sleep(50);
+  await sleep(10);
   const elapsed = Date.now() - start;
-  assert.ok(elapsed >= 45, `Expected ~50ms, got ${elapsed}ms`);
+  assert.ok(elapsed >= 8, `Expected >=10ms async wait, got ${elapsed}ms`);
 });
 
 test("sleep handles zero milliseconds [model-call-provider-support]", async () => {

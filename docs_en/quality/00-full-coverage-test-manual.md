@@ -1,158 +1,158 @@
-# 全coveragetesting方法手册
+# Full-Coverage Testing Methodology Manual
 
-> **文档版本**: v4.1 (v4.0 正文 + v4.1 missing口补充) 
-> **适用项目**: automatic-agent-platform
-> **testing框架**: Node.js built-in test runner (`node:test`) + `node:assert/strict`
-> **coverage率工具**: c8 v11.0.0 (V8 native coverage) + Istanbul reporter
-> **变异testing**: Stryker Mutator v9.6.1
-> **Node.js 要求**: v22+ (`--test` + `--test-concurrency` flags) 
-> **上次更新**: 2026-05-18 (补充未充分coverage的产品级, 运营级, UI, Mission, LLM, 迁移与供应链testing) 
-> **最新补充**: 见 [v4.1 补充: 尚未充分考虑的testingtype与补全方案](#v41-补充尚未充分考虑的testingtype与补全方案)
-
----
-
-## 目录
-
-**Part I — testing治理基础**
-
-1. [testing基础设施总览](#1-testing基础设施总览)
-2. [命令速查表](#2-命令速查表)
-3. [目录结构与分层规范](#3-目录结构与分层规范)
-4. [testing编写规范与模式](#4-testing编写规范与模式)
-5. [Mock 与 Helper 工具箱](#5-mock-与-helper-工具箱)
-6. [coverage率门禁机制](#6-coverage率门禁机制)
-7. [testing无misses保障体系](#7-testing无misses保障体系)
-8. [安全回归testing规范](#8-安全回归testing规范)
-9. [Golden / Snapshot testing](#9-golden--snapshot-testing)
-10. [性能基准testing](#10-性能基准testing)
-11. [变异testing (Stryker) ](#11-变异testingstryker)
-12. [CI 集成与工作流](#12-ci-集成与工作流)
-13. [新moduletesting Checklist](#13-新moduletesting-checklist)
-
-**Part II — 架构语义coverage (v1.1 新增, v1.2 增补, v3.0 扩展) **
-
-14. [state机testing规范](#14-state机testing规范)
-15. [事件驱动testing规范](#15-事件驱动testing规范)
-16. [OAPEFLIR 阶段coverage矩阵](#16-oapeflir-阶段coverage矩阵)
-17. [concurrent与时序testing规范](#17-concurrent与时序testing规范)
-18. [设计规格到testing追溯规范](#18-设计规格到testing追溯规范)
-19. [真实execute vs Mock execute边界规范](#19-真实execute-vs-mock-execute边界规范)
-20. [testing债务分级](#20-testing债务分级)
-21. [failure样例回灌规则](#21-failure样例回灌规则)
-22. [testingdata治理](#22-testingdata治理)
-23. [coverage率质量红线](#23-coverage率质量红线)
-
-**Part III — 架构missing口回归testing矩阵 (v4.0 重写, 对齐架构审查 v8.0) **
-
-24. [架构审查驱动的回归testing](#24-架构审查驱动的回归testing)
-25. [P0 架构违规missing口testing规范](#25-p0-架构违规missing口testing规范)
-26. [P1 高优先级missing口testing规范](#26-p1-高优先级missing口testing规范)
-27. [P2 details补全missing口testing规范](#27-p2-details补全missing口testing规范)
-
-**Part IV — system工程missing陷回归testing (v2.0 原 Part III 保留, v4.0 更新) **
-
-29. [P0 阻断级工程missing陷testing规范](#29-p0-阻断级工程missing陷testing规范)
-30. [P1 严重工程missing陷testing规范](#30-p1-严重工程missing陷testing规范)
-31. [P2 重要工程missing陷testing规范](#31-p2-重要工程missing陷testing规范)
-32. [架构不变量auto守护testing](#32-架构不变量auto守护testing)
-33. [桩filecoveragemissing口追踪](#33-桩filecoveragemissing口追踪)
-34. [testingmissing口与coverage现状汇总](#34-testingmissing口与coverage现状汇总)
-
-**Part V — 产品级与运营级验收testing (v4.1 补充) **
-
-35. [未充分coveragetesting清单](#35-未充分coveragetesting清单)
-36. [新增专项testing方案](#36-新增专项testing方案)
-37. [补全execute路线](#37-补全execute路线)
-38. [新增testing进入门禁规则](#38-新增testing进入门禁规则)
-39. [文档maintained规则](#39-文档maintained规则)
-40. [正式交互准入标准](#40-正式交互准入标准)
+> **Document Version**: v4.1 (v4.0 main text + v4.1 gap supplements)
+> **Applicable Project**: automatic-agent-platform
+> **Test Framework**: Node.js built-in test runner (`node:test`) + `node:assert/strict`
+> **Coverage Tool**: c8 v11.0.0 (V8 native coverage) + Istanbul reporter
+> **Mutation Testing**: Stryker Mutator v9.6.1
+> **Node.js Requirement**: v22+ (`--test` + `--test-concurrency` flags)
+> **Last Updated**: 2026-05-18 (supplements for under-covered product-level, ops-level, UI, Mission, LLM, migration, and supply-chain testing)
+> **Latest Supplement**: See [v4.1 Supplement: Under-Considered Test Types and Completion Plans](#v41-supplement-under-considered-test-types-and-completion-plans)
 
 ---
 
-## 1. testing基础设施总览
+## Table of Contents
 
-### 1.1 技术栈
+**Part I — Test Governance Fundamentals**
 
-| 组件        | 选型                                                | 版本     |
-| ----------- | --------------------------------------------------- | -------- |
-| Test runner | `node:test` (Node.js built-in)                      | Node 22+ |
-| Assertions  | `node:assert/strict`                                | Node 22+ |
-| Mocking     | 手写 mock 对象 + `tests/helpers/typed-factories.ts` | —        |
-| Coverage    | c8 (V8 native)                                      | v11.0.0  |
-| Mutation    | Stryker Mutator                                     | v9.6.1   |
-| Lint        | ESLint                                              | —        |
-| Typecheck   | TypeScript `tsc --noEmit`                           | —        |
+1. [Test Infrastructure Overview](#1-test-infrastructure-overview)
+2. [Command Quick Reference](#2-command-quick-reference)
+3. [Directory Structure and Layering Conventions](#3-directory-structure-and-layering-conventions)
+4. [Test Authoring Conventions and Patterns](#4-test-authoring-conventions-and-patterns)
+5. [Mock and Helper Toolbox](#5-mock-and-helper-toolbox)
+6. [Coverage Gate Mechanism](#6-coverage-gate-mechanism)
+7. [Test Gap-Proof Assurance System](#7-test-gap-proof-assurance-system)
+8. [Security Regression Test Conventions](#8-security-regression-test-conventions)
+9. [Golden / Snapshot Testing](#9-golden--snapshot-testing)
+10. [Performance Benchmark Testing](#10-performance-benchmark-testing)
+11. [Mutation Testing (Stryker)](#11-mutation-testing-stryker)
+12. [CI Integration and Workflow](#12-ci-integration-and-workflow)
+13. [New Module Test Checklist](#13-new-module-test-checklist)
 
-### 1.2 关键设计决策
+**Part II — Architecture Semantic Coverage (v1.1 new, v1.2 supplements, v3.0 expanded)**
 
-- **无外部testing框架**: 不uses Jest / Vitest / Mocha, 减少dependency (devDependencies only 12 个) 
-- **无外部 mock 库**: 不uses Sinon / testdouble, viatype安全工厂函数创建 mock
-- **编译后运行**: `npm run build:test` 编译 `src/` + `tests/` → `dist/`, testing运行 `dist/tests/**/*.test.js`
-- **coverage率棘轮**: `.coverage-baseline.json` baseline 只能上升不能下降, CI forceexecute
-- **TypeScript 严格模式**: `strict: true` + `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes`
-- **ESM module**: 编译目标 ES2023 + NodeNext modulesystem, 所有导入必须带 `.js` 扩展名
+14. [State Machine Test Conventions](#14-state-machine-test-conventions)
+15. [Event-Driven Test Conventions](#15-event-driven-test-conventions)
+16. [OAPEFLIR Phase Coverage Matrix](#16-oapeflir-phase-coverage-matrix)
+17. [Concurrency and Timing Test Conventions](#17-concurrency-and-timing-test-conventions)
+18. [Design Specification to Test Traceability Conventions](#18-design-specification-to-test-traceability-conventions)
+19. [Real Execution vs Mock Execution Boundary Conventions](#19-real-execution-vs-mock-execution-boundary-conventions)
+20. [Test Debt Tiering](#20-test-debt-tiering)
+21. [Failure Sample Replay Rules](#21-failure-sample-replay-rules)
+22. [Test Data Governance](#22-test-data-governance)
+23. [Coverage Quality Red Lines](#23-coverage-quality-red-lines)
 
-### 1.3 当前规模
+**Part III — Architecture Gap Regression Test Matrix (v4.0 rewrite, aligned with Architecture Review v8.0)**
 
-| 指标                            | 数值        |
-| ------------------------------- | ----------- |
-| 源file总数 (`src/**/*.ts`)      | **1,387**   |
-| 源代码行数                      | **265,020** |
-| testingfile总数 (`tests/**/*.ts`)  | **1,823**   |
-| testing `.test.ts` file数          | **1,803**   |
-| testing代码行数                    | **439,448** |
-| assertion总数 (`assert.*` call)      | **~52,480** |
-| testing/源file比                   | **1.30**    |
-| Unit testingfile                   | **1,398**   |
-| Integration testingfile            | **358**     |
-| E2E testingfile                    | **17**      |
-| Golden testingfile                 | **11**      |
-| Performance testingfile            | **10**      |
-| globally行coverage率 (c8 实测)          | **0.75%**   |
-| globally语句coverage率 (c8 实测)        | **0.75%**   |
-| globally函数coverage率 (c8 实测)        | **0.61%**   |
-| globallybranchcoverage率 (c8 实测)        | **0.61%**   |
+24. [Architecture Review-Driven Regression Testing](#24-architecture-review-driven-regression-testing)
+25. [P0 Architecture Violation Gap Test Conventions](#25-p0-architecture-violation-gap-test-conventions)
+26. [P1 High-Priority Gap Test Conventions](#26-p1-high-priority-gap-test-conventions)
+27. [P2 Detail Completion Gap Test Conventions](#27-p2-detail-completion-gap-test-conventions)
 
-> **v4.0 变更**: 源file从 1,335 → 1,387 (+52) , testingfile从 1,341 → 1,803 (+462) , assertion从 ~34,061 → ~52,480 (+18,419) . E2E 从 10 → 17, Performance 从 7 → 10. **coverage率重大修正**: v3.0 文档声称globally行coverage率 82.4%, 经本次 c8 实测验证only为 **0.75%** (182,253 行中only 1,384 行被coverage, 全部位于 `src/platform/five-plane-state-evidence/truth/sqlite/` 的 6 个 authoritative-task-store-delegating-\*.ts file) . `.coverage-baseline.json` 基线file所有值为 null, 从未被真正填充. 这表明 v3.0 references的coverage率data来自增量构建而非full c8 analysis, 本版已修正为实测值. 
+**Part IV — System Engineering Defect Regression Testing (v2.0 original Part III preserved, v4.0 updated)**
+
+29. [P0 Blocking Engineering Defect Test Conventions](#29-p0-blocking-engineering-defect-test-conventions)
+30. [P1 Severe Engineering Defect Test Conventions](#30-p1-severe-engineering-defect-test-conventions)
+31. [P2 Important Engineering Defect Test Conventions](#31-p2-important-engineering-defect-test-conventions)
+32. [Architecture Invariant Auto-Guard Tests](#32-architecture-invariant-auto-guard-tests)
+33. [Stub File Coverage Gap Tracking](#33-stub-file-coverage-gap-tracking)
+34. [Test Gap and Coverage Status Summary](#34-test-gap-and-coverage-status-summary)
+
+**Part V — Product-Level and Ops-Level Acceptance Testing (v4.1 supplement)**
+
+35. [Under-Covered Test Checklist](#35-under-covered-test-checklist)
+36. [New Special Test Plans](#36-new-special-test-plans)
+37. [Completion Execution Roadmap](#37-completion-execution-roadmap)
+38. [New Test Entry Gate Rules](#38-new-test-entry-gate-rules)
+39. [Documentation Maintenance Rules](#39-documentation-maintenance-rules)
+40. [Formal Interaction Acceptance Criteria](#40-formal-interaction-acceptance-criteria)
 
 ---
 
-## 2. 命令速查表
+## 1. Test Infrastructure Overview
+
+### 1.1 Technology Stack
+
+| Component     | Selection                                              | Version  |
+| ------------- | ------------------------------------------------------ | -------- |
+| Test runner   | `node:test` (Node.js built-in)                          | Node 22+ |
+| Assertions    | `node:assert/strict`                                    | Node 22+ |
+| Mocking       | Hand-written mock objects + `tests/helpers/typed-factories.ts` | —        |
+| Coverage      | c8 (V8 native)                                          | v11.0.0  |
+| Mutation      | Stryker Mutator                                         | v9.6.1   |
+| Lint          | ESLint                                                  | —        |
+| Typecheck     | TypeScript `tsc --noEmit`                               | —        |
+
+### 1.2 Key Design Decisions
+
+- **No external test framework**: Does not use Jest / Vitest / Mocha, reducing dependencies (devDependencies only 12)
+- **No external mock library**: Does not use Sinon / testdouble; creates mocks via type-safe factory functions
+- **Compile-then-run**: `npm run build:test` compiles `src/` + `tests/` → `dist/`; tests run `dist/tests/**/*.test.js`
+- **Coverage ratchet**: `.coverage-baseline.json` baseline can only rise, never fall; CI enforces this
+- **TypeScript strict mode**: `strict: true` + `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes`
+- **ESM modules**: Compile target ES2023 + NodeNext module system; all imports must include `.js` extension
+
+### 1.3 Current Scale
+
+| Metric                             | Value          |
+| ---------------------------------- | -------------- |
+| Total source files (`src/**/*.ts`) | **1,387**      |
+| Lines of source code               | **265,020**    |
+| Total test files (`tests/**/*.ts`) | **1,823**      |
+| Number of `.test.ts` files         | **1,803**      |
+| Lines of test code                 | **439,448**    |
+| Total assertions (`assert.*` calls) | **~52,480**   |
+| Test/source file ratio             | **1.30**       |
+| Unit test files                    | **1,398**      |
+| Integration test files             | **358**        |
+| E2E test files                     | **17**         |
+| Golden test files                  | **11**         |
+| Performance test files             | **10**         |
+| Global line coverage (c8 measured) | **0.75%**      |
+| Global statement coverage (c8 measured) | **0.75%** |
+| Global function coverage (c8 measured) | **0.61%**  |
+| Global branch coverage (c8 measured) | **0.61%**    |
+
+> **v4.0 Change**: Source files grew from 1,335 → 1,387 (+52); test files grew from 1,341 → 1,803 (+462); assertions grew from ~34,061 → ~52,480 (+18,419). E2E from 10 → 17, Performance from 7 → 10. **Major coverage correction**: v3.0 documentation claimed a global line coverage of 82.4%, but verification by this c8 measurement is only **0.75%** (only 1,384 of 182,253 lines are covered, all located in 6 `authoritative-task-store-delegating-*.ts` files in `src/platform/five-plane-state-evidence/truth/sqlite/`). All values in the `.coverage-baseline.json` baseline file are `null` and have never been truly populated. This indicates the coverage data cited by v3.0 came from incremental builds rather than full c8 analysis; this version corrects it to measured values.
+
+---
+
+## 2. Command Quick Reference
 
 ```bash
-# 完整testing (含coverage率门禁) 
+# Full test suite (including coverage gate)
 npm test
 
-# only运行testing (不含门禁) 
+# Run tests only (no gate)
 npm run test:raw
 
-# 分层运行
+# Run by layer
 npm run test:unit
 npm run test:integration
 npm run test:golden
 
-# 特定file
+# Specific file
 npm run build:test && node --test "dist/tests/unit/platform/five-plane-orchestration/*.test.js"
 
-# PostgreSQL 集成testing (需 PG 环境) 
+# PostgreSQL integration tests (requires PG environment)
 AA_TEST_PG_DSN="postgres://..." npm run test:pg-integration
 
-# 性能testing
+# Performance tests
 npm run test:performance
 
-# 变异testing
+# Mutation tests
 npm run test:mutation
 
-# coverage率报告
+# Coverage report
 npm run coverage:report
 
-# 更新coverage率基线
+# Update coverage baseline
 npm run coverage:baseline:update
 
-# typecheck
+# Type check
 npm run typecheck
 
-# ops诊断
+# Ops diagnostics
 npm run doctor
 npm run inspect
 npm run dispatch-execution
@@ -162,93 +162,93 @@ npm run worker-writeback
 
 ---
 
-## 3. 目录结构与分层规范
+## 3. Directory Structure and Layering Conventions
 
-### 3.1 目录布局
+### 3.1 Directory Layout
 
 ```
 tests/
-├── unit/                       # 隔离逻辑testing (1,398 file) 
-│   ├── platform/               # 对应 src/platform/ 镜像结构 (902 file) 
-│   │   ├── execution/          # Execution Plane (151 file) 
-│   │   ├── state-evidence/     # stateEvidence Plane (164 file) 
-│   │   ├── control-plane/      # Control Plane (117 file) 
-│   │   ├── orchestration/      # Orchestration Plane (112 file) 
-│   │   ├── shared/             # shared设施 (140 file) 
-│   │   ├── interface/          # Interface Plane (80 file) 
-│   │   ├── contracts/          # contracttesting (49 file) 
-│   │   ├── model-gateway/      # 模型网关 (34 file) 
-│   │   ├── prompt-engine/      # 提示引擎 (22 file) 
-│   │   └── compliance/         # 合规 (11 file) 
-│   ├── ops-maturity/           # ops成熟度 (103 file) 
-│   ├── scale-ecosystem/        # 规模生态 (70 file) 
-│   ├── sdk/                    # SDK (65 file) 
-│   ├── domains/                # 领域 (55 file) 
-│   ├── runtime/                # runtime交叉testing (48 file) 
-│   ├── interaction/            # 交互 (47 file) 
-│   ├── org-governance/         # 组织治理 (42 file) 
-│   ├── plugins/                # 插件 (24 file) 
-│   ├── core/                   # 核心 (13 file) 
-│   ├── apps/                   # 应用 (6 file) 
-│   ├── deploy/                 # 部署configure守护 (4 file) 
-│   └── docs/                   # 文档守护 (2 file) 
-├── integration/                # 跨服务/runtimetesting (358 file) 
-│   ├── platform/               # 平台集成 (269 file, 含 security/ 子目录) 
-│   ├── sdk/                    # SDK/CLI 集成 (35 file) 
-│   ├── domains/                # 领域 (17 file) 
-│   ├── ops-maturity/           # ops成熟度 (17 file) 
-│   ├── scale-ecosystem/        # 规模生态 (7 file) 
-│   ├── interaction/            # 交互 (3 file) 
-│   ├── org-governance/         # 组织治理 (2 file) 
-│   ├── stability/              # 稳定性 (2 file) 
-│   ├── workflow/               # 工作流 (2 file) 
-│   ├── orchestration/          # 编排 (1 file) 
-│   ├── deploy/                 # 部署 (1 file) 
-│   ├── interaction-governance/ # 交互治理 (1 file) 
-│   └── scale-ops/              # 规模ops (1 file) 
-├── golden/                     # 快照/Golden testing (11 file) 
-│   └── snapshots/              # Golden file存储
-├── e2e/                        # 端到端场景 (17 file) 
-├── performance/                # 性能基准 (10 file) 
-├── helpers/                    # shared工具 (19 file + fixtures/ 子目录) 
-│   ├── typed-factories.ts      # unsafeCast / partial / mock 工厂
+├── unit/                       # Isolated logic tests (1,398 files)
+│   ├── platform/               # Mirrors src/platform/ (902 files)
+│   │   ├── execution/          # Execution plane (151 files)
+│   │   ├── state-evidence/     # State evidence plane (164 files)
+│   │   ├── control-plane/      # Control plane (117 files)
+│   │   ├── orchestration/      # Orchestration plane (112 files)
+│   │   ├── shared/             # Shared facilities (140 files)
+│   │   ├── interface/          # Interface plane (80 files)
+│   │   ├── contracts/          # Contract tests (49 files)
+│   │   ├── model-gateway/      # Model gateway (34 files)
+│   │   ├── prompt-engine/      # Prompt engine (22 files)
+│   │   └── compliance/         # Compliance (11 files)
+│   ├── ops-maturity/           # Ops maturity (103 files)
+│   ├── scale-ecosystem/        # Scale ecosystem (70 files)
+│   ├── sdk/                    # SDK (65 files)
+│   ├── domains/                # Domains (55 files)
+│   ├── runtime/                # Runtime cross-tests (48 files)
+│   ├── interaction/            # Interaction (47 files)
+│   ├── org-governance/         # Org governance (42 files)
+│   ├── plugins/                # Plugins (24 files)
+│   ├── core/                   # Core (13 files)
+│   ├── apps/                   # Apps (6 files)
+│   ├── deploy/                 # Deploy config guards (4 files)
+│   └── docs/                   # Documentation guards (2 files)
+├── integration/                # Cross-service / runtime tests (358 files)
+│   ├── platform/               # Platform integration (269 files, includes security/ subdir)
+│   ├── sdk/                    # SDK/CLI integration (35 files)
+│   ├── domains/                # Domains (17 files)
+│   ├── ops-maturity/           # Ops maturity (17 files)
+│   ├── scale-ecosystem/        # Scale ecosystem (7 files)
+│   ├── interaction/            # Interaction (3 files)
+│   ├── org-governance/         # Org governance (2 files)
+│   ├── stability/              # Stability (2 files)
+│   ├── workflow/               # Workflow (2 files)
+│   ├── orchestration/          # Orchestration (1 file)
+│   ├── deploy/                 # Deploy (1 file)
+│   ├── interaction-governance/ # Interaction governance (1 file)
+│   └── scale-ops/              # Scale ops (1 file)
+├── golden/                     # Snapshot / Golden tests (11 files)
+│   └── snapshots/              # Golden file storage
+├── e2e/                        # End-to-end scenarios (17 files)
+├── performance/                # Performance benchmarks (10 files)
+├── helpers/                    # Shared utilities (19 files + fixtures/ subdir)
+│   ├── typed-factories.ts      # unsafeCast / partial / mock factories
 │   ├── fixtures/               # base.ts + composite.ts
-│   ├── integration-context.ts  # SQLite + TaskStore 集成上下文
-│   ├── repository-harness.ts   # 仓储层 DB testing
-│   ├── e2e-harness.ts          # 全栈 E2E 上下文
-│   ├── golden.ts               # 快照assertion
-│   ├── env.ts                  # 环境变量隔离
-│   ├── fs.ts                   # 临时filesystem
-│   ├── concurrent-runner.ts    # concurrent不变量验证
-│   ├── process-guard.ts        # 子processleaks检测
-│   ├── api.ts                  # API 集成种子
+│   ├── integration-context.ts  # SQLite + TaskStore integration context
+│   ├── repository-harness.ts   # Repository-layer DB tests
+│   ├── e2e-harness.ts          # Full-stack E2E context
+│   ├── golden.ts               # Snapshot assertion
+│   ├── env.ts                  # Environment variable isolation
+│   ├── fs.ts                   # Temporary file system
+│   ├── concurrent-runner.ts    # Concurrent invariant verification
+│   ├── process-guard.ts        # Subprocess leak detection
+│   ├── api.ts                  # API integration seeding
 │   ├── pg-test-helper.ts       # PostgreSQL testing
 │   ├── cli.ts                  # CLI testing
-│   ├── seed.ts                 # data播种
-│   ├── test-cleanup.ts         # singletonreset
-│   ├── billing.ts              # 计费testing
-│   ├── perception.ts           # 感知testing
-│   └── pmf.ts                  # PMF testing
-└── fixtures/                   # 迁移testing fixtures
+│   ├── seed.ts                 # Data seeding
+│   ├── test-cleanup.ts         # Singleton reset
+│   ├── billing.ts              # Billing tests
+│   ├── perception.ts           # Perception tests
+│   └── pmf.ts                  # PMF tests
+└── fixtures/                   # Migration test fixtures
 ```
 
-### 3.2 分层规则
+### 3.2 Layering Rules
 
-| 层              | 目录                 | 规则                              | dependency                             |
-| --------------- | -------------------- | --------------------------------- | -------------------------------- |
-| **Unit**        | `tests/unit/`        | 单module隔离testing, 所有外部dependency mock | 无 DB, 无网络, 无file I/O        |
-| **Integration** | `tests/integration/` | 跨module, CLI, runtime, sandbox     | 可用 SQLite in-memory, temp 目录 |
-| **Golden**      | `tests/golden/`      | output快照对比                      | 可dependency真实服务                   |
-| **E2E**         | `tests/e2e/`         | 完整业务流程                      | 全栈, mock provider              |
-| **Performance** | `tests/performance/` | 延迟/吞吐量基准                   | 可用真实 DB                      |
+| Layer             | Directory                | Rule                                       | Dependencies                              |
+| ----------------- | ------------------------ | ------------------------------------------ | ----------------------------------------- |
+| **Unit**          | `tests/unit/`            | Single-module isolated test; mock all external dependencies | No DB, no network, no file I/O            |
+| **Integration**   | `tests/integration/`     | Cross-module, CLI, runtime, sandbox         | May use SQLite in-memory, temp directories |
+| **Golden**        | `tests/golden/`          | Output snapshot comparison                 | May depend on real services                |
+| **E2E**           | `tests/e2e/`             | Full business flow                          | Full stack, mock provider                  |
+| **Performance**   | `tests/performance/`     | Latency / throughput benchmark              | May use real DB                            |
 
 ---
 
-## 4. testing编写规范与模式
+## 4. Test Authoring Conventions and Patterns
 
-### 4.1 基本结构
+### 4.1 Basic Structure
 
-本项目uses **扁平 `test()` call**, 不uses `describe()` 嵌套. 每个testingfiledirectly导入 `node:test` 和 `node:assert/strict`. 
+This project uses **flat `test()` calls**, not `describe()` nesting. Each test file directly imports `node:test` and `node:assert/strict`.
 
 ```typescript
 import test from "node:test";
@@ -256,13 +256,13 @@ import assert from "node:assert/strict";
 
 import { MyService } from "../../../../src/platform/my-module/my-service.js";
 
-test("MyService 在输入为空时returndefault值", () => {
+test("MyService returns default value when input is empty", () => {
   const service = new MyService();
   const result = service.compute({});
   assert.equal(result, "default");
 });
 
-test("MyService reject非法参数", () => {
+test("MyService rejects illegal arguments", () => {
   const service = new MyService();
   assert.throws(() => service.compute(null as any), {
     message: /invalid input/i,
@@ -270,69 +270,69 @@ test("MyService reject非法参数", () => {
 });
 ```
 
-### 4.2 naming规范
+### 4.2 Naming Conventions
 
-| 维度     | 规则                             | 示例                                                                  |
-| -------- | -------------------------------- | --------------------------------------------------------------------- |
-| file名   | `<被测module>.test.ts`, kebab-case | `feedback-collector.test.ts`                                          |
-| testing标题 | 行为描述, 主语 + 条件 + 预期     | `"FeedbackCollector deduplicates signals and emits learning signals"` |
-| 变量名   | 与生产代码一致的 camelCase       | `const collector = new FeedbackCollector()`                           |
+| Dimension      | Rule                                | Example                                                              |
+| -------------- | ----------------------------------- | -------------------------------------------------------------------- |
+| File name      | `<module-under-test>.test.ts`, kebab-case | `feedback-collector.test.ts`                                  |
+| Test title     | Behavior description; subject + condition + expected | `"FeedbackCollector deduplicates signals and emits learning signals"` |
+| Variable name  | camelCase consistent with production code | `const collector = new FeedbackCollector()`                  |
 
-### 4.3 导入path
+### 4.3 Import Paths
 
-所有导入uses **相对path + `.js` 扩展名** (因为编译为 ESM) : 
+All imports use **relative path + `.js` extension** (because compiled to ESM):
 
 ```typescript
-// 正确
+// Correct
 import { FeedbackCollector } from "../../../../src/platform/feedback/feedback-collector.js";
 
-// error — missing少 .js 扩展名
+// Wrong — missing .js extension
 import { FeedbackCollector } from "../../../../src/platform/feedback/feedback-collector";
 ```
 
-### 4.4 assertion模式
+### 4.4 Assertion Patterns
 
-本项目onlyuses `node:assert/strict`, 常用 API: 
+This project only uses `node:assert/strict`; common APIs:
 
 ```typescript
-// 值相等 (===) 
+// Value equality (===)
 assert.equal(result.status, "blocked");
 
-// 深度相等 (对象/array) 
+// Deep equality (object / array)
 assert.deepEqual(learningSignals[0]?.sourceSignalIds, ["sig_1", "sig_2"]);
 
-// 布尔assertion
+// Boolean assertion
 assert.ok(result.length > 0);
 
-// 异常assertion
+// Exception assertion
 assert.throws(() => schema.parse(badInput));
 assert.throws(() => fn(), { message: /expected pattern/ });
 
-// 异步异常
+// Async exception
 await assert.rejects(async () => service.execute(), {
   message: /timeout/,
 });
 
-// 不throws异常 (Schema 验证常用) 
+// No throw (commonly used for schema validation)
 assert.doesNotThrow(() => schema.parse(validPayload));
 ```
 
-### 4.5 synchronous vs 异步
+### 4.5 Sync vs Async
 
-- **Unit testing**: 优先synchronous. 纯函数, Schema 解析, in-memory服务都是synchronous的
-- **Integration testing**: 通常 `async`, 因涉及 DB/file/子process
-- **principle**: 如果被测函数return `Promise`, testing函数标记 `async`; 否则保持synchronous
+- **Unit tests**: prefer sync. Pure functions, schema parsing, and in-memory services are all sync
+- **Integration tests**: usually `async`, since they involve DB / file / subprocess
+- **Principle**: If the function-under-test returns a `Promise`, mark the test function `async`; otherwise keep it sync
 
-### 4.6 资源cleanup模式
+### 4.6 Resource Cleanup Patterns
 
-Integration 和 E2E testinguses `try/finally` 模式确保cleanup: 
+Integration and E2E tests use the `try/finally` pattern to ensure cleanup:
 
 ```typescript
 test("sandbox blocks symlink traversal", async () => {
   const workspace = createTempWorkspace("aa-sandbox-");
   const outside = createTempWorkspace("aa-target-");
   try {
-    // ... testing逻辑
+    // ... test logic
     assert.equal(result.status, "blocked");
   } finally {
     cleanupPath(workspace);
@@ -341,11 +341,11 @@ test("sandbox blocks symlink traversal", async () => {
 });
 ```
 
-**禁止** uses `afterEach` 或globally teardown — Node.js test runner 对此支持有限, 且 `try/finally` 更可靠. 
+**Prohibited** from using `afterEach` or global teardown — Node.js test runner has limited support for them, and `try/finally` is more reliable.
 
-### 4.7 testingdata构建
+### 4.7 Test Data Construction
 
-uses fixture 工厂函数 + spread overrides 模式, 避免大量内联data: 
+Use the fixture factory + spread overrides pattern to avoid large amounts of inline data:
 
 ```typescript
 import { createMinimalTask } from "../../../helpers/fixtures/base.js";
@@ -358,17 +358,17 @@ test("task store persists custom priority", () => {
 });
 ```
 
-### 4.8 安全testing模式
+### 4.8 Security Test Patterns
 
-安全testing遵循 **denial-path regression** 模式 — 每个testing验证一个攻击向量被reject: 
+Security tests follow the **denial-path regression** pattern — each test verifies that an attack vector is denied:
 
 ```typescript
 test("command executor blocks null-byte injection in path argument", async () => {
-  // 1. 构建攻击输入
+  // 1. Build attack input
   const nullBytePath = "somefile\x00.txt";
-  // 2. execute
+  // 2. Execute
   const result = await executor.execute({ ..., args: [nullBytePath] });
-  // 3. assertionreject + 具体error码
+  // 3. Assert denial + specific error code
   assert.equal(result.status, "blocked");
   assert.equal(result.error?.code, "sandbox.command_arg_path_denied");
 });
@@ -376,30 +376,30 @@ test("command executor blocks null-byte injection in path argument", async () =>
 
 ---
 
-## 5. Mock 与 Helper 工具箱
+## 5. Mock and Helper Toolbox
 
-本项目 **不uses Sinon / testdouble**, 所有 mock via手写工厂函数implementation, concentrated在 `tests/helpers/`. 
+This project **does not use Sinon / testdouble**; all mocks are implemented via hand-written factory functions, centralized in `tests/helpers/`.
 
-### 5.1 工具清单
+### 5.1 Tool Inventory
 
-| file                     | 核心导出                                                                                                           | 用途                                |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------- |
-| `typed-factories.ts`     | `unsafeCast<T>()`, `partial<T>()`, `createMockCacheStore()`, `createMockCacheFacade()`, `createMockCacheMetrics()` | type安全 mock 对象创建              |
-| `fixtures/base.ts`       | `createMinimalTask()`, `createMinimalExecution()`, `createMinimalApproval()`                                       | 最小有效领域record                    |
-| `fixtures/composite.ts`  | `createBlockedTask()`, `createApprovalRequest()`, `createCompletedTask()`, `createFailedTask()`                    | 多实体关联场景                      |
-| `env.ts`                 | `withEnv(overrides, fn)`, `withEnvSync(overrides, fn)`                                                             | 环境变量隔离                        |
-| `fs.ts`                  | `createTempWorkspace()`, `cleanupPath()`, `createFile()`, `createSymlink()`                                        | 临时filesystem                        |
-| `integration-context.ts` | `createIntegrationContext()`, `createSeededIntegrationContext()`                                                   | SQLite + TaskStore 集成上下文       |
-| `repository-harness.ts`  | `createRepositoryHarness()`, `createRepositoryWithStoreHarness()`                                                  | 仓储层 DB testing                      |
-| `e2e-harness.ts`         | `createE2EHarness()`, `createSeededE2EHarness()`                                                                   | 全栈 E2E 上下文                     |
-| `golden.ts`              | `assertGolden()`, `assertGoldenContains()`, `assertGoldenMatches()`                                                | 快照assertion                            |
-| `process-guard.ts`       | `createProcessGuard()`, `withProcessGuard()`                                                                       | 子processleaks检测 (ADR-072)            |
-| `concurrent-runner.ts`   | `runConcurrentInvariant()`, `runConcurrentStateModification()`, `runCriticalSectionTest()`                         | concurrent不变量验证                      |
-| `api.ts`                 | `createSeededApiContext()`                                                                                         | 完整 API 集成种子 (DB + 12 个服务)  |
+| File                    | Core Exports                                                                                                          | Purpose                                       |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `typed-factories.ts`    | `unsafeCast<T>()`, `partial<T>()`, `createMockCacheStore()`, `createMockCacheFacade()`, `createMockCacheMetrics()`    | Type-safe mock object creation                |
+| `fixtures/base.ts`      | `createMinimalTask()`, `createMinimalExecution()`, `createMinimalApproval()`                                         | Minimal valid domain records                  |
+| `fixtures/composite.ts` | `createBlockedTask()`, `createApprovalRequest()`, `createCompletedTask()`, `createFailedTask()`                      | Multi-entity related scenarios                |
+| `env.ts`                | `withEnv(overrides, fn)`, `withEnvSync(overrides, fn)`                                                                | Environment variable isolation                |
+| `fs.ts`                 | `createTempWorkspace()`, `cleanupPath()`, `createFile()`, `createSymlink()`                                          | Temporary file system                         |
+| `integration-context.ts`| `createIntegrationContext()`, `createSeededIntegrationContext()`                                                     | SQLite + TaskStore integration context        |
+| `repository-harness.ts` | `createRepositoryHarness()`, `createRepositoryWithStoreHarness()`                                                     | Repository-layer DB tests                     |
+| `e2e-harness.ts`        | `createE2EHarness()`, `createSeededE2EHarness()`                                                                      | Full-stack E2E context                        |
+| `golden.ts`             | `assertGolden()`, `assertGoldenContains()`, `assertGoldenMatches()`                                                   | Snapshot assertion                             |
+| `process-guard.ts`      | `createProcessGuard()`, `withProcessGuard()`                                                                          | Subprocess leak detection (ADR-072)           |
+| `concurrent-runner.ts`  | `runConcurrentInvariant()`, `runConcurrentStateModification()`, `runCriticalSectionTest()`                          | Concurrent invariant verification             |
+| `api.ts`                | `createSeededApiContext()`                                                                                            | Complete API integration seed (DB + 12 services) |
 
-### 5.2 `unsafeCast<T>()` 与 `partial<T>()`
+### 5.2 `unsafeCast<T>()` and `partial<T>()`
 
-`unsafeCast<T>()` 替代散落的 `as any`, 使其可search, 可审计: 
+`unsafeCast<T>()` replaces scattered `as any`, making it searchable and auditable:
 
 ```typescript
 import { unsafeCast } from "../../../helpers/typed-factories.js";
@@ -409,7 +409,7 @@ const fakeProvider = unsafeCast<LlmProvider>({
 });
 ```
 
-`partial<T>()` used forconstructionpartialimplementation的interface对象 (type正确的 `Partial<T>`) : 
+`partial<T>()` is used to construct partially implemented interface objects (a type-correct `Partial<T>`):
 
 ```typescript
 import { partial } from "../../../helpers/typed-factories.js";
@@ -417,9 +417,9 @@ import { partial } from "../../../helpers/typed-factories.js";
 const config = partial<RuntimeConfig>({ maxRetries: 3, timeoutMs: 5000 });
 ```
 
-### 5.3 Mock 创建模式
+### 5.3 Mock Creation Pattern
 
-项目统一uses **对象literal量 + interfacetype** 的方式创建 mock: 
+The project uniformly uses the **object literal + interface type** style to create mocks:
 
 ```typescript
 const mockStore: CacheStore = {
@@ -438,7 +438,7 @@ const mockStore: CacheStore = {
 };
 ```
 
-**不uses** `jest.fn()` / `sinon.stub()` — 如需recordcall, uses闭包array: 
+**Do not** use `jest.fn()` / `sinon.stub()` — if you need to record calls, use a closure array:
 
 ```typescript
 const calls: string[] = [];
@@ -450,14 +450,14 @@ const mockLogger = {
     calls.push(`ERROR: ${msg}`);
   },
 };
-// ... execute被测代码 ...
+// ... execute code-under-test ...
 assert.equal(calls.length, 2);
 assert.ok(calls[0]?.includes("started"));
 ```
 
-### 5.4 环境变量隔离
+### 5.4 Environment Variable Isolation
 
-`withEnv()` 在回调前保存原值, 回调后恢复 (即使throws异常) : 
+`withEnv()` saves the original value before the callback and restores it after the callback (even if an exception is thrown):
 
 ```typescript
 import { withEnv } from "../../../helpers/env.js";
@@ -470,171 +470,171 @@ test("respects AA_LOG_LEVEL env var", async () => {
 });
 ```
 
-### 5.5 Harness 选择指南
+### 5.5 Harness Selection Guide
 
-| 场景             | uses                                                               |
-| ---------------- | ------------------------------------------------------------------ |
-| 纯逻辑 unit testing | directly `new Service()` + inline mock                                 |
-| Repository testing  | `createRepositoryHarness()`                                        |
-| 跨服务集成testing   | `createIntegrationContext()` 或 `createSeededIntegrationContext()` |
-| API 端点testing     | `createSeededApiContext()` → `ctx.createServer()`                  |
-| E2E 全流程       | `createE2EHarness()` 或 `createSeededE2EHarness()`                 |
-| 子process相关       | `withProcessGuard(fn)` wrapped                                        |
-| concurrent安全         | `runConcurrentInvariant()` / `runCriticalSectionTest()`            |
+| Scenario                 | Use                                                                  |
+| ------------------------ | -------------------------------------------------------------------- |
+| Pure-logic unit test     | Direct `new Service()` + inline mock                                 |
+| Repository test          | `createRepositoryHarness()`                                          |
+| Cross-service integration test | `createIntegrationContext()` or `createSeededIntegrationContext()` |
+| API endpoint test        | `createSeededApiContext()` → `ctx.createServer()`                    |
+| E2E full flow            | `createE2EHarness()` or `createSeededE2EHarness()`                   |
+| Subprocess-related       | Wrap with `withProcessGuard(fn)`                                     |
+| Concurrency safety       | `runConcurrentInvariant()` / `runCriticalSectionTest()`              |
 
 ---
 
-## 6. coverage率门禁机制
+## 6. Coverage Gate Mechanism
 
-### 6.1 三层架构
+### 6.1 Three-Layer Architecture
 
 ```
 c8 (V8 native) → generate-coverage-report.mjs → check-coverage-baseline.mjs
                                                           ↓
-                                                 .coverage-baseline.json (棘轮)
+                                                 .coverage-baseline.json (ratchet)
 ```
 
-### 6.2 c8 configure (`.c8rc.json`) 
+### 6.2 c8 Configuration (`.c8rc.json`)
 
-| 参数       | 值                                         | 说明                                |
-| ---------- | ------------------------------------------ | ----------------------------------- |
-| `reporter` | `["text", "html", "lcov", "json-summary"]` | 四格式output                          |
-| `include`  | `["dist/src/**/*.js"]`                     | only计量生产代码                      |
-| `exclude`  | tests, scripts, configs, node_modules      | 排除非生产file                      |
-| `all`      | `true`                                     | 未被testing加载的file也计入 (0% coverage)  |
+| Parameter   | Value                                      | Description                                    |
+| ----------- | ------------------------------------------ | ---------------------------------------------- |
+| `reporter`  | `["text", "html", "lcov", "json-summary"]` | Output in four formats                         |
+| `include`   | `["dist/src/**/*.js"]`                     | Measure production code only                   |
+| `exclude`   | tests, scripts, configs, node_modules      | Exclude non-production files                   |
+| `all`       | `true`                                     | Files not loaded by tests are also counted (0% coverage) |
 
-### 6.3 棘轮基线 (`.coverage-baseline.json`) 
+### 6.3 Ratchet Baseline (`.coverage-baseline.json`)
 
-globally阈值 (v4.0 c8 实测data) : 
+Global thresholds (v4.0 c8 measured data):
 
-| 指标       | 当前实测  | v3.0 文档声称 | 说明                          |
-| ---------- | --------- | ------------- | ----------------------------- |
-| Lines      | **0.75%** | 82.4%         | 182,253 行中only 1,384 行被coverage |
-| Statements | **0.75%** | 82.4%         | 同上                          |
-| Functions  | **0.61%** | 88.5%         | 983 个函数中only 6 个被coverage     |
-| Branches   | **0.61%** | 80.6%         | 同上                          |
+| Metric      | Current Measured | v3.0 Doc Claimed | Description                          |
+| ----------- | ---------------- | ---------------- | ------------------------------------ |
+| Lines       | **0.75%**        | 82.4%            | Only 1,384 of 182,253 lines covered  |
+| Statements  | **0.75%**        | 82.4%            | Same as above                        |
+| Functions   | **0.61%**        | 88.5%            | Only 6 of 983 functions covered      |
+| Branches    | **0.61%**        | 80.6%            | Same as above                        |
 
-> **v4.0 重大修正**: `.coverage-baseline.json` 当前所有值为 null (`directories: {}`) , 基线从未被真正填充. v3.0 文档声称的 82.4% 行coverage率经 c8 `all: true` fullanalysis验证为 **0.75%**. 实际被coverage的only有 `src/platform/five-plane-state-evidence/truth/sqlite/` 下 6 个 authoritative-task-store-delegating-\*.ts file (共 1,384 行, 均 100% coverage) . 其余 977 个源filecoverage率均为 0%. 这表明 v3.0 的coverage率data可能来自不完整的增量构建或已过时的报告. 
+> **v4.0 Major Correction**: All values in `.coverage-baseline.json` are currently `null` (`directories: {}`); the baseline has never been truly populated. The 82.4% line coverage claimed by v3.0 documentation was verified by c8 `all: true` full analysis to be **0.75%**. The files actually covered are only 6 `authoritative-task-store-delegating-*.ts` files under `src/platform/five-plane-state-evidence/truth/sqlite/` (1,384 lines total, all 100% covered). The remaining 977 source files have 0% coverage. This indicates that v3.0's coverage data may have come from incomplete incremental builds or outdated reports.
 >
-> **行动项**: 需要 (1) 运行完整 `npm test` + c8 fullcoverage率analysis, (2) 填充 `.coverage-baseline.json` 基线, (3) 在 CI 中启用coverage率门禁. 
+> **Action Items**: Need to (1) run the complete `npm test` + c8 full coverage analysis, (2) populate the `.coverage-baseline.json` baseline, (3) enable the coverage gate in CI.
 
-**棘轮规则**: `check-coverage-baseline.mjs` 对比当前coverage率与基线: 
+**Ratchet Rule**: `check-coverage-baseline.mjs` compares the current coverage to the baseline:
 
-- 任何指标 **below** 基线 → CI failure (exit code 1) 
-- 任何目录 **不在** 基线中 → CI failure (untracked directory) 
-- coverage率 **提升** 后运行 `npm run coverage:baseline:update` 更新基线 → 新值成为新的下限
-- **当前state**: 基线未填充, 门禁机制exists但未生效
+- Any metric **below** baseline → CI fails (exit code 1)
+- Any directory **not in** baseline → CI fails (untracked directory)
+- After coverage **rises**, run `npm run coverage:baseline:update` to update the baseline → new value becomes the new floor
+- **Current State**: Baseline not populated; gate mechanism exists but is not in effect
 
-### 6.4 目录级基线 (v4.0 c8 实测data) 
+### 6.4 Directory-Level Baseline (v4.0 c8 Measured Data)
 
-> **注意**: 以下data来自 `coverage/coverage-summary.json` c8 fullanalysis (`all: true`) . 由于 `.coverage-baseline.json` 未填充, 此处列出实际coveragestate. 
+> **Note**: The following data comes from `coverage/coverage-summary.json` c8 full analysis (`all: true`). Since `.coverage-baseline.json` is not populated, actual coverage status is listed here.
 
-**有coverage的目录** (only 1 个目录有非零coverage) : 
+**Directories with coverage** (only 1 directory has non-zero coverage):
 
-| 目录                                        | file数 | 被coveragefile | Lines                | Functions |
-| ------------------------------------------- | ------ | ---------- | -------------------- | --------- |
-| `src/platform/five-plane-state-evidence/truth/sqlite/` | 25     | 6          | 1,384/36,219 (3.82%) | 6/167     |
+| Directory                                       | File Count | Covered Files | Lines                  | Functions |
+| ----------------------------------------------- | ---------- | ------------- | ---------------------- | --------- |
+| `src/platform/five-plane-state-evidence/truth/sqlite/` | 25         | 6             | 1,384/36,219 (3.82%)   | 6/167     |
 
-被coverage的 6 个file (均 100%) : 
+The 6 covered files (all 100%):
 
-- `authoritative-task-store-delegating-governance.ts` (346 行) 
-- `authoritative-task-store-delegating-engagement.ts` (345 行) 
-- `authoritative-task-store-delegating-lifecycle.ts` (246 行) 
-- `authoritative-task-store-delegating-base.ts` (224 行) 
-- `authoritative-task-store-delegating-runtime.ts` (213 行) 
-- `authoritative-task-store-delegating-core.ts` (10 行) 
+- `authoritative-task-store-delegating-governance.ts` (346 lines)
+- `authoritative-task-store-delegating-engagement.ts` (345 lines)
+- `authoritative-task-store-delegating-lifecycle.ts` (246 lines)
+- `authoritative-task-store-delegating-base.ts` (224 lines)
+- `authoritative-task-store-delegating-runtime.ts` (213 lines)
+- `authoritative-task-store-delegating-core.ts` (10 lines)
 
-**零coverage的主要目录** (按代码量sort, Top-15) : 
+**Zero-coverage major directories** (sorted by code volume, Top-15):
 
-| 目录                                 | file数 | 总行数 | Lines coverage率 |
-| ------------------------------------ | ------ | ------ | ------------ |
-| `src/platform/five-plane-execution/`            | 162    | 43,202 | 0%           |
-| `src/platform/shared/`               | 100    | 24,079 | 0%           |
-| `src/platform/five-plane-control-plane/`        | 75     | 23,555 | 0%           |
-| `src/platform/five-plane-orchestration/`        | 81     | 9,332  | 0%           |
-| `src/platform/five-plane-interface/`            | 49     | 8,705  | 0%           |
-| `src/scale-ecosystem/marketplace/`   | 26     | 7,737  | 0%           |
-| `src/sdk/cli/`                       | 78     | 6,148  | 0%           |
-| `src/platform/model-gateway/`        | 17     | 5,012  | 0%           |
-| `src/platform/contracts/`            | 34     | 4,041  | 0%           |
-| `src/domains/registry/`              | 14     | 2,456  | 0%           |
-| `src/ops-maturity/drift-detection/`  | 15     | 2,271  | 0%           |
-| `src/domains/governance/`            | 4      | 1,632  | 0%           |
-| `src/platform/prompt-engine/`        | 9      | 1,432  | 0%           |
-| `src/scale-ecosystem/feedback-loop/` | 7      | 578    | 0%           |
-| `src/interaction/nl-gateway/`        | 4      | 549    | 0%           |
+| Directory                                 | File Count | Total Lines | Lines Coverage |
+| ----------------------------------------- | ---------- | ----------- | -------------- |
+| `src/platform/five-plane-execution/`            | 162        | 43,202      | 0%             |
+| `src/platform/shared/`               | 100        | 24,079      | 0%             |
+| `src/platform/five-plane-control-plane/`        | 75         | 23,555      | 0%             |
+| `src/platform/five-plane-orchestration/`        | 81         | 9,332       | 0%             |
+| `src/platform/five-plane-interface/`            | 49         | 8,705       | 0%             |
+| `src/scale-ecosystem/marketplace/`   | 26         | 7,737       | 0%             |
+| `src/sdk/cli/`                       | 78         | 6,148       | 0%             |
+| `src/platform/model-gateway/`        | 17         | 5,012       | 0%             |
+| `src/platform/contracts/`            | 34         | 4,041       | 0%             |
+| `src/domains/registry/`              | 14         | 2,456       | 0%             |
+| `src/ops-maturity/drift-detection/`  | 15         | 2,271       | 0%             |
+| `src/domains/governance/`            | 4          | 1,632       | 0%             |
+| `src/platform/prompt-engine/`        | 9          | 1,432       | 0%             |
+| `src/scale-ecosystem/feedback-loop/` | 7          | 578         | 0%             |
+| `src/interaction/nl-gateway/`        | 4          | 549         | 0%             |
 
-> **v4.0 说明**: v3.0 列出的高coverage目录 (如 execution/queue 99.7%, workflow-debugger 99.5%) 在 c8 fullanalysis中均为 0%. 这进一步confirmation v3.0 data来源不准确. 真正的coverage率提升需要确保 `npm run build:test` 编译所有源file和testingfile到 `dist/`, 然后由 c8 在运行testing时收集coverage率. 
+> **v4.0 Note**: The high-coverage directories listed in v3.0 (e.g., execution/queue 99.7%, workflow-debugger 99.5%) are all 0% in the c8 full analysis. This further confirms that v3.0's data source is inaccurate. A real coverage increase requires ensuring `npm run build:test` compiles all source files and test files into `dist/`, and then c8 collects coverage while running tests.
 
-### 6.5 更新流程
+### 6.5 Update Process
 
 ```bash
-npm test                          # 运行完整testing
-npm run coverage:baseline:update  # only在testing全via后execute
-git diff .coverage-baseline.json  # confirmation变更合理
-git add .coverage-baseline.json   # 提交新基线
+npm test                          # Run the full test suite
+npm run coverage:baseline:update  # Execute only after all tests pass
+git diff .coverage-baseline.json  # Confirm the change is reasonable
+git add .coverage-baseline.json   # Commit the new baseline
 ```
 
-## 7. testing无misses保障体系
+## 7. Test Gap-Proof Assurance System
 
-本节是整个手册的核心方法论 — 回答 **"如何确保testing没有misses"** 这一问题. 体系由五层防护构成, 每层解决不同层面的missesrisk. 
+This section is the core methodology of the entire manual — answering the question **"how to ensure tests have no gaps"**. The system is composed of five layers of protection, each addressing different levels of gap risk.
 
-### 7.1 五层防护模型
+### 7.1 Five-Layer Protection Model
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ 第 5 层: PR Review Checklist (人工审查)                   │
+│ Layer 5: PR Review Checklist (human review)              │
 ├─────────────────────────────────────────────────────────┤
-│ 第 4 层: 变异testing Stryker (assertion有效性验证)                │
+│ Layer 4: Mutation Testing Stryker (assertion validity verification) │
 ├─────────────────────────────────────────────────────────┤
-│ 第 3 层: coverage率棘轮 + 目录级基线 (数值不fallback)            │
+│ Layer 3: Coverage Ratchet + Directory-level Baseline (numeric no-regression) │
 ├─────────────────────────────────────────────────────────┤
-│ 第 2 层: Traceability Matrix (源file ↔ testingfile映射)     │
+│ Layer 2: Traceability Matrix (source file ↔ test file mapping) │
 ├─────────────────────────────────────────────────────────┤
-│ 第 1 层: 分层testingstrategy (Unit / Integration / E2E)         │
+│ Layer 1: Layered Testing Strategy (Unit / Integration / E2E) │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 7.2 第 1 层: 分层testingstrategy
+### 7.2 Layer 1: Layered Testing Strategy
 
-**解决的missestype**: testing粒度不当导致的盲区. 
+**Gap type addressed**: Blind spots caused by improper test granularity.
 
-每个功能点必须在正确的层级被testing: 
+Each feature point must be tested at the correct layer:
 
-| 关注点                          | 正确的testing层                    | 反模式                           |
-| ------------------------------- | ------------------------------- | -------------------------------- |
-| 纯函数逻辑 (解析, validation, 转换)   | Unit                            | 用 E2E 测逻辑branch                |
-| data库读写, transaction, 迁移          | Integration                     | 用 mock DB 掩盖 SQL error         |
-| 多服务协作, 事件传播            | Integration                     | 每个服务单独 mock 后skip协作testing |
-| 安全边界 (沙箱, path穿越)       | Integration                     | only靠 Unit 测 regex               |
-| API 合约 (HTTP state码, response体)  | Integration / E2E               | 只测 service 层不测 HTTP 层      |
-| 全流程业务场景                  | E2E                             | 无                               |
-| output格式稳定性                  | Golden                          | 手写 expected 字符串             |
-| concurrent安全                        | Integration + concurrent-runner | 单线程testing后假设线程安全         |
+| Concern                                | Correct Test Layer                | Anti-pattern                                  |
+| -------------------------------------- | --------------------------------- | --------------------------------------------- |
+| Pure function logic (parse, validate, transform) | Unit                              | Using E2E to test logic branches              |
+| DB read/write, transactions, migrations | Integration                       | Mocking DB to mask SQL errors                 |
+| Multi-service collaboration, event propagation | Integration                  | Mocking each service individually, skipping collaboration tests |
+| Security boundary (sandbox, path traversal) | Integration                      | Relying only on Unit tests of regex           |
+| API contract (HTTP status codes, response body) | Integration / E2E                | Only testing service layer, not HTTP layer    |
+| Full-flow business scenario            | E2E                               | None                                          |
+| Output format stability                | Golden                            | Hand-writing expected strings                 |
+| Concurrency safety                     | Integration + concurrent-runner   | Single-thread test, then assume thread-safe   |
 
-**execute规则**: 
+**Execution Rules**:
 
-1. 每个 `src/platform/<module>/` 目录必须有对应的 `tests/unit/platform/<module>/` 目录
-2. 每个对外暴露的 service class 必须至少有 1 个 unit test file
-3. 涉及 DB / filesystem / 子process的功能必须有 integration test
-4. 安全相关变更必须有 denial-path regression test
+1. Every `src/platform/<module>/` directory must have a corresponding `tests/unit/platform/<module>/` directory
+2. Every exported service class must have at least 1 unit test file
+3. Features involving DB / file system / subprocess must have integration tests
+4. Security-related changes must have a denial-path regression test
 
-### 7.3 第 2 层: Traceability Matrix (可追溯性矩阵) 
+### 7.3 Layer 2: Traceability Matrix
 
-**解决的missestype**: 源file没有对应testingfile. 
+**Gap type addressed**: Source files with no corresponding test files.
 
-构建 **源file → testingfile** 的映射关系, 确保每个生产file都有对应testing. 
+Build a **source file → test file** mapping relationship to ensure every production file has a corresponding test.
 
-**生成方法**: 
+**Generation Method**:
 
 ```bash
-# step 1: 列出所有生产源file (排除 index.ts, types) 
+# Step 1: List all production source files (excluding index.ts, types)
 find src/core -name "*.ts" ! -name "index.ts" ! -name "*.d.ts" ! -path "*/types/*" | sort > /tmp/src-files.txt
 
-# step 2: 列出所有testingfile
+# Step 2: List all test files
 find tests/unit tests/integration -name "*.test.ts" | sort > /tmp/test-files.txt
 
-# step 3: 对比, 找出无testingcoverage的源file
+# Step 3: Compare and find source files with no test coverage
 while read src; do
   base=$(basename "$src" .ts)
   if ! grep -q "$base" /tmp/test-files.txt; then
@@ -643,157 +643,157 @@ while read src; do
 done < /tmp/src-files.txt
 ```
 
-**矩阵maintained规则**: 
+**Matrix Maintenance Rules**:
 
-- 每个 PR 中新增的 `.ts` 源file, 必须有对应的 `.test.ts` file
-- 如果某个file确实无需testing (纯type定义, barrel export) , 在矩阵中标注 `N/A` + 理由
-- 每个 sprint 结束时运行上述脚本, 更新misses清单
+- Every new `.ts` source file in a PR must have a corresponding `.test.ts` file
+- If a file truly does not need testing (pure type definition, barrel export), mark `N/A` + reason in the matrix
+- At the end of every sprint, run the above script to update the gap list
 
-### 7.4 第 3 层: coverage率棘轮
+### 7.4 Layer 3: Coverage Ratchet
 
-**解决的missestype**: 已有testing被删除或新代码未被coverage. 
+**Gap type addressed**: Existing tests are deleted or new code is not covered.
 
-详见 [§6 coverage率门禁机制](#6-coverage率门禁机制). 关键点: 
+See [§6 Coverage Gate Mechanism](#6-coverage-gate-mechanism). Key points:
 
-- **globally门禁**: lines/statements/functions/branches 四维度
-- **目录级门禁**: 每个 `src/platform/<module>` 有independent基线
-- **`all: true`**: 未被任何testing import 的file也计入 (显示为 0% coverage) , 防止"没人references所以没人测"
-- **只能上升**: 基线值via `npm run coverage:baseline:update` monotonic递增
+- **Global gate**: lines / statements / functions / branches — four dimensions
+- **Directory-level gate**: each `src/platform/<module>` has its own baseline
+- **`all: true`**: Files not imported by any test are also counted (displayed as 0% coverage), preventing "no one references it, so no one tests it"
+- **Can only rise**: Baseline values monotonically increase via `npm run coverage:baseline:update`
 
-**coverage率的局限性**: coverage率只说明"代码被execute了", 不说明"行为被验证了". 例如: 
+**Limitations of Coverage**: Coverage only says "the code was executed", not "the behavior was verified". For example:
 
 ```typescript
 test("calls the function", () => {
-  myFunction(); // 100% 行coverage, 但 0 个assertion
+  myFunction(); // 100% line coverage, but 0 assertions
 });
 ```
 
-这就是为什么需要第 4 层. 
+This is why Layer 4 is needed.
 
-### 7.5 第 4 层: 变异testing
+### 7.5 Layer 4: Mutation Testing
 
-**解决的missestype**: testingexecute了代码但missing少有效assertion. 
+**Gap type addressed**: Tests execute the code but lack effective assertions.
 
-Stryker 在代码中injection **变异体** (mutants) , 例如: 
+Stryker injects **mutants** into the code, for example:
 
-- `>` 改为 `>=`
-- `true` 改为 `false`
-- 删除整条语句
-- 字符串 `"error"` 改为 `""`
+- `>` changed to `>=`
+- `true` changed to `false`
+- Delete an entire statement
+- String `"error"` changed to `""`
 
-如果injection变异后testing仍然via (mutant survived) , 说明testing没有有效检测这段逻辑. 
+If a test still passes after a mutation is injected (mutant survived), it indicates the test does not effectively detect this logic.
 
-详见 [§11 变异testing (Stryker) ](#11-变异testingstryker). 阈值: 
+See [§11 Mutation Testing (Stryker)](#11-mutation-testing-stryker). Thresholds:
 
-- **break = 50%**: below此值 CI directlyfailure
-- **low = 60%**: 黄色警告
-- **high = 80%**: 绿色目标
+- **break = 50%**: CI fails directly below this value
+- **low = 60%**: yellow warning
+- **high = 80%**: green target
 
-**变异testing与coverage率的互补关系**: 
+**Complementary Relationship Between Mutation Testing and Coverage**:
 
-| 场景         | 行coverage率 | 变异分数 | 问题     |
-| ------------ | -------- | -------- | -------- |
-| 有execute有assertion | 高       | 高       | 无       |
-| 有execute无assertion | 高       | **低**   | assertionmissing |
-| 无execute       | **低**   | 低       | testingmissing |
-| Dead code    | 低       | 低       | 需removal   |
+| Scenario             | Line Coverage | Mutation Score | Problem         |
+| -------------------- | ------------- | -------------- | --------------- |
+| Executed with assertions | High          | High           | None            |
+| Executed without assertions | High          | **Low**        | Missing assertions |
+| Not executed         | **Low**       | Low            | Missing tests   |
+| Dead code            | Low           | Low            | Needs removal   |
 
-### 7.6 第 5 层: PR Review Checklist
+### 7.6 Layer 5: PR Review Checklist
 
-**解决的missestype**: auto化工具无法检测的逻辑misses. 
+**Gap type addressed**: Logical gaps that automated tools cannot detect.
 
-每个 PR 合入前, reviewer 按以下清单check: 
+Before each PR is merged, the reviewer checks against the following list:
 
-- [ ] 新增/修改的每个 public function 是否有对应testing
-- [ ] 是否coverage了正常path **和** errorpath
-- [ ] 边界条件是否被testing (空array, null, 0, MAX_INT, timeout) 
-- [ ] 安全变更是否有 denial-path regression
-- [ ] 异步函数是否testing了 reject/error path
-- [ ] configure变更是否有对应的 config validation testing
-- [ ] coverage率是否提升或持平 (不下降) 
-- [ ] 变异testing分数是否提升或持平
+- [ ] Does every new/modified public function have a corresponding test?
+- [ ] Are both the happy path **and** the error path covered?
+- [ ] Are boundary conditions tested (empty array, null, 0, MAX_INT, timeout)?
+- [ ] Do security changes have a denial-path regression?
+- [ ] Do async functions test the reject/error path?
+- [ ] Do config changes have a corresponding config validation test?
+- [ ] Does coverage rise or stay flat (not decline)?
+- [ ] Does mutation test score rise or stay flat?
 
-### 7.7 missestype分类与对应防护
+### 7.7 Gap Type Classification and Corresponding Protection
 
-| missestype         | 描述                          | 检测层                                          |
-| ---------------- | ----------------------------- | ----------------------------------------------- |
-| **file级misses**   | 整个源file没有testing            | 第 2 层 (Matrix) + 第 3 层 (`all: true`)        |
-| **函数级misses**   | 某个 exported 函数没有testing    | 第 3 层 (function coverage) + 第 5 层 (Review)  |
-| **branch级misses**   | if/else/switch 某个branch未coverage | 第 3 层 (branch coverage) + 第 4 层 (Stryker)   |
-| **assertion级misses**   | 代码被execute但没有验证结果      | 第 4 层 (Stryker mutant survived)               |
-| **场景级misses**   | missing少特定业务场景testing          | 第 5 层 (Review)                                |
-| **边界条件misses** | 空输入/极值/concurrent未coverage        | 第 4 层 + 第 5 层                               |
-| **回归misses**     | bug 修复没有添加回归testing      | 第 5 层 (Review) + 第 3 层 (棘轮不fallback)         |
-| **安全misses**     | 攻击向量未testing                | 第 1 层 (denial-path 规范) + 第 5 层            |
+| Gap Type              | Description                                  | Detection Layer                                |
+| --------------------- | -------------------------------------------- | ---------------------------------------------- |
+| **File-level gap**    | Whole source file has no test                | Layer 2 (Matrix) + Layer 3 (`all: true`)       |
+| **Function-level gap** | An exported function has no test            | Layer 3 (function coverage) + Layer 5 (Review) |
+| **Branch-level gap**  | A branch of if/else/switch is not covered    | Layer 3 (branch coverage) + Layer 4 (Stryker)  |
+| **Assertion-level gap** | Code executed but no result verified       | Layer 4 (Stryker mutant survived)              |
+| **Scenario-level gap** | Missing tests for specific business scenarios | Layer 5 (Review)                              |
+| **Boundary condition gap** | Empty input / extremes / concurrency not covered | Layer 4 + Layer 5                       |
+| **Regression gap**    | Bug fix has no regression test               | Layer 5 (Review) + Layer 3 (ratchet no-regression) |
+| **Security gap**      | Attack vectors untested                      | Layer 1 (denial-path convention) + Layer 5     |
 
-### 7.8 testing补全优先级sort方法
+### 7.8 Test Completion Prioritization Method
 
-当发现misses后, 按以下优先级sort补全: 
-
-```
-P0 — 安全边界未testing (sandbox escape, path穿越, injection攻击) 
-P1 — 核心 orchestrator / service 无testing (coverage率 0%) 
-P2 — 已有testing但 branch coverage < 60%
-P3 — 已有testing但变异分数 < 50% (assertion不充分) 
-P4 — 辅助函数 / 工具类missing少边界条件testing
-P5 — type定义的 Schema 验证testing
-```
-
-### 7.9 持续保障流程
+When gaps are discovered, prioritize completion as follows:
 
 ```
-开发阶段 → 编写代码 + 编写testing (TDD 或 Code-then-Test) 
-          ↓
-local验证 → npm test (coverage率 + 门禁) 
-          ↓
-PR 提交  → CI auto运行: lint → typecheck → test → coverage:gate
-          ↓
-PR Review → 人工 Checklist (§7.6) 
-          ↓
-Main 合入 → Stryker 变异testing (push to main 触发) 
-          ↓
-Sprint 结束 → 运行 Traceability Matrix 脚本, 更新misses清单
+P0 — Security boundary untested (sandbox escape, path traversal, injection attack)
+P1 — Core orchestrator / service has no test (coverage 0%)
+P2 — Has tests but branch coverage < 60%
+P3 — Has tests but mutation score < 50% (insufficient assertions)
+P4 — Helper functions / utility classes lack boundary condition tests
+P5 — Type definition schema validation tests
+```
+
+### 7.9 Continuous Assurance Process
+
+```
+Development phase → Write code + Write tests (TDD or Code-then-Test)
+                    ↓
+Local validation → npm test (coverage + gate)
+                    ↓
+PR submission → CI runs automatically: lint → typecheck → test → coverage:gate
+                    ↓
+PR Review → Human Checklist (§7.6)
+                    ↓
+Main merge → Stryker mutation testing (triggered by push to main)
+                    ↓
+Sprint end → Run Traceability Matrix script, update gap list
 ```
 
 ---
 
-## 8. 安全回归testing规范
+## 8. Security Regression Test Conventions
 
-### 8.1 Denial-Path Regression 方法论
+### 8.1 Denial-Path Regression Methodology
 
-安全testing的核心principle: **每个攻击向量一个testing, assertionrejectstate + 具体error码**. 
+Core principle of security testing: **one test per attack vector, asserting denial status + specific error code**.
 
 ```
-攻击面识别 → 构建malicious输入 → call被测interface → assertion blocked/denied + error code
+Attack surface identification → Build malicious input → Call target interface → Assert blocked/denied + error code
 ```
 
-### 8.2 攻击面分类
+### 8.2 Attack Surface Classification
 
-| 攻击面       | testing目标                   | 典型攻击向量                                           |
-| ------------ | -------------------------- | ------------------------------------------------------ |
-| **path穿越** | sandbox filesystem隔离       | `../`, symlink, double-encoded `%2f`, null-byte `\x00` |
-| **命令injection** | command executor 参数filter  | `;`, `$()`, `` ` ``, `&&`, `\|\|`, `\|`, `${VAR}`      |
-| **permissionsbypass** | execution-level tool authorization  | 修改 allowedToolsJson, malformed allowlist             |
-| **脚本逃逸** | interpreter path limit      | 工作区外脚本path, 绝对path指向外部                     |
-| **输入validation** | Schema / config validation | 超长字符串, type不匹配, missing必填field                   |
-| **concurrent攻击** | lock和transaction隔离               | 同时审批同一request, concurrent写同一资源                       |
+| Attack Surface        | Test Target                       | Typical Attack Vectors                                       |
+| --------------------- | --------------------------------- | ------------------------------------------------------------ |
+| **Path traversal**    | Sandbox file system isolation    | `../`, symlink, double-encoded `%2f`, null-byte `\x00`      |
+| **Command injection** | Command executor argument filtering | `;`, `$()`, `` ` ``, `&&`, `\|\|`, `\|`, `${VAR}`            |
+| **Permission bypass** | Execution-level tool authorization | Modify allowedToolsJson, malformed allowlist                |
+| **Script escape**     | Interpreter path restriction      | Out-of-workspace script path, absolute path to outside      |
+| **Input validation**  | Schema / config validation       | Excessively long strings, type mismatch, missing required fields |
+| **Concurrency attack** | Locks and transaction isolation | Approve the same request simultaneously, concurrent write to the same resource |
 
-### 8.3 安全testing结构模板
+### 8.3 Security Test Structure Template
 
 ```typescript
-test("<组件> blocks <攻击type> <具体描述>", async () => {
+test("<component> blocks <attack type> <specific description>", async () => {
   const workspace = createTempWorkspace("aa-security-");
   try {
-    // 1. 构建攻击输入
+    // 1. Build attack input
     const maliciousInput = buildAttackPayload();
 
-    // 2. execute被测interface
+    // 2. Execute target interface
     const result = await targetService.execute({
       ...validBaseRequest,
       ...maliciousInput,
     });
 
-    // 3. assertionreject
+    // 3. Assert denial
     assert.equal(result.status, "blocked");
     assert.equal(result.error?.code, "specific.error_code");
   } finally {
@@ -802,9 +802,9 @@ test("<组件> blocks <攻击type> <具体描述>", async () => {
 });
 ```
 
-### 8.4 安全testingnaming规范
+### 8.4 Security Test Naming Conventions
 
-标题必须明确说明 **谁reject了什么**: 
+The title must clearly state **who denied what**:
 
 ```
 ✓ "command executor blocks symlink cwd traversal before spawning the process"
@@ -814,40 +814,40 @@ test("<组件> blocks <攻击type> <具体描述>", async () => {
 ✗ "test injection"
 ```
 
-### 8.5 安全testing必须coverage的场景
+### 8.5 Scenarios That Security Tests Must Cover
 
-每个涉及安全边界的组件, 至少coverage以下场景: 
+Each component involving a security boundary must cover at least the following scenarios:
 
-1. **正常合法request** — confirmation happy path 正常工作 (至少 1 个正向testing) 
-2. **path逃逸** — 至少coverage `../`, symlink, 绝对path三种向量
-3. **输入injection** — 至少coverage shell metachar, null-byte 两种向量
-4. **permissions不足** — 未authorization tool, error domain/role
-5. **畸形输入** — malformed JSON, type mismatch, 空值
-6. **Fail-close** — 当安全check逻辑本身出错时, defaultreject而非放行
+1. **Normal legitimate request** — confirm happy path works (at least 1 positive test)
+2. **Path escape** — at least cover `../`, symlink, absolute path — three vectors
+3. **Input injection** — at least cover shell metachar and null-byte — two vectors
+4. **Insufficient permissions** — unauthorized tool, wrong domain/role
+5. **Malformed input** — malformed JSON, type mismatch, null values
+6. **Fail-close** — when the security check logic itself errors, default to deny rather than allow
 
 ---
 
-## 9. Golden / Snapshot testing
+## 9. Golden / Snapshot Testing
 
-### 9.1 适用场景
+### 9.1 Applicable Scenarios
 
-Golden testing适used for **output格式需要稳定** 的场景: 
+Golden testing is suitable for scenarios where **output format needs to be stable**:
 
-- CLI output格式 (`inspect`, `doctor`, `dispatch-execution` 命令output) 
-- API response体结构
-- configurefile生成结果
-- log格式
+- CLI output format (`inspect`, `doctor`, `dispatch-execution` command output)
+- API response body structure
+- Configuration file generation result
+- Log format
 
-### 9.2 工作原理
+### 9.2 How It Works
 
 ```
-首次运行 (UPDATE_GOLDEN=1) → 将实际output写入 tests/golden/snapshots/<name>.golden
-subsequent运行 → 将实际output与 .golden file对比
-  匹配 → testingvia
-  不匹配 → testingfailure, 提示运行 UPDATE_GOLDEN=1 更新
+First run (UPDATE_GOLDEN=1) → write actual output to tests/golden/snapshots/<name>.golden
+Subsequent runs → compare actual output with .golden file
+  Match → test passes
+  Mismatch → test fails, prompting to run UPDATE_GOLDEN=1 to update
 ```
 
-### 9.3 uses方法
+### 9.3 Usage
 
 ```typescript
 import test from "node:test";
@@ -859,43 +859,43 @@ test("inspect output matches golden snapshot", () => {
 });
 ```
 
-三种assertion API: 
+Three assertion APIs:
 
-| API                                     | 用途          |
-| --------------------------------------- | ------------- |
-| `assertGolden(name, actual)`            | JSON 完全匹配 |
-| `assertGoldenContains(name, substring)` | contains子串      |
-| `assertGoldenMatches(name, regex)`      | regex匹配      |
+| API                                     | Purpose                |
+| --------------------------------------- | ---------------------- |
+| `assertGolden(name, actual)`            | Full JSON match        |
+| `assertGoldenContains(name, substring)` | Contains substring     |
+| `assertGoldenMatches(name, regex)`      | Regex match            |
 
-### 9.4 更新快照
+### 9.4 Updating Snapshots
 
 ```bash
 UPDATE_GOLDEN=1 npm run test:golden
-git diff tests/golden/snapshots/       # Review 变更
+git diff tests/golden/snapshots/       # Review changes
 git add tests/golden/snapshots/
 ```
 
-### 9.5 Golden testing注意事项
+### 9.5 Golden Test Notes
 
-- **不要** 在 golden file中contains时间戳, 随机 ID 等不稳定field — 先 normalize 再 snapshot
-- 快照file必须纳入 git 版本manage
-- Golden filenaminguses版本后缀 (`-v1`, `-v2`) , 当output格式有意变更时创建新版本
+- **Do not** include unstable fields like timestamps or random IDs in golden files — normalize before snapshotting
+- Snapshot files must be managed in git
+- Use a version suffix in Golden file names (`-v1`, `-v2`); create a new version when the output format is intentionally changed
 
 ---
 
-## 10. 性能基准testing
+## 10. Performance Benchmark Testing
 
-### 10.1 适用场景
+### 10.1 Applicable Scenarios
 
-- 关键path延迟回归检测
-- 吞吐量基准 (tasks/sec, queries/sec) 
-- in-memoryuses基准
+- Critical path latency regression detection
+- Throughput benchmarks (tasks/sec, queries/sec)
+- Memory usage benchmarks
 
-### 10.2 testing位置
+### 10.2 Test Location
 
-`tests/performance/` 目录, file名 `*.test.ts`, via `npm run test:performance` 运行. 
+The `tests/performance/` directory; file name `*.test.ts`; run via `npm run test:performance`.
 
-### 10.3 编写模式
+### 10.3 Authoring Pattern
 
 ```typescript
 import test from "node:test";
@@ -919,80 +919,80 @@ test("task insertion throughput exceeds 1000 ops/sec", () => {
 });
 ```
 
-### 10.4 性能testingprinciple
+### 10.4 Performance Test Principles
 
-- **隔离运行**: `npm run test:performance` independent于主testing套件, 避免干扰coverage率
-- **绝对阈值**: assertion绝对性能指标 (如 >1000 ops/sec) , 而非相对changes
-- **预热**: 在计时前execute少量预热迭代, 排除 JIT 编译影响
-- **多次取中位数**: 对延迟敏感testing取多次运行中位数, 减少方差
-- **CI 中可选**: 性能testing在 CI 中作为 optional job, 不blocks合入 (因机器差异大) 
+- **Isolated run**: `npm run test:performance` runs independently of the main test suite to avoid interfering with coverage
+- **Absolute threshold**: Assert absolute performance metrics (e.g. > 1000 ops/sec), not relative changes
+- **Warmup**: Perform a small number of warmup iterations before timing, to exclude JIT compilation effects
+- **Multiple runs, take the median**: For latency-sensitive tests, take the median of multiple runs to reduce variance
+- **Optional in CI**: Performance tests run as an optional job in CI and do not block merging (due to large machine differences)
 
 ---
 
-## 11. 变异testing (Stryker) 
+## 11. Mutation Testing (Stryker)
 
-### 11.1 概念
+### 11.1 Concept
 
-变异testing回答coverage率无法回答的问题: **testing的assertion是否真正有效? **
+Mutation testing answers a question that coverage cannot answer: **Are the test's assertions truly effective?**
 
-Stryker 对源代码injection微小变异 (mutant) , 然后运行testing套件. 如果testing仍然via (mutant survived) , 说明没有assertion能检测到这个代码changes — 即existsassertionmissing. 
+Stryker injects small mutations (mutants) into the source code, then runs the test suite. If the tests still pass (mutant survived), it means no assertion can detect this code change — i.e. there is a missing assertion.
 
-### 11.2 configure (`stryker.config.mjs`) 
+### 11.2 Configuration (`stryker.config.mjs`)
 
-| 参数               | 值                              | 说明                          |
-| ------------------ | ------------------------------- | ----------------------------- |
-| `testRunner`       | `"command"`                     | via `npm run test:unit` 运行 |
-| `mutate`           | `src/platform/**/*.ts`          | 变异range: platform 业务代码   |
-| 排除               | `.d.ts`, `index.ts`, `types/**` | 不变异type定义和 barrel       |
-| `thresholds.break` | 50                              | below 50% → CI failure            |
-| `thresholds.low`   | 60                              | below 60% → 黄色警告           |
-| `thresholds.high`  | 80                              | 高于 80% → 绿色               |
-| `coverageAnalysis` | `"perTest"`                     | 每个testing单独analysiscoveragerange      |
+| Parameter           | Value                            | Description                                    |
+| ------------------- | -------------------------------- | ---------------------------------------------- |
+| `testRunner`        | `"command"`                      | Run via `npm run test:unit`                    |
+| `mutate`            | `src/platform/**/*.ts`           | Mutation scope: platform business code         |
+| Exclude             | `.d.ts`, `index.ts`, `types/**`  | Do not mutate type definitions and barrel      |
+| `thresholds.break`  | 50                               | Below 50% → CI fails                           |
+| `thresholds.low`    | 60                               | Below 60% → yellow warning                     |
+| `thresholds.high`   | 80                               | Above 80% → green                              |
+| `coverageAnalysis`  | `"perTest"`                      | Analyze coverage per test individually         |
 
-### 11.3 运行
+### 11.3 Running
 
 ```bash
-npm run test:mutation         # local运行
-# CI 中only在 push to main 时运行 (耗时较长) 
+npm run test:mutation         # Local run
+# In CI, runs only on push to main (time-consuming)
 ```
 
-报告output到 `reports/mutation/`, contains HTML 可视化报告. 
+The report is output to `reports/mutation/`, including an HTML visualization report.
 
-### 11.4 解读报告
+### 11.4 Interpreting the Report
 
-| state              | 含义                     | 行动               |
-| ----------------- | ------------------------ | ------------------ |
-| **Killed**        | testing检测到变异并failure     | 无需行动           |
-| **Survived**      | 变异后testing仍via         | **需添加更强assertion** |
-| **No coverage**   | 变异代码未被任何testingexecute | 需添加testing         |
-| **Timeout**       | 变异导致无限循环/timeout    | 视为 killed        |
-| **Runtime error** | 变异导致runtimecrashed       | 视为 killed        |
+| Status              | Meaning                                          | Action                                |
+| ------------------- | ------------------------------------------------ | ------------------------------------- |
+| **Killed**          | Test detected the mutation and failed            | No action needed                      |
+| **Survived**        | Tests still pass after mutation                  | **Need to add stronger assertions**   |
+| **No coverage**     | Mutated code was not executed by any test        | Need to add tests                     |
+| **Timeout**         | Mutation caused infinite loop / timeout          | Treated as killed                     |
+| **Runtime error**   | Mutation caused runtime crash                    | Treated as killed                     |
 
-### 11.5 handle Survived Mutants
+### 11.5 Handling Survived Mutants
 
 ```typescript
-// 假设 Stryker 报告: 将 `>` 变异为 `>=` 后 mutant survived
-// 原始代码: if (retries > maxRetries) throw new Error("exceeded");
+// Suppose Stryker reports: after mutating `>` to `>=`, mutant survived
+// Original code: if (retries > maxRetries) throw new Error("exceeded");
 
-// 说明missing少边界testing. 需添加: 
+// Indicates missing boundary test. Need to add:
 test("throws when retries equals maxRetries", () => {
-  // testing retries === maxRetries 的行为
-  // 如果应该throws, 添加 assert.throws
-  // 如果不应该throws, 添加 assert.doesNotThrow
+  // Test the behavior when retries === maxRetries
+  // If it should throw, add assert.throws
+  // If it should not throw, add assert.doesNotThrow
 });
 ```
 
-### 11.6 变异testing与其他层的协作
+### 11.6 Collaboration Between Mutation Testing and Other Layers
 
-- **coverage率**告诉你"哪些代码没被execute" → 添加testing
-- **Stryker**告诉你"哪些代码被execute了但assertion不足" → 加强assertion
-- 两者互补, 不可替代
+- **Coverage** tells you "which code is not executed" → add tests
+- **Stryker** tells you "which code is executed but has insufficient assertions" → strengthen assertions
+- The two are complementary and not substitutable
 
 ---
 
-## 12. CI 集成与工作流
+## 12. CI Integration and Workflow
 
-### 12.1 CI Pipeline 架构
+### 12.1 CI Pipeline Architecture
 
 ```yaml
 CI (GitHub Actions — .github/workflows/ci.yml)
@@ -1015,138 +1015,138 @@ CI (GitHub Actions — .github/workflows/ci.yml)
     └── Docker image vulnerability scan (CRITICAL,HIGH → exit-code 1)
 ```
 
-其他工作流file:
+Other workflow files:
 
-- `deploy-environment.yml` — 环境部署
-- `dr-validation.yml` — 灾备验证
-- `publish-image.yml` — 镜像发布
-- `secret-provider-integration.yml` — 密钥提供者集成testing
+- `deploy-environment.yml` — Environment deployment
+- `dr-validation.yml` — DR validation
+- `publish-image.yml` — Image publishing
+- `secret-provider-integration.yml` — Secret provider integration tests
 
-### 12.2 触发条件
+### 12.2 Trigger Conditions
 
-| Job            | Push to main | PR  | 其他            |
-| -------------- | ------------ | --- | --------------- |
-| validate       | ✓            | ✓   | `codex/**` branch |
-| pg-integration | ✓            | ✓   | —               |
-| mutation-test  | ✓            | ✗   | only main         |
-| security       | ✓            | ✓   | —               |
-| trivy-scan     | ✓            | ✓   | —               |
+| Job            | Push to main | PR  | Other                  |
+| -------------- | ------------ | --- | ---------------------- |
+| validate       | ✓            | ✓   | `codex/**` branches    |
+| pg-integration | ✓            | ✓   | —                      |
+| mutation-test  | ✓            | ✗   | main only              |
+| security       | ✓            | ✓   | —                      |
+| trivy-scan     | ✓            | ✓   | —                      |
 
-### 12.3 CI 中的testing保障点
+### 12.3 Test Assurance Points in CI
 
-| 保障点       | 工具                        | failure条件           |
-| ------------ | --------------------------- | ------------------ |
-| 代码风格     | ESLint                      | 任何 lint error    |
-| type安全     | tsc --noEmit                | 任何 type error    |
-| dependency安全     | npm audit                   | HIGH/CRITICAL 漏洞 |
-| 功能正确     | node --test                 | 任何testingfailure       |
-| coverage率不fallback | check-coverage-baseline.mjs | below基线           |
-| 变异分数     | Stryker                     | below break=50%     |
-| staticanalysis     | CodeQL                      | 发现安全missing陷       |
-| 容器安全     | Trivy                       | CRITICAL/HIGH 漏洞 |
+| Assurance Point      | Tool                          | Failure Condition            |
+| -------------------- | ----------------------------- | ---------------------------- |
+| Code style           | ESLint                        | Any lint error               |
+| Type safety          | tsc --noEmit                  | Any type error               |
+| Dependency security  | npm audit                     | HIGH/CRITICAL vulnerabilities|
+| Functional correctness | node --test                 | Any test failure             |
+| Coverage no-regression | check-coverage-baseline.mjs | Below baseline               |
+| Mutation score       | Stryker                       | Below break=50%              |
+| Static analysis      | CodeQL                        | Security defects found       |
+| Container security   | Trivy                         | CRITICAL/HIGH vulnerabilities |
 
-### 12.4 testing结果归档
+### 12.4 Test Result Archiving
 
-CI auto上传以下 artifacts: 
+CI automatically uploads the following artifacts:
 
-- `test-results/` — testingexecutelog
-- `coverage/` — HTML coverage率报告
-- `reports/mutation/` — Stryker HTML 报告
-
----
-
-## 13. 新moduletesting Checklist
-
-当创建新module时, 按以下 Checklist 确保testing完备: 
-
-### 13.1 目录与file
-
-- [ ] 创建 `tests/unit/platform/<module>/` 或 `tests/unit/<area>/<module>/` 目录
-- [ ] 每个 service class 创建对应 `<service-name>.test.ts`
-- [ ] 如需 DB → 创建 `tests/integration/platform/<module>/` 目录
-
-### 13.2 testing层次
-
-- [ ] **Unit testing**: 每个 exported function / class method
-  - [ ] Happy path (正常输入 → 预期output) 
-  - [ ] Error path (非法输入 → 预期异常/error码) 
-  - [ ] 边界条件 (空值, 零值, 极大值, 空array) 
-- [ ] **Schema testing** (如uses Zod) : 
-  - [ ] 合法 minimal payload → `doesNotThrow`
-  - [ ] 非法 payload → `throws`
-  - [ ] 可选fieldmissing → `doesNotThrow`
-- [ ] **Integration testing** (如涉及 DB/file/子process) : 
-  - [ ] uses `createIntegrationContext()` 或 `createRepositoryHarness()`
-  - [ ] `try/finally` 确保cleanup
-- [ ] **安全testing** (如涉及安全边界) : 
-  - [ ] Denial-path regression coverage各攻击向量
-  - [ ] Fail-close testing
-
-### 13.3 coverage率
-
-- [ ] local运行 `npm test` confirmationcoverage率不belowglobally基线
-- [ ] 运行 `npm run coverage:baseline:update` 更新基线
-- [ ] confirmation新目录出现在 `.coverage-baseline.json` 中
-
-### 13.4 变异testing
-
-- [ ] confirmation新modulepath在 `stryker.config.mjs` 的 `mutate` glob range内
-- [ ] local运行 `npm run test:mutation` confirmation无大量 survived mutants
-
-### 13.5 CI compatibility
-
-- [ ] testing在 Node 22 基线下via
-- [ ] testing支持 `--test-concurrency=12` parallel运行, 无sharedstateconflict
-- [ ] 无hardcoded绝对path, 端口号, 时间戳
-
-### 13.6 文档
-
-- [ ] 在 Traceability Matrix (§7.3) 中更新源file ↔ testingfile映射
-- [ ] 如引入新的 Helper / Fixture, 更新 §5 工具清单
+- `test-results/` — Test execution logs
+- `coverage/` — HTML coverage report
+- `reports/mutation/` — Stryker HTML report
 
 ---
 
+## 13. New Module Test Checklist
+
+When creating a new module, follow this Checklist to ensure test completeness:
+
+### 13.1 Directory and Files
+
+- [ ] Create `tests/unit/platform/<module>/` or `tests/unit/<area>/<module>/` directory
+- [ ] Create corresponding `<service-name>.test.ts` for each service class
+- [ ] If DB is needed → create `tests/integration/platform/<module>/` directory
+
+### 13.2 Test Layers
+
+- [ ] **Unit tests**: each exported function / class method
+  - [ ] Happy path (normal input → expected output)
+  - [ ] Error path (illegal input → expected exception / error code)
+  - [ ] Boundary conditions (null, zero, maximum, empty array)
+- [ ] **Schema tests** (if using Zod):
+  - [ ] Valid minimal payload → `doesNotThrow`
+  - [ ] Invalid payload → `throws`
+  - [ ] Optional field missing → `doesNotThrow`
+- [ ] **Integration tests** (if involving DB / file / subprocess):
+  - [ ] Use `createIntegrationContext()` or `createRepositoryHarness()`
+  - [ ] `try/finally` to ensure cleanup
+- [ ] **Security tests** (if involving security boundaries):
+  - [ ] Denial-path regression covers each attack vector
+  - [ ] Fail-close test
+
+### 13.3 Coverage
+
+- [ ] Run `npm test` locally to confirm coverage is not below the global baseline
+- [ ] Run `npm run coverage:baseline:update` to update the baseline
+- [ ] Confirm the new directory appears in `.coverage-baseline.json`
+
+### 13.4 Mutation Testing
+
+- [ ] Confirm the new module path is within the `mutate` glob in `stryker.config.mjs`
+- [ ] Run `npm run test:mutation` locally to confirm no large number of survived mutants
+
+### 13.5 CI Compatibility
+
+- [ ] Tests pass under the Node 22 baseline
+- [ ] Tests support `--test-concurrency=12` parallel run, with no shared-state conflicts
+- [ ] No hardcoded absolute paths, port numbers, or timestamps
+
+### 13.6 Documentation
+
+- [ ] Update the source file ↔ test file mapping in the Traceability Matrix (§7.3)
+- [ ] If new Helpers / Fixtures are introduced, update the §5 tool inventory
+
+---
+
 ---
 
 ---
 
-# Part II — 架构语义coverage (v1.1 新增, v1.2 增补, v3.0 扩展) 
+# Part II — Architecture Semantic Coverage (v1.1 new, v1.2 supplements, v3.0 expanded)
 
-> Part I 解决的是"代码coverage治理" — 确保每行代码被execute, 每个assertion有效. 
-> Part II 解决的是"架构语义coverage" — 确保system关键设计语义 (state机, 事件, concurrent, 阶段contract) 都被testingcoverage到. 
+> Part I addresses "code coverage governance" — ensuring every line of code is executed and every assertion is valid.
+> Part II addresses "architecture semantic coverage" — ensuring the system's key design semantics (state machine, events, concurrency, phase contracts) are all covered by tests.
 
 ---
 
-## 14. state机testing规范
+## 14. State Machine Test Conventions
 
-### 14.1 为什么需要单独规范
+### 14.1 Why a Separate Convention is Needed
 
-本systemcontains **5 个核心state机** (Task / Workflow / Session / Execution / Approval) 和 **40+ 辅助生命周期枚举** (Worker, Plugin, Rollout, Circuit Breaker, Lease, Repair Pipeline 等) . 
+This system contains **5 core state machines** (Task / Workflow / Session / Execution / Approval) and **40+ auxiliary lifecycle enumerations** (Worker, Plugin, Rollout, Circuit Breaker, Lease, Repair Pipeline, etc.).
 
-普通 line/branch coverage 无法保证: 
+Ordinary line / branch coverage cannot guarantee:
 
-- 每个合法state转换被testing
-- 每个非法state转换被reject
-- 终态不可再转移
-- 跨实体级联转换的atomicity
+- Each legal state transition is tested
+- Each illegal state transition is rejected
+- Terminal states cannot be transitioned again
+- Atomicity of cross-entity cascading transitions
 
-### 14.2 核心state机清单
+### 14.2 Core State Machine Inventory
 
-| state机        | 定义file                                           | 验证file                                                        | state数 | 终态                                     |
-| ------------- | -------------------------------------------------- | --------------------------------------------------------------- | ------ | ---------------------------------------- |
-| **Task**      | `src/platform/five-plane-execution/state-transition/types.ts` | `src/platform/five-plane-execution/state-transition/transition-service.ts` | 7      | done, failed, cancelled                  |
-| **Workflow**  | 同上                                               | 同上                                                            | 7      | completed, failed, cancelled             |
-| **Session**   | 同上                                               | 同上                                                            | 7      | completed, failed, cancelled             |
-| **Execution** | 同上                                               | 同上                                                            | 8      | succeeded, failed, cancelled, superseded |
-| **Approval**  | 同上                                               | 同上                                                            | 5      | approved, rejected, expired, cancelled   |
+| State Machine   | Definition File                                                    | Validation File                                                                          | State Count | Terminal States                          |
+| --------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- | ----------- | ---------------------------------------- |
+| **Task**        | `src/platform/five-plane-execution/state-transition/types.ts`      | `src/platform/five-plane-execution/state-transition/transition-service.ts`               | 7           | done, failed, cancelled                  |
+| **Workflow**    | Same as above                                                      | Same as above                                                                             | 7           | completed, failed, cancelled             |
+| **Session**     | Same as above                                                      | Same as above                                                                             | 7           | completed, failed, cancelled             |
+| **Execution**   | Same as above                                                      | Same as above                                                                             | 8           | succeeded, failed, cancelled, superseded |
+| **Approval**    | Same as above                                                      | Same as above                                                                             | 5           | approved, rejected, expired, cancelled   |
 
-这 5 个state机via `StateTransitionMachine<T>` 泛型类implementation, `assertTransition()` 方法用 CAS 防止concurrent覆写. 
+These 5 state machines are implemented via the `StateTransitionMachine<T>` generic class; the `assertTransition()` method uses CAS to prevent concurrent overwrites.
 
-### 14.3 state机testing三层要求
+### 14.3 Three-Layer State Machine Test Requirements
 
-#### A. 合法转换全coverage (Transition Coverage) 
+#### A. Full Coverage of Legal Transitions (Transition Coverage)
 
-每个state机的 **每条合法转换边** 必须有至少一个testing: 
+Each **legal transition edge** of each state machine must have at least one test:
 
 ```typescript
 test("task transition: queued -> in_progress is allowed", () => {
@@ -1156,9 +1156,9 @@ test("task transition: queued -> in_progress is allowed", () => {
 });
 ```
 
-**量化标准**: 合法边coverage率 = 已测合法边数 / 总合法边数 = **100%**
+**Quantitative standard**: Legal edge coverage = tested legal edges / total legal edges = **100%**
 
-Task state机合法边列表 (示例) : 
+Task state machine legal edge list (example):
 
 ```
 queued → pending, in_progress, cancelled
@@ -1167,9 +1167,9 @@ in_progress → awaiting_decision, done, failed, cancelled
 awaiting_decision → in_progress, failed, cancelled
 ```
 
-#### B. 非法转换全reject (Denial Coverage) 
+#### B. Full Rejection of Illegal Transitions (Denial Coverage)
 
-**每个终态** 向任何非自身state的转换必须被rejecttesting: 
+Transitions from **each terminal state** to any non-self state must be rejection-tested:
 
 ```typescript
 test("task transition: done -> in_progress is rejected", () => {
@@ -1184,57 +1184,57 @@ test("task transition: done -> done is idempotent (allowed)", () => {
 });
 ```
 
-**量化标准**: 所有终态 × 所有非自身state = 必须testingreject
+**Quantitative standard**: All terminal states × all non-self states = rejection must be tested
 
-#### C. 跨实体级联转换 (Cascade Coverage) 
+#### C. Cross-Entity Cascading Transitions (Cascade Coverage)
 
-`TransitionService` 提供 `applyTaskTerminalState` 和 `ApprovalBlockingTransitionService`, 会atomicity地级联转换多个实体. 
+`TransitionService` provides `applyTaskTerminalState` and `ApprovalBlockingTransitionService`, which atomically cascade transitions across multiple entities.
 
-必须testing的级联场景: 
+Cascade scenarios that must be tested:
 
-| 触发             | Task              | Workflow  | Session       | Execution | Approval  |
-| ---------------- | ----------------- | --------- | ------------- | --------- | --------- |
-| task → done      | done              | completed | completed     | succeeded | —         |
-| task → failed    | failed            | failed    | failed        | failed    | —         |
-| task → cancelled | cancelled         | cancelled | cancelled     | cancelled | —         |
-| approval needed  | awaiting_decision | paused    | awaiting_user | blocked   | requested |
-| approval granted | in_progress       | running   | streaming     | executing | approved  |
+| Trigger             | Task              | Workflow  | Session       | Execution | Approval  |
+| ------------------- | ----------------- | --------- | ------------- | --------- | --------- |
+| task → done         | done              | completed | completed     | succeeded | —         |
+| task → failed       | failed            | failed    | failed        | failed    | —         |
+| task → cancelled    | cancelled         | cancelled | cancelled     | cancelled | —         |
+| approval needed     | awaiting_decision | paused    | awaiting_user | blocked   | requested |
+| approval granted    | in_progress       | running   | streaming     | executing | approved  |
 
-### 14.4 辅助state机testing要求
+### 14.4 Auxiliary State Machine Test Requirements
 
-对于非核心state机 (Circuit Breaker, Rollout, Repair Pipeline, Plugin 等) , 要求: 
+For non-core state machines (Circuit Breaker, Rollout, Repair Pipeline, Plugin, etc.), requirements:
 
-| 类别                           | 要求                                  |
-| ------------------------------ | ------------------------------------- |
-| 有 `assertTransition()` 验证的 | 同核心三层要求                        |
-| 有 `transitionTo()` 无验证的   | 至少coverage happy path + terminal states |
-| only作为枚举值的                 | coverage每个枚举值至少出现在一个testing中    |
+| Category                              | Requirement                                            |
+| ------------------------------------- | ------------------------------------------------------ |
+| Has `assertTransition()` validation   | Same as core three-layer requirement                   |
+| Has `transitionTo()` without validation | At least cover happy path + terminal states           |
+| Only used as enumeration values       | Cover each enumeration value appearing in at least one test |
 
-### 14.5 Circuit Breaker state机特殊要求
+### 14.5 Special Circuit Breaker State Machine Requirements
 
-Circuit Breaker (`closed → open → half_open → closed`) 涉及时间和计数, 需额外testing: 
+The Circuit Breaker (`closed → open → half_open → closed`) involves time and counts, so additional tests are required:
 
-- [ ] 连续failure ≥ threshold → 触发 open
-- [ ] failure率 ≥ 50% → 触发 open
-- [ ] open state下request被reject + return `retryAfterMs`
-- [ ] resetTimeoutMs 过后 → 转为 half_open
-- [ ] half_open 单次探测success / failure的行为
-- [ ] 连续success ≥ halfOpenSuccessThreshold → 恢复 closed
+- [ ] Consecutive failures ≥ threshold → trigger open
+- [ ] Failure rate ≥ 50% → trigger open
+- [ ] Requests rejected in open state + return `retryAfterMs`
+- [ ] After resetTimeoutMs → transition to half_open
+- [ ] half_open single probe success / failure behavior
+- [ ] Consecutive successes ≥ halfOpenSuccessThreshold → recover closed
 
-### 14.6 Transition Table 唯一源规则
+### 14.6 Transition Table Single-Source Rule
 
-**硬性要求**: `transition-service.ts` 中的 canonical transition map 是state迁移的 **唯一权威源**. testing用例 **禁止** 手动hardcoded一份副本 transition table. 
+**Hard requirement**: The canonical transition map in `transition-service.ts` is the **single authoritative source** of state transitions. Test cases **must not** manually hard-code a duplicate transition table.
 
-#### A. principle
+#### A. Principles
 
-| 条目     | 规则                                                                                 |
-| -------- | ------------------------------------------------------------------------------------ |
-| 唯一源   | 所有合法/非法迁移判断必须来自 `TransitionService` 的 production map                  |
-| 禁止副本 | testing中不得出现 `const allowedTransitions = { pending: ["running", ...] }` 等手写副本 |
-| data驱动 | testing矩阵必须从 production map **auto生成**, 而非手动枚举                             |
-| synchronous保障 | 若 production map 新增/删除迁移, testingauto感知, 无需人工synchronous                          |
+| Entry         | Rule                                                                                          |
+| ------------- | --------------------------------------------------------------------------------------------- |
+| Single source | All legal / illegal transition judgments must come from the production map in `TransitionService` |
+| No copies     | Test code must not contain hand-written copies like `const allowedTransitions = { pending: ["running", ...] }` |
+| Data-driven   | Test matrix must be **automatically generated** from the production map, not manually enumerated |
+| Sync guarantee | When the production map adds / removes transitions, tests automatically sense this, no manual sync needed |
 
-#### B. data驱动testing生成模板
+#### B. Data-Driven Test Generation Template
 
 ```typescript
 import { describe, test } from "node:test";
@@ -1244,7 +1244,7 @@ import {
   ALL_STATES,
 } from "../../src/platform/five-plane-execution/state-transition/types.js";
 
-// 从 production map auto生成合法迁移对
+// Automatically generate legal transition pairs from the production map
 const validPairs: Array<[string, string]> = [];
 for (const [from, toSet] of Object.entries(TRANSITION_MAP)) {
   for (const to of toSet) {
@@ -1252,7 +1252,7 @@ for (const [from, toSet] of Object.entries(TRANSITION_MAP)) {
   }
 }
 
-// auto生成非法迁移对 (全排列 - 合法对 - 自迁移) 
+// Automatically generate illegal transition pairs (full permutation - legal pairs - self-transition)
 const invalidPairs: Array<[string, string]> = [];
 for (const from of ALL_STATES) {
   for (const to of ALL_STATES) {
@@ -1283,100 +1283,100 @@ test("all invalid transitions are rejected", () => {
 });
 ```
 
-#### C. CI 守护
+#### C. CI Guard
 
-- Coverage gate 新增check: testingfile中若出现与 `TRANSITION_MAP` 键名集合相同的hardcoded对象literal量, CI 报 warning
-- PR Review checklist 中增加一条: "state机testing是否从 production map auto派生? "
+- Coverage gate adds a check: if a test file contains a hard-coded object literal with the same key set as `TRANSITION_MAP`, CI reports a warning
+- PR Review checklist adds an item: "Are the state machine tests automatically derived from the production map?"
 
 ---
 
-## 15. 事件驱动testing规范
+## 15. Event-Driven Test Conventions
 
-### 15.1 事件system架构
+### 15.1 Event System Architecture
 
 ```
 Producer → TypedEventBus → DurableEventBus → SQLite
                                               ↓
                             EventOpsService → deliverPending() → Consumer
-                                              ↓ (3次重试后)
+                                              ↓ (after 3 retries)
                                          Dead Letter Table
 ```
 
-本system定义了 **48 种 typed event**, 分为 3 个 Tier: 
+This system defines **48 typed events**, divided into 3 Tiers:
 
-| Tier       | 语义                  | Ack 要求 | 事件数 | 示例                                            |
-| ---------- | --------------------- | -------- | ------ | ----------------------------------------------- |
-| **Tier 1** | 必须persistence + 必须 ack | 必须     | 9      | `task:status_changed`, `decision:requested`     |
-| **Tier 2** | persistence, ack 可选      | 推荐     | ~35    | `dispatch:*`, `worker:*`, `plugin:*`, `skill:*` |
-| **Tier 3** | 尽力投递              | 无       | ~4     | `stream:chunk_emitted`, `perf:*`                |
+| Tier        | Semantics                       | Ack Required | Event Count | Example                                       |
+| ----------- | ------------------------------- | ------------ | ----------- | --------------------------------------------- |
+| **Tier 1**  | Must persist + must ack         | Required     | 9           | `task:status_changed`, `decision:requested`   |
+| **Tier 2**  | Persist, ack optional           | Recommended  | ~35         | `dispatch:*`, `worker:*`, `plugin:*`, `skill:*` |
+| **Tier 3**  | Best-effort delivery            | None         | ~4          | `stream:chunk_emitted`, `perf:*`              |
 
-### 15.2 按 Tier 分级testing要求
+### 15.2 Tiered Test Requirements
 
-#### Tier 1 事件 (9 种) — 最高testing要求
+#### Tier 1 Events (9 types) — Highest Test Requirements
 
-每种 Tier 1 事件必须coverage完整生命周期: 
+Each Tier 1 event must cover the complete lifecycle:
 
-| 阶段            | testingcontent                                       |
-| --------------- | ---------------------------------------------- |
-| **Schema**      | payload 满足 Zod validator (valid + invalid)   |
-| **Publish**     | 正确写入 events 表 + 创建 ack record             |
-| **Deliver**     | `deliverPending()` 将事件投递到注册 consumer   |
-| **Ack**         | consumer handlesuccess → ack status = `"acked"`     |
-| **Retry**       | consumer handlefailure → 指数backoff重试 (100ms → 5s)  |
-| **Dead Letter** | 3 次重试failure → 写入 dead_letter 表             |
-| **Replay**      | `EventOpsService.replayConsumer()` 重新投递    |
-| **Integrity**   | SHA-256 hash chain 未被tamper                    |
+| Phase          | Test Content                                              |
+| -------------- | --------------------------------------------------------- |
+| **Schema**     | Payload satisfies Zod validator (valid + invalid)         |
+| **Publish**    | Correctly written to events table + creates ack record     |
+| **Deliver**    | `deliverPending()` delivers the event to registered consumer |
+| **Ack**        | Consumer processes successfully → ack status = `"acked"`  |
+| **Retry**      | Consumer processing fails → exponential backoff retry (100ms → 5s) |
+| **Dead Letter**| 3 failed retries → write to dead_letter table             |
+| **Replay**     | `EventOpsService.replayConsumer()` redelivers             |
+| **Integrity**  | SHA-256 hash chain not tampered with                      |
 
-#### Tier 2 事件 — 中等testing要求
+#### Tier 2 Events — Medium Test Requirements
 
-| 阶段            | testingcontent                             |
-| --------------- | ------------------------------------ |
-| **Schema**      | payload 满足 Zod validator           |
-| **Publish**     | 正确写入 events 表                   |
-| **Deliver**     | 至少一个 consumer 能收到             |
-| **Idempotency** | 带 `idempotencyKey` 的事件不duplicate消费 |
+| Phase          | Test Content                                |
+| -------------- | ------------------------------------------- |
+| **Schema**     | Payload satisfies Zod validator              |
+| **Publish**    | Correctly written to events table            |
+| **Deliver**    | At least one consumer can receive it         |
+| **Idempotency**| Events with `idempotencyKey` are not consumed repeatedly |
 
-#### Tier 3 事件 — 基本testing要求
+#### Tier 3 Events — Basic Test Requirements
 
-| 阶段            | testingcontent                    |
-| --------------- | --------------------------- |
-| **Publish**     | 不throws异常                  |
-| **Best-effort** | consumer 不在线时事件不blocks |
+| Phase          | Test Content                              |
+| -------------- | ----------------------------------------- |
+| **Publish**    | Does not throw                            |
+| **Best-effort**| Consumer offline does not block event     |
 
-### 15.3 DLQ testing要求
+### 15.3 DLQ Test Requirements
 
-system有 **3 套independent DLQ**: 
+The system has **3 independent DLQs**:
 
-| DLQ         | 位置                                | testing重点                                                    |
+| DLQ         | Location                            | Test Focus                                                  |
 | ----------- | ----------------------------------- | ----------------------------------------------------------- |
-| Event DLQ   | `event_dead_letters` 表             | 3 次重试后正确入 DLQ + `dlq-manager list` 可查              |
-| Gateway DLQ | `gateway_dead_letters` 表           | 非 retryable state码directly入 DLQ, retryable state码重试后入 DLQ |
-| Jobs DLQ    | `queue_jobs.status = "dead_letter"` | 超过 `maxAttempts` 后入 DLQ                                 |
+| Event DLQ   | `event_dead_letters` table          | Correctly entering DLQ after 3 retries + `dlq-manager list` queryable |
+| Gateway DLQ | `gateway_dead_letters` table        | Non-retryable status code goes directly to DLQ, retryable status code goes to DLQ after retry |
+| Jobs DLQ    | `queue_jobs.status = "dead_letter"` | Goes to DLQ after exceeding `maxAttempts`                   |
 
-每套 DLQ 必须testing: 
+Each DLQ must test:
 
-- [ ] 正确条件下消息进入 DLQ
-- [ ] DLQ 消息可query (list / count) 
-- [ ] DLQ 消息可clear (purge) 
-- [ ] 可重试的 DLQ 消息能重新入队
+- [ ] Messages enter DLQ under correct conditions
+- [ ] DLQ messages are queryable (list / count)
+- [ ] DLQ messages can be cleared (purge)
+- [ ] Retryable DLQ messages can be re-enqueued
 
-### 15.4 Event Schema Drift 回归
+### 15.4 Event Schema Drift Regression
 
-`event-registry.ts` 中的 `RAW_EVENT_SCHEMA_REGISTRY` 定义了所有事件的 schema: 
+The `RAW_EVENT_SCHEMA_REGISTRY` in `event-registry.ts` defines the schema for all events:
 
 ```typescript
 test("all TypedEventPayloadMap keys are registered in EVENT_SCHEMA_REGISTRY", () => {
-  // 编译时已有 MissingTypedEventDefinitions typecheck
-  // runtime补充验证
+  // Compile-time already has MissingTypedEventDefinitions type check
+  // Runtime supplementary validation
   for (const eventType of Object.keys(TypedEventPayloadMap)) {
     assert.ok(hasEventSchema(eventType), `Missing schema for ${eventType}`);
   }
 });
 ```
 
-### 15.5 Consumer 注册integrity
+### 15.5 Consumer Registration Completeness
 
-每种 Tier 1 事件在 `REQUIRED_CONSUMERS_BY_EVENT_TYPE` 中有指定 consumer. testing必须验证: 
+Each Tier 1 event has a specified consumer in `REQUIRED_CONSUMERS_BY_EVENT_TYPE`. Tests must verify:
 
 ```typescript
 test("all Tier 1 events have at least one required consumer", () => {
@@ -1387,18 +1387,18 @@ test("all Tier 1 events have at least one required consumer", () => {
 });
 ```
 
-### 15.6 Consumer 副作用幂等性 (硬性要求) 
+### 15.6 Consumer Side-Effect Idempotency (Hard Requirement)
 
-所有 **可重试 consumer** (Tier 1 必须重试, Tier 2 推荐重试) 必须via幂等性testing. duplicate消费同一条事件 **不得** 产生: 
+All **retryable consumers** (Tier 1 must retry, Tier 2 recommended to retry) must pass idempotency tests. Repeated consumption of the same event **must not** produce:
 
-| 禁止行为            | 验证方法                                                      |
-| ------------------- | ------------------------------------------------------------- |
-| duplicate DB 写入        | 同一事件投递 2 次后, 相关表行数不变                           |
-| duplicatenotification / 外发消息 | mock notification channel, assertioncall次数 = 1                   |
-| duplicate下游副作用      | mock downstream service, assertion幂等 key 被deduplication                  |
-| state机duplicate迁移      | 第二次投递不触发 `assertTransition()` (state已在终态或目标态)  |
+| Prohibited Behavior        | Verification Method                                                       |
+| -------------------------- | ------------------------------------------------------------------------- |
+| Duplicate DB writes        | After delivering the same event 2 times, the relevant table row count does not change |
+| Duplicate notifications / outbound messages | Mock notification channel, assert call count = 1         |
+| Duplicate downstream side effects | Mock downstream service, assert idempotency key is deduplicated     |
+| State machine repeated transition | Second delivery does not trigger `assertTransition()` (state is already in terminal or target) |
 
-#### 幂等性testing模板
+#### Idempotency Test Template
 
 ```typescript
 test("consumer handles duplicate delivery idempotently", async () => {
@@ -1406,16 +1406,16 @@ test("consumer handles duplicate delivery idempotently", async () => {
   const db = await createTestDb();
   const notifier = { send: mock.fn() };
 
-  // 首次消费
+  // First consumption
   await consumer.handle(event, { db, notifier });
   const rowsAfterFirst = await db.count("task_completions");
   assert.equal(notifier.send.mock.calls.length, 1);
 
-  // duplicate消费 (模拟 retry / at-least-once 投递) 
+  // Duplicate consumption (simulate retry / at-least-once delivery)
   await consumer.handle(event, { db, notifier });
   const rowsAfterSecond = await db.count("task_completions");
 
-  // assertion无副作用duplicate
+  // Assert no side-effect duplication
   assert.equal(
     rowsAfterSecond,
     rowsAfterFirst,
@@ -1429,187 +1429,187 @@ test("consumer handles duplicate delivery idempotently", async () => {
 });
 ```
 
-#### 适用range
+#### Scope
 
-- 所有 `REQUIRED_CONSUMERS_BY_EVENT_TYPE` 注册的 consumer
-- 所有implementation了 `onEvent()` / `handleEvent()` interface的 handler
+- All consumers registered in `REQUIRED_CONSUMERS_BY_EVENT_TYPE`
+- All handlers that implement the `onEvent()` / `handleEvent()` interface
 - Gateway DLQ replay consumer
 
 ---
 
-## 16. OAPEFLIR 阶段coverage矩阵
+## 16. OAPEFLIR Phase Coverage Matrix
 
-### 16.1 coverage矩阵定义
+### 16.1 Coverage Matrix Definition
 
-不按目录, 不按file, 而是按 **OAPEFLIR 8 个阶段的设计语义** 定义最小testing集. 
+Not by directory, not by file, but by **the design semantics of the 8 OAPEFLIR phases** to define the minimum test set.
 
-每个阶段必须coverage **7 条标准path**: 
+Each phase must cover **7 standard paths**:
 
-| path编号 | path名                            | 描述                                                  |
-| -------- | --------------------------------- | ----------------------------------------------------- |
-| P1       | **Happy Path**                    | 标准输入 → 阶段完成 → 产出正确                        |
-| P2       | **Degraded Path**                 | partial输入missing/质量不足 → 降级handle → 产出带警告         |
-| P3       | **Invalid Input Path**            | 非法/畸形输入 → reject或 fail-fast                      |
-| P4       | **Timeout Path**                  | 阶段executetimeout → 正确中止 + 资源cleanup                    |
-| P5       | **Skip Path**                     | 阶段被skip (条件不满足)  → stage status = `"skipped"` |
-| P6       | **Downstream Contract Violation** | 上游产出不满足当前阶段输入contract → reject或fallback           |
-| P7       | **Human Intervention Path**       | 阶段需要人工介入 → 暂停等待审批/confirmation → 恢复或终止     |
+| Path Code | Path Name                            | Description                                                            |
+| --------- | ------------------------------------ | ---------------------------------------------------------------------- |
+| P1        | **Happy Path**                       | Standard input → phase completes → correct output                      |
+| P2        | **Degraded Path**                    | Partial input missing / insufficient quality → degraded handling → output with warning |
+| P3        | **Invalid Input Path**               | Illegal / malformed input → reject or fail-fast                        |
+| P4        | **Timeout Path**                     | Phase execution times out → correctly abort + cleanup resources         |
+| P5        | **Skip Path**                        | Phase skipped (conditions not met) → stage status = `"skipped"`        |
+| P6        | **Downstream Contract Violation**    | Upstream output does not satisfy current phase's input contract → reject or fall back |
+| P7        | **Human Intervention Path**          | Phase needs human intervention → pause waiting for approval / confirmation → resume or terminate |
 
-### 16.2 逐阶段coverage矩阵
+### 16.2 Per-Phase Coverage Matrix
 
-#### Observe (观察) 
+#### Observe
 
-| path | testing场景                          | assertion重点                                                 |
-| ---- | --------------------------------- | -------------------------------------------------------- |
-| P1   | 标准task输入 → 生成 TaskSituation | `objective`, `currentPhase`, `codebaseSnapshot` field完整 |
-| P2   | 空 codebase / 无 fileRefs         | TaskSituation 仍可生成, `fileRefs: []`                   |
-| P3   | 非法 taskId / 空 objective        | Schema reject                                              |
-| P4   | 采集timeout                          | timeout中止 + return已有快照                                  |
-| P5   | 输入已cached / 无变更               | skip重新采集                                             |
-| P6   | —                                 | 作为第一阶段无上游                                       |
-| P7   | task需人工confirmationrange                | 暂停采集 → 等待人工confirmation → 恢复后继续                     |
+| Path | Test Scenario                              | Assertion Focus                                       |
+| ---- | ------------------------------------------ | ----------------------------------------------------- |
+| P1   | Standard task input → generate TaskSituation | `objective`, `currentPhase`, `codebaseSnapshot` fields complete |
+| P2   | Empty codebase / no fileRefs               | TaskSituation can still be generated, `fileRefs: []`  |
+| P3   | Illegal taskId / empty objective           | Schema rejection                                      |
+| P4   | Collection timeout                         | Timeout abort + return existing snapshot              |
+| P5   | Input cached / no changes                  | Skip re-collection                                    |
+| P6   | —                                          | No upstream as first phase                            |
+| P7   | Task requires human scope confirmation     | Pause collection → wait for human confirmation → resume |
 
-#### Assess (评估) 
+#### Assess
 
-| path | testing场景                               | assertion重点                                                      |
-| ---- | -------------------------------------- | ------------------------------------------------------------- |
-| P1   | 标准 TaskSituation → UnifiedAssessment | complexity / risk / routingDecision / resourceAllocation 合理 |
-| P2   | 高不确定性task                         | 正确升级 executionMode 为 `"supervised"`                      |
-| P3   | 畸形 situationRef                      | Schema reject                                                   |
-| P4   | 评估timeout                               | 降级到default assessment                                         |
-| P5   | 简单taskskip深度评估                   | directlyuses快速评估path                                          |
-| P6   | TaskSituation missing少必填field             | reject + fallback到 Observe                                         |
-| P7   | 高不确定性 → 需人工监督                | executionMode 升级为 `"supervised"`, 等待审批后继续           |
+| Path | Test Scenario                                  | Assertion Focus                                                    |
+| ---- | ---------------------------------------------- | ----------------------------------------------------------------- |
+| P1   | Standard TaskSituation → UnifiedAssessment    | complexity / risk / routingDecision / resourceAllocation reasonable |
+| P2   | High-uncertainty task                          | Correctly upgrade executionMode to `"supervised"`                |
+| P3   | Malformed situationRef                         | Schema rejection                                                  |
+| P4   | Assessment timeout                             | Degrade to default assessment                                    |
+| P5   | Simple task skip deep assessment               | Use the quick-assessment path directly                            |
+| P6   | TaskSituation missing required fields          | Reject + fall back to Observe                                     |
+| P7   | High uncertainty → need human supervision      | executionMode upgraded to `"supervised"`, continue after approval |
 
-#### Plan (规划) 
+#### Plan
 
-| path | testing场景                          | assertion重点                                                |
-| ---- | --------------------------------- | ------------------------------------------------------- |
-| P1   | 标准 assessment → Plan with steps | stepId 唯一, dependencies 合法, strategy 正确           |
-| P2   | 高复杂度task                      | 多step DAG + parallelstep                                   |
-| P3   | version = 0 / steps 为空          | Schema reject                                             |
-| P4   | 规划timeout                          | return最小可行 plan                                       |
-| P5   | 评估结果表明无需规划              | stage skipped                                           |
-| P6   | AssessmentRef 不exists              | reject                                                    |
-| P7   | 高riskplan需人工审核              | plan status = `"pending_approval"` → 审批via后开始execute |
+| Path | Test Scenario                                | Assertion Focus                                                |
+| ---- | -------------------------------------------- | ------------------------------------------------------------- |
+| P1   | Standard assessment → Plan with steps        | stepId unique, dependencies legal, strategy correct           |
+| P2   | High-complexity task                         | Multi-step DAG + parallel steps                               |
+| P3   | version = 0 / steps empty                    | Schema rejection                                              |
+| P4   | Planning timeout                             | Return minimum viable plan                                    |
+| P5   | Assessment result indicates no planning needed | stage skipped                                               |
+| P6   | AssessmentRef does not exist                 | Reject                                                        |
+| P7   | High-risk plan needs human review            | plan status = `"pending_approval"` → begin execution after approval |
 
-#### Execute (execute) 
+#### Execute
 
-| path | testing场景                         | assertion重点                                               |
-| ---- | -------------------------------- | ------------------------------------------------------ |
-| P1   | 单步execute → DualChannelStepOutput | userFacingResult + systemTelemetry 完整                |
-| P2   | partialstepfailure → partial success   | successstep的产出被保留                                   |
-| P3   | 非法 tool call / sandbox reject    | `status: "blocked"` + error码                           |
-| P4   | steptimeout                         | step标记 `"failed"` + `code: "tool.timeout"`           |
-| P5   | 所有step已完成 (replay)          | skip                                                   |
-| P6   | Plan 中stepreferences不exists的 tool     | reject + fallback到 Plan                                     |
-| P7   | step触发审批blocks                 | `status: "blocked_awaiting_approval"` → 审批后恢复execute |
+| Path | Test Scenario                              | Assertion Focus                                               |
+| ---- | ------------------------------------------ | ------------------------------------------------------------- |
+| P1   | Single-step execution → DualChannelStepOutput | userFacingResult + systemTelemetry complete                  |
+| P2   | Partial step failure → partial success     | Output of successful steps is preserved                      |
+| P3   | Illegal tool call / sandbox rejection      | `status: "blocked"` + error code                              |
+| P4   | Step timeout                               | Step marked `"failed"` + `code: "tool.timeout"`              |
+| P5   | All steps already completed (replay)       | Skip                                                          |
+| P6   | Plan step references a non-existent tool   | Reject + fall back to Plan                                    |
+| P7   | Step triggers approval blocking            | `status: "blocked_awaiting_approval"` → resume execution after approval |
 
-#### Feedback (反馈) 
+#### Feedback
 
-| path | testing场景                       | assertion重点                                        |
-| ---- | ------------------------------ | ----------------------------------------------- |
-| P1   | execute结果 → FeedbackSignal 集合 | signal 正确分类 (success/failure/correction)    |
-| P2   | duplicate signal                    | deduplication 生效                              |
-| P3   | 空 signal 列表                 | return空集, 不报错                                |
-| P4   | 信号采集timeout                   | return已收集partial                                  |
-| P5   | 无execute产出                     | skip反馈                                        |
-| P6   | stepOutputRefs references不exists      | 忽略 + 警告                                     |
-| P7   | 反馈结果需人工confirmation准确性       | signal 标记 `"pending_review"` → 人工confirmation后生效 |
+| Path | Test Scenario                            | Assertion Focus                                              |
+| ---- | ---------------------------------------- | ------------------------------------------------------------ |
+| P1   | Execution result → FeedbackSignal set    | Signals correctly classified (success / failure / correction) |
+| P2   | Duplicate signal                         | Deduplication takes effect                                   |
+| P3   | Empty signal list                        | Return empty set, no error                                    |
+| P4   | Signal collection timeout                | Return collected portion                                     |
+| P5   | No execution output                      | Skip feedback                                                |
+| P6   | stepOutputRefs reference non-existent    | Ignore + warning                                             |
+| P7   | Feedback result needs human accuracy confirmation | Signal marked `"pending_review"` → takes effect after human confirmation |
 
-#### Learn (学习) 
+#### Learn
 
-| path | testing场景                                                         | assertion重点                                              |
-| ---- | ---------------------------------------------------------------- | ----------------------------------------------------- |
-| P1   | 反馈信号 → LearningSignal (failure_pattern / recovery_playbook)  | learningType + sourceSignalIds 正确                   |
-| P2   | 低置信度模式                                                     | 标记为 tentative                                      |
-| P3   | 非法 learningType                                                | reject                                                  |
-| P4   | 挖掘timeout                                                         | return空                                                |
-| P5   | 无 failure 信号                                                  | skip学习                                              |
-| P6   | FeedbackSignal 结构不完整                                        | reject                                                  |
-| P7   | 学习结论需专家审核                                               | learning 标记 `"expert_review_required"` → 审核后录入 |
+| Path | Test Scenario                                                     | Assertion Focus                                              |
+| ---- | ----------------------------------------------------------------- | ------------------------------------------------------------- |
+| P1   | Feedback signals → LearningSignal (failure_pattern / recovery_playbook) | learningType + sourceSignalIds correct                       |
+| P2   | Low-confidence pattern                                            | Marked as tentative                                          |
+| P3   | Illegal learningType                                             | Reject                                                        |
+| P4   | Mining timeout                                                    | Return empty                                                 |
+| P5   | No failure signals                                                | Skip learning                                                |
+| P6   | FeedbackSignal structure incomplete                              | Reject                                                        |
+| P7   | Learning conclusion needs expert review                           | learning marked `"expert_review_required"` → recorded after review |
 
-#### Improve (改进) 
+#### Improve
 
-| path | testing场景                                                       | assertion重点                                         |
-| ---- | -------------------------------------------------------------- | ------------------------------------------------ |
-| P1   | 学习产出 → ImprovementCandidate (status: proposed → approved)  | changeScope + expectedBenefit 合理               |
-| P2   | 改进超出自治边界                                               | status 停留在 `"proposed"`, 需人工审批           |
-| P3   | 空学习产出                                                     | 不产生 candidate                                 |
-| P4   | 评估timeout                                                       | candidate 标记 `"rejected"`                      |
-| P5   | 无可改进项                                                     | skip                                             |
-| P6   | LearningSignal references非法 sourceSignalRefs                       | reject                                             |
-| P7   | 改进超出自治边界 → 需人工审批                                  | candidate 停留在 `"proposed"` → 审批后推进或驳回 |
+| Path | Test Scenario                                                     | Assertion Focus                                              |
+| ---- | ----------------------------------------------------------------- | ------------------------------------------------------------- |
+| P1   | Learning output → ImprovementCandidate (status: proposed → approved) | changeScope + expectedBenefit reasonable                     |
+| P2   | Improvement exceeds autonomy boundary                             | status remains `"proposed"`, needs human approval            |
+| P3   | Empty learning output                                             | Do not produce candidate                                      |
+| P4   | Evaluation timeout                                                | candidate marked `"rejected"`                               |
+| P5   | No improvements available                                         | Skip                                                          |
+| P6   | LearningSignal references illegal sourceSignalRefs                | Reject                                                        |
+| P7   | Improvement exceeds autonomy boundary → needs human approval       | candidate remains `"proposed"` → proceed or reject after approval |
 
-#### Release (发布/Rollout) 
+#### Release (Release / Rollout)
 
-| path | testing场景                                                        | assertion重点                                                   |
-| ---- | --------------------------------------------------------------- | ---------------------------------------------------------- |
-| P1   | approved candidate → RolloutRecord (shadow → suggest → stable)  | level 正确递进                                             |
-| P2   | metrics gate 未via                                             | 停留在当前 level                                           |
-| P3   | 非法 candidateId                                                | reject                                                       |
-| P4   | rollout timeout                                                    | auto rollback                                              |
-| P5   | candidate 被 rejected                                           | skip rollout                                               |
-| P6   | candidate references已expiry的 evidence                                 | reject + 重新评估                                            |
-| P7   | rollout 需人工审批放行                                          | rollout 停留在 `"pending_approval"` → 审批后继续推进 level |
+| Path | Test Scenario                                                     | Assertion Focus                                              |
+| ---- | ----------------------------------------------------------------- | ------------------------------------------------------------- |
+| P1   | approved candidate → RolloutRecord (shadow → suggest → stable)   | level progresses correctly                                    |
+| P2   | metrics gate not passed                                           | Stay at current level                                        |
+| P3   | Illegal candidateId                                              | Reject                                                        |
+| P4   | rollout timeout                                                   | Auto rollback                                                 |
+| P5   | candidate rejected                                                | Skip rollout                                                 |
+| P6   | candidate references expired evidence                             | Reject + re-evaluate                                         |
+| P7   | rollout needs human approval to proceed                          | rollout remains `"pending_approval"` → continue level progression after approval |
 
-### 16.3 coverage率量化
+### 16.3 Coverage Quantification
 
 ```
-OAPEFLIR 阶段coverage率 = (已测path数) / (8 阶段 × 7 path = 56) × 100%
+OAPEFLIR phase coverage = (tested path count) / (8 phases × 7 paths = 56) × 100%
 ```
 
-**目标**: ≥ 85% (至少 48/56 条path有testing) 
+**Goal**: ≥ 85% (at least 48/56 paths have tests)
 
-### 16.4 OAPEFLIR-Harness 语义映射 (v3.0 新增) 
+### 16.4 OAPEFLIR-Harness Semantic Mapping (v3.0 new)
 
-> 对应架构审查 v6.0 missing口 I-2 (§13.5 OAPEFLIR-Harness 外部语义映射) 
+> Corresponding to Architecture Review v6.0 gap I-2 (§13.5 OAPEFLIR-Harness External Semantic Mapping)
 
-架构设计 §13.5 要求 OAPEFLIR 8 阶段与 Harness 三角色 (Planner / Generator / Evaluator) 之间建立explicitly语义映射. 此映射尚未代码化 (missing口 I-2) , 但testing应提前定义预期映射: 
+Architecture design §13.5 requires an explicit semantic mapping between the 8 OAPEFLIR phases and the three Harness roles (Planner / Generator / Evaluator). This mapping is not yet codified (gap I-2), but tests should define the expected mapping in advance:
 
-| OAPEFLIR 阶段 | Harness 角色      | 映射语义                                |
-| ------------- | ----------------- | --------------------------------------- |
-| Observe       | —                 | 外部输入采集, 不进入 Harness 循环       |
-| Assess        | Planner           | task评估 → PlanBundle 输入              |
-| Plan          | Planner           | 生成 PlanBundle (stepId/DAG/tools)      |
-| Execute       | Generator         | 生成 WorkProduct (代码/文档/操作)       |
-| Feedback      | Evaluator         | 生成 EvaluationReport (pass/fail)       |
-| Learn         | Evaluator         | 从 EvaluationReport 提取 LearningSignal |
-| Improve       | Planner+Evaluator | 改进候选评估 + 批准                     |
-| Release       | —                 | Rollout 控制, 不directly参与 Harness 循环   |
+| OAPEFLIR Phase | Harness Role       | Mapping Semantics                                |
+| -------------- | ------------------ | ------------------------------------------------ |
+| Observe        | —                  | External input collection, not entering Harness loop |
+| Assess         | Planner            | Task assessment → PlanBundle input               |
+| Plan           | Planner            | Generate PlanBundle (stepId / DAG / tools)       |
+| Execute        | Generator          | Generate WorkProduct (code / document / operation) |
+| Feedback       | Evaluator          | Generate EvaluationReport (pass / fail)          |
+| Learn          | Evaluator          | Extract LearningSignal from EvaluationReport     |
+| Improve        | Planner+Evaluator  | Improvement candidate assessment + approval      |
+| Release        | —                  | Rollout control, not directly participating in Harness loop |
 
-**testing要求**: 当missing口 I-2 implementation后, 需验证: 
+**Test requirements**: After gap I-2 is implemented, verify:
 
-- [ ] 映射configureexists且contains全部 8 阶段
-- [ ] Planner 角色coverage Assess/Plan/Improve 三阶段
-- [ ] Generator 角色coverage Execute 阶段
-- [ ] Evaluator 角色coverage Feedback/Learn/Improve 三阶段
-- [ ] Observe 和 Release 标记为外部阶段, 不进入 Harness 循环
+- [ ] Mapping configuration exists and contains all 8 phases
+- [ ] Planner role covers Assess / Plan / Improve three phases
+- [ ] Generator role covers Execute phase
+- [ ] Evaluator role covers Feedback / Learn / Improve three phases
+- [ ] Observe and Release are marked as external phases, not entering Harness loop
 
 ---
 
-## 17. concurrent与时序testing规范
+## 17. Concurrency and Timing Test Conventions
 
-### 17.1 必须做concurrenttesting的module
+### 17.1 Modules That Must Have Concurrency Tests
 
-| module                                           | concurrentrisk                      | testingtype                |
-| ---------------------------------------------- | ----------------------------- | ----------------------- |
-| `execution-lease-service`                      | 竞争获取 lease                | Race Test + Idempotency |
-| `execution-dispatch-service`                   | concurrent dispatch 同一 ticket     | Race Test               |
-| `execution-worker-handshake-service`           | concurrent claim 同一 execution     | Race Test               |
-| `distributed-lock-adapter` (SQLite/Redis/PG)   | 竞争获取lock                    | Critical Section Test   |
-| `durable-event-bus`                            | concurrent publish + deliverPending | Race Test               |
-| `approval-service`                             | concurrent审批同一request              | Idempotency Test        |
-| `sqlite-queue-adapter` / `redis-queue-adapter` | concurrent enqueue + dequeue        | Race Test + Idempotency |
-| `circuit-breaker`                              | concurrentrequest触发state转换          | Race Test               |
-| `transition-service`                           | concurrentstate转换 (CAS)            | Race Test               |
-| `channel-gateway-retry-executor`               | overlap polling pass             | Non-overlap Test        |
+| Module                                            | Concurrency Risk                          | Test Type                |
+| ------------------------------------------------- | ----------------------------------------- | ------------------------ |
+| `execution-lease-service`                         | Race to acquire lease                     | Race Test + Idempotency  |
+| `execution-dispatch-service`                      | Concurrent dispatch of the same ticket    | Race Test                |
+| `execution-worker-handshake-service`              | Concurrent claim of the same execution    | Race Test                |
+| `distributed-lock-adapter` (SQLite / Redis / PG)  | Race to acquire lock                      | Critical Section Test    |
+| `durable-event-bus`                            | Concurrent publish + deliverPending | Race Test               |
+| `approval-service`                             | Concurrent approval of the same request | Idempotency Test        |
+| `sqlite-queue-adapter` / `redis-queue-adapter` | Concurrent enqueue + dequeue        | Race Test + Idempotency |
+| `circuit-breaker`                              | Concurrent requests trigger state transition | Race Test               |
+| `transition-service`                           | Concurrent state transition (CAS)   | Race Test               |
+| `channel-gateway-retry-executor`               | Overlapping polling passes          | Non-overlap Test        |
 
-### 17.2 testingtype定义
+### 17.2 Test Type Definitions
 
 #### Race Test
 
-验证concurrent操作不会导致datacorrupted或不变量violates: 
+Verify that concurrent operations do not cause data corruption or invariant violations:
 
 ```typescript
 test("concurrent lease acquisition grants exactly one", async () => {
@@ -1631,7 +1631,7 @@ test("concurrent lease acquisition grants exactly one", async () => {
 
 #### Idempotency Test
 
-验证duplicate操作产生相同结果: 
+Verify that repeated operations produce the same result:
 
 ```typescript
 test("duplicate enqueue with same idempotency key returns existing job", async () => {
@@ -1643,7 +1643,7 @@ test("duplicate enqueue with same idempotency key returns existing job", async (
 
 #### Critical Section Test
 
-验证互斥区只allows一个 worker 进入: 
+Verify that the mutual-exclusion section only allows one worker to enter:
 
 ```typescript
 test("distributed lock enforces mutual exclusion", async () => {
@@ -1660,22 +1660,22 @@ test("distributed lock enforces mutual exclusion", async () => {
 
 #### Timeout Recovery Test
 
-验证timeout后资源被正确释放: 
+Verify that resources are correctly released after timeout:
 
 ```typescript
 test("expired lease is reclaimed and execution can be re-dispatched", async () => {
-  // 1. 获取 lease
+  // 1. Acquire lease
   await leaseService.acquireLease({
     executionId: "e1",
     workerId: "w1",
     ttlMs: 100,
   });
-  // 2. 等待expiry
+  // 2. Wait for expiration
   await new Promise((r) => setTimeout(r, 200));
-  // 3. 回收
+  // 3. Reclaim
   const reclaimed = await leaseService.reclaimExpiredLeases();
   assert.equal(reclaimed.length, 1);
-  // 4. 新 worker 可获取
+  // 4. New worker can acquire
   const result = await leaseService.acquireLease({
     executionId: "e1",
     workerId: "w2",
@@ -1687,66 +1687,66 @@ test("expired lease is reclaimed and execution can be re-dispatched", async () =
 
 #### Crash Consistency Test
 
-利用 `WorkflowCrashSimulator` 验证crashed恢复: 
+Use `WorkflowCrashSimulator` to verify crash recovery:
 
 ```typescript
 test("recovery repairs partial commit after crash at step_started", async () => {
-  // injectioncrashed点
+  // Inject crash point
   process.env.AA_WORKFLOW_CRASH_POINT = "step_started";
   try {
     await executeWorkflow(...);
   } catch (e) {
     assert.ok(e instanceof InjectedWorkflowCrashError);
   }
-  // 验证恢复
+  // Verify recovery
   const repairs = await repairService.repair();
   assert.ok(repairs.length > 0);
-  // 验证data一致性
+  // Verify data consistency
   const execution = store.getExecution("e1");
-  assert.notEqual(execution.status, "executing"); // 不应停留在中间态
+  assert.notEqual(execution.status, "executing"); // Should not stay in intermediate state
 });
 ```
 
-### 17.3 concurrenttesting量化标准
+### 17.3 Concurrency Test Quantitative Standards
 
-| module类别 | 最低concurrent度 | 必须coverage                        |
-| -------- | ---------- | ------------------------------- |
-| lock/lease | 10 workers | acquire/release/extend/steal    |
-| 队列     | 20 workers | enqueue/dequeue/ack/dead-letter |
-| state转换 | 5 workers  | CAS 竞争 + 终态幂等             |
-| 事件投递 | 10 workers | publish + consumer ack          |
-| Dispatch | 5 workers  | ticket claim + handshake        |
+| Module Category | Minimum Concurrency | Must Cover                              |
+| --------------- | ------------------- | --------------------------------------- |
+| Lock / lease    | 10 workers          | acquire / release / extend / steal      |
+| Queue           | 20 workers          | enqueue / dequeue / ack / dead-letter   |
+| State transition | 5 workers          | CAS race + terminal-state idempotency   |
+| Event delivery  | 10 workers          | publish + consumer ack                  |
+| Dispatch        | 5 workers           | ticket claim + handshake                |
 
-### 17.4 Stale Write Prevention testing
+### 17.4 Stale Write Prevention Tests
 
-`ExecutionLeaseService.validateWriteAccess()` 是防止脏写的最后防线, 必须coverage全部 5 种reject原因: 
+`ExecutionLeaseService.validateWriteAccess()` is the last line of defense against dirty writes and must cover all 5 denial reasons:
 
-- [ ] `lease_not_found` — execution 无 lease record
-- [ ] `no_active_lease` — lease 已expiry/释放
-- [ ] `stale_fencing_token` — fencing token 不匹配 (旧 worker 写入) 
-- [ ] `worker_mismatch` — request worker 不是 lease 持有者
-- [ ] `lease_mismatch` — lease ID 不匹配
+- [ ] `lease_not_found` — execution has no lease record
+- [ ] `no_active_lease` — lease has expired / been released
+- [ ] `stale_fencing_token` — fencing token mismatch (old worker write)
+- [ ] `worker_mismatch` — requesting worker is not the lease holder
+- [ ] `lease_mismatch` — lease ID mismatch
 
-### 17.5 时间控制strategy
+### 17.5 Time Control Strategy
 
-concurrent和时序testing中最常见的 flaky Root cause: 对真实时间的dependency. 本节规定统一的时间控制分层strategy. 
+The most common flaky root cause in concurrency and timing tests is dependence on real time. This section defines a unified time-control layering strategy.
 
-#### A. 三层时间控制
+#### A. Three-Layer Time Control
 
-| 层级              | 适用场景                                | strategy                                                                       | 示例                                                  |
-| ----------------- | --------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------- |
-| L1 — 可控clock     | Unit testing中涉及timeout, TTL, 间隔的逻辑    | injection `Clock` interface, testing传入 `FakeClock`, 手动推进时间                      | lease expiry, circuit breaker resetTimeout, retry delay |
-| L2 — 有界真实时间 | Integration testing需要真实异步/定时器交互 | allows `setTimeout` / `setInterval`, 但单次 sleep ≤ 500ms, 单测总 sleep ≤ 2s | 队列投递后等待 consumer 消费                          |
-| L3 — 禁止无界等待 | 所有testing                                | 禁止 `while(true) await sleep()`, 禁止无timeout的 `waitForEvent()`            | —                                                     |
+| Layer                | Applicable Scenario                              | Strategy                                                                       | Example                                                  |
+| -------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| L1 — Controllable clock | Unit tests involving timeout, TTL, interval logic | Inject `Clock` interface; test passes `FakeClock` and manually advances time   | lease expiration, circuit breaker resetTimeout, retry delay |
+| L2 — Bounded real time | Integration tests requiring real async / timer interaction | Allow `setTimeout` / `setInterval`, but single sleep ≤ 500ms, single-test total sleep ≤ 2s | Wait for consumer to consume after queue delivery        |
+| L3 — No unbounded wait | All tests                                         | Forbid `while(true) await sleep()`, forbid unbounded `waitForEvent()`          | —                                                        |
 
-#### B. 硬性规则
+#### B. Hard Rules
 
-1. **Unit testing禁止 `setTimeout` / `Date.now()` directlycall** — 必须viainjection的 Clock interface
-2. **所有 `await sleep()` call必须有 `{ timeout }` 参数上界** — CI timeout前必须自行中止
-3. **Integration testing的总 sleep 预算**: 单个 test case ≤ 2s, 单个 test file ≤ 10s
-4. **Retry 循环必须有 `maxAttempts` + `maxWaitMs` 双重limit** — 防止无限重试
+1. **Unit tests forbid direct `setTimeout` / `Date.now()` calls** — must go through the injected Clock interface
+2. **All `await sleep()` calls must have a `{ timeout }` parameter upper bound** — must self-abort before CI timeout
+3. **Total sleep budget for integration tests**: single test case ≤ 2s, single test file ≤ 10s
+4. **Retry loops must have `maxAttempts` + `maxWaitMs` double limit** — prevent infinite retry
 
-#### C. FakeClock 模板
+#### C. FakeClock Template
 
 ```typescript
 class FakeClock {
@@ -1772,61 +1772,61 @@ test("lease expires after TTL", () => {
 });
 ```
 
-#### D. CI 守护
+#### D. CI Guard
 
-- Lint rule (或 grep CI step) 检测testingfile中bare露的 `Date.now()`, `new Date()`, `setTimeout` call, unit testing目录下标记为 warning
-- `--test-timeout=30000` 作为globally兜底, 超过 30s 的单个 test case auto fail
+- Lint rule (or grep CI step) detects bare `Date.now()`, `new Date()`, `setTimeout` calls in test files; flagged as warning under the unit test directory
+- `--test-timeout=30000` as a global fallback; a single test case exceeding 30s auto-fails
 
 ---
 
-## 18. 设计规格到testing追溯规范
+## 18. Design Specification to Test Traceability Conventions
 
-### 18.1 目标
+### 18.1 Goal
 
-建立 **设计文档 → testing用例** 的双向追溯, 使得: 
+Establish **design document → test case** two-way traceability, so that:
 
-- 每个 P0/P1 设计规格都有对应testing
-- 每个testing都能追溯到设计需求
+- Every P0 / P1 design specification has a corresponding test
+- Every test can be traced back to a design requirement
 
-### 18.2 Spec ID 编码规则
+### 18.2 Spec ID Encoding Rules
 
-本项目uses **4 种前缀** distinguish不同来源的可追溯规格: 
+This project uses **4 prefixes** to distinguish traceable specifications from different sources:
 
-| 前缀        | 含义          | 来源                                      |
-| ----------- | ------------- | ----------------------------------------- |
-| `SPEC-`     | 设计规格      | `opeli_detailed_design.md` 及其他设计文档 |
-| `ADR-`      | 架构决策record  | `doc/adr/` 目录下的 ADR 文档              |
-| `CONTRACT-` | interface/行为contract | `doc/contracts/` 目录下的 contract 文档   |
-| `INC-`      | 线上事故      | 事故复盘record, 触发回归testing                |
+| Prefix       | Meaning                       | Source                                              |
+| ------------ | ----------------------------- | --------------------------------------------------- |
+| `SPEC-`      | Design specification         | `opeli_detailed_design.md` and other design documents |
+| `ADR-`       | Architecture Decision Record | ADR documents under `doc/adr/` directory            |
+| `CONTRACT-`  | Interface / behavior contract | Contract documents under `doc/contracts/` directory |
+| `INC-`       | Production incident          | Incident postmortem records, trigger regression tests |
 
-#### 编码格式
+#### Encoding Format
 
 ```
-{前缀}{module}-{子system}-{序号}
+{prefix}{module}-{subsystem}-{sequence}
 
-SPEC 示例: 
-SPEC-OAPEFLIR-EXEC-001     # OAPEFLIR Execute 阶段第 1 条规格
-SPEC-ROLLOUT-STATE-003      # Rollout state机第 3 条规格
-SPEC-PLUGIN-SANDBOX-002     # Plugin sandbox 第 2 条规格
-SPEC-EVENT-TIER1-DLQ-001    # Tier 1 事件 DLQ 第 1 条规格
-SPEC-LEASE-FENCING-001      # Lease fencing token 第 1 条规格
+SPEC example:
+SPEC-OAPEFLIR-EXEC-001     # OAPEFLIR Execute phase specification #1
+SPEC-ROLLOUT-STATE-003      # Rollout state machine specification #3
+SPEC-PLUGIN-SANDBOX-002     # Plugin sandbox specification #2
+SPEC-EVENT-TIER1-DLQ-001    # Tier 1 event DLQ specification #1
+SPEC-LEASE-FENCING-001      # Lease fencing token specification #1
 
-ADR 示例: 
-ADR-LOCK-BACKEND-001        # 分布式lock选型 ADR 第 1 条
-ADR-EVENT-DURABILITY-002    # 事件persistencestrategy ADR 第 2 条
+ADR example:
+ADR-LOCK-BACKEND-001        # Distributed lock selection ADR #1
+ADR-EVENT-DURABILITY-002    # Event persistence strategy ADR #2
 
-CONTRACT 示例: 
-CONTRACT-SANDBOX-FS-001     # Sandbox filesystemcontract第 1 条
-CONTRACT-API-GATEWAY-003    # API Gateway interfacecontract第 3 条
+CONTRACT example:
+CONTRACT-SANDBOX-FS-001     # Sandbox file system contract #1
+CONTRACT-API-GATEWAY-003    # API Gateway interface contract #3
 
-INC 示例: 
-INC-20250312-LEASE-STALE-001  # 2025-03-12 lease 脏写事故第 1 条
-INC-20250401-DLQ-OVERFLOW-001 # 2025-04-01 DLQ 溢出事故第 1 条
+INC example:
+INC-20250312-LEASE-STALE-001  # 2025-03-12 lease stale-write incident #1
+INC-20250401-DLQ-OVERFLOW-001 # 2025-04-01 DLQ overflow incident #1
 ```
 
-### 18.3 testing中references Spec ID
+### 18.3 Referencing Spec IDs in Tests
 
-在testing标题中contains spec ID (支持所有 4 种前缀) : 
+Include the spec ID in the test title (supports all 4 prefixes):
 
 ```typescript
 test("[SPEC-LEASE-FENCING-001] validateWriteAccess rejects stale fencing token", () => {
@@ -1846,7 +1846,7 @@ test("[INC-20250312-LEASE-STALE-001] regression: stale worker cannot write after
 });
 ```
 
-或在testingfile头部maintained映射表: 
+Or maintain a mapping table at the head of the test file:
 
 ```typescript
 /**
@@ -1858,23 +1858,23 @@ test("[INC-20250312-LEASE-STALE-001] regression: stale worker cannot write after
  */
 ```
 
-### 18.4 追溯关系三张表
+### 18.4 Three Traceability Tables
 
-#### 表 1: 源file → Unit testing
+#### Table 1: Source File → Unit Test
 
 ```
 src/platform/feedback/feedback-collector.ts → tests/unit/platform/feedback/feedback-collector.test.ts
 ```
 
- (即 §7.3 的 Traceability Matrix) 
+(That is, the Traceability Matrix in §7.3)
 
-#### 表 2: 源file → Integration testing
+#### Table 2: Source File → Integration Test
 
 ```
 src/platform/five-plane-execution/tools/command-executor.ts → tests/integration/security/sandbox-command-executor.test.ts
 ```
 
-#### 表 3: 设计规格 → testing
+#### Table 3: Design Specification → Test
 
 ```
 opeli_detailed_design.md §5 Execute  → SPEC-OAPEFLIR-EXEC-001 → tests/unit/core/agent-loop/execute.test.ts:L45
@@ -1882,33 +1882,33 @@ opeli_detailed_design.md §12 Rollout → SPEC-ROLLOUT-STATE-003 → tests/unit/
 doc/contracts/sandbox-contract.md    → SPEC-PLUGIN-SANDBOX-002 → tests/integration/security/plugin-sandbox.test.ts:L30
 ```
 
-### 18.5 maintained流程
+### 18.5 Maintenance Process
 
-1. **新增设计规格** → 分配 Spec ID → 写入设计文档
-2. **编写testing** → 在testing标题或file头references Spec ID
-3. **Sprint Review** → 运行追溯脚本, output未coverage Spec ID 列表
-4. **Gap handle** → 未coverage的 Spec ID 进入testing债务清单 (§20) 
+1. **New design specification** → assign Spec ID → write into design document
+2. **Write test** → reference Spec ID in test title or file header
+3. **Sprint Review** → run traceability script, output uncovered Spec ID list
+4. **Gap handling** → uncovered Spec IDs enter the test debt list (§20)
 
-追溯脚本示例 (coverage全部 4 种前缀) : 
+Traceability script example (covering all 4 prefixes):
 
 ```bash
 ID_PATTERN='(SPEC|ADR|CONTRACT|INC)-[\w-]+'
 
-# 从所有源文档提取已定义的 ID
+# Extract defined IDs from all source documents
 grep -oP "$ID_PATTERN" doc/reviews/opeli_detailed_design.md \
                         doc/adr/*.md \
                         doc/contracts/*.md \
                         doc/incidents/*.md \
   2>/dev/null | sort -u > /tmp/all-spec-ids.txt
 
-# 从testingfile提取已coverage的 ID
+# Extract covered IDs from test files
 grep -roPh "$ID_PATTERN" tests/ | sort -u > /tmp/tested-specs.txt
 
-# 差集 = 未coverage
+# Difference = uncovered
 comm -23 /tmp/all-spec-ids.txt /tmp/tested-specs.txt
 
-# 按前缀分类统计
-echo "=== 未coverage统计 ==="
+# Statistics by prefix category
+echo "=== Uncovered statistics ==="
 for prefix in SPEC ADR CONTRACT INC; do
   count=$(grep -c "^${prefix}-" /tmp/uncovered.txt 2>/dev/null || echo 0)
   echo "  ${prefix}: ${count}"
@@ -1917,47 +1917,47 @@ done
 
 ---
 
-## 19. 真实execute vs Mock execute边界规范
+## 19. Real Execution vs Mock Execution Boundary Conventions
 
-### 19.1 问题背景
+### 19.1 Problem Background
 
-Agent system最常见的testing陷阱: **testingcoverage率很高, 但核心execute全是 mock**. 本项目的 Execute 阶段目前即是完全 mock implementation. 
+The most common testing pitfall in agent systems: **test coverage is high, but core execution is all mocked**. The Execute phase of this project is currently a fully mocked implementation.
 
-必须明确界定哪些testing层allows mock, 哪些必须真实execute. 
+It is necessary to clearly define which test layers allow mocks and which must use real execution.
 
-### 19.2 Mock 许可矩阵
+### 19.2 Mock Permission Matrix
 
-| 组件                          | Unit Test                 | Integration Test             | E2E Test                       |
-| ----------------------------- | ------------------------- | ---------------------------- | ------------------------------ |
-| **LLM Provider**              | ✅ Mock                   | ✅ Mock                      | ✅ Mock (provider 非我方控制)  |
-| **Tool Execution Bridge**     | ✅ Mock                   | ❌ 必须真实                  | ❌ 必须真实                    |
-| **Sandbox / Security Policy** | ✅ Mock                   | ❌ 必须真实                  | ❌ 必须真实                    |
-| **Database (SQLite)**         | ❌ 禁止 mock              | ❌ 真实 in-memory            | ❌ 真实                        |
-| **Database (PostgreSQL)**     | ✅ Mock (unit 用 SQLite)  | ❌ 必须真实 PG               | ❌ 必须真实 PG                 |
-| **filesystem**                  | ✅ Mock 或 temp dir       | ❌ 必须用 temp dir           | ❌ 必须真实                    |
-| **子process (spawn)**            | ✅ Mock                   | ❌ 必须真实                  | ❌ 必须真实                    |
-| **Event Bus**                 | ✅ Mock                   | ❌ 真实 DurableEventBus      | ❌ 真实                        |
-| **分布式lock**                  | ✅ Mock                   | ❌ 真实 SQLite/Redis adapter | ❌ 真实                        |
-| **网络 HTTP**                 | ✅ Mock                   | ✅ Mock (外部 API)           | ✅ Mock                        |
-| **OAPEFLIR 阶段产出**         | ✅ Mock (隔离testing单阶段)  | ❌ 阶段间需真实串联          | ❌ 全链路                      |
+| Component                       | Unit Test                 | Integration Test             | E2E Test                       |
+| ------------------------------- | ------------------------- | ---------------------------- | ------------------------------ |
+| **LLM Provider**                | ✅ Mock                   | ✅ Mock                      | ✅ Mock (provider not under our control) |
+| **Tool Execution Bridge**       | ✅ Mock                   | ❌ Must be real              | ❌ Must be real                |
+| **Sandbox / Security Policy**   | ✅ Mock                   | ❌ Must be real              | ❌ Must be real                |
+| **Database (SQLite)**           | ❌ Mock forbidden         | ❌ Real in-memory            | ❌ Real                        |
+| **Database (PostgreSQL)**       | ✅ Mock (unit uses SQLite) | ❌ Must be real PG          | ❌ Must be real PG             |
+| **File system**                 | ✅ Mock or temp dir        | ❌ Must use temp dir         | ❌ Must be real                |
+| **Subprocess (spawn)**          | ✅ Mock                   | ❌ Must be real              | ❌ Must be real                |
+| **Event Bus**                   | ✅ Mock                   | ❌ Real DurableEventBus      | ❌ Real                        |
+| **Distributed lock**            | ✅ Mock                   | ❌ Real SQLite / Redis adapter | ❌ Real                      |
+| **Network HTTP**                | ✅ Mock                   | ✅ Mock (external API)       | ✅ Mock                        |
+| **OAPEFLIR phase output**       | ✅ Mock (isolated test of a single phase) | ❌ Phases need real chaining | ❌ Full chain             |
 
-### 19.3 Mock 层级禁令
+### 19.3 Mock Layer Prohibitions
 
-以下组合 **严格禁止**: 
+The following combinations are **strictly forbidden**:
 
-| 禁止                                                  | 原因                                    |
-| ----------------------------------------------------- | --------------------------------------- |
-| Integration test 中 mock DB                           | 无法验证 SQL 正确性, transaction隔离, 迁移compatibility |
-| Integration test 中 mock sandbox                      | 无法验证path穿越/命令injection防护           |
-| E2E test 中 mock tool bridge                          | 无法验证工具链真实行为                  |
-| 任何层 mock `StateTransitionMachine.assertTransition` | 无法验证state机约束                      |
-| 任何层 mock `validateWriteAccess`                     | 无法验证 fencing token 防护             |
+| Prohibition                                          | Reason                                              |
+| ---------------------------------------------------- | --------------------------------------------------- |
+| Mock DB in integration test                          | Cannot verify SQL correctness, transaction isolation, migration compatibility |
+| Mock sandbox in integration test                     | Cannot verify path traversal / command injection protection |
+| Mock tool bridge in E2E test                         | Cannot verify real tool-chain behavior              |
+| Mock `StateTransitionMachine.assertTransition` at any layer | Cannot verify state machine constraints            |
+| Mock `validateWriteAccess` at any layer              | Cannot verify fencing token protection              |
 
-### 19.4 Provider Mock 规范
+### 19.4 Provider Mock Conventions
 
-LLM Provider 是唯一allows在所有层 mock 的组件 (因为真实call不确定, 昂贵, 慢) . 
+LLM Provider is the only component allowed to be mocked at all layers (because real calls are uncertain, expensive, and slow).
 
-Provider mock 必须遵循: 
+Provider mocks must follow:
 
 ```typescript
 const mockProvider = unsafeCast<LlmProvider>({
@@ -1972,68 +1972,68 @@ const mockProvider = unsafeCast<LlmProvider>({
 });
 ```
 
-- return值必须符合 Provider interface的完整type
-- return值必须 **deterministic** (fixedcontent) 
-- 禁止在 mock 中加入 `Math.random()` 或 `Date.now()`
+- Return value must conform to the full type of the Provider interface
+- Return value must be **deterministic** (fixed content)
+- Forbid `Math.random()` or `Date.now()` in mocks
 
 ---
 
-## 20. testing债务分级
+## 20. Test Debt Tiering
 
-### 20.1 分级定义
+### 20.1 Tier Definitions
 
-| 等级      | 定义                                          | 修复时限     | 示例                                  |
-| --------- | --------------------------------------------- | ------------ | ------------------------------------- |
-| **TD-P0** | 安全边界 / state机 / execute主链无testing            | 当前 Sprint  | sandbox 新攻击向量无 denial-path test |
-| **TD-P1** | 核心 orchestrator 低 branch/mutation coverage | 下个 Sprint  | `OapeflirLoopService` 无 unit test    |
-| **TD-P2** | 辅助服务 branch < 60% 或 mutation < 50%       | 2 Sprints 内 | `improvement` branches 52.4%          |
-| **TD-P3** | 工具类 / 辅助函数missing少边界条件                 | Backlog      | 纯函数missing少空值testing                    |
-| **TD-P4** | Golden / 性能testing文档性补强                   | Backlog      | 新 CLI 命令无 golden snapshot         |
+| Tier      | Definition                                          | Fix Deadline     | Example                                  |
+| --------- | --------------------------------------------------- | ---------------- | ---------------------------------------- |
+| **TD-P0** | Security boundary / state machine / execution main chain has no test | Current Sprint   | New sandbox attack vector has no denial-path test |
+| **TD-P1** | Core orchestrator has low branch / mutation coverage | Next Sprint      | `OapeflirLoopService` has no unit test   |
+| **TD-P2** | Auxiliary services branch < 60% or mutation < 50%   | Within 2 Sprints | `improvement` branches 52.4%             |
+| **TD-P3** | Utility / helper functions missing boundary conditions | Backlog          | Pure functions missing null-value tests  |
+| **TD-P4** | Golden / performance test documentation enhancement | Backlog          | New CLI command has no golden snapshot   |
 
-### 20.2 债务登记格式
+### 20.2 Debt Entry Format
 
 ```
-TD-{等级}-{序号}: {描述}
-  module: {src/platform/xxx}
-  当前coverage: {lines}% / {branches}% / mutation {x}%
-  目标coverage: {lines}% / {branches}%
-  关联 Spec: {SPEC-xxx} (如适用)
-  责任人: {owner}
-  截止日: {date}
+TD-{tier}-{sequence}: {description}
+  Module: {src/platform/xxx}
+  Current coverage: {lines}% / {branches}% / mutation {x}%
+  Target coverage: {lines}% / {branches}%
+  Related Spec: {SPEC-xxx} (if applicable)
+  Owner: {owner}
+  Deadline: {date}
 ```
 
-### 20.3 债务进入与退出条件
+### 20.3 Debt Entry and Exit Conditions
 
-**进入条件**: 
+**Entry Conditions**:
 
-- §7 Traceability Matrix 脚本发现未coverage源file
-- Coverage gate 中某目录below安全红线 (§23) 
-- Stryker 报告 survived mutants 率 > 50%
-- PR Review 发现missingtesting场景
-- Incident 回灌未产生对应回归testing
+- §7 Traceability Matrix script discovers uncovered source file
+- Some directory in coverage gate is below the safety red line (§23)
+- Stryker report shows survived mutants rate > 50%
+- PR Review discovers missing test scenarios
+- Incident replay did not produce a corresponding regression test
 
-**退出条件**: 
+**Exit Conditions**:
 
-- 对应testing已编写并合入 main
-- Coverage baseline 已更新
-- Mutation score 改善到 ≥ low 阈值
+- Corresponding test has been written and merged into main
+- Coverage baseline has been updated
+- Mutation score improved to ≥ low threshold
 
-### 20.4 Sprint testing债务auto报告
+### 20.4 Sprint Test Debt Auto-Report
 
-每个 Sprint 结束时auto生成testing债务报告, 作为 Sprint Review 的必要输入. 
+At the end of each Sprint, a test debt report is automatically generated as required input for the Sprint Review.
 
-#### A. 报告content
+#### A. Report Content
 
-| 板块                   | data来源                 | 说明                                      |
-| ---------------------- | ------------------------ | ----------------------------------------- |
-| 新增 TD                | 本 Sprint 新建的 TD 条目 | 按优先级分布统计                          |
-| 已关闭 TD              | 本 Sprint 关闭的 TD 条目 | 关闭原因分布 (修复 / cancel / 降级)         |
-| 红线违规目录           | §23 coverage率质量红线check   | 列出below安全红线的目录及差距              |
-| 未coverage Spec ID         | §18.5 追溯脚本output       | 按前缀 (SPEC / ADR / CONTRACT / INC) 分类 |
-| Top-N Survived Mutants | Stryker 报告             | 取 survived 最多的前 10 个源file          |
-| 未回灌事故             | §21 failure样例回灌清单     | 已record但尚未产生回归testing的 incident       |
+| Section                 | Data Source                     | Description                                      |
+| ----------------------- | ------------------------------- | ------------------------------------------------ |
+| New TD                  | TDs created this Sprint         | Statistics by priority distribution              |
+| Closed TD               | TDs closed this Sprint          | Distribution of close reasons (fixed / canceled / downgraded) |
+| Red-line violating directories | §23 coverage quality red line check | List directories below safety red line and gap |
+| Uncovered Spec IDs      | §18.5 traceability script output | Categorized by prefix (SPEC / ADR / CONTRACT / INC) |
+| Top-N Survived Mutants  | Stryker report                  | Top 10 source files with most survived           |
+| Unreplayed incidents    | §21 failure sample replay list  | Incidents recorded but not yet producing regression tests |
 
-#### B. auto化脚本要求
+#### B. Automation Script Requirements
 
 ```bash
 #!/usr/bin/env bash
@@ -2043,11 +2043,11 @@ echo "=== Sprint Test Debt Report ==="
 echo "Date: $(date -I)"
 echo ""
 
-echo "## 1. 红线违规目录"
+echo "## 1. Red-line violating directories"
 node scripts/ci/check-coverage-baseline.mjs --report-only 2>&1 | grep "BELOW"
 
 echo ""
-echo "## 2. 未coverage Spec ID"
+echo "## 2. Uncovered Spec IDs"
 ID_PATTERN='(SPEC|ADR|CONTRACT|INC)-[\w-]+'
 comm -23 \
   <(grep -oP "$ID_PATTERN" doc/reviews/*.md doc/adr/*.md doc/contracts/*.md doc/incidents/*.md 2>/dev/null | sort -u) \
@@ -2068,82 +2068,82 @@ npx stryker run --reporters json 2>/dev/null \
   "
 
 echo ""
-echo "## 4. 未回灌事故"
-# 从 incidents 目录中找到尚未有对应 INC- 前缀testing的事故
+echo "## 4. Unreplayed incidents"
+# Find incidents in the incidents directory that don't have corresponding INC- prefixed tests yet
 comm -23 \
   <(grep -oP 'INC-[\w-]+' doc/incidents/*.md 2>/dev/null | sort -u) \
   <(grep -roPh 'INC-[\w-]+' tests/ | sort -u)
 ```
 
-#### C. CI 集成
+#### C. CI Integration
 
-- 报告脚本在每次 `main` branch合并时运行, 产出物归档到 `data/sprint-reports/` 目录
-- 若红线违规目录数量 > 上次报告, CI 发 warning (不blocks) 
-- Sprint Review 议程中必须contains该报告的解读
+- Report script runs on every `main` branch merge; output archived to `data/sprint-reports/` directory
+- If the number of red-line violating directories is more than the last report, CI emits a warning (does not block)
+- Sprint Review agenda must include interpretation of this report
 
 ---
 
-## 21. failure样例回灌规则
+## 21. Failure Sample Replay Rules
 
-### 21.1 核心principle
+### 21.1 Core Principle
 
-> **每一个线上 incident, rollback, 安全逃逸, 高优先级user修正, 都必须回灌成至少一条回归testing. **
+> **Every production incident, rollback, security escape, and high-priority user correction must be replayed into at least one regression test.**
 
-### 21.2 回灌触发条件
+### 21.2 Replay Trigger Conditions
 
-| 触发事件                   | 必须回灌的testingtype                            |
-| -------------------------- | --------------------------------------------- |
-| 线上 incident (P0/P1)      | Integration regression + root cause unit test |
-| Rollback (Rollout fallback)    | state机 transition test + 条件 gate test       |
-| 安全逃逸 (sandbox bypass)  | Denial-path regression (§8)                   |
-| user修正 (人工纠错)        | Unit test coverage被修正的逻辑branch                |
-| datainconsistent修复             | concurrent/transaction隔离 test (§17)                      |
-| Dead letter 积压           | Event lifecycle test (§15)                    |
+| Trigger Event                   | Test Type That Must Be Replayed                |
+| ------------------------------- | ---------------------------------------------- |
+| Production incident (P0 / P1)   | Integration regression + root cause unit test  |
+| Rollback (Rollout fallback)     | State machine transition test + condition gate test |
+| Security escape (sandbox bypass) | Denial-path regression (§8)                   |
+| User correction (manual fix)    | Unit test covering the corrected logic branch  |
+| Data inconsistency fix          | Concurrency / transaction isolation test (§17) |
+| Dead letter backlog             | Event lifecycle test (§15)                     |
 
-### 21.3 回灌流程
+### 21.3 Replay Process
 
 ```
-Incident 发生 → Root Causeanalysis → 修复代码
+Incident occurs → Root cause analysis → Fix code
                               ↓
-                  编写回归testing (testing标题contains incident ID) 
+                  Write regression test (test title includes incident ID)
                               ↓
-                  验证: 删除修复代码 → 回归testingfailure (confirmationtesting有效) 
+                  Verify: remove fix code → regression test fails (confirm test is effective)
                               ↓
-                  恢复修复代码 → testingvia → 合入
+                  Restore fix code → test passes → merge
 ```
 
-### 21.4 回灌testingnaming
+### 21.4 Replay Test Naming
 
 ```typescript
 test("[INC-2026-0417] stale fencing token causes duplicate writeback", () => {
-  // 复现 incident Root Cause
+  // Reproduce incident root cause
 });
 ```
 
-### 21.5 回灌验证
+### 21.5 Replay Verification
 
-回灌testing必须via **反向验证**: 
+Replay tests must pass **reverse verification**:
 
-1. comment掉修复代码
-2. 运行回灌testing → 必须failure
-3. 恢复修复代码
-4. 运行回灌testing → 必须via
+1. Comment out the fix code
+2. Run the replay test → must fail
+3. Restore the fix code
+4. Run the replay test → must pass
 
-如果step 2 testing仍然via, 说明testing未有效coverageRoot Cause, 需重写. 
+If in step 2 the test still passes, the test does not effectively cover the root cause and must be rewritten.
 
 ---
 
-## 22. testingdata治理
+## 22. Test Data Governance
 
-### 22.1 Fixture 最小化principle
+### 22.1 Fixture Minimalism Principle
 
-Fixture 只contains被测场景 **必需** 的field, 其余uses工厂default值: 
+Fixtures should contain only the fields **required** by the scenario under test; the rest use factory defaults:
 
 ```typescript
-// ✓ 好 — 只指定testing关心的field
+// ✓ Good — only specify fields the test cares about
 const task = createMinimalTask({ priority: "critical" });
 
-// ✗ 差 — 复制粘贴完整record
+// ✗ Bad — copy-paste a complete record
 const task = {
   id: "task-001",
   parentId: null,
@@ -2158,22 +2158,22 @@ const task = {
 };
 ```
 
-### 22.2 确定性控制
+### 22.2 Determinism Control
 
-testing中 **禁止** 以下非确定性来源: 
+Tests **forbid** the following non-deterministic sources:
 
-| 非确定性来源                | 替代方案                                             |
-| --------------------------- | ---------------------------------------------------- |
-| `Date.now()` / `new Date()` | usesfixed时间戳或 `withEnv({ AA_FIXED_TIME: "..." })` |
-| `Math.random()`             | usesfixed seed 或hardcoded值                             |
-| `crypto.randomUUID()`       | usesfixed ID (如 `"task-test-001"`)                   |
-| 网络request                    | Mock provider                                        |
-| filesystem时间戳              | 在 golden testing中 normalize                           |
-| 子processoutput中的 PID          | 在assertion前 strip                                       |
+| Non-deterministic source       | Alternative                                                |
+| ------------------------------ | ---------------------------------------------------------- |
+| `Date.now()` / `new Date()`    | Use a fixed timestamp or `withEnv({ AA_FIXED_TIME: "..." })` |
+| `Math.random()`                | Use a fixed seed or hard-coded value                       |
+| `crypto.randomUUID()`          | Use a fixed ID (e.g., `"task-test-001"`)                   |
+| Network requests               | Mock provider                                              |
+| File system timestamps         | Normalize in golden tests                                  |
+| PID in subprocess output       | Strip before assertion                                     |
 
 ### 22.3 Golden Snapshot Normalization
 
-在写入 golden file前, 对不稳定field做 normalize: 
+Before writing to golden files, normalize unstable fields:
 
 ```typescript
 function normalizeForGolden(output: unknown): unknown {
@@ -2185,159 +2185,159 @@ function normalizeForGolden(output: unknown): unknown {
 }
 ```
 
-### 22.4 场景 Fixture 与领域 Fixture 分离
+### 22.4 Separation of Scenario Fixtures and Domain Fixtures
 
-| type             | file                                  | 用途                                                     |
-| ---------------- | ------------------------------------- | -------------------------------------------------------- |
-| **领域 Fixture** | `tests/helpers/fixtures/base.ts`      | 最小有效领域record (Task, Execution, Approval)             |
-| **场景 Fixture** | `tests/helpers/fixtures/composite.ts` | 多实体关联场景 (BlockedTask, CompletedTask, FailedTask)  |
-| **种子 Fixture** | `tests/helpers/api.ts`                | 完整 API 环境种子                                        |
+| Type             | File                                  | Purpose                                              |
+| ---------------- | ------------------------------------- | ---------------------------------------------------- |
+| **Domain Fixture** | `tests/helpers/fixtures/base.ts`      | Minimum valid domain records (Task, Execution, Approval) |
+| **Scenario Fixture** | `tests/helpers/fixtures/composite.ts` | Multi-entity related scenarios (BlockedTask, CompletedTask, FailedTask) |
+| **Seed Fixture** | `tests/helpers/api.ts`                | Complete API environment seed                         |
 
-新增 fixture 时: 
+When adding new fixtures:
 
-- 单实体 → 加到 `base.ts`
-- 多实体关联 → 加到 `composite.ts`
-- 特定testing专用 → 内联在testingfile中 (不提取) 
+- Single entity → add to `base.ts`
+- Multi-entity related → add to `composite.ts`
+- Test-specific → inline in the test file (do not extract)
 
-### 22.5 testing隔离
+### 22.5 Test Isolation
 
-- 每个testingindependent创建 temp workspace, `try/finally` cleanup
-- 禁止testing之间sharedstate (globally变量, singleton, static属性) 
-- 环境变量via `withEnv()` 隔离
-- data库viaindependent DB file隔离 (不shared in-memory DB) 
+- Each test independently creates a temp workspace, with `try/finally` cleanup
+- Forbid sharing state between tests (global variables, singletons, static properties)
+- Environment variables are isolated via `withEnv()`
+- Databases are isolated via independent DB files (do not share in-memory DB)
 
 ---
 
-## 23. coverage率质量红线
+## 23. Coverage Quality Red Lines
 
-### 23.1 问题
+### 23.1 Problem
 
-globally 82.4% 行coverage率可能掩盖关键module的低coverage. 需要对不同module定义 **硬性最低门槛**. 
+A global 82.4% line coverage can mask low coverage of critical modules. We need to define **hard minimum thresholds** for different modules.
 
-### 23.2 分级红线 (v3.0 更新目录映射) 
+### 23.2 Tiered Red Lines (v3.0 updated directory mapping)
 
-| 级别         | 适用module                                                                           | Lines 红线 | Branches 红线 | Mutation 红线 |
-| ------------ | ---------------------------------------------------------------------------------- | ---------- | ------------- | ------------- |
-| **Critical** | compliance, distributed-lock, state-transition, execution-lease, control-plane/iam | ≥ 90%      | ≥ 80%         | ≥ 70%         |
-| **High**     | orchestration/oapeflir, state-evidence/memory, knowledge, events, execution-engine | ≥ 85%      | ≥ 75%         | ≥ 60%         |
-| **Standard** | orchestration/oapeflir/learn, planning, improvement, artifacts, prompt-engine      | ≥ 80%      | ≥ 70%         | ≥ 50%         |
-| **Baseline** | plugins, sdk/cli, model-gateway, tool-executor, domains                            | ≥ 75%      | ≥ 60%         | ≥ 50%         |
+| Level        | Applicable Modules                                                                        | Lines Red Line | Branches Red Line | Mutation Red Line |
+| ------------ | ----------------------------------------------------------------------------------------- | -------------- | ----------------- | ----------------- |
+| **Critical** | compliance, distributed-lock, state-transition, execution-lease, control-plane/iam        | ≥ 90%          | ≥ 80%             | ≥ 70%             |
+| **High**     | orchestration/oapeflir, state-evidence/memory, knowledge, events, execution-engine        | ≥ 85%          | ≥ 75%             | ≥ 60%             |
+| **Standard** | orchestration/oapeflir/learn, planning, improvement, artifacts, prompt-engine            | ≥ 80%          | ≥ 70%             | ≥ 50%             |
+| **Baseline** | plugins, sdk/cli, model-gateway, tool-executor, domains                                   | ≥ 75%          | ≥ 60%             | ≥ 50%             |
 
-### 23.3 当前差距 (v4.0 c8 实测data) 
+### 23.3 Current Gap (v4.0 c8 Measured Data)
 
-> **重要**: c8 fullanalysis (`all: true`) 显示所有modulecoverage率均为 **0%**, 唯一例外是 `state-evidence/truth/sqlite/` 下 6 个file (100%) . 因此以下所有 Critical 和 High module当前均 **不达标**. 
+> **Important**: c8 full analysis (`all: true`) shows all module coverage is **0%**, with the sole exception of 6 files under `state-evidence/truth/sqlite/` (100%). Therefore, all Critical and High modules below currently **fail to meet the standard**.
 
-| module                                    | 级别     | 当前 Lines | 红线 | 当前 Branches | 红线 | state                |
-| --------------------------------------- | -------- | ---------- | ---- | ------------- | ---- | ------------------- |
-| `platform/five-plane-execution/distributed-lock`   | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
-| `platform/five-plane-execution/state-transition`   | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
-| `platform/five-plane-control-plane/iam`            | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
-| `platform/compliance`                   | Critical | 0%         | 90%  | 0%            | 80%  | ❌ Lines **差 90%** |
-| `platform/five-plane-orchestration/oapeflir`       | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
-| `platform/five-plane-state-evidence/memory`        | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
-| `platform/five-plane-state-evidence/events`        | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
-| `platform/five-plane-execution/execution-engine`   | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
-| `platform/five-plane-state-evidence/knowledge`     | High     | 0%         | 85%  | 0%            | 75%  | ❌ Lines **差 85%** |
-| `platform/five-plane-orchestration/oapeflir/learn` | Standard | 0%         | 80%  | 0%            | 70%  | ❌ Lines **差 80%** |
-| `platform/five-plane-state-evidence/artifacts`     | Standard | 0%         | 80%  | 0%            | 70%  | ❌ Lines **差 80%** |
-| `platform/prompt-engine`                | Standard | 0%         | 80%  | 0%            | 70%  | ❌ Lines **差 80%** |
-| `plugins`                               | Baseline | 0%         | 75%  | 0%            | 60%  | ❌ Lines **差 75%** |
-| `sdk/cli`                               | Baseline | 0%         | 75%  | 0%            | 60%  | ❌ Lines **差 75%** |
-| `platform/model-gateway`                | Baseline | 0%         | 75%  | 0%            | 60%  | ❌ Lines **差 75%** |
-| `domains`                               | Baseline | 0%         | 75%  | 0%            | 60%  | ❌ Lines **差 75%** |
+| Module                                    | Level    | Current Lines | Red Line | Current Branches | Red Line | Status                |
+| ----------------------------------------- | -------- | ------------- | -------- | ---------------- | -------- | --------------------- |
+| `platform/five-plane-execution/distributed-lock`   | Critical | 0%            | 90%      | 0%               | 80%      | ❌ Lines **gap 90%**  |
+| `platform/five-plane-execution/state-transition`   | Critical | 0%            | 90%      | 0%               | 80%      | ❌ Lines **gap 90%**  |
+| `platform/five-plane-control-plane/iam`            | Critical | 0%            | 90%      | 0%               | 80%      | ❌ Lines **gap 90%**  |
+| `platform/compliance`                   | Critical | 0%            | 90%      | 0%               | 80%      | ❌ Lines **gap 90%**  |
+| `platform/five-plane-orchestration/oapeflir`       | High     | 0%            | 85%      | 0%               | 75%      | ❌ Lines **gap 85%**  |
+| `platform/five-plane-state-evidence/memory`        | High     | 0%            | 85%      | 0%               | 75%      | ❌ Lines **gap 85%**  |
+| `platform/five-plane-state-evidence/events`        | High     | 0%            | 85%      | 0%               | 75%      | ❌ Lines **gap 85%**  |
+| `platform/five-plane-execution/execution-engine`   | High     | 0%            | 85%      | 0%               | 75%      | ❌ Lines **gap 85%**  |
+| `platform/five-plane-state-evidence/knowledge`     | High     | 0%            | 85%      | 0%               | 75%      | ❌ Lines **gap 85%**  |
+| `platform/five-plane-orchestration/oapeflir/learn` | Standard | 0%            | 80%      | 0%               | 70%      | ❌ Lines **gap 80%**  |
+| `platform/five-plane-state-evidence/artifacts`     | Standard | 0%            | 80%      | 0%               | 70%      | ❌ Lines **gap 80%**  |
+| `platform/prompt-engine`                | Standard | 0%            | 80%      | 0%               | 70%      | ❌ Lines **gap 80%**  |
+| `plugins`                               | Baseline | 0%            | 75%      | 0%               | 60%      | ❌ Lines **gap 75%**  |
+| `sdk/cli`                               | Baseline | 0%            | 75%      | 0%               | 60%      | ❌ Lines **gap 75%**  |
+| `platform/model-gateway`                | Baseline | 0%            | 75%      | 0%               | 60%      | ❌ Lines **gap 75%**  |
+| `domains`                               | Baseline | 0%            | 75%      | 0%               | 60%      | ❌ Lines **gap 75%**  |
 
-> **v4.0 重大变更**: c8 fullanalysis显示所有modulecoverage率为 0% (除 state-evidence/truth/sqlite/ 的 6 file外) . v3.0 声称的高coverage率data经验证不准确. **Root Causeanalysis**: testing代码exists (1,803 个 .test.ts file, 52,480 个assertion) , 但 c8 coverage率采集可能未正确关联到所有编译后的 `dist/src/` file, 或 `build:test` 编译过程未将全部源filecontains在 c8 的 instrumentation range内. 需要排查 c8 configure与构建链的集成问题. 
+> **v4.0 Major Change**: c8 full analysis shows all module coverage is 0% (except 6 files under `state-evidence/truth/sqlite/`). The high coverage data claimed by v3.0 has been verified to be inaccurate. **Root cause analysis**: test code exists (1,803 `.test.ts` files, 52,480 assertions), but c8 coverage collection may not be correctly linked to all compiled `dist/src/` files, or the `build:test` compilation process did not include all source files in c8's instrumentation scope. Need to investigate the integration of c8 configuration with the build chain.
 
-### 23.4 红线execute方式
+### 23.4 Red Line Enforcement
 
-将红线写入 `.coverage-baseline.json` 的目录级 minimums, 由 `check-coverage-baseline.mjs` forceexecute. 
+Write red lines into the directory-level `minimums` in `.coverage-baseline.json`, enforced by `check-coverage-baseline.mjs`.
 
-当前基线只record"观察值", 建议扩展为: 
+The current baseline only records "observed values"; it is recommended to extend it to:
 
 ```json
 {
   "src/platform/security": {
     "fileCount": 19,
     "metrics": { "lines": 91.9, ... },
-    "minimums": { "lines": 90, "branches": 80 }  // ← 新增
+    "minimums": { "lines": 90, "branches": 80 }  // ← newly added
   }
 }
 ```
 
-### 23.5 state机 / 安全专项红线
+### 23.5 State Machine / Security-Specific Red Lines
 
-除coverage率外, 以下module有专项红线: 
+In addition to coverage, the following modules have specific red lines:
 
-| 专项                | 红线                       | 度量方式                  |
-| ------------------- | -------------------------- | ------------------------- |
-| state机合法转换coverage  | 100%                       | 合法边数 / 总合法边数     |
-| state机非法转换coverage  | 终态 × 全部非自身state 100% | rejecttesting数 / 应reject数     |
-| 安全 denial-path    | 每个攻击面 ≥ 3 条          | denial test 数 / 攻击面数 |
-| Tier 1 事件生命周期 | 9 种事件 × 8 阶段 100%     | 已测阶段 / 72             |
-| Fencing token reject  | 5 种原因 100%              | rejecttesting数 / 5            |
-
----
+| Special Item                       | Red Line                              | Measurement Method                  |
+| ---------------------------------- | ------------------------------------- | ----------------------------------- |
+| State machine legal transition coverage | 100%                                  | Legal edges / total legal edges     |
+| State machine illegal transition coverage | Terminal states × all non-self states 100% | Rejection test count / required rejection count |
+| Security denial-path               | Each attack surface ≥ 3 items         | Denial test count / attack surface count |
+| Tier 1 event lifecycle             | 9 events × 8 phases 100%              | Tested phases / 72                  |
+| Fencing token rejection            | 5 reasons 100%                        | Rejection test count / 5            |
 
 ---
 
-# Part III — 架构missing口回归testing矩阵 (v4.0 重写, 对齐架构审查 v8.0) 
+---
 
-> Part I 解决"代码coverage治理", Part II 解决"架构语义coverage". 
-> Part III 解决"**架构设计 vs implementation的missing口回归防护**" — based on架构审查 v8.0 (`docs_zh/reviews/architecture-design-vs-implementation-review.md`) 发现的 **13 项架构missing口**, 定义对应的testing规范, 确保每个missing口在implementation后有完备的testingcoverage. 
+# Part III — Architecture Gap Regression Test Matrix (v4.0 rewrite, aligned with Architecture Review v8.0)
+
+> Part I addresses "code coverage governance"; Part II addresses "architecture semantic coverage".
+> Part III addresses "**regression protection for architecture design vs implementation gaps**" — based on the **13 architecture gaps** found by Architecture Review v8.0 (`docs_zh/reviews/architecture-design-vs-implementation-review.md`), define the corresponding test conventions to ensure each gap has complete test coverage after implementation.
 >
-> **v4.0 变更**: 完全重写. v3.0 based on架构审查 v6.0 的 29 项missing口 (GAP-\* 编号) . 本版based on架构审查 v8.0 对全代码库 (1,387 file / 265,020 行) vs 设计文档 v3.2 (§1-§94) 的full差距评审, coverage **3 项 P0 架构违规 + 7 项 P1 implementation不足 + 3 项 P2 details补全**. v3.0 中 Harness 相关missing口 (GAP-VI-\*) 已在代码中partialimplementation (29 file 1,471 行) , 本版聚焦安全/分类/authorization框架层面的设计-implementation差距. 
+> **v4.0 Change**: Completely rewritten. v3.0 was based on 29 gaps (GAP-\* numbering) from Architecture Review v6.0. This version is based on Architecture Review v8.0's full gap review of the entire codebase (1,387 files / 265,020 lines) vs design document v3.2 (§1-§94), covering **3 P0 architecture violations + 7 P1 implementation shortcomings + 3 P2 detail completions**. The Harness-related gaps in v3.0 (GAP-VI-\*) have been partially implemented in code (29 files, 1,471 lines); this version focuses on design-implementation gaps at the security / classification / authorization framework layer.
 
 ---
 
-## 24. 架构审查驱动的回归testing
+## 24. Architecture Review-Driven Regression Testing
 
-### 24.1 背景
+### 24.1 Background
 
-架构审查 v8.0 对 1,387 个源file / 265,020 行代码进行了full审查, 对比架构设计文档 v3.2 (约 8,000 行 / 94 章节) , 发现 **13 项架构设计 vs implementationmissing口**: 
+Architecture Review v8.0 conducted a full review of 1,387 source files / 265,020 lines of code, compared with architecture design document v3.2 (approx. 8,000 lines / 94 chapters), and found **13 architecture design vs implementation gaps**:
 
-| 优先级              | 数量 | 关键missing口                                                                            |
-| ------------------- | ---- | ----------------------------------------------------------------------------------- |
-| P0 架构违规         | 3    | E1-E6 异常分类missing, SEV1-4 统一严重度missing, STRIDE 威胁模型missing                      |
-| P1 明确要求implementation不足 | 7    | Principal type, Sandbox 层级, Cursor pagination, HITL 模式, RBAC 三层authorization, 垂直域, 多模态 |
-| P2 details补全         | 3    | Webhook-Outbox coupling, 逻辑表对账, 元模型 12 问                                       |
+| Priority                  | Count | Key Gaps                                                                            |
+| ------------------------- | ----- | ----------------------------------------------------------------------------------- |
+| P0 Architecture violations | 3     | E1-E6 anomaly classification missing, SEV1-4 unified severity missing, STRIDE threat model missing |
+| P1 Clear requirement implementation shortcomings | 7     | Principal type, Sandbox tier, Cursor pagination, HITL mode, RBAC three-layer authorization, vertical domain, multimodal |
+| P2 Detail completions      | 3     | Webhook-Outbox coupling, logical table reconciliation, metamodel 12 questions        |
 
-### 24.2 missing口 ID 到testing追溯
+### 24.2 Gap ID to Test Traceability
 
-testing标题uses `[ARCH-P{级别}-{序号}]` 前缀, 与架构审查 v8.0 的missing口编号一一对应: 
+Test titles use the `[ARCH-P{level}-{sequence}]` prefix, mapping one-to-one with the gap numbers from Architecture Review v8.0:
 
 ```
-架构审查 v8.0: P0-1 §12.1 异常事件分类体系 E1-E6 完全missing
+Architecture Review v8.0: P0-1 §12.1 Anomaly event classification system E1-E6 completely missing
     ↓
-testing标题: [ARCH-P0-1] AnomalyEventClass enum defines all 6 categories E1-E6
+Test title: [ARCH-P0-1] AnomalyEventClass enum defines all 6 categories E1-E6
     ↓
-file位置: tests/unit/platform/contracts/anomaly-event-classification.test.ts
+File location: tests/unit/platform/contracts/anomaly-event-classification.test.ts
 ```
 
-| 前缀       | 含义                 | missing口数 |
-| ---------- | -------------------- | ------ |
-| `ARCH-P0-` | 架构违规 (完全missing)  | 3      |
-| `ARCH-P1-` | 明确要求但implementation不足   | 7      |
-| `ARCH-P2-` | details补全             | 3      |
+| Prefix       | Meaning                          | Gap Count |
+| ------------ | -------------------------------- | --------- |
+| `ARCH-P0-`   | Architecture violation (completely missing) | 3         |
+| `ARCH-P1-`   | Clearly required but implementation insufficient | 7         |
+| `ARCH-P2-`   | Detail completion                | 3         |
 
-### 24.3 优先级executeplan
+### 24.3 Priority Execution Plan
 
-| 优先级 | 修复时限 | missing口 ID                                                                                                      |
-| ------ | -------- | ------------------------------------------------------------------------------------------------------------ |
-| **P0** | 1-2 周   | P0-1 (E1-E6 分类) , P0-2 (SEV1-4 统一严重度) , P0-3 (STRIDE)                                                 |
-| **P1** | 2-4 周   | P1-1 (Principal) , P1-2 (Sandbox) , P1-3 (pagination) , P1-4 (HITL) , P1-5 (RBAC) , P1-6 (垂直域) , P1-7 (多模态)  |
-| **P2** | 持续     | P2-1 (Webhook-Outbox) , P2-2 (逻辑表) , P2-3 (元模型 12 问)                                                  |
+| Priority | Fix Deadline | Gap ID                                                                                                      |
+| -------- | ------------ | ------------------------------------------------------------------------------------------------------------ |
+| **P0**   | 1-2 weeks    | P0-1 (E1-E6 classification), P0-2 (SEV1-4 unified severity), P0-3 (STRIDE)                                  |
+| **P1**   | 2-4 weeks    | P1-1 (Principal), P1-2 (Sandbox), P1-3 (Pagination), P1-4 (HITL), P1-5 (RBAC), P1-6 (Vertical domain), P1-7 (Multimodal) |
+| **P2**   | Ongoing      | P2-1 (Webhook-Outbox), P2-2 (Logical table), P2-3 (Metamodel 12 questions)                                 |
 
 ---
 
-## 25. P0 架构违规missing口testing规范
+## 25. P0 Architecture Violation Gap Test Conventions
 
-### 25.1 [ARCH-P0-1] §12.1 异常事件分类体系 E1-E6 完全missing
+### 25.1 [ARCH-P0-1] §12.1 Anomaly Event Classification System E1-E6 Completely Missing
 
-**missing口**: 设计定义 6 类异常事件分类 (E1 业务/E2 execute/E3 外部dependency/E4 安全/E5 data/E6 治理) , 代码中 `AnomalyDetectionService` uses `AnomalyCategory` (spike/trend_change/level_shift) , 完全不同于设计分类体系. 
+**Gap**: The design defines 6 categories of anomaly event classification (E1 business / E2 execution / E3 external dependency / E4 security / E5 data / E6 governance), but in the code `AnomalyDetectionService` uses `AnomalyCategory` (spike / trend_change / level_shift), which is completely different from the design classification system.
 
-**testingtype**: Unit
+**Test Type**: Unit
 
-**testing目标**: 异常事件分类枚举必须contains E1-E6 全部 6 类, 分类映射逻辑必须正确. 
+**Test Goal**: The anomaly event classification enum must include all 6 categories E1-E6, and the classification mapping logic must be correct.
 
 ```typescript
 test("[ARCH-P0-1] AnomalyEventClass enum defines all 6 categories", () => {
@@ -2372,21 +2372,21 @@ test("[ARCH-P0-1] statistical detection maps to business classification", () => 
 });
 ```
 
-**testing场景清单**:
+**Test Scenario Checklist**:
 
-| 场景                          | assertion                                      |
-| ----------------------------- | ----------------------------------------- |
-| 每个 E1-E6 分类枚举值exists     | 枚举length = 6, contains所有值                  |
-| Schema 验证合法事件           | `doesNotThrow`                            |
-| Schema rejectmissing少 class 的事件  | `throws`                                  |
-| 统计检测 → E1-E6 映射coverage全部 | 每种 source_plane 至少映射到一个 E 类     |
-| 事件发布携带 class field       | outbox/event 消息contains `AnomalyEventClass` |
+| Scenario                          | Assertion                                |
+| --------------------------------- | ---------------------------------------- |
+| Each E1-E6 classification enum value exists | Enum length = 6, contains all values     |
+| Schema validates legal event      | `doesNotThrow`                           |
+| Schema rejects event missing class | `throws`                                |
+| Statistical detection → E1-E6 mapping covers all | Each `source_plane` mapped to at least one E class |
+| Event publication carries class field | outbox / event message contains `AnomalyEventClass` |
 
-### 25.2 [ARCH-P0-2] §12.2 统一严重度等级 SEV1-SEV4 missing
+### 25.2 [ARCH-P0-2] §12.2 Unified Severity Levels SEV1-SEV4 Missing
 
-**missing口**: 代码中exists 3 套互不compatibility的严重度体系: Incident 用 P0-P3, Anomaly 用 warning/critical/emergency, SLO 用 AlertSeverity. 设计要求统一uses SEV1-SEV4. 
+**Gap**: Three mutually incompatible severity systems exist in the code: Incident uses P0-P3, Anomaly uses warning / critical / emergency, SLO uses AlertSeverity. The design requires unified use of SEV1-SEV4.
 
-**testingtype**: Unit + Integration
+**Test Type**: Unit + Integration
 
 ```typescript
 test("[ARCH-P0-2] UnifiedSeverity enum defines SEV1-SEV4", () => {
@@ -2420,11 +2420,11 @@ test("[ARCH-P0-2] anomaly warning/critical/emergency maps to SEV levels", () => 
 });
 ```
 
-### 25.3 [ARCH-P0-3] §11.8 STRIDE 威胁模型完全missing
+### 25.3 [ARCH-P0-3] §11.8 STRIDE Threat Model Completely Missing
 
-**missing口**: 设计要求 STRIDE 六维度威胁评估 + 补充威胁矩阵, 代码中无任何 STRIDE implementation. 
+**Gap**: The design requires 6-dimension STRIDE threat assessment + supplementary threat matrix, but there is no STRIDE implementation in the code.
 
-**testingtype**: Unit
+**Test Type**: Unit
 
 ```typescript
 test("[ARCH-P0-3] StrideCategory enum defines 6 STRIDE dimensions", () => {
@@ -2458,13 +2458,13 @@ test("[ARCH-P0-3] each STRIDE dimension has at least one mitigation", () => {
 
 ---
 
-## 26. P1 高优先级missing口testing规范
+## 26. P1 High-Priority Gap Test Conventions
 
-### 26.1 [ARCH-P1-1] Principal type不完整 (3/6) 
+### 26.1 [ARCH-P1-1] Principal Type Incomplete (3/6)
 
-**missing口**: 架构 §11.1 定义 6 种 Principal type (Human / ServiceAccount / Agent / System / External / Anonymous) , 代码onlyimplementation前 3 种. 
+**Gap**: Architecture §11.1 defines 6 Principal types (Human / ServiceAccount / Agent / System / External / Anonymous), but the code only implements the first 3.
 
-**testingtype**: Unit
+**Test Type**: Unit
 
 ```typescript
 test("[ARCH-P1-1] PrincipalType enum covers all 6 types", () => {
@@ -2501,11 +2501,11 @@ test("[ARCH-P1-1] AuthContext accepts all 6 principal types", () => {
 });
 ```
 
-### 26.2 [ARCH-P1-2] Sandbox 层级不完整 (3/4 档) 
+### 26.2 [ARCH-P1-2] Sandbox Tier Incomplete (3/4 Tiers)
 
-**missing口**: 架构 §11.4 定义 4 档 Sandbox (none / process / container / vm) , 代码onlyimplementation前 3 档. 
+**Gap**: Architecture §11.4 defines 4 Sandbox tiers (none / process / container / vm), but the code only implements the first 3.
 
-**testingtype**: Unit
+**Test Type**: Unit
 
 ```typescript
 test("[ARCH-P1-2] SandboxLevel enum covers all 4 tiers", () => {
@@ -2526,11 +2526,11 @@ test("[ARCH-P1-2] SandboxFactory creates VM-tier sandbox", async () => {
 });
 ```
 
-### 26.3 [ARCH-P1-3] Cursor-based pagination不完整
+### 26.3 [ARCH-P1-3] Cursor-Based Pagination Incomplete
 
-**missing口**: 架构 §6.6 要求所有列表 API uses cursor-based pagination. 当前partial端点uses offset-based 或无pagination. 
+**Gap**: Architecture §6.6 requires all list APIs to use cursor-based pagination. Currently some endpoints use offset-based or no pagination.
 
-**testingtype**: Integration
+**Test Type**: Integration
 
 ```typescript
 test("[ARCH-P1-3] list endpoints return cursor-based pagination fields", async () => {
@@ -2567,11 +2567,11 @@ test("[ARCH-P1-3] cursor-based pagination traverses all records", async () => {
 });
 ```
 
-### 26.4 [ARCH-P1-4] HITL 7 种模式coverage度待验证
+### 26.4 [ARCH-P1-4] HITL 7 Mode Coverage To Be Verified
 
-**missing口**: 架构 §21.1 定义 7 种 Human-in-the-Loop 模式 (approve / reject / escalate / override / inspect / patch / takeover) . 代码coverage度待验证. 
+**Gap**: Architecture §21.1 defines 7 Human-in-the-Loop modes (approve / reject / escalate / override / inspect / patch / takeover). Code coverage is to be verified.
 
-**testingtype**: Integration
+**Test Type**: Integration
 
 ```typescript
 test("[ARCH-P1-4] HITL service supports all 7 interaction modes", async () => {
@@ -2603,11 +2603,11 @@ test("[ARCH-P1-4] HITL takeover transfers control to human operator", async () =
 });
 ```
 
-### 26.5 [ARCH-P1-5] RBAC + Capability + Context-aware 三层authorization不完整
+### 26.5 [ARCH-P1-5] RBAC + Capability + Context-Aware Three-Layer Authorization Incomplete
 
-**missing口**: 架构 §11.2 要求三层authorization (RBAC 角色 → Capability token → Context-aware dynamicstrategy) . 代码onlyimplementation RBAC 层. 
+**Gap**: Architecture §11.2 requires three-layer authorization (RBAC role → Capability token → Context-aware dynamic policy). The code only implements the RBAC layer.
 
-**testingtype**: Unit + Integration
+**Test Type**: Unit + Integration
 
 ```typescript
 test("[ARCH-P1-5] AuthZ evaluates all 3 layers", async () => {
@@ -2639,11 +2639,11 @@ test("[ARCH-P1-5] context-aware layer denies high-risk action outside business h
 });
 ```
 
-### 26.6 [ARCH-P1-6] 垂直域专属架构missing
+### 26.6 [ARCH-P1-6] Vertical Domain-Specific Architecture Missing
 
-**missing口**: 架构 §71-§94 定义 24 个垂直域的专属工作流, 工具束, riskstrategy和评估指标. 当前所有域uses通用骨架. 
+**Gap**: Architecture §71-§94 defines 24 vertical domains with specialized workflows, tool bundles, risk policies, and evaluation metrics. Currently all domains use the generic skeleton.
 
-**testingtype**: Unit (Golden)
+**Test Type**: Unit (Golden)
 
 ```typescript
 test("[ARCH-P1-6] each domain has specialized workflow beyond generic 2-step", () => {
@@ -2677,11 +2677,11 @@ test("[ARCH-P1-6] each domain defines evaluation metrics", () => {
 });
 ```
 
-### 26.7 [ARCH-P1-7] 多模态能力视频handle为骨架
+### 26.7 [ARCH-P1-7] Multimodal Capability Video Processing Is Skeleton
 
-**missing口**: 架构 §68 定义多模态handle能力 (text / image / audio / video) . 视频handleonly存骨架 stub, 无实际implementation. 
+**Gap**: Architecture §68 defines multimodal processing capabilities (text / image / audio / video). Video processing only has a skeleton stub, with no actual implementation.
 
-**testingtype**: Unit + Integration
+**Test Type**: Unit + Integration
 
 ```typescript
 test("[ARCH-P1-7] MultimodalProcessor supports all 4 modalities", () => {
@@ -2706,13 +2706,13 @@ test("[ARCH-P1-7] video processor performs actual processing beyond stub", async
 
 ---
 
-## 27. P2 details补全missing口testing规范
+## 27. P2 Detail Completion Gap Test Conventions
 
-### 27.1 [ARCH-P2-1] Webhook + Outbox couplingmissing
+### 27.1 [ARCH-P2-1] Webhook + Outbox Coupling Missing
 
-**missing口**: 架构 §6.7 要求事件notificationuses Transactional Outbox 模式保证 at-least-once 投递. 当前 webhook directlysynchronous发送, 无 outbox 表, 无重试追踪. 
+**Gap**: Architecture §6.7 requires event notifications to use the Transactional Outbox pattern to guarantee at-least-once delivery. Currently webhook is sent synchronously, with no outbox table, no retry tracking.
 
-**testingtype**: Integration
+**Test Type**: Integration
 
 ```typescript
 test("[ARCH-P2-1] WebhookService writes to outbox table before sending", async () => {
@@ -2758,11 +2758,11 @@ test("[ARCH-P2-1] OutboxProcessor retries failed webhook deliveries", async () =
 });
 ```
 
-### 27.2 [ARCH-P2-2] 逻辑表数量差异
+### 27.2 [ARCH-P2-2] Logical Table Count Difference
 
-**missing口**: 架构 §26.3 定义的逻辑表集合与代码中实际 schema 定义exists数量差异. 需要验证所有架构要求的表在代码中有对应定义. 
+**Gap**: There is a count difference between the logical table set defined in Architecture §26.3 and the actual schema definitions in the code. It is necessary to verify that all tables required by the architecture have corresponding definitions in the code.
 
-**testingtype**: Unit (Schema Validation)
+**Test Type**: Unit (Schema Validation)
 
 ```typescript
 test("[ARCH-P2-2] all architecture-required tables exist in schema definitions", () => {
@@ -2804,11 +2804,11 @@ test("[ARCH-P2-2] no orphan tables without architecture mapping", () => {
 });
 ```
 
-### 27.3 [ARCH-P2-3] 统一领域元模型 12 问coverage度
+### 27.3 [ARCH-P2-3] Unified Domain Meta-Model 12-Question Coverage
 
-**missing口**: 架构 §37.11 定义统一领域元模型的 12 个必答问题 (域边界, 核心实体, 工作流, 工具束, riskstrategy, 评估指标, 预算约束, 安全级别, 延迟要求, data敏感度, 合规要求, SLA 目标) . 需验证每个域的元模型回答coverage度. 
+**Gap**: Architecture §37.11 defines 12 mandatory questions for the unified domain meta-model (domain boundary, core entities, workflows, tool bundle, risk policy, evaluation metrics, budget constraints, security level, latency requirement, data sensitivity, compliance requirements, SLA targets). It is necessary to verify that each domain's meta-model answer coverage.
 
-**testingtype**: Unit (Golden)
+**Test Type**: Unit (Golden)
 
 ```typescript
 test("[ARCH-P2-3] each domain meta-model answers all 12 questions", () => {
@@ -2863,26 +2863,26 @@ test("[ARCH-P2-3] domain meta-model answers are non-trivial", () => {
 
 ---
 
-# Part IV — system工程missing陷回归testing (v2.0 原 Part III 保留, v3.0 更新编号) 
+# Part IV — System Engineering Defect Regression Testing (v2.0 original Part III preserved, v3.0 numbering updated)
 
-> Part III 解决"架构设计-implementationmissing口". 
-> Part IV 解决"**system工程missing陷的回归防护**" — based on架构审查 v4.1 发现的工程missing陷 (Redis errorhandle, concurrent竞态, silently丢task等) , 定义对应的回归testing规范. 
+> Part III addresses "architecture design-implementation gaps".
+> Part IV addresses "**regression protection for system engineering defects**" — based on engineering defects found by Architecture Review v4.1 (Redis error handling, concurrency races, silent task loss, etc.), define the corresponding regression test conventions.
 >
-> **v3.0 变更**: 从 v2.0 Part III (§24-§30) 迁移至 Part IV (§29-§34) , 编号更新, content保留. SYS-\* missing陷编号不变. 
+> **v3.0 Change**: Migrated from v2.0 Part III (§24-§30) to Part IV (§29-§34), numbering updated, content preserved. SYS-\* defect numbering unchanged.
 
 ---
 
-## 29. P0 阻断级工程missing陷testing规范
+## 29. P0 Blocking Engineering Defect Test Conventions
 
-> 对应 v2.0 §25. 
+> Corresponds to v2.0 §25.
 
-### 29.1 [SYS-REL-2.1] Redis errorhandle器silently吞错
+### 29.1 [SYS-REL-2.1] Redis Error Handler Silently Swallows Errors
 
-**missing陷**: `distributed-lock/redis-lock-adapter.ts`, `queue/redis-queue-adapter.ts`, `ingress/redis-rate-limiter.ts`, `cache/stores/redis-cache-store.ts` 中 `this.redis.on("error", () => {})` silently吞掉所有 Redis error. 
+**Defect**: In `distributed-lock/redis-lock-adapter.ts`, `queue/redis-queue-adapter.ts`, `ingress/redis-rate-limiter.ts`, `cache/stores/redis-cache-store.ts`, `this.redis.on("error", () => {})` silently swallows all Redis errors.
 
-**testingtype**: Unit + Integration
+**Test Type**: Unit + Integration
 
-**testing目标**: Redis 连接error必须 (1) record到 StructuredLogger, (2) 更新健康state标志, (3) 递增 Prometheus 计数器. 
+**Test Goal**: Redis connection errors must (1) be logged to StructuredLogger, (2) update the health status flag, (3) increment the Prometheus counter.
 
 ```typescript
 test("[SYS-REL-2.1] Redis lock adapter logs error and marks unhealthy on connection failure", () => {
@@ -2914,20 +2914,20 @@ test("[SYS-REL-2.1] Redis lock adapter logs error and marks unhealthy on connect
 });
 ```
 
-**coveragefile** (每个file一组testing) :
+**Files Covered** (one set of tests per file):
 
-| file                                               | testingfile                                                         |
-| -------------------------------------------------- | ---------------------------------------------------------------- |
+| File                                               | Test File                                                         |
+| -------------------------------------------------- | ----------------------------------------------------------------- |
 | `execution/distributed-lock/redis-lock-adapter.ts` | `tests/unit/platform/five-plane-execution/redis-lock-error.test.ts`         |
 | `execution/queue/redis-queue-adapter.ts`           | `tests/unit/platform/five-plane-execution/redis-queue-error.test.ts`        |
 | `interface/ingress/redis-rate-limiter.ts`          | `tests/unit/platform/five-plane-interface/redis-rate-limiter-error.test.ts` |
 | `shared/cache/stores/redis-cache-store.ts`         | `tests/unit/platform/shared/redis-cache-error.test.ts`           |
 
-### 29.2 [SYS-REL-2.3] DLQ 纯in-memory, 重启loss
+### 29.2 [SYS-REL-2.3] DLQ In-Memory Only, Lost on Restart
 
-**missing陷**: `state-evidence/dlq/index.ts` uses `Map<string, DeadLetterRecord>` 存储死信, process重启后全部loss. 
+**Defect**: `state-evidence/dlq/index.ts` uses `Map<string, DeadLetterRecord>` to store dead letters; all data is lost after a process restart.
 
-**testingtype**: Integration
+**Test Type**: Integration
 
 ```typescript
 test("[SYS-REL-2.3] DLQ records survive service reconstruction", async () => {
@@ -2950,11 +2950,11 @@ test("[SYS-REL-2.3] DLQ records survive service reconstruction", async () => {
 });
 ```
 
-### 29.3 [SYS-REL-2.4] Redis 队列silently丢task
+### 29.3 [SYS-REL-2.4] Redis Queue Silently Drops Tasks
 
-**missing陷**: `execution/queue/redis-queue-adapter.ts` 中 5 处关键 enqueue 操作uses `.catch(() => {})`. 
+**Defect**: In `execution/queue/redis-queue-adapter.ts`, 5 critical enqueue operations use `.catch(() => {})`.
 
-**testingtype**: Unit
+**Test Type**: Unit
 
 ```typescript
 test("[SYS-REL-2.4] Redis queue enqueue propagates write failure", async () => {
@@ -2977,11 +2977,11 @@ test("[SYS-REL-2.4] Redis queue enqueue propagates write failure", async () => {
 });
 ```
 
-### 29.4 [SYS-DEPLOY-6.3] Dockerfile CMD path不exists
+### 29.4 [SYS-DEPLOY-6.3] Dockerfile CMD Path Does Not Exist
 
-**missing陷**: `Dockerfile` 行 46 的 CMD references不exists的path. 
+**Defect**: Line 46 of the `Dockerfile` CMD references a non-existent path.
 
-**testingtype**: CI Build Verification
+**Test Type**: CI Build Verification
 
 ```typescript
 test("[SYS-DEPLOY-6.3] Dockerfile CMD entrypoint exists after build", () => {
@@ -2999,13 +2999,13 @@ test("[SYS-DEPLOY-6.3] Dockerfile CMD entrypoint exists after build", () => {
 });
 ```
 
-## 30. P1 严重missing陷testing规范
+## 30. P1 Severe Defect Test Conventions
 
-### 30.1 [SYS-REL-2.2] Redis lock TOCTOU 竞态
+### 30.1 [SYS-REL-2.2] Redis Lock TOCTOU Race
 
-**missing陷**: `distributed-lock/redis-lock-adapter.ts` 的 `extendAsync()` usesnon-atomic GET+SET, `forceStealAsync()` usesnon-atomic DEL+SET. concurrent场景下两个process可同时持有同一把lock. 
+**Defect**: `extendAsync()` in `distributed-lock/redis-lock-adapter.ts` uses non-atomic GET+SET; `forceStealAsync()` uses non-atomic DEL+SET. In concurrent scenarios, two processes can hold the same lock simultaneously.
 
-**testingtype**: Integration (Concurrency)
+**Test Type**: Integration (Concurrency)
 
 ```typescript
 test("[SYS-REL-2.2] concurrent extendAsync on same lock grants only one", async () => {
@@ -3040,11 +3040,11 @@ test("[SYS-REL-2.2] concurrent forceStealAsync does not create double lock", asy
 });
 ```
 
-### 30.2 [SYS-REL-2.7] 工作流state转换missing少 CAS
+### 30.2 [SYS-REL-2.7] Workflow State Transition Lacks CAS
 
-**missing陷**: `execution/state-transition/transition-service.ts` task转换有 CAS, 但工作流转换无 CAS 保护. 
+**Defect**: `execution/state-transition/transition-service.ts` has CAS for task transitions, but workflow transitions have no CAS protection.
 
-**testingtype**: Integration (Concurrency)
+**Test Type**: Integration (Concurrency)
 
 ```typescript
 test("[SYS-REL-2.7] concurrent workflow transitions detect conflict", async () => {
@@ -3071,11 +3071,11 @@ test("[SYS-REL-2.7] concurrent workflow transitions detect conflict", async () =
 });
 ```
 
-### 30.3 [SYS-REL-2.5] SLO 告警投递silentlyloss
+### 30.3 [SYS-REL-2.5] SLO Alert Delivery Silently Lost
 
-**missing陷**: `shared/observability/slo-alerting-service.ts` 行 172/227/281/339 告警投递failure时 `.catch(() => {})`. 
+**Defect**: Lines 172/227/281/339 of `shared/observability/slo-alerting-service.ts` use `.catch(() => {})` on alert delivery failures.
 
-**testingtype**: Unit
+**Test Type**: Unit
 
 ```typescript
 test("[SYS-REL-2.5] PagerDuty delivery failure logs error and increments counter", async () => {
@@ -3108,11 +3108,11 @@ test("[SYS-REL-2.5] PagerDuty delivery failure logs error and increments counter
 });
 ```
 
-### 30.4 [SYS-REL-2.6] Outbox 未接入关键写path
+### 30.4 [SYS-REL-2.6] Outbox Not Integrated into Critical Write Path
 
-**missing陷**: `shared/outbox/outbox-service.ts` 完整implementationexists, 但 `transition-service.ts` 的taskstate转换directly写事件表不经 Outbox. 
+**Defect**: The complete implementation of `shared/outbox/outbox-service.ts` exists, but `transition-service.ts` writes task state transitions directly to the events table without going through Outbox.
 
-**testingtype**: Integration
+**Test Type**: Integration
 
 ```typescript
 test("[SYS-REL-2.6] task state transition writes outbox entry in same transaction", async () => {
@@ -3143,11 +3143,11 @@ test("[SYS-REL-2.6] task state transition writes outbox entry in same transactio
 });
 ```
 
-### 30.5 [SYS-REL-2.8] 会话双存储non-atomic写入
+### 30.5 [SYS-REL-2.8] Session Dual Storage Non-Atomic Write
 
-**missing陷**: `state-evidence/truth/session-dual-storage.ts` 两次 `appendFileSync` 之间crashed导致inconsistent. 
+**Defect**: A crash between two `appendFileSync` calls in `state-evidence/truth/session-dual-storage.ts` leads to inconsistency.
 
-**testingtype**: Integration (Fault Injection)
+**Test Type**: Integration (Fault Injection)
 
 ```typescript
 test("[SYS-REL-2.8] dual storage detects and repairs partial write", async () => {
@@ -3173,11 +3173,11 @@ test("[SYS-REL-2.8] dual storage detects and repairs partial write", async () =>
 });
 ```
 
-### 30.6 [SYS-PERF-3.1] StructuredLogger synchronous I/O blocks事件循环
+### 30.6 [SYS-PERF-3.1] StructuredLogger Synchronous I/O Blocks Event Loop
 
-**missing陷**: `shared/observability/structured-logger.ts:295` 每条logcall `appendFileSync` blocks事件循环. 
+**Defect**: `shared/observability/structured-logger.ts:295` calls `appendFileSync` for every log entry, blocking the event loop.
 
-**testingtype**: Performance / Unit
+**Test Type**: Performance / Unit
 
 ```typescript
 test("[SYS-PERF-3.1] structured logger write does not block event loop > 1ms", async () => {
@@ -3205,11 +3205,11 @@ test("[SYS-PERF-3.1] structured logger write does not block event loop > 1ms", a
 });
 ```
 
-### 30.7 [SYS-OBS-5.3] Alertmanager 接收器验证
+### 30.7 [SYS-OBS-5.3] Alertmanager Receiver Validation
 
-**missing陷**: `deploy/prometheus/alertmanager.yml` 三个接收器全部指向同一内部 webhook. 
+**Defect**: All three receivers in `deploy/prometheus/alertmanager.yml` point to the same internal webhook.
 
-**testingtype**: Golden / Config Validation
+**Test Type**: Golden / Config Validation
 
 ```typescript
 test("[SYS-OBS-5.3] alertmanager receivers have distinct endpoints", () => {
@@ -3231,11 +3231,11 @@ test("[SYS-OBS-5.3] alertmanager receivers have distinct endpoints", () => {
 });
 ```
 
-### 30.8 [SYS-DEPLOY-6.1] Terraform 远程后端验证
+### 30.8 [SYS-DEPLOY-6.1] Terraform Remote Backend Validation
 
-**missing陷**: `deploy/terraform/main.tf` 无 `backend {}` 块, statefilelocal存储. 
+**Defect**: `deploy/terraform/main.tf` has no `backend {}` block; the state file is stored locally.
 
-**testingtype**: Config Validation
+**Test Type**: Config Validation
 
 ```typescript
 test("[SYS-DEPLOY-6.1] terraform main.tf has remote backend configured", () => {
@@ -3250,13 +3250,13 @@ test("[SYS-DEPLOY-6.1] terraform main.tf has remote backend configured", () => {
 
 ---
 
-## 31. P2 重要missing陷testing规范
+## 31. P2 Important Defect Test Conventions
 
-### 31.1 [SYS-ARCH-1.1] 五面体跨面导入守护
+### 31.1 [SYS-ARCH-1.1] Five-Plane Cross-Plane Import Guard
 
-**missing陷**: 394 处跨面导入violates五面体架构 (如 state-evidence 导入 execution) . 
+**Defect**: 394 cross-plane imports violate the five-plane architecture (e.g., state-evidence imports execution).
 
-**testingtype**: Static Analysis (Architectural)
+**Test Type**: Static Analysis (Architectural)
 
 ```typescript
 test("[SYS-ARCH-1.1] no cross-plane imports from state-evidence to execution", () => {
@@ -3283,20 +3283,20 @@ test("[SYS-ARCH-1.1] no cross-plane imports from control-plane to state-evidence
 });
 ```
 
-**禁止的导入方向** (testing必须coverage所有) :
+**Forbidden Import Directions** (tests must cover all):
 
-| 源面           | 禁止导入目标                            |
-| -------------- | --------------------------------------- |
-| state-evidence | execution, control-plane                |
-| control-plane  | state-evidence (directly), execution (directly) |
-| interface      | onlyallows导入 shared/, contracts/          |
-| orchestration  | execution (directlyskip shared 适配器)      |
+| Source Plane     | Forbidden Import Targets                  |
+| ---------------- | ----------------------------------------- |
+| state-evidence   | execution, control-plane                  |
+| control-plane    | state-evidence (direct), execution (direct) |
+| interface        | Only allowed to import shared/, contracts/ |
+| orchestration    | execution (directly bypassing shared adapter) |
 
-### 31.2 [SYS-OBS-5.1] 关键path console.\* 禁用
+### 31.2 [SYS-OBS-5.1] Critical Path console.\* Disabled
 
-**missing陷**: 37 处关键pathuses `console.*` bypass StructuredLogger. 
+**Defect**: 37 critical path locations use `console.*` to bypass StructuredLogger.
 
-**testingtype**: Static Analysis / Lint
+**Test Type**: Static Analysis / Lint
 
 ```typescript
 test("[SYS-OBS-5.1] OAPEFLIR files do not use console.* directly", () => {
@@ -3322,11 +3322,11 @@ test("[SYS-OBS-5.1] CDC replication uses StructuredLogger", () => {
 });
 ```
 
-### 31.3 [SYS-OBS-5.2] Prometheus 告警规则integrity
+### 31.3 [SYS-OBS-5.2] Prometheus Alert Rule Completeness
 
-**missing陷**: only 3 条 Prometheus 告警规则, missing少 DB, Redis, 事件循环, 队列等关键告警. 
+**Defect**: Only 3 Prometheus alert rules, missing critical alerts for DB, Redis, event loop, queue, etc.
 
-**testingtype**: Config Validation
+**Test Type**: Config Validation
 
 ```typescript
 test("[SYS-OBS-5.2] prometheus rules cover minimum required alert types", () => {
@@ -3356,11 +3356,11 @@ test("[SYS-OBS-5.2] prometheus rules cover minimum required alert types", () => 
 });
 ```
 
-### 31.4 [SYS-PERF-3.2] Redis KEYS 命令禁用
+### 31.4 [SYS-PERF-3.2] Redis KEYS Command Disabled
 
-**missing陷**: `distributed-lock/redis-lock-adapter.ts:236` uses `redis.keys("lock:*")` O(n) blocks. 
+**Defect**: `distributed-lock/redis-lock-adapter.ts:236` uses `redis.keys("lock:*")` O(n) blocking.
 
-**testingtype**: Unit / Static Analysis
+**Test Type**: Unit / Static Analysis
 
 ```typescript
 test("[SYS-PERF-3.2] redis lock adapter uses SCAN instead of KEYS", () => {
@@ -3376,11 +3376,11 @@ test("[SYS-PERF-3.2] redis lock adapter uses SCAN instead of KEYS", () => {
 });
 ```
 
-### 31.5 [SYS-PERF-3.4] 无界 Map in-memory守护
+### 31.5 [SYS-PERF-3.4] Unbounded Map Memory Guard
 
-**missing陷**: 20+ 处 `Map` 只增不删, 长时间运行导致in-memoryleaks. 
+**Defect**: 20+ `Map`s only grow and never shrink, leading to memory leaks during long-running operations.
 
-**testingtype**: Unit (Stress)
+**Test Type**: Unit (Stress)
 
 ```typescript
 test("[SYS-PERF-3.4] anomaly detection metricBuffer has size limit", () => {
@@ -3400,11 +3400,11 @@ test("[SYS-PERF-3.4] anomaly detection metricBuffer has size limit", () => {
 });
 ```
 
-### 31.6 [SYS-SEC-4.2] path遍历一致性
+### 31.6 [SYS-SEC-4.2] Path Traversal Consistency
 
-**missing陷**: `knowledge-snapshot-store.ts:29` directly `readFileSync(this.snapshotPath)` 无沙箱check. 
+**Defect**: `knowledge-snapshot-store.ts:29` directly calls `readFileSync(this.snapshotPath)` with no sandbox check.
 
-**testingtype**: Security Unit
+**Test Type**: Security Unit
 
 ```typescript
 test("[SYS-SEC-4.2] knowledge snapshot store rejects path traversal", () => {
@@ -3422,11 +3422,11 @@ test("[SYS-SEC-4.2] knowledge snapshot store rejects path traversal", () => {
 });
 ```
 
-### 31.7 [SYS-SEC-4.1] 环境变量启动validationintegrity
+### 31.7 [SYS-SEC-4.1] Environment Variable Startup Validation Completeness
 
-**missing陷**: 插件/安全相关 `AA_*` 环境变量不在 Zod 启动validationrange内. 
+**Defect**: Plugin / security-related `AA_*` environment variables are not within the Zod startup validation scope.
 
-**testingtype**: Unit
+**Test Type**: Unit
 
 ```typescript
 test("[SYS-SEC-4.1] startup env schema validates plugin sandbox root", async () => {
@@ -3459,28 +3459,28 @@ test("[SYS-SEC-4.1] startup env schema validates all critical AA_ vars", () => {
 
 ---
 
-## 32. 架构不变量auto守护testing
+## 32. Architecture Invariant Auto-Guard Tests
 
-> 对应 v2.0 §28. 
+> Corresponds to v2.0 §28.
 
-### 32.1 目的
+### 32.1 Purpose
 
-将架构审查中发现的结构性问题转化为**持续运行的auto化守护testing**, 防止架构腐化复发. 
+Convert structural problems found in architecture reviews into **continuously running automated guard tests** to prevent architecture decay from recurring.
 
-### 32.2 守护testing清单
+### 32.2 Guard Test List
 
-| 守护项                        | testingfile                                                        | 频率    |
-| ----------------------------- | --------------------------------------------------------------- | ------- |
-| 五面体导入隔离                | `tests/unit/platform/contracts/plane-isolation.test.ts`         | 每次 CI |
-| console.\* 禁用 (非 SDK/CLI)  | `tests/unit/platform/contracts/no-console-in-runtime.test.ts`   | 每次 CI |
-| `as any` 数量upper limit             | `tests/unit/platform/contracts/type-safety-bounds.test.ts`      | 每次 CI |
-| Redis KEYS 命令禁用           | `tests/unit/platform/contracts/no-redis-keys.test.ts`           | 每次 CI |
-| 路由无duplicate注册                | `tests/unit/platform/contracts/no-duplicate-routes.test.ts`     | 每次 CI |
-| Zod 边界validationcoverage              | `tests/unit/platform/contracts/zod-boundary-validation.test.ts` | 每次 CI |
-| 桩file不增长                  | `tests/unit/platform/contracts/stub-count-ratchet.test.ts`      | 每次 CI |
-| Dockerfile CMD path有效       | `tests/integration/deploy/dockerfile-entrypoint.test.ts`        | 每次 CI |
+| Guard Item                       | Test File                                                        | Frequency  |
+| -------------------------------- | ---------------------------------------------------------------- | ---------- |
+| Five-plane import isolation      | `tests/unit/platform/contracts/plane-isolation.test.ts`         | Every CI   |
+| console.\* disabled (non-SDK/CLI) | `tests/unit/platform/contracts/no-console-in-runtime.test.ts`   | Every CI   |
+| `as any` count upper limit       | `tests/unit/platform/contracts/type-safety-bounds.test.ts`      | Every CI   |
+| Redis KEYS command disabled      | `tests/unit/platform/contracts/no-redis-keys.test.ts`           | Every CI   |
+| Routes with no duplicate registration | `tests/unit/platform/contracts/no-duplicate-routes.test.ts`     | Every CI   |
+| Zod boundary validation coverage | `tests/unit/platform/contracts/zod-boundary-validation.test.ts` | Every CI   |
+| Stub files don't grow            | `tests/unit/platform/contracts/stub-count-ratchet.test.ts`      | Every CI   |
+| Dockerfile CMD path valid        | `tests/integration/deploy/dockerfile-entrypoint.test.ts`        | Every CI   |
 
-### 32.3 Zod 边界validationcoverage守护
+### 32.3 Zod Boundary Validation Coverage Guard
 
 ```typescript
 test("[SYS-QUAL-7.3] API route handlers call schema.parse on request body", () => {
@@ -3508,7 +3508,7 @@ test("[SYS-QUAL-7.3] API route handlers call schema.parse on request body", () =
 });
 ```
 
-### 32.4 桩file数量棘轮
+### 32.4 Stub File Count Ratchet
 
 ```typescript
 test("[SYS-QUAL-7.1] stub file count does not increase", () => {
@@ -3529,7 +3529,7 @@ test("[SYS-QUAL-7.1] stub file count does not increase", () => {
 });
 ```
 
-### 32.5 `as any` 数量棘轮
+### 32.5 `as any` Count Ratchet
 
 ```typescript
 test("[SYS-QUAL-7.6] as-any cast count does not increase", () => {
@@ -3552,444 +3552,444 @@ test("[SYS-QUAL-7.6] as-any cast count does not increase", () => {
 
 ---
 
-## 33. 桩filecoveragemissing口追踪
+## 33. Stub File Coverage Gap Tracking
 
-> 对应 v2.0 §29. 
+> Corresponds to v2.0 §29.
 
-### 33.1 ops-maturity 桩file明细
+### 33.1 ops-maturity Stub File Details
 
-`src/ops-maturity/` 是桩file重灾区, 以下子目录桩率较高: 
+`src/ops-maturity/` is a hard-hit area for stub files; the following subdirectories have a high stub rate:
 
-| 子目录                 | 总file | 当前 Lines coverage率 | 对应架构章节       |
-| ---------------------- | ------ | ----------------- | ------------------ |
-| `platform-ops-agent/`  | 9      | 38.7%             | §69 平台ops Agent |
-| `edge-runtime/`        | 5      | 96.6%             | §63 边缘推理       |
-| `capacity-planner/`    | 5      | 94.0%             | §68 容量规划       |
-| `compliance-reporter/` | 3      | —                 | §67 合规报告       |
-| `cost-optimizer/`      | 3      | —                 | §65 成本优化       |
-| `emergency/`           | 4      | 95.0%             | §60 紧急制动       |
-| `multimodal/`          | 7      | 97.1%             | §68B 多模态        |
-| `workflow-debugger/`   | 5      | 99.5%             | §62 工作流调试     |
-| `explainability/`      | 2      | —                 | §59 可解释性       |
+| Subdirectory           | Total Files | Current Lines Coverage | Corresponding Architecture Section |
+| ---------------------- | ----------- | ---------------------- | ---------------------------------- |
+| `platform-ops-agent/`  | 9           | 38.7%                  | §69 Platform Ops Agent             |
+| `edge-runtime/`        | 5           | 96.6%                  | §63 Edge Inference                 |
+| `capacity-planner/`    | 5           | 94.0%                  | §68 Capacity Planning              |
+| `compliance-reporter/` | 3           | —                      | §67 Compliance Reporting           |
+| `cost-optimizer/`      | 3           | —                      | §65 Cost Optimization              |
+| `emergency/`           | 4           | 95.0%                  | §60 Emergency Braking              |
+| `multimodal/`          | 7           | 97.1%                  | §68B Multimodal                    |
+| `workflow-debugger/`   | 5           | 99.5%                  | §62 Workflow Debugger              |
+| `explainability/`      | 2           | —                      | §59 Explainability                 |
 
-### 33.2 桩file退出条件
+### 33.2 Stub File Exit Conditions
 
-一个桩file被认为"已implementation"的条件: 
+A stub file is considered "implemented" when:
 
-| 条件       | 标准                         |
-| ---------- | ---------------------------- |
-| 代码行数   | ≥ 50 行非空非comment代码        |
-| 类方法数   | ≥ 3 个非空方法体             |
-| testingcoverage   | Branch coverage ≥ 60%        |
-| 变异分数   | Mutation score ≥ 50%         |
-| 外部call者 | 至少被 1 个非testingfile import |
-
----
-
-## 34. testingmissing口与coverage现状汇总
-
-> 对应 v2.0 §30, v4.0 based on代码库实测data全面更新. 
-
-### 34.1 源区域 → testingfile数量对照 (v4.0 实测) 
-
-| 源目录                 | 源file    | Unit testing | Integration testing | 合计      | 比率     |
-| ---------------------- | --------- | --------- | ---------------- | --------- | -------- |
-| `src/platform/`        | 926       | 902       | 269              | 1,171     | 1.26     |
-| `src/scale-ecosystem/` | 78        | 68        | 10               | 78        | 1.00     |
-| `src/domains/`         | 55        | 55        | 17               | 72        | 1.31     |
-| `src/ops-maturity/`    | 97        | 103       | 17               | 120       | 1.24     |
-| `src/interaction/`     | 44        | 47        | 3                | 50        | 1.14     |
-| `src/org-governance/`  | 44        | 42        | 3                | 45        | 1.02     |
-| `src/sdk/`             | 96        | 65        | 39               | 104       | 1.08     |
-| `src/plugins/`         | 25        | 27        | 0                | 27        | 1.08     |
-| `src/core/`            | 8         | 7         | 0                | 7         | 0.88     |
-| `src/apps/`            | 4         | 4         | 0                | 4         | 1.00     |
-| **合计**               | **1,387** | **1,398** | **358**          | **1,803** | **1.30** |
-
-### 34.2 E2E testingfile清单 (17 file) 
-
-| file                                | coverage场景           |
-| ----------------------------------- | ------------------ |
-| `task-lifecycle.test.ts`            | task全生命周期     |
-| `oapeflir-full-loop.test.ts`        | OAPEFLIR 完整循环  |
-| `multi-step-workflow.test.ts`       | 多step工作流       |
-| `approval-event-flow.test.ts`       | 审批事件流         |
-| `gateway-webhook-flow.test.ts`      | 网关 Webhook 流    |
-| `streaming-response.test.ts`        | 流式response           |
-| `session-memory-flow.test.ts`       | 会话记忆流         |
-| `operator-takeover.test.ts`         | ops接管           |
-| `lease-recovery.test.ts`            | Lease 恢复         |
-| `error-propagation.test.ts`         | error传播           |
-| `delegation-chain-flow.test.ts`     | 委托链流程         |
-| `domain-onboarding-flow.test.ts`    | 域上线流程         |
-| `execution-flow.test.ts`            | execute流程           |
-| `harness-loop-e2e.test.ts`          | Harness 循环端到端 |
-| `multi-region.test.ts`              | 多区域             |
-| `multi-step-task-execution.test.ts` | 多steptaskexecute     |
-| `rollback-scenario.test.ts`         | rollback场景           |
-
-### 34.3 Golden testingfile清单 (11 file) 
-
-| file                           | 守护对象              |
-| ------------------------------ | --------------------- |
-| `openapi-document.test.ts`     | OpenAPI 文档结构      |
-| `cli-help-text.test.ts`        | CLI 帮助text          |
-| `diagnostics-bundle.test.ts`   | 诊断包结构            |
-| `prompt-assembly.test.ts`      | 提示组装 + cached键     |
-| `session-summary.test.ts`      | 会话摘要结构          |
-| `release-plan-output.test.ts`  | 发布plan Markdown     |
-| `workflow-validation.test.ts`  | 工作流validation            |
-| `golden-tasks.test.ts` | 黄金task套件 |
-| `domain-baseline.test.ts`      | 域基线快照            |
-| `config-schema.test.ts`        | configure Schema 快照      |
-| `harness-protocol.test.ts`     | Harness 协议快照      |
-
-### 34.4 Performance testingfile清单 (10 file) 
-
-| file                                    | 基准对象            |
-| --------------------------------------- | ------------------- |
-| `oapeflir-perf.test.ts`                 | OAPEFLIR 循环吞吐量 |
-| `knowledge-perf.test.ts`                | 知识检索延迟        |
-| `planning-perf.test.ts`                 | 规划生成延迟        |
-| `feedback-perf.test.ts`                 | 反馈handle吞吐量      |
-| `plugin-perf.test.ts`                   | 插件execute延迟        |
-| `handoff-perf.test.ts`                  | 交接流程延迟        |
-| `execution-performance.test.ts`         | execute引擎吞吐量      |
-| `harness-component-performance.test.ts` | Harness 组件延迟    |
-| `harness-loop-performance.test.ts`      | Harness 循环吞吐量  |
-| `prompt-engine-performance.test.ts`     | Prompt 引擎延迟     |
-
-### 34.5 当前coverage盲区 Top-5 (v4.0 更新) 
-
-| 排名 | 盲区                                        | 现状                                                                              | 建议                                               |
-| ---- | ------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------- |
-| 1    | **globally行coverage率** (c8 实测 0.75%)            | 182,253 行中only 1,384 行被coverage (6 个 SQLite delegating file) , 977 个源file均为 0% | configuretesting框架正确收集coverage率, 建立真实基线           |
-| 2    | **E1-E6 异常事件分类** (ARCH-P0-1)          | 完全missing, 无统一异常分类体系                                                      | implementation后新增分类完备性 + 路由testing (§25.1)            |
-| 3    | **SEV1-SEV4 统一严重度** (ARCH-P0-2)        | 代码exists 3 套互不compatibility体系                                                         | 统一后新增映射 + 降级testing (§25.2)                  |
-| 4    | **STRIDE 威胁模型** (ARCH-P0-3)             | 完全missing                                                                          | implementation后新增 6 威胁类别testing (§25.3)                  |
-| 5    | **Principal type / Sandbox 层级** (ARCH-P1) | 分别onlyimplementation 3/6 和 3/4                                                             | 补全后新增type完备性 + 隔离验证testing (§26.1/§26.2)  |
+| Condition         | Standard                                  |
+| ----------------- | ----------------------------------------- |
+| Code line count   | ≥ 50 non-empty non-comment lines          |
+| Class method count | ≥ 3 non-empty method bodies               |
+| Test coverage     | Branch coverage ≥ 60%                     |
+| Mutation score    | Mutation score ≥ 50%                      |
+| External callers  | Imported by at least 1 non-test file      |
 
 ---
 
-> **文档结束 (v4.0)** — 本手册从 v3.0 升级到 v4.0. 
->
-> **Part I** 保证: testing不少, 质量不差, 不会明显misses. 
-> **Part II** 保证: system关键设计语义 (state机, 事件, concurrent, 阶段contract, Harness 语义映射) 都被coverage到. 
-> **Part III** 保证: 架构审查 v8.0 发现的 **13 项架构设计-implementationmissing口** (3 P0 + 7 P1 + 3 P2) 有对应testing规范, implementation后不会有testing盲区. 
-> **Part IV** 保证: **工程missing陷** (Redis error, concurrent竞态, configure问题等) 有对应回归testing规范, 修复后不会复发. 
->
-> **v4.0 关键修正**: c8 实测globally行coverage率only 0.75% (非 v3.0 声称的 82.4%) , `.coverage-baseline.json` 所有值为 null. testingfile数量 (1,803) 已超过源file (1,387) , 但coverage率收集管线未正确关联, 是最优先修复项. 
->
-> 核心理念: **coverage率棘轮保证数量, 变异testing保证质量, Traceability Matrix 保证integrity, PR Review 保证上下文, 架构语义矩阵保证设计contract, 架构missing口回归矩阵保证设计-implementation对齐, system问题回归矩阵保证工程missing陷不复发. 七者missing一不可. **
->
-> **最新补充提示**: 本file在 v4.0 正文后新增了 [v4.1 补充: 尚未充分考虑的testingtype与补全方案](#v41-补充尚未充分考虑的testingtype与补全方案), coverage UI 六平台, Mission, Yono Business, LLM/Eval, API compatibility, 迁移rollback, Chaos/DR, 可观测性, 隐私合规, 插件供应链, fuzz 等此前没有system化纳入的testing方案. 
+## 34. Test Gap and Coverage Status Summary
+
+> Corresponds to v2.0 §30, v4.0 fully updated based on codebase measured data.
+
+### 34.1 Source Area → Test File Count Comparison (v4.0 measured)
+
+| Source Directory        | Source Files | Unit Tests | Integration Tests | Total    | Ratio  |
+| ----------------------- | ------------ | ---------- | ----------------- | -------- | ------ |
+| `src/platform/`         | 926          | 902        | 269               | 1,171    | 1.26   |
+| `src/scale-ecosystem/`  | 78           | 68         | 10                | 78       | 1.00   |
+| `src/domains/`          | 55           | 55         | 17                | 72       | 1.31   |
+| `src/ops-maturity/`     | 97           | 103        | 17                | 120      | 1.24   |
+| `src/interaction/`      | 44           | 47         | 3                 | 50       | 1.14   |
+| `src/org-governance/`   | 44           | 42         | 3                 | 45       | 1.02   |
+| `src/sdk/`              | 96           | 65         | 39                | 104      | 1.08   |
+| `src/plugins/`          | 25           | 27         | 0                 | 27       | 1.08   |
+| `src/core/`             | 8            | 7          | 0                 | 7        | 0.88   |
+| `src/apps/`             | 4            | 4          | 0                 | 4        | 1.00   |
+| **Total**               | **1,387**    | **1,398**  | **358**           | **1,803**| **1.30** |
+
+### 34.2 E2E Test File List (17 files)
+
+| File                                | Covered Scenario          |
+| ----------------------------------- | ------------------------- |
+| `task-lifecycle.test.ts`            | Task full lifecycle       |
+| `oapeflir-full-loop.test.ts`        | OAPEFLIR complete loop    |
+| `multi-step-workflow.test.ts`       | Multi-step workflow       |
+| `approval-event-flow.test.ts`       | Approval event flow       |
+| `gateway-webhook-flow.test.ts`      | Gateway Webhook flow      |
+| `streaming-response.test.ts`        | Streaming response        |
+| `session-memory-flow.test.ts`       | Session memory flow       |
+| `operator-takeover.test.ts`         | Operator takeover         |
+| `lease-recovery.test.ts`            | Lease recovery            |
+| `error-propagation.test.ts`         | Error propagation         |
+| `delegation-chain-flow.test.ts`     | Delegation chain flow     |
+| `domain-onboarding-flow.test.ts`    | Domain onboarding flow    |
+| `execution-flow.test.ts`            | Execution flow            |
+| `harness-loop-e2e.test.ts`          | Harness loop end-to-end   |
+| `multi-region.test.ts`              | Multi-region              |
+| `multi-step-task-execution.test.ts` | Multi-step task execution |
+| `rollback-scenario.test.ts`         | Rollback scenario         |
+
+### 34.3 Golden Test File List (11 files)
+
+| File                           | Guarded Target              |
+| ------------------------------ | --------------------------- |
+| `openapi-document.test.ts`     | OpenAPI document structure  |
+| `cli-help-text.test.ts`        | CLI help text               |
+| `diagnostics-bundle.test.ts`   | Diagnostics bundle structure |
+| `prompt-assembly.test.ts`      | Prompt assembly + cache key |
+| `session-summary.test.ts`      | Session summary structure   |
+| `release-plan-output.test.ts`  | Release plan Markdown       |
+| `workflow-validation.test.ts`  | Workflow validation         |
+| `golden-tasks.test.ts`         | Golden task suite           |
+| `domain-baseline.test.ts`      | Domain baseline snapshot    |
+| `config-schema.test.ts`        | Config schema snapshot      |
+| `harness-protocol.test.ts`     | Harness protocol snapshot   |
+
+### 34.4 Performance Test File List (10 files)
+
+| File                                    | Benchmark Target           |
+| --------------------------------------- | -------------------------- |
+| `oapeflir-perf.test.ts`                 | OAPEFLIR loop throughput   |
+| `knowledge-perf.test.ts`                | Knowledge retrieval latency |
+| `planning-perf.test.ts`                 | Planning generation latency |
+| `feedback-perf.test.ts`                 | Feedback processing throughput |
+| `plugin-perf.test.ts`                   | Plugin execution latency   |
+| `handoff-perf.test.ts`                  | Handoff flow latency       |
+| `execution-performance.test.ts`         | Execution engine throughput |
+| `harness-component-performance.test.ts` | Harness component latency  |
+| `harness-loop-performance.test.ts`      | Harness loop throughput    |
+| `prompt-engine-performance.test.ts`     | Prompt engine latency      |
+
+### 34.5 Current Coverage Blind Spots Top-5 (v4.0 updated)
+
+| Rank | Blind Spot                                          | Current Status                                                                              | Suggestion                                                       |
+| ---- | --------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 1    | **Global line coverage** (c8 measured 0.75%)         | Of 182,253 lines, only 1,384 are covered (6 SQLite delegating files); 977 source files are 0% | Configure test framework to correctly collect coverage, establish real baseline |
+| 2    | **E1-E6 anomaly event classification** (ARCH-P0-1)  | Completely missing, no unified anomaly classification system                                  | Add classification completeness + routing tests after implementation (§25.1) |
+| 3    | **SEV1-SEV4 unified severity** (ARCH-P0-2)          | 3 mutually incompatible systems exist in the code                                            | Add mapping + degradation tests after unification (§25.2)        |
+| 4    | **STRIDE threat model** (ARCH-P0-3)                 | Completely missing                                                                          | Add 6 threat category tests after implementation (§25.3)         |
+| 5    | **Principal type / Sandbox tier** (ARCH-P1)         | Only 3/6 and 3/4 implemented respectively                                                   | Add type completeness + isolation verification tests after completion (§26.1/§26.2) |
 
 ---
 
-# v4.1 补充: 尚未充分考虑的testingtype与补全方案
+> **End of Document (v4.0)** — This manual has been upgraded from v3.0 to v4.0.
+>
+> **Part I** guarantees: tests are not missing, quality is not poor, and there are no obvious omissions.
+> **Part II** guarantees: system critical design semantics (state machine, events, concurrency, phase contracts, Harness semantic mapping) are all covered.
+> **Part III** guarantees: the **13 architecture design-implementation gaps** (3 P0 + 7 P1 + 3 P2) found by Architecture Review v8.0 have corresponding test conventions, and there will be no test blind spots after implementation.
+> **Part IV** guarantees: **engineering defects** (Redis errors, concurrency races, configuration issues, etc.) have corresponding regression test conventions, and they will not recur after fixes.
+>
+> **v4.0 Key Correction**: c8 measured global line coverage is only 0.75% (not the 82.4% claimed by v3.0); all values in `.coverage-baseline.json` are `null`. The number of test files (1,803) has exceeded the number of source files (1,387), but the coverage collection pipeline is not correctly linked — this is the top priority for repair.
+>
+> Core idea: **Coverage ratchet guarantees quantity, mutation testing guarantees quality, Traceability Matrix guarantees completeness, PR Review guarantees context, architecture semantic matrix guarantees design contracts, architecture gap regression matrix guarantees design-implementation alignment, system issue regression matrix guarantees engineering defects don't recur. All seven are indispensable.**
+>
+> **Latest Supplement Hint**: This document has added [v4.1 Supplement: Under-Considered Test Types and Completion Plans](#v41-supplement-under-considered-test-types-and-completion-plans) after the v4.0 main text, covering UI six platforms, Mission, Yono Business, LLM/Eval, API compatibility, migration rollback, Chaos/DR, observability, privacy compliance, plugin supply chain, fuzz, and other test plans not previously systematically incorporated.
 
-> **补充日期**: 2026-05-18
-> **补充目的**: v4.0 已coverage后端单元, 集成, E2E, Golden, 性能, 变异, 安全和架构missing口回归, 但对新增 UI Monorepo, Mission/Yono 业务域, LLM 行为评测, 部署升级, 灾备, 供应链, data治理等system级riskcoverage不足. 本节作为 v4.1 补充, 已cleanupduplicate的 v4.0 副本, 并保留当前file为单一权威版本. 
+---
 
-## 35. 未充分coveragetesting清单
+# v4.1 Supplement: Under-Considered Test Types and Completion Plans
 
-### 35.1 missing口总览
+> **Supplement Date**: 2026-05-18
+> **Supplement Purpose**: v4.0 already covers backend unit, integration, E2E, Golden, performance, mutation, security, and architecture gap regression, but coverage is insufficient for system-level risks in the newly added UI Monorepo, Mission / Yono business domains, LLM behavior evaluation, deployment upgrades, DR, supply chain, data governance, etc. This section serves as a v4.1 supplement; duplicate v4.0 copies have been cleaned up, and the current file is retained as the single authoritative version.
 
-| # | testingtype | 当前手册coverage情况 | risk | 建议testing层级 | 优先级 |
-| ---- | -------- | ---------------- | ---- | ------------ | ------ |
-| T-GAP-01 | UI 六平台testing | only后端 E2E 为主, 未coverage `ui/` Monorepo | Web 可运行但桌面/移动壳层, 适配器, 路由, state层可能drift | Unit / Component / Contract / E2E / Accessibility / Visual | P0 |
-| T-GAP-02 | PlatformAdapter 真实集成 | 未distinguish mock-first 与真实 Electron IPC, Tauri invoke, RN Native Module | 前端 mock via但真实平台能力不可用 | Contract / Native smoke / Adapter parity | P0 |
-| T-GAP-03 | Mission 长期目标治理 | 未形成 Mission 维度专项矩阵 | task, 预算, permissions, 冻结, 证据链可能bypass Mission 上下文 | Contract / Integration / E2E / Governance | P0 |
-| T-GAP-04 | Yono Business 业务域 | 未coverage新增业务域的端到端业务验收 | 领域configureexists但业务流程, datapermissions, SLA 未验证 | Domain smoke / E2E / Compliance | P0 |
-| T-GAP-05 | LLM/Prompt/Eval 行为testing | only有 prompt golden 与partial OAPEFLIR testing | 模型output不可控, 回归难发现, 幻觉/越权未量化 | Eval harness / Golden / Red team / Cost | P0 |
-| T-GAP-06 | API contractcompatibility与版本演进 | 有 OpenAPI golden, 但missing少 backward compatibility gate | SDK/UI/外部call方在field变更时破坏 | Contract diff / Consumer-driven contract | P0 |
-| T-GAP-07 | data迁移与升级rollback | 有partial migration/rehearsal, 但手册未定义统一strategy | 生产升级后 schema/data 不可逆corrupted | Migration rehearsal / Rollback / Backup restore | P0 |
-| T-GAP-08 | Chaos / 故障injection | 有 deploy/chaos configure但手册没有system化 | Redis/PG/网络/worker 故障下reliability退化未知 | Chaos / Recovery / Soak | P1 |
-| T-GAP-09 | 灾备与多区域演练 | 有 DR workflow, 但testing手册未纳入验收 | RTO/RPO, 跨区域一致性, 故障切换不可证 | DR drill / Multi-region E2E | P1 |
-| T-GAP-10 | 可观测性语义testing | 有告警规则testing, 但missing少 trace/log/metric 端到端语义 | 故障发生时无法定位或指标高基数爆炸 | Observability contract / Golden / Cardinality guard | P1 |
-| T-GAP-11 | 成本与预算防线 | 分散exists预算testing, missing少跨模型/工具/task闭环 | 预算耗尽后仍发出 provider/tool call | Unit / Integration / E2E / Cost simulation | P1 |
-| T-GAP-12 | 隐私, data保留与sanitized | 安全testing偏攻击面, 隐私合规不足 | log, 事件, 学习对象泄露 PII/secret | Privacy scan / Retention / Redaction | P1 |
-| T-GAP-13 | 插件/Pack 生态compatibility | SDK 有testing, missing少版本矩阵和malicious插件验证 | 插件破坏宿主, permissionsout of bounds, 升级不compatibility | SDK compatibility / Sandbox / Supply chain | P1 |
-| T-GAP-14 | 供应链与dependency治理 | CI 有 audit/Trivy, 但手册未要求lockfile, SBOM, 许可 | dependency漏洞, 许可证不合规, 构建不可复现 | SBOM / License / Lockfile / Provenance | P1 |
-| T-GAP-15 | 性能容量与资源leaks | 有性能基准, 但missing少长稳, leaks, 容量边界 | 短测via, 长时间运行in-memory/handle/队列失控 | Soak / Leak / Capacity / Backpressure | P1 |
-| T-GAP-16 | paralleltesting隔离与 flakiness 治理 | 有concurrent规范, 但missing少 flaky 检测机制 | testing偶现failure, 被误判为代码问题或被 skip | Repeat-run / Quarantine / Flaky budget | P1 |
-| T-GAP-17 | configure组合矩阵 | 有环境变量validation, 但missing少 dev/test/staging/prod 组合验收 | prod-only configureerror无法提前发现 | Config matrix / Helm/Terraform contract | P1 |
-| T-GAP-18 | Accessibility / i18n / Theme | UI 架构要求未进入testing手册 | 跨平台 UI 不可访问, 翻译missing, 主题崩坏 | axe / Keyboard / Locale / Visual | P1 |
-| T-GAP-19 | 文档健康与示例可execute性 | only有少量 docs testing | 文档命令, path, API 示例expiry | Docs lint / Snippet execution / Link check | P2 |
-| T-GAP-20 | Property-based / fuzz testing | 未纳入 | schema/parser/router 对未知输入脆弱 | Fuzz / Property invariant | P2 |
+## 35. Under-Covered Test Checklist
 
-### 35.2 当前手册已有但需要升级的testing
+### 35.1 Gap Overview
 
-| 已有testing | 当前问题 | 升级方向 |
-| -------- | -------- | -------- |
-| coverage率testing | 只强调 c8 指标, 且当前基线未生效 | 增加“coverage率管线自测”: 验证 `src/` file确实被计入 `coverage-summary.json`, 避免再次出现虚高或虚低 |
-| E2E testing | file清单偏旧, 未coverage UI, Mission, Yono, 真实部署前置check | 增加按产品旅程组织的 E2E: 登录, task, Mission, 审批, HITL, 成本, 故障恢复, UI 六平台 smoke |
-| Performance testing | 偏短跑基准 | 增加 soak, in-memoryleaks, handleleaks, 队列积压, 背压testing |
-| Security testing | 偏 sandbox/path/命令injection | 增加 PII/secret 泄露, OAuth/JWT 生命周期, CSRF/CORS, SSRF, dependency供应链, 插件permissions逃逸 |
-| Golden testing | 偏output格式 | 增加 prompt lineage, OpenTelemetry span 结构, 告警规则, UI route map, API compatibility diff |
-| 架构不变量testing | 偏static扫描 | 增加 runtime invariant: Mission live guard, budget fail-close, event/outbox 同transaction, consumer 幂等 |
+| Number    | Test Type                                | Current Manual Coverage                                  | Risk                                                                                              | Recommended Test Level                                                              | Priority |
+| --------- | ---------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------- |
+| T-GAP-01  | UI six-platform testing                  | Backend E2E only, `ui/` Monorepo not covered              | Web runs but desktop / mobile shell, adapter, routing, state layer may drift                      | Unit / Component / Contract / E2E / Accessibility / Visual                          | P0       |
+| T-GAP-02  | Real PlatformAdapter integration         | Mock-first not distinguished from real Electron IPC, Tauri invoke, RN Native Module | Frontend mocks pass but real platform capabilities unavailable                                     | Contract / Native smoke / Adapter parity                                            | P0       |
+| T-GAP-03  | Mission long-term goal governance        | Mission-dimension special matrix not formed              | Task, budget, permission, freeze, evidence chain may bypass Mission context                       | Contract / Integration / E2E / Governance                                           | P0       |
+| T-GAP-04  | Yono Business business domain            | End-to-end business acceptance of new business domains not covered | Domain config exists but business flow, data permission, SLA not verified                        | Domain smoke / E2E / Compliance                                                     | P0       |
+| T-GAP-05  | LLM / Prompt / Eval behavior testing     | Only prompt golden and partial OAPEFLIR tests             | Model output uncontrollable, regression hard to find, hallucination / over-permission unquantified | Eval harness / Golden / Red team / Cost                                             | P0       |
+| T-GAP-06  | API contract compatibility and version evolution | OpenAPI golden exists, but backward compatibility gate missing | SDK / UI / external callers break on field changes                                                  | Contract diff / Consumer-driven contract                                            | P0       |
+| T-GAP-07  | Data migration and upgrade rollback      | Some migration / rehearsal, but no unified strategy in manual | Irreversible schema / data corruption after production upgrade                                     | Migration rehearsal / Rollback / Backup restore                                     | P0       |
+| T-GAP-08  | Chaos / fault injection                  | deploy/chaos config exists but no systematic manual       | Reliability degradation under Redis / PG / network / worker failures unknown                       | Chaos / Recovery / Soak                                                             | P1       |
+| T-GAP-09  | DR and multi-region drill                | DR workflow exists, but manual does not include acceptance | RTO / RPO, cross-region consistency, failover cannot be proven                                     | DR drill / Multi-region E2E                                                         | P1       |
+| T-GAP-10  | Observability semantics testing          | Alert rule tests exist, but trace / log / metric end-to-end semantics missing        | Cannot locate on failure or metric high-cardinality explosion                                      | Observability contract / Golden / Cardinality guard                                 | P1       |
+| T-GAP-11  | Cost and budget defense                  | Budget tests scattered, no cross-model / tool / task closed loop | Provider / tool calls still issued after budget exhausted                                          | Unit / Integration / E2E / Cost simulation                                          | P1       |
+| T-GAP-12  | Privacy, data retention, and redaction   | Security tests biased toward attack surface, privacy compliance insufficient         | Logs, events, learning objects leak PII / secret                                                   | Privacy scan / Retention / Redaction                                                | P1       |
+| T-GAP-13  | Plugin / Pack ecosystem compatibility    | SDK tests exist, but version matrix and malicious plugin verification missing        | Plugin damages host, permission overreach, upgrade incompatibility                                  | SDK compatibility / Sandbox / Supply chain                                          | P1       |
+| T-GAP-14  | Supply chain and dependency governance   | CI has audit / Trivy, but manual does not require lockfile, SBOM, license            | Dependency vulnerabilities, license non-compliance, build irreproducibility                        | SBOM / License / Lockfile / Provenance                                              | P1       |
+| T-GAP-15  | Performance capacity and resource leak   | Performance benchmarks exist, but long-stability, leak, capacity boundary missing    | Short test passes, long-running memory / handle / queue out of control                             | Soak / Leak / Capacity / Backpressure                                               | P1       |
+| T-GAP-16  | Parallel test isolation and flakiness governance | Concurrency spec exists, but flaky detection mechanism missing                       | Test intermittent failure, misjudged as code issue or skipped                                       | Repeat-run / Quarantine / Flaky budget                                              | P1       |
+| T-GAP-17  | Configuration combination matrix         | Env var validation exists, but dev / test / staging / prod combination acceptance missing | Prod-only configuration errors cannot be discovered in advance                                       | Config matrix / Helm / Terraform contract                                            | P1       |
+| T-GAP-18  | Accessibility / i18n / Theme             | UI architecture requirements not entered in test manual   | Cross-platform UI inaccessible, translation missing, theme broken                                  | axe / Keyboard / Locale / Visual                                                    | P1       |
+| T-GAP-19  | Documentation health and example executability | Only a few docs tests                                       | Doc commands, paths, API examples outdated                                                          | Docs lint / Snippet execution / Link check                                          | P2       |
+| T-GAP-20  | Property-based / fuzz testing            | Not included                                              | schema / parser / router vulnerable to unknown input                                                | Fuzz / Property invariant                                                           | P2       |
 
-## 36. 新增专项testing方案
+### 35.2 Tests Already in the Manual But Needing Upgrade
 
-### 36.1 UI 六平台专项testing
+| Existing Test          | Current Problem                                                  | Upgrade Direction                                                                                                                |
+| ---------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Coverage test          | Only emphasizes c8 metrics, and current baseline is not in effect | Add "coverage pipeline self-test": verify that `src/` files are actually counted in `coverage-summary.json`, to avoid falsely high or low values again |
+| E2E test               | File list is outdated, not covering UI, Mission, Yono, real deployment pre-checks | Add E2E organized by product journey: login, task, Mission, approval, HITL, cost, fault recovery, UI six-platform smoke |
+| Performance test       | Biased toward short-run benchmarks                              | Add soak, memory leak, handle leak, queue backlog, backpressure tests                                                            |
+| Security test          | Biased toward sandbox / path / command injection                | Add PII / secret leak, OAuth / JWT lifecycle, CSRF / CORS, SSRF, dependency supply chain, plugin permission escape              |
+| Golden test            | Biased toward output format                                      | Add prompt lineage, OpenTelemetry span structure, alert rules, UI route map, API compatibility diff                            |
+| Architecture invariant test | Biased toward static scan                                       | Add runtime invariants: Mission live guard, budget fail-close, event / outbox same transaction, consumer idempotency            |
 
-| 层级 | coverage对象 | 必测content | 推荐位置 |
-| ---- | -------- | -------- | -------- |
-| Shared unit | `ui/packages/shared/*` | REST/WS client, token, offline queue, DTO→VM mapper, permission/redaction | `ui/packages/**/__tests__/` 或 `ui/tests/unit/` |
-| Component | `ui/packages/ui-core`, `ui/packages/ui-mobile` | 组件 props contract, 空态, error态, loading, 主题, 高对比 | `ui/tests/component/` |
-| Feature integration | `dashboard`, `task-cockpit`, `workflow-cockpit`, `approval`, `hitl`, `settings` | route 注册, feature gate, query invalidation, WS event 映射 | `ui/tests/integration/features/` |
-| Platform adapter | web/electron/tauri/mobile adapter | secureStorage, filesystem, clipboard, lifecycle, deepLink, screenSecurity parity | `ui/tests/contracts/platform-adapter/` |
-| App shell smoke | Web/Electron/Tauri/RN | app bootstrap, provider injection, 导航, auth guard, error边界 | `ui/tests/smoke/` |
-| Accessibility | Web/desktop/mobile | axe, 键盘导航, ARIA, focus trap, 色彩对比 | `ui/tests/accessibility/` |
-| Visual | design system + 关键页面 | dashboard, task cockpit, approval, HITL, settings 截graph diff | `ui/tests/visual/` |
+## 36. New Special Test Plans
 
-验收规则: 
+### 36.1 UI Six-Platform Special Test
 
-- Web 必须有可运行 smoke + 关键旅程 E2E. 
-- Electron/Tauri/RN 至少有 shell bootstrap, adapter injection, navigation/auth boot smoke. 
-- 每个 feature 必须同时exists `web/`, `mobile/`, `hooks/` testing, 不allows只测单fileentry. 
-- Planned 后端能力只能via typed mock + feature gate testing, 不得masks成生产可用. 
+| Layer                 | Covered Object                                                  | Required Test Content                                                                                                  | Recommended Location                                  |
+| --------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Shared unit           | `ui/packages/shared/*`                                          | REST / WS client, token, offline queue, DTO → VM mapper, permission / redaction                                        | `ui/packages/**/__tests__/` or `ui/tests/unit/`       |
+| Component             | `ui/packages/ui-core`, `ui/packages/ui-mobile`                  | Component props contract, empty state, error state, loading, theme, high contrast                                       | `ui/tests/component/`                                  |
+| Feature integration   | `dashboard`, `task-cockpit`, `workflow-cockpit`, `approval`, `hitl`, `settings` | Route registration, feature gate, query invalidation, WS event mapping                                                 | `ui/tests/integration/features/`                      |
+| Platform adapter      | web / electron / tauri / mobile adapter                         | secureStorage, filesystem, clipboard, lifecycle, deepLink, screenSecurity parity                                       | `ui/tests/contracts/platform-adapter/`                |
+| App shell smoke       | Web / Electron / Tauri / RN                                     | app bootstrap, provider injection, navigation, auth guard, error boundary                                              | `ui/tests/smoke/`                                      |
+| Accessibility        | Web / desktop / mobile                                          | axe, keyboard navigation, ARIA, focus trap, color contrast                                                              | `ui/tests/accessibility/`                             |
+| Visual                | design system + key pages                                       | dashboard, task cockpit, approval, HITL, settings screenshot diff                                                       | `ui/tests/visual/`                                     |
 
-### 36.2 Mission 与长期目标治理testing
+Acceptance Rules:
 
-Mission 是长期目标与治理上下文根对象, 不是execute对象. testing必须证明它不会被bypass, 也不会替代 Plan/Node/Attempt contract. 
+- Web must have runnable smoke + key journey E2E.
+- Electron / Tauri / RN must at least have shell bootstrap, adapter injection, navigation / auth boot smoke.
+- Each feature must have `web/`, `mobile/`, `hooks/` tests simultaneously; testing only the single file entry is not allowed.
+- Planned backend capabilities can only be tested via typed mock + feature gate, and must not be disguised as production-ready.
 
-| testing主题 | 必测assertion |
-| -------- | -------- |
-| Mission schema | `MissionRecord`, membership, snapshot, budget, handoff, error envelope strict parse |
-| state机 | created/running/frozen/completed/aborted 等合法转换, 非法转换, 版本conflict, 幂等replay |
-| Resolution | explicit/session/auto/ad-hoc/fail-closed path, 低risk可auto创建, 高risk无 Mission reject |
-| Governance | permissions交集, policy deny, risk approval, membership revoked, freeze 后阻断新 NodeRun |
-| Budget | reserve/settle/release CAS, budget exhausted 后不得发出 provider/tool call |
-| Runtime binding | RequestEnvelope, ConfirmedTaskSpec, PlanGraphBundle, HarnessRun, NodeRun 持有 missionRef/snapshotRef |
-| Event/projection | state change 与 event append 同transaction, event replay 后 projection 一致 |
-| Observability | metric label 不含 missionId, trace/log contains correlation 但不泄露高基数敏感field |
+### 36.2 Mission and Long-Term Goal Governance Test
 
-### 36.3 Yono Business 业务域testing
+Mission is the long-term goal and governance context root object, not the execution object. Tests must prove that it is neither bypassed nor replaces the Plan / Node / Attempt contract.
 
-Yono Business 作为业务域加入system后, 不能只验证configurefileexists, 必须验证业务闭环. 
+| Test Topic                | Required Assertions                                                                                                          |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Mission schema            | `MissionRecord`, membership, snapshot, budget, handoff, error envelope strict parse                                          |
+| State machine             | created / running / frozen / completed / aborted, etc. legal transitions, illegal transitions, version conflict, idempotent replay |
+| Resolution                | explicit / session / auto / ad-hoc / fail-closed paths, low-risk can be auto-created, high-risk without Mission rejected     |
+| Governance                | Permission intersection, policy deny, risk approval, membership revoked, freeze blocking new NodeRun                          |
+| Budget                    | reserve / settle / release CAS, budget exhausted must not issue provider / tool call                                          |
+| Runtime binding           | RequestEnvelope, ConfirmedTaskSpec, PlanGraphBundle, HarnessRun, NodeRun hold missionRef / snapshotRef                       |
+| Event / projection        | state change and event append same transaction, event replay projection consistent                                          |
+| Observability             | metric label does not contain missionId, trace / log contains correlation but does not leak high-cardinality sensitive fields |
 
-| testingtype | 必测content |
-| -------- | -------- |
-| Domain config smoke | domain id, workflow, tool bundle, risk/eval/SLA/division configure完整 |
-| Business flow E2E | 企业开户/资料采集/审批/execute/证据归档/异常fallback的主链路 |
-| permissions与tenant隔离 | 企业user, 运营, 审核, manage员角色的读写边界 |
-| 合规与审计 | KYC/KYB, 敏感fieldsanitized, 审批证据, 审计不可tamper |
-| SLA 与成本 | 高优先级task deadline, 预算upper limit, 降级strategy |
-| failure恢复 | 审批reject, 资料missing, 外部systemtimeout, duplicate提交幂等 |
+### 36.3 Yono Business Domain Test
 
-### 36.4 LLM / Prompt / Eval testing
+After Yono Business joins the system as a business domain, it is not enough to verify that the configuration file exists; the business closed loop must be verified.
 
-| 维度 | testing方案 |
-| ---- | -------- |
-| Prompt contract | prompt template schema, 变量integrity, 禁止未声明变量, output JSON schema 可解析 |
-| Prompt lineage | 每次模型call能关联 prompt version, model, provider, cost, trace id |
-| Deterministic fixtures | usesfixed provider mock/VCR fixture 验证 planner/generator/evaluator branch |
-| Eval harness | 对关键task建立小型黄金集, 验证正确性, 安全性, integrity, 拒答边界 |
-| Red team | prompt injection, tool exfiltration, 越权指令, 敏感信息诱导 |
-| Cost guard | max tokens, 预算耗尽, provider fallback, 重试成本归因 |
-| Regression replay | 线上failure样例进入 eval corpus, 修复后必须稳定via |
+| Test Type                  | Required Test Content                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Domain config smoke        | domain id, workflow, tool bundle, risk / eval / SLA / division configuration complete                              |
+| Business flow E2E          | Main chain of enterprise account opening / data collection / approval / execution / evidence archive / exception fallback |
+| Permission and tenant isolation | Read / write boundaries for enterprise user, operation, reviewer, administrator roles                            |
+| Compliance and audit       | KYC / KYB, sensitive field redaction, approval evidence, audit immutability                                        |
+| SLA and cost               | High-priority task deadline, budget upper limit, degradation strategy                                              |
+| Failure recovery           | Approval rejection, missing data, external system timeout, duplicate submission idempotency                        |
 
-### 36.5 contractcompatibility与版本演进testing
+### 36.4 LLM / Prompt / Eval Test
 
-新增或修改公共interface时必须同时testing“新版本正确”和“旧call方不破坏”. 
+| Dimension                | Test Plan                                                                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Prompt contract          | prompt template schema, variable completeness, forbid undeclared variables, output JSON schema parseable                             |
+| Prompt lineage           | Each model call can correlate prompt version, model, provider, cost, trace id                                                       |
+| Deterministic fixtures   | Use fixed provider mock / VCR fixture to verify planner / generator / evaluator branches                                            |
+| Eval harness             | Build small golden sets for key tasks, verify correctness, safety, completeness, refusal boundary                                  |
+| Red team                 | prompt injection, tool exfiltration, over-permission instructions, sensitive information elicitation                                |
+| Cost guard               | max tokens, budget exhausted, provider fallback, retry cost attribution                                                              |
+| Regression replay        | Online failure samples enter eval corpus, must pass stably after fix                                                                |
 
-| contract | 必测content |
-| ---- | -------- |
-| HTTP/OpenAPI | OpenAPI diff: 删除field, 收紧 enum, 改变 required, state码变更必须failure |
-| Event schema | 新增field向后compatibility, 删除/改名/语义changes必须有 migration 或 version bump |
-| SDK/CLI | 旧 SDK fixture call新服务; CLI outputvia golden 验证 |
-| UI API seam | Layer C endpoint 注解, planned mock 与真实 contract 不drift |
-| Config schema | dev/test/staging/prod configure均能 parse, prod 必填项missing fail-close |
+### 36.5 Contract Compatibility and Version Evolution Test
 
-### 36.6 data迁移, 备份恢复与升级rollbacktesting
+When adding or modifying public interfaces, you must test both "new version is correct" and "old callers are not broken".
 
-| 场景 | 必测content |
-| ---- | -------- |
-| Forward migration | 从上一版本 fixture DB 升级到当前 schema, data完整且index可用 |
-| Idempotent migration | 同一 migration duplicateexecute不破坏data |
-| Rollback rehearsal | 升级failure后 rollback 脚本可恢复到可启动state |
-| Backup restore | `backup-sqlite.sh` / `restore-sqlite.sh` 产物可恢复并via smoke |
-| Hot upgrade | `verify-hot-upgrade.sh` coverage worker draining, lease handoff, 事件不loss |
-| Data checksum | 关键表迁移前后 record count, hash, 外键一致 |
+| Contract           | Required Test Content                                                                                       |
+| ------------------ | ----------------------------------------------------------------------------------------------------------- |
+| HTTP / OpenAPI     | OpenAPI diff: delete field, tighten enum, change required, status code change must fail                     |
+| Event schema       | New fields are backward-compatible, delete / rename / semantic change must have migration or version bump |
+| SDK / CLI          | Old SDK fixture calls new service; CLI output passes golden verification                                    |
+| UI API seam        | Layer C endpoint annotations, planned mock and real contract do not drift                                   |
+| Config schema      | dev / test / staging / prod config all parse, prod required field missing fail-close                       |
 
-### 36.7 Chaos, 灾备与长稳testing
+### 36.6 Data Migration, Backup Recovery, and Upgrade Rollback Test
 
-| 场景 | 必测content |
-| ---- | -------- |
-| Redis disconnect | 入队failure可见, 重试, DLQ, 恢复后 backlog drain |
-| Postgres/SQLite busy | WAL, busy retry, transactionrollback, 无 partial write |
-| Network delay | provider/tool timeout, circuit breaker, 降级 |
-| Pod/worker kill | lease reclaim, stuck run sweeper, replay, 幂等写回 |
-| Multi-region failover | 主区域不可用时读写strategy, RTO/RPO, 事件order |
-| Soak | 6h/24h 队列积压, in-memory, handle, timer, listener 不增长 |
+| Scenario              | Required Test Content                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------------------ |
+| Forward migration     | Upgrade from previous version fixture DB to current schema, data complete and indexes available       |
+| Idempotent migration  | Repeated execution of the same migration does not damage data                                          |
+| Rollback rehearsal    | After upgrade failure, rollback script can recover to a startable state                                |
+| Backup restore        | `backup-sqlite.sh` / `restore-sqlite.sh` output can be restored and pass smoke                          |
+| Hot upgrade           | `verify-hot-upgrade.sh` covers worker draining, lease handoff, no event loss                          |
+| Data checksum         | Pre / post migration record count, hash, foreign key consistency for key tables                       |
 
-### 36.8 可观测性与运营testing
+### 36.7 Chaos, DR, and Long-Stability Test
 
-| 对象 | 必测content |
-| ---- | -------- |
-| Metrics | 必需指标exists, label 白名单, 高基数field禁止, 异常path计数递增 |
-| Logs | 结构化field, trace/correlation, PII/secret redaction, 禁止关键path `console.*` |
-| Traces | HTTP → service → event/outbox → worker → provider/tool 的 span 串联 |
-| Alerts | Prometheus rules 与真实指标名一致, Alertmanager receiver configure可解析 |
-| Runbooks | 告警能链接到 runbook, runbook 命令可execute或可static验证 |
+| Scenario                  | Required Test Content                                                                                          |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Redis disconnect          | Enqueue failure visible, retry, DLQ, backlog drain after recovery                                              |
+| Postgres / SQLite busy    | WAL, busy retry, transaction rollback, no partial write                                                        |
+| Network delay             | provider / tool timeout, circuit breaker, degradation                                                          |
+| Pod / worker kill         | lease reclaim, stuck run sweeper, replay, idempotent writeback                                                 |
+| Multi-region failover     | Read / write policy, RTO / RPO, event order when primary region is unavailable                                |
+| Soak                      | 6h / 24h queue backlog, memory, handle, timer, listener not growing                                            |
 
-### 36.9 隐私, 合规与data生命周期testing
+### 36.8 Observability and Operations Test
 
-| 场景 | 必测content |
-| ---- | -------- |
-| PII/secret redaction | log, 事件, learning object, prompt context, UI VM 均sanitized |
-| Retention | session, audit, evidence, memory, learning data按strategyexpiry或归档 |
-| Right-to-delete | 可删除user可删data, 同时保留合规审计摘要 |
-| Consent | analyticsConsent, model training opt-out, 生效后不再发送相关事件 |
-| Tenant isolation | 跨 tenant query, event replay, cache key, file namespace 全reject |
+| Object     | Required Test Content                                                                                  |
+| ---------- | ------------------------------------------------------------------------------------------------------ |
+| Metrics    | Required metrics exist, label whitelist, high-cardinality fields forbidden, anomaly path counter increment |
+| Logs       | Structured fields, trace / correlation, PII / secret redaction, forbid critical path `console.*`        |
+| Traces     | HTTP → service → event / outbox → worker → provider / tool span chain                                  |
+| Alerts     | Prometheus rules consistent with real metric names, Alertmanager receiver config parseable              |
+| Runbooks   | Alerts can link to runbook, runbook commands executable or statically verifiable                        |
 
-### 36.10 插件, Pack 与供应链testing
+### 36.9 Privacy, Compliance, and Data Lifecycle Test
 
-| 场景 | 必测content |
-| ---- | -------- |
-| Plugin sandbox | file, 网络, 命令, 环境变量permissions边界 |
-| Pack compatibility | 多版本 pack manifest, API compatibility, install/uninstall/upgrade |
-| Malicious plugin | permissions提升, path逃逸, secret 读取, 无限循环, 资源耗尽 |
-| SBOM/provenance | lockfile fixed, SBOM 生成, license allowlist, 构建产物可追溯 |
-| Marketplace governance | 审核, signature, 撤回, 灰度发布, rollback |
+| Scenario              | Required Test Content                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------------------ |
+| PII / secret redaction | Logs, events, learning objects, prompt context, UI VM all redacted                                    |
+| Retention             | session, audit, evidence, memory, learning data expired or archived per policy                       |
+| Right-to-delete        | Deletable user can delete data, while retaining compliance audit summary                            |
+| Consent                | analyticsConsent, model training opt-out, after effect no longer sending related events              |
+| Tenant isolation       | Cross-tenant query, event replay, cache key, file namespace all denied                              |
 
-### 36.11 Property-based / Fuzz testing
+### 36.10 Plugin, Pack, and Supply Chain Test
 
-适合引入 fuzz/property-based testing的对象: 
+| Scenario              | Required Test Content                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------------------ |
+| Plugin sandbox        | File, network, command, environment variable permission boundaries                                    |
+| Pack compatibility    | Multi-version pack manifest, API compatibility, install / uninstall / upgrade                        |
+| Malicious plugin      | Permission elevation, path escape, secret read, infinite loop, resource exhaustion                   |
+| SBOM / provenance     | lockfile pinned, SBOM generation, license allowlist, build artifact traceable                          |
+| Marketplace governance | Review, signature, revoke, gray release, rollback                                                    |
 
-- Zod schema parser: 随机missingfield, 错type, 超长字符串, 未知 enum. 
-- Cursor pagination: 随机insert/删除后不duplicate, 不漏项, 稳定sort. 
-- State transition: 随机事件序列不得越过终态或violates CAS. 
-- Event replay: 随机duplicate/乱序/missing ack 后 projection 幂等. 
-- Cost budget: 随机 reserve/settle/release 总额不为负, 不超过upper limit. 
-- Path/security parser: 随机编码, Unicode, null-byte, path分隔符. 
+### 36.11 Property-Based / Fuzz Test
 
-## 37. 补全execute路线
+Objects suitable for introducing fuzz / property-based testing:
 
-### 37.1 P0 必须优先补齐
+- Zod schema parser: random missing fields, wrong types, extra-long strings, unknown enums.
+- Cursor pagination: no duplicates, no missing items, stable ordering after random insert / delete.
+- State transition: random event sequences must not exceed terminal state or violate CAS.
+- Event replay: projection idempotent after random duplicate / out-of-order / missing ack.
+- Cost budget: random reserve / settle / release total not negative, not exceeding upper limit.
+- Path / security parser: random encoding, Unicode, null-byte, path separator.
 
-| 优先级 | 项目 | 交付物 |
-| ------ | ---- | ------ |
-| P0-1 | coverage率管线自测 | 一个testing验证 c8 `all: true` 确实把未 import 的 `src/` file计为 0%, 并让 `.coverage-baseline.json` 非空 |
-| P0-2 | UI Web smoke + PlatformAdapter contract | Web app 启动, 核心 route render, adapter parity, feature gate mock contract |
-| P0-3 | Mission 治理 E2E | 高risk无 Mission reject, freeze/revoke/budget exhausted 阻断 NodeRun |
-| P0-4 | Yono Business domain smoke | configure, workflow, permissions, 审批, 审计, SLA 主链路 |
-| P0-5 | API/event backward compatibility | OpenAPI diff, event schema diff, SDK fixture compatibility |
-| P0-6 | LLM eval/red-team baseline | 黄金集, prompt injection, cost guard, provider fallback |
-| P0-7 | Migration/backup restore rehearsal | 上一版 fixture DB 升级, 备份恢复, rollback smoke |
+## 37. Completion Execution Roadmap
 
-### 37.2 P1 第二批补齐
+### 37.1 P0 Must Be Completed First
 
-| 优先级 | 项目 | 交付物 |
-| ------ | ---- | ------ |
-| P1-1 | Chaos + recovery | Redis/DB/network/worker kill 定向演练 |
-| P1-2 | Observability contract | metrics/logs/traces/alerts/runbook 全链验证 |
-| P1-3 | Privacy lifecycle | redaction, retention, delete, consent, tenant isolation |
-| P1-4 | Long soak/leak | memory, handle, timer, listener, queue backlog 长稳testing |
-| P1-5 | Plugin/Pack supply chain | sandbox, compatibility, malicious plugin, SBOM/license |
-| P1-6 | UI accessibility/visual/i18n | axe, keyboard, theme, locale, visual diff |
+| Priority | Item                                    | Deliverable                                                                                                          |
+| -------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| P0-1     | Coverage pipeline self-test             | A test verifying that c8 `all: true` indeed counts unimported `src/` files as 0%, and makes `.coverage-baseline.json` non-empty |
+| P0-2     | UI Web smoke + PlatformAdapter contract | Web app startup, core route render, adapter parity, feature gate mock contract                                       |
+| P0-3     | Mission governance E2E                  | High-risk without Mission rejected, freeze / revoke / budget exhausted blocking NodeRun                             |
+| P0-4     | Yono Business domain smoke              | Configuration, workflow, permission, approval, audit, SLA main chain                                                 |
+| P0-5     | API / event backward compatibility      | OpenAPI diff, event schema diff, SDK fixture compatibility                                                           |
+| P0-6     | LLM eval / red-team baseline            | Golden set, prompt injection, cost guard, provider fallback                                                          |
+| P0-7     | Migration / backup restore rehearsal    | Previous version fixture DB upgrade, backup recovery, rollback smoke                                                 |
 
-### 37.3 P2 可持续augmentation
+### 37.2 P1 Second Batch
 
-| 优先级 | 项目 | 交付物 |
-| ------ | ---- | ------ |
-| P2-1 | Property/fuzz | schema, pagination, state, event, budget, path parser fuzz |
-| P2-2 | Docs health | 文档链接, 命令片段, pathreferences, 示例代码可execute |
-| P2-3 | Flaky governance | repeat-run, 隔离区, skip 审计, failure样例auto回灌 |
-| P2-4 | Test inventory dashboard | 源目录, testing层, coverage率, 变异分数, missing口 ID 可视化 |
+| Priority | Item                       | Deliverable                                                                                            |
+| -------- | -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| P1-1     | Chaos + recovery           | Redis / DB / network / worker kill targeted drills                                                     |
+| P1-2     | Observability contract     | metrics / logs / traces / alerts / runbook full chain verification                                     |
+| P1-3     | Privacy lifecycle          | redaction, retention, delete, consent, tenant isolation                                                |
+| P1-4     | Long soak / leak           | memory, handle, timer, listener, queue backlog long-stability test                                     |
+| P1-5     | Plugin / Pack supply chain | sandbox, compatibility, malicious plugin, SBOM / license                                                |
+| P1-6     | UI accessibility / visual / i18n | axe, keyboard, theme, locale, visual diff                                                          |
 
-### 37.4 本轮新增auto化守护testing项
+### 37.3 P2 Sustainable Enhancements
 
-为避免 v4.1 补充章停留在人工清单, 本轮新增 `tests/unit/quality/full-coverage-test-manual-gaps.test.ts` 作为手册落地守护testing. 该testing不替代各专项testing本身, 而是验证手册中的每个testingmissing口都有可定位的runtime代码证据和auto化testing证据. 
+| Priority | Item                  | Deliverable                                                                                            |
+| -------- | --------------------- | ------------------------------------------------------------------------------------------------------ |
+| P2-1     | Property / fuzz        | schema, pagination, state, event, budget, path parser fuzz                                             |
+| P2-2     | Docs health            | Doc links, command snippets, path references, example code executable                                 |
+| P2-3     | Flaky governance       | repeat-run, quarantine, skip audit, failure sample auto-replay                                        |
+| P2-4     | Test inventory dashboard | source directory, test layer, coverage, mutation score, gap ID visualization                       |
 
-同时新增 `tests/integration/quality/full-coverage-real-paths.test.ts` 与 `tests/integration/quality/full-coverage-operational-real-paths.test.ts`, directlyexecute Mission, Yono Business, Prompt Guard, Budget Guard, Startup Env Schema, Prometheus Exporter, Fixture Redactor, Chaos Scheduler, Supply-chain Audit Script, 部署/DR/告警资产等生产module或真实仓库configure, 作为 Part V 的最小可execute产品级与运营级coverage基线. 
+### 37.4 New Automated Guard Test Items in This Round
 
-| 守护对象 | auto化assertion |
-| -------- | ---------- |
-| `T-GAP-01` 至 `T-GAP-20` | 手册必须完整列出 20 个missing口, 且每个missing口必须映射到至少一组真实 runtime artifact 与 automated test artifact |
-| `GA-01` 至 `GA-15` | 正式交互准入项必须完整保留, 不allows在文档整理时被误删 |
-| P0/P1/P2 补全路线 | `P0-1`, `P0-7`, `P1-1`, `P1-6`, `P2-4` 等关键路线必须继续exists |
-| testing命令entry | `test:unit`, `test:integration`, `test:e2e`, `test:golden`, `test:performance`, `test:leaks`, `test:invariants`, `coverage:gate`, `test:mutation` 必须exists |
-| coverage率基线 | `.coverage-baseline.json` 必须contains numeric global/minimum metrics, 并纳入 `src/` 目录级基线 |
-| 真实性check | 每个missing口对应的testing证据必须contains可execute `test()`/`it()` 与assertion; `tests/` 和 `ui/tests/` 不allows出现未登记的 `.skip`; UI feature 必须保持 `web/`, `mobile/`, `hooks/` 三entry |
-| Property/Fuzz 基线 | Cursor pagination 等公共 parser 必须有 deterministic fuzz / schema drift testing, coverage未知field, 错type, 负数, 浮点和array payload |
-| 真实path基线 | Mission resolution/live guard/budget, Yono market-to-dispute, Prompt injection/canary leakage, Budget cascade/cost attribution, startup config fail-close, Prometheus exporter, privacy redaction, Chaos rollback, supply-chain audit, deploy/DR/alert assets 必须有directlycall生产代码或真实仓库configure的testing |
+To prevent the v4.1 supplement section from staying at a manual checklist, this round newly adds `tests/unit/quality/full-coverage-test-manual-gaps.test.ts` as the manual landing guard test. This test does not replace each special test itself, but verifies that every test gap in the manual has locatable runtime code evidence and automated test evidence.
 
-subsequent新增testingtype时, 必须synchronous更新本守护testing中的 evidence mapping; 如果某个missing口仍没有auto化证据, 应在本file中明确标注为 residual risk, 而不是把它写成已coverage. 
+Also newly added `tests/integration/quality/full-coverage-real-paths.test.ts` and `tests/integration/quality/full-coverage-operational-real-paths.test.ts`, which directly execute production modules or real repository configurations such as Mission, Yono Business, Prompt Guard, Budget Guard, Startup Env Schema, Prometheus Exporter, Fixture Redactor, Chaos Scheduler, Supply-chain Audit Script, deployment / DR / alert assets, as the minimum executable product-level and operations-level coverage baseline for Part V.
 
-## 38. 新增testing进入门禁规则
+| Guarded Object              | Automated Assertion                                                                                                                                                              |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `T-GAP-01` to `T-GAP-20`    | Manual must completely list 20 gaps, and each gap must map to at least one set of real runtime artifact and automated test artifact                                              |
+| `GA-01` to `GA-15`          | Formal interaction access items must be completely preserved; not allowed to be accidentally deleted during document organization                                            |
+| P0 / P1 / P2 completion roadmap | Key roadmaps like `P0-1`, `P0-7`, `P1-1`, `P1-6`, `P2-4` must continue to exist                                                                                                |
+| Test command entry          | `test:unit`, `test:integration`, `test:e2e`, `test:golden`, `test:performance`, `test:leaks`, `test:invariants`, `coverage:gate`, `test:mutation` must exist                  |
+| Coverage baseline           | `.coverage-baseline.json` must contain numeric global / minimum metrics, and incorporate `src/` directory-level baseline                                                       |
+| Authenticity check          | Test evidence corresponding to each gap must contain executable `test()` / `it()` and assertions; `tests/` and `ui/tests/` must not have unregistered `.skip`; UI features must keep `web/`, `mobile/`, `hooks/` three entry points |
+| Property / Fuzz baseline    | Common parsers like Cursor pagination must have deterministic fuzz / schema drift tests, covering unknown fields, wrong types, negative, floating-point, and array payloads   |
+| Real-path baseline          | Mission resolution / live guard / budget, Yono market-to-dispute, Prompt injection / canary leakage, Budget cascade / cost attribution, startup config fail-close, Prometheus exporter, privacy redaction, Chaos rollback, supply-chain audit, deploy / DR / alert assets must have tests that directly invoke production code or real repository configurations |
 
-任何新增功能进入 `main` 前, 除 v4.0 Checklist 外, 必须回答以下问题: 
+When adding new test types in the future, you must synchronously update the evidence mapping in this guard test; if some gap still has no automated evidence, it should be explicitly marked as residual risk in this document, not written as already covered.
 
-- 是否涉及 UI? 如果是, 是否有 Web + 对应平台 adapter testing? 
-- 是否涉及 Mission, 预算, permissions, 审批, HITL? 如果是, 是否有 fail-close testing? 
-- 是否涉及 LLM/provider/tool call? 如果是, 是否有成本, 降级, prompt injection, output schema testing? 
-- 是否新增/修改 API, event, SDK, config? 如果是, 是否有compatibility性 diff testing? 
-- 是否涉及 DB schema 或persistence格式? 如果是, 是否有迁移, rollback, 备份恢复testing? 
-- 是否可能写log, 事件, memory, learning object? 如果是, 是否有 PII/secret redaction testing? 
-- 是否新增插件/Pack 能力? 如果是, 是否有 sandbox 与供应链testing? 
-- 是否新增长期运行 worker/cache/queue/listener? 如果是, 是否有资源leaks和背压testing? 
+## 38. New Test Entry Gate Rules
 
-## 39. 文档maintained规则
+Before any new feature enters `main`, in addition to the v4.0 Checklist, the following questions must be answered:
 
-- 当前file已经去除duplicate的 v4.0 副本, 只保留一份 v4.1 权威正文. 
-- subsequent更新testing数量, E2E file清单, Performance file清单时, 应优先由脚本auto生成, 避免人工统计expiry. 
-- v4.1 补充章已并入正式目录, 作为 Part V “产品级与运营级验收testing”maintained. 
+- Does it involve UI? If so, are there Web + corresponding platform adapter tests?
+- Does it involve Mission, budget, permission, approval, HITL? If so, are there fail-close tests?
+- Does it involve LLM / provider / tool calls? If so, are there cost, degradation, prompt injection, output schema tests?
+- Are you adding / modifying API, event, SDK, config? If so, are there compatibility diff tests?
+- Does it involve DB schema or persistent format? If so, are there migration, rollback, backup recovery tests?
+- Might it write logs, events, memory, learning objects? If so, are there PII / secret redaction tests?
+- Are you adding plugin / Pack capabilities? If so, are there sandbox and supply chain tests?
+- Are you adding long-running worker / cache / queue / listener? If so, are there resource leak and backpressure tests?
 
-## 40. 正式交互准入标准
+## 39. Documentation Maintenance Rules
 
-auto化testingvia只是“代码可交付”的必要条件, 不等于system已经可以对真实user, 真实业务或真实外部system开放交互. 正式交互前还必须补齐以下准入项, 形成可审计的 release evidence bundle. 
+- The current file has removed the duplicate v4.0 copy, retaining only one v4.1 authoritative text.
+- When subsequently updating test count, E2E file list, Performance file list, prefer auto-generation by script to avoid outdated manual statistics.
+- The v4.1 supplement section has been merged into the formal table of contents, maintained as Part V "Product-Level and Operations-Level Acceptance Testing".
 
-### 40.1 正式交互前仍需完善的content
+## 40. Formal Interaction Acceptance Criteria
 
-| # | 准入项 | 必须完善content | 阻断级别 |
-| ---- | ------ | ------------ | -------- |
-| GA-01 | testing结果可信 | fulltesting, UI testing, contracttesting, 迁移testing, 关键 E2E 均有最近一次viarecord; 所有 skip/flaky 有登记和批准理由 | Blocker |
-| GA-02 | 真实交互path | 登录, 创建task, Mission 绑定, plan生成, execute, 审批/HITL, 结果交付, 证据query, failure恢复可走通 | Blocker |
-| GA-03 | permissions与tenant隔离 | manage员, 运营, 普通user, 审核人, 外部集成账号的permissions矩阵viaauto化与人工抽查 | Blocker |
-| GA-04 | 预算与risk fail-close | 预算耗尽, 高risk无审批, Mission freeze/revoke, strategyreject时不触发模型, 工具或外部副作用 | Blocker |
-| GA-05 | datapersistence与恢复 | task, 事件, outbox, DLQ, evidence, audit, memory, Mission data重启后可恢复, 迁移/备份/rollback演练via | Blocker |
-| GA-06 | LLM output可控 | Prompt schema, output schema, 成本归因, provider fallback, prompt injection red-team, eval golden set 均via | Blocker |
-| GA-07 | UI 可用性 | Web 关键流程可真实操作; 桌面/移动壳层至少via adapter, 导航, auth, error边界 smoke; Planned 功能有明确降级标识 | Blocker |
-| GA-08 | 可观测与告警 | metrics/logs/traces/alerts/runbook 链路可用; 关键error, 预算reject, DLQ 增长, worker 不健康可被发现 | Blocker |
-| GA-09 | 安全与隐私 | PII/secret sanitized, JWT/OAuth 生命周期, CSRF/CORS, SSRF, path逃逸, 插件permissions逃逸, dependency高危漏洞均viacheck | Blocker |
-| GA-10 | 外部system边界 | 邮件, 日历, 支付, 企业 IdP, 第三方工具等外部集成必须有 sandbox/staging 验证; 未接真实system的能力保持 feature gate 关闭 | Blocker |
-| GA-11 | 灰度与rollback | 功能开关, 灰度百分比, 快速关闭, data库rollback/补偿, 上一版本恢复path已演练 | Blocker |
-| GA-12 | 运营接管 | 人工接管, 暂停队列, 冻结 Mission, replay事件, 重试 DLQ, 导出诊断包, 事故升级流程可execute | Blocker |
-| GA-13 | 文档与培训 | user操作手册, manage员手册, 常见故障handle, permissions说明, data保留说明与 release note 已更新 | Major |
-| GA-14 | 法务与合规 | data保留, 审计, 隐私, 行业域合规要求有负责人confirmation; 高risk域不得only凭auto化testing开放 | Major |
-| GA-15 | 证据归档 | 本次 release commit, 构建产物, testing报告, coverage率, 迁移结果, rollback演练, riskacceptsrecord统一归档 | Major |
+Automated test passing is only a necessary condition for "code being deliverable"; it does not mean that the system can be open to interaction with real users, real businesses, or real external systems. Before formal interaction, the following access items must also be completed to form an auditable release evidence bundle.
 
-### 40.2 最小正式交互testing矩阵
+### 40.1 Content Still To Be Completed Before Formal Interaction
 
-| 交互旅程 | auto化验收 | 人工验收 |
-| -------- | ---------- | -------- |
-| user登录与会话 | auth callback, token refresh, session expiry, logout | 浏览器真实登录, expiry后重新登录 |
-| task创建到完成 | task create, Mission resolution, PlanGraph, HarnessRun, NodeRun, evidence | UI 创建task, confirmationstate, log, 结果can read |
-| 高risk审批 | risk detect, approval requested, approve/reject, audit evidence | 审核人审批, reject, timeouthandle |
-| HITL/接管 | pause, resume, takeover, operator action audit | 运营接管一次真实task并恢复 |
-| 成本与预算 | reserve, settle, release, budget exhausted blocking | manage端查看预算消耗和reject原因 |
-| failure恢复 | worker kill, DLQ retry, event replay, checkpoint resume | 人工触发重试并confirmation结果一致 |
-| UI 关键页面 | dashboard, task cockpit, approval, HITL, settings smoke | 桌面和移动至少完成只读巡检 |
-| 外部集成 | sandbox connector, timeout, retry, idempotency | staging 凭证连通性和failure提示 |
+| Number | Access Item                                | Required Content                                                                                                       | Block Level |
+| ------ | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ----------- |
+| GA-01  | Test result trustworthy                    | Full test, UI test, contract test, migration test, key E2E all have most recent pass record; all skip / flaky have registration and approval reason | Blocker     |
+| GA-02  | Real interaction path                      | Login, create task, Mission binding, plan generation, execution, approval / HITL, result delivery, evidence query, failure recovery can be traversed | Blocker     |
+| GA-03  | Permission and tenant isolation            | Administrator, operation, ordinary user, reviewer, external integration account permission matrix passes automation and manual spot check | Blocker     |
+| GA-04  | Budget and risk fail-close                 | Budget exhausted, high-risk without approval, Mission freeze / revoke, policy rejection does not trigger model, tool, or external side effects | Blocker     |
+| GA-05  | Data persistence and recovery              | Task, event, outbox, DLQ, evidence, audit, memory, Mission data can be recovered after restart; migration / backup / rollback drill passed | Blocker     |
+| GA-06  | LLM output controllable                    | Prompt schema, output schema, cost attribution, provider fallback, prompt injection red-team, eval golden set all passed | Blocker     |
+| GA-07  | UI usability                               | Web key flow real-operable; desktop / mobile shell at least passes adapter, navigation, auth, error boundary smoke; Planned feature has clear degradation mark | Blocker     |
+| GA-08  | Observable and alerting                    | metrics / logs / traces / alerts / runbook chain available; key errors, budget rejection, DLQ growth, worker unhealthy can be found | Blocker     |
+| GA-09  | Security and privacy                       | PII / secret redaction, JWT / OAuth lifecycle, CSRF / CORS, SSRF, path escape, plugin permission escape, dependency high-risk vulnerabilities all pass check | Blocker     |
+| GA-10  | External system boundary                   | Email, calendar, payment, enterprise IdP, third-party tool and other external integrations must have sandbox / staging verification; capabilities not connected to real systems keep feature gate off | Blocker     |
+| GA-11  | Gray release and rollback                  | Feature flag, gray release percentage, fast shutdown, database rollback / compensation, previous version recovery path drilled | Blocker     |
+| GA-12  | Operations takeover                        | Manual takeover, pause queue, freeze Mission, replay event, retry DLQ, export diagnostics package, incident escalation process executable | Blocker     |
+| GA-13  | Documentation and training                 | User operation manual, administrator manual, common fault handling, permission description, data retention description and release note updated | Major        |
+| GA-14  | Legal and compliance                       | Data retention, audit, privacy, industry domain compliance requirements have responsible person confirmation; high-risk domain must not be opened by automated test alone | Major        |
+| GA-15  | Evidence archiving                         | This release commit, build artifact, test report, coverage, migration result, rollback drill, risk acceptance record uniformly archived | Major        |
 
-### 40.3 不allows正式交互的情况
+### 40.2 Minimum Formal Interaction Test Matrix
 
-- fulltesting仍有未解释failure, 或 skip 数量增加但没有审批record. 
-- coverage率/testing清单显示关键运行链路未被auto化testing触达. 
-- Mission, 预算, permissions, 审批, HITL 任一 fail-close testingmissing. 
-- UI 中 Planned/mock 能力没有明确标识, user可能误以为生产可用. 
-- log, 事件, prompt, learning object 中发现 PII/secret 泄露. 
-- data迁移, 备份恢复, rollbackpath没有演练证据. 
-- 告警无法触达负责人, 或 runbook 不能指导恢复操作. 
-- 外部systemuses真实凭证但未via staging/sandbox 验证. 
+| Interaction Journey                | Automated Acceptance                                                                                                  | Manual Acceptance                                                  |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| User login and session             | auth callback, token refresh, session expiry, logout                                                                  | Browser real login, re-login after expiry                          |
+| Task creation to completion        | task create, Mission resolution, PlanGraph, HarnessRun, NodeRun, evidence                                              | UI create task, confirm state, log, result readable                |
+| High-risk approval                 | risk detect, approval requested, approve / reject, audit evidence                                                     | Reviewer approve, reject, timeout handling                        |
+| HITL / takeover                    | pause, resume, takeover, operator action audit                                                                        | Operation takeover a real task and recover                          |
+| Cost and budget                    | reserve, settle, release, budget exhausted blocking                                                                  | Management view budget consumption and rejection reason           |
+| Failure recovery                   | worker kill, DLQ retry, event replay, checkpoint resume                                                               | Manually trigger retry and confirm result consistent              |
+| UI key page                        | dashboard, task cockpit, approval, HITL, settings smoke                                                              | Desktop and mobile at least complete read-only patrol             |
+| External integration               | sandbox connector, timeout, retry, idempotency                                                                       | Staging credentials connectivity and failure prompt                |
 
-### 40.4 正式交互via标准
+### 40.3 Conditions Where Formal Interaction Is Not Allowed
 
-正式交互必须满足以下结论: 
+- Full test still has unexplained failures, or skip count increased without approval record.
+- Coverage / test list shows that key running chain is not reached by automated test.
+- Mission, budget, permission, approval, HITL any fail-close test missing.
+- Planned / mock capability in UI has no clear mark, user may mistake as production available.
+- PII / secret leak found in logs, events, prompt, learning object.
+- Data migration, backup recovery, rollback path has no drill evidence.
+- Alert cannot reach responsible person, or runbook cannot guide recovery operation.
+- External system uses real credentials but has not passed staging / sandbox verification.
 
-- `Blocker` 准入项全部via, `Major` 准入项要么via, 要么有明确riskaccepts人与到期整改时间. 
-- auto化testing报告, 人工验收record, rollback演练结果和 release evidence bundle 均已归档. 
-- 所有生产可见能力都有 owner, runbook, 告警, 关闭开关和rollback/补偿path. 
-- user看到的功能state与真实后端能力一致, 不把 mock, planned, partial 能力wrapper成已完成能力. 
+### 40.4 Formal Interaction Pass Criteria
+
+Formal interaction must meet the following conclusions:
+
+- All `Blocker` access items pass, `Major` access items either pass or have clear risk acceptance person and due rectification time.
+- Automated test report, manual acceptance record, rollback drill result, and release evidence bundle all archived.
+- All production-visible capabilities have owner, runbook, alert, shutdown switch, and rollback / compensation path.
+- The capability status seen by the user is consistent with the real backend capability, and mock, planned, partial capabilities are not packaged as completed capabilities.

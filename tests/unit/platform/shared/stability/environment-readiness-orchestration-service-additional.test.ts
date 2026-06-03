@@ -197,7 +197,7 @@ test("EnvironmentReadinessOrchestrationService throws on promotion without recor
   assert.throws(
     () => {
       service.evaluatePromotion({
-        environment: "production",
+        environment: "prod",
         targetStatus: "canary",
       });
     },

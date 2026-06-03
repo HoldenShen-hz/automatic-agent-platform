@@ -20,27 +20,38 @@ import {
 } from "../../../../../../src/platform/five-plane-orchestration/harness/index.js";
 
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
+  const baseBudget = {
+    maxSteps: 12,
+    maxCost: 5.0,
+    maxDurationMs: 120_000,
+  } as const;
   return {
-    policyIds: ["policy.memory.test"],
-    approvalMode: "required",
-    autonomyMode: "supervised",
-    toolPolicy: {
+    policyIds: overrides.policyIds ?? ["policy.memory.test"],
+    approvalMode: overrides.approvalMode ?? "required",
+    autonomyMode: overrides.autonomyMode ?? "supervised",
+    tool_policy: overrides.tool_policy ?? {
       allowedTools: ["read", "write", "bash"],
     },
-    risk_policy: {
+    risk_policy: overrides.risk_policy ?? {
       maxRiskScore: 70,
       escalationThreshold: 55,
     },
-    output_policy: {
+    output_policy: overrides.output_policy ?? {
       requiredEvidence: ["risk_profile"],
       redactSensitiveData: true,
     },
-    budget: {
-      maxSteps: 12,
-      maxCost: 5.0,
-      maxDurationMs: 120_000,
+    budget: overrides.budget ?? baseBudget,
+    sandboxRequirement: overrides.sandboxRequirement ?? {
+      sandboxMode: "ephemeral",
+      timeoutMs: 120_000,
     },
-    ...overrides,
+    approvalRequirement: overrides.approvalRequirement ?? {
+      requiredForRiskClass: ["high", "critical"],
+      approverRoles: ["operator"],
+      escalationTimeoutMs: 30_000,
+    },
+    ...(overrides.budgetEnvelope != null ? { budgetEnvelope: overrides.budgetEnvelope } : {}),
+    ...(overrides.versionLockRef != null ? { versionLockRef: overrides.versionLockRef } : {}),
   };
 }
 

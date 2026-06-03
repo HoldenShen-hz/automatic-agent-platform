@@ -17,13 +17,16 @@ test("buildExecutionBatches places tasks with shared dependency in same batch", 
   ];
 
   const batches = buildExecutionBatches(taskIds, edges);
+  const firstBatch = batches[0];
+  const secondBatch = batches[1];
 
   assert.equal(batches.length, 2);
-  assert.deepEqual(batches[0], ["root"]);
-  assert.equal(batches[1].length, 3);
-  assert.ok(batches[1].includes("child1"));
-  assert.ok(batches[1].includes("child2"));
-  assert.ok(batches[1].includes("child3"));
+  assert.deepEqual(firstBatch, ["root"]);
+  assert.ok(secondBatch);
+  assert.equal(secondBatch.length, 3);
+  assert.ok(secondBatch.includes("child1"));
+  assert.ok(secondBatch.includes("child2"));
+  assert.ok(secondBatch.includes("child3"));
 });
 
 test("buildExecutionBatches handles multiple root tasks", () => {
@@ -34,11 +37,13 @@ test("buildExecutionBatches handles multiple root tasks", () => {
   ];
 
   const batches = buildExecutionBatches(taskIds, edges);
+  const firstBatch = batches[0];
 
   // a and b should be in batch 0 (independent roots)
   // c depends on both a and b, so batch 1
   // d is independent
-  assert.ok(batches[0].includes("a") || batches[0].includes("b") || batches[0].includes("d"));
+  assert.ok(firstBatch);
+  assert.ok(firstBatch.includes("a") || firstBatch.includes("b") || firstBatch.includes("d"));
 });
 
 test("buildExecutionBatches handles chain with fanout", () => {
@@ -52,10 +57,13 @@ test("buildExecutionBatches handles chain with fanout", () => {
   ];
 
   const batches = buildExecutionBatches(taskIds, edges);
+  const firstBatch = batches[0];
+  const secondBatch = batches[1];
+  const lastBatch = batches[batches.length - 1];
 
-  assert.ok(batches[0].includes("t1"));
-  assert.ok(batches[1].includes("t2"));
-  assert.ok(batches[batches.length - 1].includes("t5"));
+  assert.ok(firstBatch?.includes("t1"));
+  assert.ok(secondBatch?.includes("t2"));
+  assert.ok(lastBatch?.includes("t5"));
 });
 
 test("buildExecutionBatches preserves order of tasks with no dependencies", () => {
@@ -63,9 +71,11 @@ test("buildExecutionBatches preserves order of tasks with no dependencies", () =
   const edges: DependencyEdge[] = [];
 
   const batches = buildExecutionBatches(taskIds, edges);
+  const firstBatch = batches[0];
 
   assert.equal(batches.length, 1);
-  assert.equal(batches[0].length, 4);
+  assert.ok(firstBatch);
+  assert.equal(firstBatch.length, 4);
 });
 
 test("buildExecutionBatches handles interleaved dependencies", () => {
@@ -80,11 +90,13 @@ test("buildExecutionBatches handles interleaved dependencies", () => {
   ];
 
   const batches = buildExecutionBatches(taskIds, edges);
+  const firstBatch = batches[0];
+  const lastBatch = batches[3];
 
   // t1 in first batch, t2 and t3 in second, t4 and t5 in third, t6 in fourth
   assert.equal(batches.length, 4);
-  assert.ok(batches[0].includes("t1"));
-  assert.ok(batches[3].includes("t6"));
+  assert.ok(firstBatch?.includes("t1"));
+  assert.ok(lastBatch?.includes("t6"));
 });
 
 test("buildExecutionBatches handles large batch of parallel tasks", () => {
@@ -105,10 +117,13 @@ test("buildExecutionBatches handles large batch of parallel tasks", () => {
   ];
 
   const batches = buildExecutionBatches(taskIds, edges);
+  const firstBatch = batches[0];
+  const secondBatch = batches[1];
 
   assert.equal(batches.length, 2);
-  assert.deepEqual(batches[0], ["a", "b"]);
-  assert.equal(batches[1].length, 6);
+  assert.deepEqual(firstBatch, ["a", "b"]);
+  assert.ok(secondBatch);
+  assert.equal(secondBatch.length, 6);
 });
 
 test("buildExecutionBatches handles two independent chains", () => {
@@ -121,14 +136,17 @@ test("buildExecutionBatches handles two independent chains", () => {
   ];
 
   const batches = buildExecutionBatches(taskIds, edges);
+  const firstBatch = batches[0];
+  const secondBatch = batches[1];
+  const thirdBatch = batches[2];
 
   assert.equal(batches.length, 3);
   // a1 and b1 should be batch 0
   // a2 and b2 should be batch 1
   // a3 and b3 should be batch 2
-  assert.deepEqual(batches[0], ["a1", "b1"]);
-  assert.deepEqual(batches[1], ["a2", "b2"]);
-  assert.deepEqual(batches[2], ["a3", "b3"]);
+  assert.deepEqual(firstBatch, ["a1", "b1"]);
+  assert.deepEqual(secondBatch, ["a2", "b2"]);
+  assert.deepEqual(thirdBatch, ["a3", "b3"]);
 });
 
 test("buildExecutionBatches with single task depending on root", () => {
@@ -138,10 +156,12 @@ test("buildExecutionBatches with single task depending on root", () => {
   ];
 
   const batches = buildExecutionBatches(taskIds, edges);
+  const firstBatch = batches[0];
+  const secondBatch = batches[1];
 
   assert.equal(batches.length, 2);
-  assert.deepEqual(batches[0], ["parent"]);
-  assert.deepEqual(batches[1], ["child"]);
+  assert.deepEqual(firstBatch, ["parent"]);
+  assert.deepEqual(secondBatch, ["child"]);
 });
 
 test("buildExecutionBatches preserves topological constraint across batches", () => {

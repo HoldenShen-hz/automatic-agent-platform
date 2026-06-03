@@ -350,9 +350,11 @@ async function runOrphanQueueClaimRepairScenario(outputDir: string): Promise<Sta
       leaseTtlMs: 30_000,
       occurredAt: "2026-04-04T15:00:06.000Z",
     });
+    const claimedLease = claimed.leaseId == null ? null : store.worker.getExecutionLease(claimed.leaseId);
     leases.releaseLease({
       leaseId: claimed.leaseId ?? "",
       workerId: "worker-dispatch-chaos",
+      fencingToken: claimedLease?.fencingToken ?? null,
       reasonCode: "chaos.seed",
       occurredAt: "2026-04-04T15:00:07.000Z",
     });

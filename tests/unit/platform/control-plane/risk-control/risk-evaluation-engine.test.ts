@@ -257,7 +257,7 @@ test("RiskEvaluationEngine applies domain override to legacy requests", () => {
       historicalFailureRate: "low",
       evidenceConfidence: "high",
     },
-  });
+  } as unknown as RiskEvaluationRequest);
 
   assert.equal(result.riskLevel, "high");
 });
@@ -278,7 +278,7 @@ test("RiskEvaluationEngine rejects mixed legacy and six-factor schemas", () => {
         priorFailureRatePercent: 80,
         confidence: "low",
       },
-    }),
+    } as unknown as RiskEvaluationRequest),
     (error: unknown) => error instanceof Error && (error as { code?: string }).code === "risk.schema_mixed",
   );
 });

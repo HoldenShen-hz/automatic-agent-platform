@@ -17,6 +17,14 @@ inputDataTypes:
 outputActions:
   - conclusion_record
   - experiment_brief
+outputActionBindings:
+  - outputActionId: conclusion_record
+    bindingType: derived_artifact
+    notes: grounded conclusion record from verified sources
+  - outputActionId: experiment_brief
+    bindingType: tool_action
+    toolId: knowledge-search
+    actionId: draft_experiment
 toolActions:
   - toolId: knowledge-search
     actionId: retrieve_sources
@@ -26,8 +34,8 @@ toolActions:
     riskClass: R1
 riskLevel: medium
 autonomyAllowed: draft_only
-evalSuiteRef: eval/divisions/knowledge-base/eval-suite.yaml
-redTeamSuiteRef: redteam/divisions/knowledge-base/redteam-suite.yaml
+evalSuiteRef: eval/divisions/research/eval-suite.yaml
+redTeamSuiteRef: redteam/divisions/research/redteam-suite.yaml
 successMetrics:
   - evidence_traceability
   - experiment_relevance

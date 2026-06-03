@@ -108,7 +108,7 @@ test("ISSUE #2038: decorateResponseHeaders omits CORS headers when credentials-e
     credentials: true,
   };
 
-  const result = decorateResponseHeaders(payload, "https://myapp.com", config, undefined);
+  const result = decorateResponseHeaders(payload, "https://myapp.com", config);
 
   assert.equal(result.headers["access-control-allow-origin"], undefined);
   assert.equal(result.headers["access-control-allow-credentials"], undefined);
@@ -128,7 +128,7 @@ test("ISSUE #2038: decorateResponseHeaders does NOT add CORS headers when origin
 
   // When origin is not allowed (wildcard + credentials rejects all),
   // no CORS headers should be added
-  const result = decorateResponseHeaders(payload, "https://any-site.com", config, undefined);
+  const result = decorateResponseHeaders(payload, "https://any-site.com", config);
 
   assert.equal(result.headers["access-control-allow-origin"], undefined);
   assert.equal(result.headers["access-control-allow-credentials"], undefined);
@@ -204,7 +204,7 @@ test("decorateResponseHeaders adds all required security headers", () => {
     headers: {},
     body: "test",
   };
-  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG, undefined);
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
   assert.equal(result.headers["content-security-policy"], "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
   assert.equal(result.headers["strict-transport-security"], "max-age=31536000; includeSubDomains");
   assert.equal(result.headers["x-frame-options"], "DENY");
@@ -220,7 +220,7 @@ test("decorateResponseHeaders preserves existing custom headers", () => {
     headers: { "x-custom-header": "custom-value" },
     body: "test",
   };
-  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG, undefined);
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
   assert.equal(result.headers["x-custom-header"], "custom-value");
 });
 
@@ -230,7 +230,7 @@ test("decorateResponseHeaders calculates content-length for plain text body", ()
     headers: {},
     body: "hello world",
   };
-  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG, undefined);
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
   assert.equal(result.headers["content-length"], "11");
 });
 
@@ -240,7 +240,7 @@ test("decorateResponseHeaders does not override content-length when already set"
     headers: { "content-length": "100" },
     body: "hello world",
   };
-  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG, undefined);
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
   assert.equal(result.headers["content-length"], "100");
 });
 

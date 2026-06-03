@@ -6,21 +6,27 @@ actions:
     reversible: true
     requiresHITL: true
     requiresPreparedAction: true
-    rollbackPolicyRef: docs_zh/pilots/customer-service-pilot.md
+    rollbackPolicyRef: docs_zh/governance/rollback-policies/customer-service-action-rollback.md
     dataClassesTouched:
       - financial_record
       - customer_record
     allowedFamilies:
       - enterprise-ops
+    mitigations:
+      - entitlement_check
+      - refund_policy_lookup
   - actionId: finalize_refund
     riskClass: R5
     sideEffect: external_write
     reversible: false
     requiresHITL: true
     requiresPreparedAction: true
-    rollbackPolicyRef: docs_zh/pilots/customer-service-pilot.md
+    rollbackPolicyRef: docs_zh/governance/rollback-policies/customer-service-action-rollback.md
     dataClassesTouched:
       - financial_record
       - customer_record
     allowedFamilies:
       - enterprise-ops
+    mitigations:
+      - finance_approval
+      - receipt_required

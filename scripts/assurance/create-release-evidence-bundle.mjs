@@ -17,9 +17,17 @@ const assuranceDir = join(repoRoot, "artifacts", "assurance");
 const INCLUDED = [
   "artifacts/release/rc-check-report.json",
   "artifacts/assurance/audit-coverage-scorecard.json",
+  "artifacts/assurance/eval-oracle-report.json",
+  "artifacts/assurance/redteam-report.json",
+  "artifacts/assurance/golden-replay-report.json",
   "artifacts/assurance/review-ledger.normalized.jsonl",
+  "artifacts/assurance/review-evidence-readiness-report.json",
   "artifacts/assurance/historical-promises.jsonl",
+  "artifacts/assurance/assumptions.jsonl",
   "artifacts/assurance/issues.deduped.jsonl",
+  "artifacts/assurance/test-to-issue-map.json",
+  "artifacts/assurance/historical-issue-regression-map.json",
+  "artifacts/assurance/completeness-coverage-matrix.json",
   "artifacts/assurance/seeded-defect-report.json",
   "artifacts/assurance/assurance-full-report.json",
 ];
@@ -30,6 +38,11 @@ function sha256(path) {
 
 function hmacSha256(key, data) {
   return createHmac("sha256", key).update(data).digest("hex");
+}
+
+function getReleaseSigningKey() {
+  const key = process.env.AA_RELEASE_SIGNING_KEY?.trim();
+  return key && key.length > 0 ? key : null;
 }
 
 function getCommitSha() {
@@ -61,6 +74,7 @@ function main() {
       sizeBytes: existsSync(abs) ? readFileSync(abs).length : 0,
     };
   });
+  const missingReports = reportFiles.filter((report) => !report.present).map((report) => report.path);
 
   const bundle = {
     schemaVersion: "1.0",
@@ -77,24 +91,33 @@ function main() {
   const bundleJson = JSON.stringify(bundle, null, 2);
   writeFileSync(join(outputDir, "evidence-bundle.json"), `${bundleJson}\n`);
 
-  // Sign with HMAC-SHA256 if AA_RELEASE_SIGNING_KEY is set; otherwise
-  // produce a placeholder sig so the artifact is well-formed.
-  const key = process.env.AA_RELEASE_SIGNING_KEY ?? "unkeyed-v1-rc-check-placeholder";
-  const sig = hmacSha256(key, bundleJson);
-  writeFileSync(join(outputDir, "evidence-bundle.sig"), `${sig}  evidence-bundle.json\n`);
+  const signingKey = getReleaseSigningKey();
+  if (signingKey != null) {
+    const sig = hmacSha256(signingKey, bundleJson);
+    writeFileSync(join(outputDir, "evidence-bundle.sig"), `${sig}  evidence-bundle.json\n`);
+  }
 
   const summary = {
     generatedAt: stamp,
+    status: signingKey != null && missingReports.length === 0 ? "pass" : "fail",
     bundlePath: "artifacts/release/evidence-bundle.json",
-    sigPath: "artifacts/release/evidence-bundle.sig",
+    sigPath: signingKey != null ? "artifacts/release/evidence-bundle.sig" : null,
     includedReportCount: reportFiles.filter((r) => r.present).length,
-    missingReportCount: reportFiles.filter((r) => !r.present).length,
+    missingReportCount: missingReports.length,
+    missingReports,
+    signingKeyConfigured: signingKey != null,
     commitSha: bundle.commitSha,
     branch: bundle.branch,
   };
   process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
-  if (summary.missingReportCount > 0) {
-    process.stderr.write(`warning: ${summary.missingReportCount} report(s) missing from bundle\n`);
+  if (missingReports.length > 0) {
+    process.stderr.write(`error: ${missingReports.length} required report(s) missing from bundle\n`);
+  }
+  if (signingKey == null) {
+    process.stderr.write("error: AA_RELEASE_SIGNING_KEY is required to sign the release evidence bundle\n");
+  }
+  if (summary.status !== "pass") {
+    process.exitCode = 1;
   }
 }
 

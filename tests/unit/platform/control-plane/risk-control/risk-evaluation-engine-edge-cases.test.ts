@@ -152,9 +152,12 @@ test("RiskEvaluationEngine priorFailureRate thresholds work correctly", () => {
 
 test("RiskEvaluationEngine fails closed when historical failure thresholds are missing", () => {
   const config = createTestConfig();
-  delete (config as Partial<RiskConfig>).historicalFailureRateThresholds;
-  delete (config as Partial<RiskConfig>).priorFailureRateThresholds;
-  const engine = new RiskEvaluationEngine({ config });
+  const { historicalFailureRateThresholds: _historicalFailureRateThresholds, priorFailureRateThresholds: _priorFailureRateThresholds, ...partialConfig } =
+    config as RiskConfig & {
+      historicalFailureRateThresholds?: RiskConfig["historicalFailureRateThresholds"];
+      priorFailureRateThresholds?: RiskConfig["priorFailureRateThresholds"];
+    };
+  const engine = new RiskEvaluationEngine({ config: partialConfig as RiskConfig });
 
   const result = engine.evaluate({
     taskId: "task-missing-thresholds",

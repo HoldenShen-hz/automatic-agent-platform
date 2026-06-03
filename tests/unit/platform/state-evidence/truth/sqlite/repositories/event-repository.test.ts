@@ -8,6 +8,34 @@ import { SqliteDatabase } from "../../../../../../../src/platform/five-plane-sta
 import { cleanupPath, createTempWorkspace } from "../../../../../../helpers/fs.js";
 import type { EventRecord, EventConsumerAckRecord } from "../../../../../../../src/platform/contracts/types/domain.js";
 
+function buildEventRecord(
+  overrides: Partial<EventRecord> &
+    Pick<EventRecord, "id" | "eventType" | "eventTier" | "payloadJson" | "createdAt">,
+): EventRecord {
+  return {
+    id: overrides.id,
+    taskId: overrides.taskId ?? null,
+    sessionId: overrides.sessionId ?? null,
+    executionId: overrides.executionId ?? null,
+    eventType: overrides.eventType,
+    eventTier: overrides.eventTier,
+    payloadJson: overrides.payloadJson,
+    traceId: overrides.traceId ?? null,
+    createdAt: overrides.createdAt,
+    schemaVersion: overrides.schemaVersion ?? "v1",
+    aggregateId: overrides.aggregateId ?? overrides.taskId ?? null,
+    runId: overrides.runId ?? null,
+    sequence: overrides.sequence ?? 1,
+    causationId: overrides.causationId ?? null,
+    correlationId: overrides.correlationId ?? null,
+    payloadHash: overrides.payloadHash ?? null,
+    idempotencyKey: overrides.idempotencyKey ?? null,
+    replayBehavior: overrides.replayBehavior ?? "replay_as_fact",
+    principal: overrides.principal ?? null,
+    evidenceRefs: overrides.evidenceRefs ?? [],
+  };
+}
+
 function createTestTask(
   taskRepo: TaskRepository,
   taskId: string,
@@ -49,17 +77,15 @@ test("EventRepository insertEvent and getEvent round-trip", () => {
     const now = "2026-04-27T10:00:00.000Z";
     createTestTask(taskRepo, "sqlite-event-task-1", now);
 
-    const event: EventRecord = {
+    const event: EventRecord = buildEventRecord({
       id: "sqlite-evt-001",
       taskId: "sqlite-event-task-1",
-      sessionId: null,
-      executionId: null,
       eventType: "task:status_changed",
       eventTier: "tier_2",
       payloadJson: '{"newStatus":"in_progress"}',
       traceId: "trace-evt-001",
       createdAt: now,
-    };
+    });
 
     repo.insertEvent(event);
     const result = repo.getEvent("sqlite-evt-001");
@@ -105,17 +131,15 @@ test("EventRepository listEventsForTask returns events for a task", () => {
     createTestTask(taskRepo, "sqlite-list-task-evts", now);
 
     for (let i = 1; i <= 3; i++) {
-      repo.insertEvent({
+      repo.insertEvent(buildEventRecord({
         id: `sqlite-list-evt-${i}`,
         taskId: "sqlite-list-task-evts",
-        sessionId: null,
-        executionId: null,
         eventType: "task:status_changed",
         eventTier: "tier_2",
         payloadJson: `{"index":${i}}`,
         traceId: `trace-list-${i}`,
         createdAt: now,
-      });
+      }));
     }
 
     const results = repo.listEventsForTask("sqlite-list-task-evts");
@@ -139,17 +163,15 @@ test("EventRepository listEventsForTask with limit returns specified number", ()
     createTestTask(taskRepo, "sqlite-limit-task-evts", now);
 
     for (let i = 1; i <= 5; i++) {
-      repo.insertEvent({
+      repo.insertEvent(buildEventRecord({
         id: `sqlite-limit-evt-${i}`,
         taskId: "sqlite-limit-task-evts",
-        sessionId: null,
-        executionId: null,
         eventType: "task:status_changed",
         eventTier: "tier_2",
         payloadJson: `{"index":${i}}`,
         traceId: `trace-limit-${i}`,
         createdAt: now,
-      });
+      }));
     }
 
     const results = repo.listEventsForTask("sqlite-limit-task-evts", 3);
@@ -172,39 +194,33 @@ test("EventRepository listEventsByType returns matching events", () => {
     const now = "2026-04-27T10:00:00.000Z";
     createTestTask(taskRepo, "sqlite-type-task", now);
 
-    repo.insertEvent({
+    repo.insertEvent(buildEventRecord({
       id: "sqlite-type-evt-1",
       taskId: "sqlite-type-task",
-      sessionId: null,
-      executionId: null,
       eventType: "task:created",
       eventTier: "tier_2",
       payloadJson: "{}",
       traceId: "trace-type-1",
       createdAt: now,
-    });
-    repo.insertEvent({
+    }));
+    repo.insertEvent(buildEventRecord({
       id: "sqlite-type-evt-2",
       taskId: "sqlite-type-task",
-      sessionId: null,
-      executionId: null,
       eventType: "task:status_changed",
       eventTier: "tier_2",
       payloadJson: "{}",
       traceId: "trace-type-2",
       createdAt: now,
-    });
-    repo.insertEvent({
+    }));
+    repo.insertEvent(buildEventRecord({
       id: "sqlite-type-evt-3",
       taskId: "sqlite-type-task",
-      sessionId: null,
-      executionId: null,
       eventType: "task:created",
       eventTier: "tier_2",
       payloadJson: "{}",
       traceId: "trace-type-3",
       createdAt: now,
-    });
+    }));
 
     const createdEvents = repo.listEventsByType("task:created");
     assert.equal(createdEvents.length, 2, "should return 2 task:created events");
@@ -229,17 +245,15 @@ test("EventRepository insertEventConsumerAck and getEventConsumerAck round-trip"
     const now = "2026-04-27T10:00:00.000Z";
     createTestTask(taskRepo, "sqlite-ack-task", now);
 
-    repo.insertEvent({
+    repo.insertEvent(buildEventRecord({
       id: "sqlite-ack-evt-001",
       taskId: "sqlite-ack-task",
-      sessionId: null,
-      executionId: null,
       eventType: "task:status_changed",
       eventTier: "tier_2",
       payloadJson: "{}",
       traceId: "trace-ack-001",
       createdAt: now,
-    });
+    }));
 
     const ack: EventConsumerAckRecord = {
       id: "sqlite-ack-001",
@@ -278,17 +292,15 @@ test("EventRepository markEventAck updates ack status to acked", () => {
     const now = "2026-04-27T10:00:00.000Z";
     createTestTask(taskRepo, "sqlite-mark-ack-task", now);
 
-    repo.insertEvent({
+    repo.insertEvent(buildEventRecord({
       id: "sqlite-mark-ack-evt",
       taskId: "sqlite-mark-ack-task",
-      sessionId: null,
-      executionId: null,
       eventType: "task:status_changed",
       eventTier: "tier_2",
       payloadJson: "{}",
       traceId: "trace-mark-ack",
       createdAt: now,
-    });
+    }));
 
     repo.insertEventConsumerAck({
       id: "sqlite-mark-ack-record",
@@ -324,17 +336,15 @@ test("EventRepository markEventAck with object form updates with provided values
     const now = "2026-04-27T10:00:00.000Z";
     createTestTask(taskRepo, "sqlite-obj-ack-task", now);
 
-    repo.insertEvent({
+    repo.insertEvent(buildEventRecord({
       id: "sqlite-obj-ack-evt",
       taskId: "sqlite-obj-ack-task",
-      sessionId: null,
-      executionId: null,
       eventType: "task:status_changed",
       eventTier: "tier_2",
       payloadJson: "{}",
       traceId: "trace-obj-ack",
       createdAt: now,
-    });
+    }));
 
     repo.insertEventConsumerAck({
       id: "sqlite-obj-ack-record",
@@ -411,17 +421,15 @@ test("EventRepository listPendingEventsForConsumer returns pending acks", () => 
     const now = "2026-04-27T10:00:00.000Z";
     createTestTask(taskRepo, "sqlite-pending-consumer-task", now);
 
-    repo.insertEvent({
+    repo.insertEvent(buildEventRecord({
       id: "sqlite-pending-evt-1",
       taskId: "sqlite-pending-consumer-task",
-      sessionId: null,
-      executionId: null,
       eventType: "task:status_changed",
       eventTier: "tier_2",
       payloadJson: "{}",
       traceId: "trace-pending-1",
       createdAt: now,
-    });
+    }));
 
     repo.insertEventConsumerAck({
       id: "sqlite-pending-ack-1",
@@ -457,17 +465,15 @@ test("EventRepository getRequiredConsumerIds returns consumer ids for event", ()
     createTestTask(taskRepo, "sqlite-required-cons-task", now);
 
     // insertEvent automatically creates consumer acks for required consumers
-    const event = repo.insertEvent({
+    const event = repo.insertEvent(buildEventRecord({
       id: "sqlite-required-cons-evt",
       taskId: "sqlite-required-cons-task",
-      sessionId: null,
-      executionId: null,
       eventType: "task:status_changed",
       eventTier: "tier_1",
       payloadJson: "{}",
       traceId: "trace-required-cons",
       createdAt: now,
-    });
+    }));
 
     const consumerIds = repo.getRequiredConsumerIds(event.id);
     assert.ok(consumerIds.length >= 1, "should have at least one required consumer");
@@ -489,17 +495,15 @@ test("EventRepository ackAllConsumersForEvent marks all pending/failed acks as a
     const now = "2026-04-27T10:00:00.000Z";
     createTestTask(taskRepo, "sqlite-ack-all-task", now);
 
-    const event = repo.insertEvent({
+    const event = repo.insertEvent(buildEventRecord({
       id: "sqlite-ack-all-evt",
       taskId: "sqlite-ack-all-task",
-      sessionId: null,
-      executionId: null,
       eventType: "task:status_changed",
       eventTier: "tier_2",
       payloadJson: "{}",
       traceId: "trace-ack-all",
       createdAt: now,
-    });
+    }));
 
     // Manually add multiple consumer acks
     repo.insertEventConsumerAck({

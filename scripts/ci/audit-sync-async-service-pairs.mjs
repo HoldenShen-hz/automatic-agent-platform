@@ -37,6 +37,10 @@ const pairs = [
 ];
 
 const checks = [];
+const trackedFiles = listFiles(["src", "tests"]).map((filePath) => ({
+  filePath,
+  content: readFileSync(filePath, "utf8"),
+}));
 
 function check(name, ok, detail) {
   checks.push({ name, ok, detail });
@@ -44,12 +48,11 @@ function check(name, ok, detail) {
 
 function hasTrackedReference(excludedPath, needles) {
   const requiredNeedles = Array.isArray(needles) ? needles : [needles];
-  for (const filePath of listFiles(["src", "tests"])) {
-    if (filePath === excludedPath) {
+  for (const file of trackedFiles) {
+    if (file.filePath === excludedPath) {
       continue;
     }
-    const content = readFileSync(filePath, "utf8");
-    if (requiredNeedles.some((needle) => content.includes(needle))) {
+    if (requiredNeedles.some((needle) => file.content.includes(needle))) {
       return true;
     }
   }

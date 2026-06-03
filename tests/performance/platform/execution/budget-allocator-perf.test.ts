@@ -19,14 +19,15 @@ import { rmSync } from "node:fs";
 
 import { BudgetAllocator, BudgetTier, type BudgetAllocatorContext } from "../../../../src/platform/five-plane-execution/budget-allocator.js";
 import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
-import type { BudgetLedger, BudgetReservation, BudgetResourceKind } from "../../../../src/platform/contracts/executable-contracts/schemas.js";
+import type { BudgetLedger, BudgetReservation, BudgetResourceKind } from "../../../../src/platform/contracts/executable-contracts/index.js";
 
 function createTestLedger(overrides?: Partial<BudgetLedger>): BudgetLedger {
   return {
     budgetLedgerId: overrides?.budgetLedgerId ?? newId("bled"),
     harnessRunId: overrides?.harnessRunId ?? newId("run"),
     tenantId: "tenant_test",
-    status: "active",
+    currency: "USD",
+    status: "open",
     reservedAmount: overrides?.reservedAmount ?? 0,
     settledAmount: overrides?.settledAmount ?? 0,
     releasedAmount: overrides?.releasedAmount ?? 0,
@@ -86,7 +87,7 @@ test("performance: budget reservation throughput >5000 ops/sec", (t) => {
       allocator.reserve({
         ledger: newLedger,
         amount: 100,
-        resourceKind: "compute" as BudgetResourceKind,
+        resourceKind: "compute" as const satisfies BudgetResourceKind,
         expiresAt: nowIso(),
         expectedVersion: newLedger.version,
         context,

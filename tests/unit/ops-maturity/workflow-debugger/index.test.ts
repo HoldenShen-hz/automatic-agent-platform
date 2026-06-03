@@ -19,6 +19,16 @@ import { isBreakpointHit } from "../../../../src/ops-maturity/workflow-debugger/
 import { compareWorkflowRuns } from "../../../../src/ops-maturity/workflow-debugger/run-comparator/index.js";
 import { renderWorkflowTimeline } from "../../../../src/ops-maturity/workflow-debugger/timeline-renderer/index.js";
 
+function getActiveDebugSessions(service: TimeTravelDebugService, tenantId = "local"): Map<string, unknown> {
+  return ((service as unknown as { sessionsByTenant?: Map<string, Map<string, unknown>> }).sessionsByTenant?.get(tenantId))
+    ?? new Map<string, unknown>();
+}
+
+function getTenantEventStore(service: TimeTravelDebugService, tenantId = "local"): Map<string, unknown> {
+  return ((service as unknown as { eventStoreByTenant?: Map<string, Map<string, unknown>> }).eventStoreByTenant?.get(tenantId))
+    ?? new Map<string, unknown>();
+}
+
 // =============================================================================
 // WorkflowDebuggerService - capture execution state
 // =============================================================================
@@ -324,7 +334,7 @@ test("TimeTravelDebugService setBreakpoints updates session breakpoints", () => 
 
   service.setBreakpoints(session.sessionId, ["node_1", "node_3"]);
 
-  const updatedSession = service.createSession.__bug ?? service["sessions"].get(session.sessionId);
+  const updatedSession = getActiveDebugSessions(service).get(session.sessionId);
   assert.ok(updatedSession);
   assert.deepEqual((updatedSession as any).breakpoints, ["node_1", "node_3"]);
 });
@@ -521,8 +531,7 @@ test("TimeTravelDebugService endSession sets endedAt timestamp", () => {
   assert.equal(session.endedAt, null);
   service.endSession(session.sessionId);
 
-  const sessions = (service as any).sessions as Map<string, any>;
-  const updatedSession = sessions.get(session.sessionId);
+  const updatedSession = getActiveDebugSessions(service).get(session.sessionId) as Record<string, unknown> | undefined;
   assert.ok(updatedSession.endedAt);
 });
 
@@ -930,13 +939,13 @@ test("TimeTravelDebugService evicts eventStore when last session referencing exe
   const session3 = service.createSession("task_3", "harness_2");
 
   // session1 is evicted but harness_1 eventStore is still accessible via session2
-  const eventStoreViaSession2 = (service as any).eventStore.get("harness_1");
+  const eventStoreViaSession2 = getTenantEventStore(service).get("harness_1");
   assert.ok(eventStoreViaSession2, "eventStore for harness_1 should still exist since session2 uses it");
 
   // Session 4 evicts session2 - now harness_1 eventStore should be cleaned up
   const session4 = service.createSession("task_4", "harness_3");
 
-  const eventStoreAfterEviction = (service as any).eventStore.get("harness_1");
+  const eventStoreAfterEviction = getTenantEventStore(service).get("harness_1");
   assert.equal(eventStoreAfterEviction, undefined, "eventStore for harness_1 should be evicted when no sessions reference it");
 });
 
@@ -956,7 +965,7 @@ test("TimeTravelDebugService does not leak eventStore references after maxSessio
   service.loadEventStore("exec_2", events);
   service.loadEventStore("exec_3", events);
 
-  const eventStoreRef = (service as any).eventStore as Map<string, unknown>;
+  const eventStoreRef = getTenantEventStore(service);
   assert.equal(eventStoreRef.size, 3, "All three eventStores should exist before eviction");
 
   // Trigger eviction by creating a 4th session

@@ -10,9 +10,10 @@ import {
   refineSlotResolution,
   type SlotClarificationState,
 } from "../../../../../src/interaction/nl-gateway/slot-resolver/index.js";
+import type { ExtractedEntity } from "../../../../../src/interaction/nl-gateway/index.js";
 
-function createEntity(entityType: string, value: string, normalized = value): { entityType: string; value: string; normalized: string } {
-  return { entityType, value, normalized };
+function createEntity(entityType: string, value: string, normalized = value): ExtractedEntity {
+  return { entityType, value, normalized, sourceSpan: [0, value.length] };
 }
 
 test("resolveRequiredSlots returns empty missing when all entities present", () => {
@@ -58,7 +59,7 @@ test("resolveRequiredSlots handles empty required list", () => {
   assert.deepEqual(result.resolved, { date: "2024-01-01" });
 });
 
-test("resolveRequiredSlots only keeps first entity per type", () => {
+test("resolveRequiredSlots treats duplicate entity values as ambiguous", () => {
   const entities = [
     createEntity("date", "2024-01-01"),
     createEntity("date", "2024-01-02"),
@@ -67,8 +68,8 @@ test("resolveRequiredSlots only keeps first entity per type", () => {
 
   const result = resolveRequiredSlots(entities, required);
 
-  assert.equal(result.missing.length, 0);
-  assert.equal(result.resolved["date"], "2024-01-01");
+  assert.deepEqual(result.missing, ["date"]);
+  assert.equal("date" in result.resolved, false);
 });
 
 test("resolveRequiredSlots returns missing slots without deduplication when required has duplicates", () => {
@@ -157,7 +158,9 @@ test("buildSlotClarificationState uses default prompts for unknown slots", () =>
 
   const result = buildSlotClarificationState(entities, required);
 
-  assert.ok(result.questions[0].includes("unknownSlot"));
+  const firstQuestion = result.questions[0];
+  assert.ok(firstQuestion);
+  assert.ok(firstQuestion.includes("unknownSlot"));
 });
 
 test("refineSlotResolution returns same state when already complete", () => {
@@ -248,7 +251,9 @@ test("refineSlotResolution escalates when max rounds exceeded", () => {
   const result = refineSlotResolution(currentState, [], options);
 
   assert.equal(result.escalationRequired, true);
-  assert.ok(result.questions[0].includes("已达到最大澄清轮次"));
+  const firstQuestion = result.questions[0];
+  assert.ok(firstQuestion);
+  assert.ok(firstQuestion.includes("已达到最大澄清轮次"));
   assert.equal(result.isComplete, false);
 });
 
@@ -271,7 +276,9 @@ test("refineSlotResolution uses custom prompts in refinement", () => {
 
   const result = refineSlotResolution(currentState, newEntities, options);
 
-  assert.ok(result.questions[0].includes("请指定目标环境："));
+  const firstQuestion = result.questions[0];
+  assert.ok(firstQuestion);
+  assert.ok(firstQuestion.includes("请指定目标环境："));
 });
 
 test("refineSlotResolution deduplicates missing slots after refinement", () => {

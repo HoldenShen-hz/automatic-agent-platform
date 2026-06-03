@@ -1,0 +1,7 @@
+{
+  "caseId": "swe-058",
+  "issueRef": "ISSUE-1058",
+  "repository": "coding-pilot",
+  "expectation": "test_report",
+  "severity": "medium"
+}

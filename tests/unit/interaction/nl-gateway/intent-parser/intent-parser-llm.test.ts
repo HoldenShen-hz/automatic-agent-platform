@@ -67,6 +67,7 @@ test("LlmIntentParser.parseWithLlm returns reasoning indicating regex fallback",
 
   const result = await parser.parseWithLlm("创建一个新任务");
 
+  assert.ok(result.reasoning);
   assert.ok(result.reasoning.includes("Regex fallback"));
 });
 
@@ -290,5 +291,6 @@ test("LlmIntentParser uses reasoning from model when available", async () => {
 
   const result = await parser.parseWithLlm("update the config");
 
+  assert.ok(result.reasoning);
   assert.ok(result.reasoning.includes("Detected update keywords"));
 });

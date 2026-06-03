@@ -274,7 +274,7 @@ test("createHarnessRunsRoutes - rejects invalid cursor with 400", async () => {
 
   await assert.rejects(
     async () => callRoute(routes, ctx),
-    (err: unknown) => err instanceof Error && "code" in (err as Record<string, unknown>) && (err as { code?: string }).code === "api.invalid_cursor",
+    (err: unknown) => err instanceof Error && "code" in (err as unknown as Record<string, unknown>) && (err as { code?: string }).code === "api.invalid_cursor",
   );
 });
 

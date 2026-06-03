@@ -252,8 +252,10 @@ test("ErasureRequestService.completeRequest serializes evidence refs", () => {
   const completed = service.completeRequest(request.erasureId, evidenceRefs);
 
   assert.equal(completed.evidenceRefs.length, 1);
-  const parsedRef = JSON.parse(completed.evidenceRefs[0] as string);
-  assert.equal(parsedRef.evidenceType, "dek_destruction");
+  assert.equal(
+    completed.evidenceRefs[0],
+    "dek_destruction:key-001:2026-04-21T00:00:00.000Z",
+  );
 });
 
 test("ErasureRequestService.completeRequest emits erasure:completed event", () => {
@@ -973,20 +975,18 @@ test("DataResidencyService.getResidencyRule contains correct metadata for APAC",
   assert.equal(parsed.regulation, "PDPA");
 });
 
-test("DataResidencyService.checkResidency creates violation for EU with crossBorderTransfersAllowed=false", () => {
+test("DataResidencyService.checkResidency creates violation for EU personal data under localization rules", () => {
   resetMocks();
   const mockStore = createMockStore();
   const mockDb = createMockDb();
   const service = new DataResidencyService(mockDb as any, mockStore as any);
 
-  // EU has crossBorderTransfersAllowed=false
   const result = service.checkResidency({
     tenantId: "tenant-eu-violation",
-    category: "business",
+    category: "personal",
     currentRegion: "eu-west-1",
   });
 
-  // EU jurisdiction triggers cross-border transfer violation
   assert.equal(result.isCompliant, false);
   assert.ok(result.violations.length > 0);
 });
@@ -1104,10 +1104,10 @@ test("DataResidencyService.listResidencyViolations excludes resolved by default"
   const mockDb = createMockDb();
   const service = new DataResidencyService(mockDb as any, mockStore as any);
 
-  // Create violation
+  // Create a real violation under current localization rules.
   service.checkResidency({
     tenantId: "tenant-filter",
-    category: "business",
+    category: "personal",
     currentRegion: "eu-west-1",
   });
 
@@ -1128,10 +1128,10 @@ test("DataResidencyService.listResidencyViolations includes resolved when reques
   const mockDb = createMockDb();
   const service = new DataResidencyService(mockDb as any, mockStore as any);
 
-  // Create violation
+  // Create a real violation under current localization rules.
   service.checkResidency({
     tenantId: "tenant-include-resolved",
-    category: "business",
+    category: "personal",
     currentRegion: "eu-west-1",
   });
 
@@ -1275,7 +1275,7 @@ test("DataResidencyService resolveViolation updates resolvedAt and resolutionNot
 
   service.checkResidency({
     tenantId: "tenant-resolve",
-    category: "business",
+    category: "personal",
     currentRegion: "eu-west-1",
   });
 

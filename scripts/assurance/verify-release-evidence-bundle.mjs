@@ -7,7 +7,7 @@
  *
  * Per docs_zh/contracts/assurance-pipeline-contract.md §5.
  */
-import { createHash, createHmac } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
@@ -17,6 +17,11 @@ const sigPath = join(repoRoot, "artifacts", "release", "evidence-bundle.sig");
 
 function hmacSha256(key, data) {
   return createHmac("sha256", key).update(data).digest("hex");
+}
+
+function getReleaseSigningKey() {
+  const key = process.env.AA_RELEASE_SIGNING_KEY?.trim();
+  return key && key.length > 0 ? key : null;
 }
 
 function main() {
@@ -33,9 +38,16 @@ function main() {
   const bundle = readFileSync(bundlePath, "utf8").replace(/\n$/, "");
   const sigLine = readFileSync(sigPath, "utf8").trim();
   const expectedSig = sigLine.split(/\s+/)[0];
-  const key = process.env.AA_RELEASE_SIGNING_KEY ?? "unkeyed-v1-rc-check-placeholder";
+  const key = getReleaseSigningKey();
+  if (key == null) {
+    process.stderr.write("error: AA_RELEASE_SIGNING_KEY is required to verify the release evidence bundle\n");
+    process.exitCode = 1;
+    return;
+  }
   const computed = hmacSha256(key, bundle);
-  const match = computed === expectedSig;
+  const match =
+    expectedSig.length === computed.length &&
+    timingSafeEqual(Buffer.from(expectedSig, "utf8"), Buffer.from(computed, "utf8"));
 
   // Cross-check report sha256s
   const parsed = JSON.parse(bundle);
@@ -52,7 +64,13 @@ function main() {
     includedReports: reportCheck.length,
     reportIntegrityFailures: reportCheck.filter((r) => r.present && !r.shaMatches).map((r) => r.path),
     missingReports: reportCheck.filter((r) => !r.present).map((r) => r.path),
-    status: match && reportCheck.every((r) => !r.present || r.shaMatches) ? "pass" : "fail",
+    signingKeyConfigured: true,
+    status:
+      match &&
+      reportCheck.length > 0 &&
+      reportCheck.every((r) => r.present && r.shaMatches)
+        ? "pass"
+        : "fail",
   };
   process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
   if (summary.status !== "pass") {

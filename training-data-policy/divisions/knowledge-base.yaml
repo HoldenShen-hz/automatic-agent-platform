@@ -2,6 +2,10 @@ $schema: training-data-policy/schemas/division-policy.schema.json
 divisionId: knowledge-base
 policyMode: restricted
 policyModeRef: training-data-policy/policy-modes.md
+restrictedClasses:
+  - internal_restricted
+heldoutTrainingPolicy: no_train
+requiresModelDataTombstone: true
 allowedSources:
   - public_docs
   - redacted_internal_docs

@@ -22,7 +22,7 @@ import {
 
 function createMockSnapshot(): TaskSnapshot {
   return {
-    task: { taskId: "task_123" } as TaskSnapshot["task"],
+    task: { taskId: "task_123" } as unknown as TaskSnapshot["task"],
     workflow: null,
     execution: null,
     session: null,
@@ -64,14 +64,13 @@ function createMockBackpressureSnapshot(): AdmissionBackpressureSnapshot {
     status: "ok",
     degradationMode: "none",
     queueGovernance: {
-      delayedCount: 0,
-      rateLimitedCount: 0,
       backlogSize: 0,
       dispatchableBacklogSize: 0,
       claimedBacklogSize: 0,
       oldestWaitSeconds: 0,
-      nonPriorityBacklogSize: 0,
-      priorityBacklogSize: 0,
+      oldestClaimAgeSeconds: 0,
+      queueNames: [],
+      starvationDetected: false,
     },
     findings: [],
   };

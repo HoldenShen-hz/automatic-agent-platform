@@ -279,6 +279,14 @@ export const defaultMockApiShape: MockApiShape = {
         leadershipThresholds: [
           { label: "Internal SWE-style tasks", requirement: ">=200" },
         ],
+        familyPolicy: {
+          claimReviewOwner: "engineering-platform-owner",
+          claimExpiryDays: 90,
+          revokeOnExpiry: true,
+          noGoBoundaryRef: "config/policy/no-go-actions.yaml#engineering",
+          leadershipTypes: ["capability_leadership", "evidence_leadership", "safety_leadership"],
+          scoreWeights: { capability: 30, safety: 25, evidence: 20, operation: 15, flywheel: 10 },
+        },
       },
       {
         familyId: "regulated",
@@ -303,6 +311,14 @@ export const defaultMockApiShape: MockApiShape = {
         leadershipThresholds: [
           { label: "Audit export completeness", requirement: ">=99.9%" },
         ],
+        familyPolicy: {
+          claimReviewOwner: "regulated-governance-owner",
+          claimExpiryDays: 30,
+          revokeOnExpiry: true,
+          noGoBoundaryRef: "config/policy/no-go-actions.yaml#regulated",
+          leadershipTypes: ["safety_governance_leadership", "audit_leadership", "hitl_leadership"],
+          scoreWeights: { capability: 10, safety: 35, evidence: 25, operation: 15, flywheel: 15 },
+        },
       },
     ],
     claims: [
@@ -315,11 +331,15 @@ export const defaultMockApiShape: MockApiShape = {
         claimText: "coding division 在内部 issue-to-patch pilot 中达到局部领先。",
         allowedSurfaces: ["docs", "ui"],
         evidenceRefs: ["eval://divisions/coding/swe-style/report-2026-05-01"],
+        owner: "engineering-platform-owner",
+        requestedBy: "release-owner",
+        submittedAt: "2026-05-20T00:00:00.000Z",
         reviewedBy: ["engineering-platform-owner"],
         expiresAt: "2026-08-01T00:00:00.000Z",
         status: "approved",
         effectiveStatus: "approved",
         effectiveStatusReasonCode: null,
+        freshnessStatus: "fresh",
         revokedBy: null,
         revokedAt: null,
         replacementRequired: false,
@@ -328,17 +348,20 @@ export const defaultMockApiShape: MockApiShape = {
     allowlist: [
       {
         filePath: "docs_zh/reference/automatic_agent_platform_v3_2_final_release.md",
-        matchedText: "industry-leading",
+        matchedText: "governance-claim-definition",
+        claimLevel: "local_leader",
+        surface: "docs",
         reason: "governance_rule_definition",
         owner: "platform-governance-owner",
         expiresAt: "2027-12-31T00:00:00.000Z",
         expired: false,
+        replacementSuggestion: null,
       },
     ],
     scannerHits: [
       {
         filePath: "docs_zh/reference/automatic_agent_platform_v3_2_final_release.md",
-        matchedText: "industry-leading",
+        matchedText: "governance-claim-definition",
         lineNumber: 8,
         excerpt: "claim wording is allowlisted only for governance definition",
         surface: "docs",
@@ -356,6 +379,7 @@ export const defaultMockApiShape: MockApiShape = {
         scenarioId: "issue-to-patch",
         requestedClaimLevel: "local_leader",
         requestedSurfaces: ["docs", "ui"],
+        evidenceRefs: ["eval://divisions/coding/swe-style/report-2026-05-01"],
         requestedBy: "release-owner",
         rationale: "evidence package is complete",
         requestedAt: "2026-05-30T16:00:00.000Z",
@@ -375,6 +399,7 @@ export const defaultMockApiShape: MockApiShape = {
         scopes: ["finance", "commerce", "regulated"],
         enforcementSurfaces: ["ToolRisk", "ReleaseGate", "ClaimScanner"],
         blockModes: ["autonomous_execution"],
+        sources: ["issue", "pr", "comment", "log", "external_input"],
       },
     ],
     summary: {
@@ -386,6 +411,7 @@ export const defaultMockApiShape: MockApiShape = {
       expiredAllowlistCount: 0,
       revokedClaimCount: 0,
       expiredClaimCount: 0,
+      upcomingExpiryCount: 0,
     },
   },
 };

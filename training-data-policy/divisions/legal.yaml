@@ -1,0 +1,11 @@
+$schema: training-data-policy/schemas/division-policy.schema.json
+divisionId: legal
+policyMode: no_train
+policyModeRef: training-data-policy/policy-modes.md
+heldoutTrainingPolicy: no_train
+requiresModelDataTombstone: true
+allowedSources: []
+forbiddenSources:
+  - regulated_case_material
+  - client_privileged_data
+  - production_legal_output

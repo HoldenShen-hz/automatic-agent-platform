@@ -6,31 +6,38 @@ actions:
     reversible: true
     requiresHITL: false
     requiresPreparedAction: false
-    rollbackPolicyRef: docs_zh/pilots/knowledge-pilot.md
+    rollbackPolicyRef: docs_zh/governance/rollback-policies/knowledge-draft-rollback.md
     dataClassesTouched:
       - citation
       - public_source
     allowedFamilies:
       - knowledge-research
+    mitigations:
+      - source_allowlist
   - actionId: draft_conclusion
     riskClass: R1
     sideEffect: none
     reversible: true
     requiresHITL: false
     requiresPreparedAction: false
-    rollbackPolicyRef: docs_zh/pilots/knowledge-pilot.md
+    rollbackPolicyRef: docs_zh/governance/rollback-policies/knowledge-draft-rollback.md
     dataClassesTouched:
       - citation
     allowedFamilies:
       - knowledge-research
+    mitigations:
+      - citation_required
+      - freshness_gate
   - actionId: draft_experiment
     riskClass: R1
     sideEffect: none
     reversible: true
     requiresHITL: false
     requiresPreparedAction: false
-    rollbackPolicyRef: docs_zh/pilots/knowledge-pilot.md
+    rollbackPolicyRef: docs_zh/governance/rollback-policies/knowledge-draft-rollback.md
     dataClassesTouched:
       - citation
     allowedFamilies:
       - knowledge-research
+    mitigations:
+      - evidence_traceability

@@ -8,6 +8,8 @@ import { SqliteDatabase } from "../../../../src/platform/five-plane-state-eviden
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 function createTestBus(): { bus: DurableEventBus; db: SqliteDatabase; store: AuthoritativeTaskStore; workspace: string } {
   const workspace = createTempWorkspace("event-bus-test-");
   const dbPath = `${workspace}/test.db`;

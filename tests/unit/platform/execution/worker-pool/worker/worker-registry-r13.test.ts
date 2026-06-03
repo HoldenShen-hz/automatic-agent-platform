@@ -65,6 +65,7 @@ test("R13-18: Scale up signal emitted when load >= maxConcurrency - 1 [worker-re
     workerId: string,
     currentLoad: number,
     targetLoad: number,
+    _saturation?: number,
   ): void {
     emittedSignals.push({ signalType, workerId, reason: "high_saturation", currentLoad, targetLoad });
   }
@@ -94,6 +95,7 @@ test("R13-18: Scale down signal emitted when saturation <= 0.3 and load <= 1 [wo
     workerId: string,
     currentLoad: number,
     targetLoad: number,
+    _saturation?: number,
   ): void {
     emittedSignals.push({ signalType, workerId, reason: "low_utilization", currentLoad, targetLoad });
   }
@@ -123,6 +125,7 @@ test("R13-18: No signal emitted when utilization is moderate [worker-registry-r1
     workerId: string,
     currentLoad: number,
     targetLoad: number,
+    _saturation?: number,
   ): void {
     emittedSignals.push({ signalType, workerId, reason: "high_saturation", currentLoad, targetLoad });
   }

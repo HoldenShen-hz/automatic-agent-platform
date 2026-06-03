@@ -6,8 +6,19 @@ families:
     readinessStatus: local_leadership_ready
     targetClaimLevel: local_leader
     owner: engineering-platform-owner
+    claimReviewOwner: engineering-platform-owner
+    claimExpiryDays: 90
+    revokeOnExpiry: true
+    noGoBoundaryRef: config/policy/no-go-actions.yaml#engineering
+    leadershipTypes: [capability_leadership, evidence_leadership, safety_leadership]
+    scoreWeights:
+      capability: 30
+      safety: 25
+      evidence: 20
+      operation: 15
+      flywheel: 10
     canonicalFamilies: [engineering, data, operations, quality]
-    canonicalDivisions: [coding, data-engineering, devops, engineering-ops, quality-assurance]
+    canonicalDivisions: [coding]
     benchmarkRefs: [swe-bench-verified, bfcl-v4, aidev-github]
     minimumEvidenceRef: engineering-core
     notes: "最快形成 issue-to-patch、CI failure、patch correctness 闭环。"
@@ -16,8 +27,19 @@ families:
     readinessStatus: local_leadership_ready
     targetClaimLevel: local_leader
     owner: knowledge-governance-owner
+    claimReviewOwner: knowledge-governance-owner
+    claimExpiryDays: 90
+    revokeOnExpiry: true
+    noGoBoundaryRef: config/policy/no-go-actions.yaml#knowledge-research
+    leadershipTypes: [evidence_leadership, flywheel_leadership, decision_loop_leadership]
+    scoreWeights:
+      capability: 15
+      safety: 15
+      evidence: 35
+      operation: 15
+      flywheel: 20
     canonicalFamilies: [knowledge, research, analytics]
-    canonicalDivisions: [knowledge-base, academic-research, industry-research, research, analytics]
+    canonicalDivisions: [knowledge-base]
     benchmarkRefs: [rag-citation-eval, otel-genai-spans, source-grounding]
     minimumEvidenceRef: knowledge-core
     notes: "适合先做 evidence、citation、experiment trace 领先。"
@@ -26,8 +48,19 @@ families:
     readinessStatus: pilot_ready
     targetClaimLevel: pilot_ready
     owner: enterprise-ops-owner
+    claimReviewOwner: enterprise-ops-owner
+    claimExpiryDays: 60
+    revokeOnExpiry: true
+    noGoBoundaryRef: config/policy/no-go-actions.yaml#enterprise-ops
+    leadershipTypes: [workflow_leadership, sla_leadership, policy_adherence_leadership]
+    scoreWeights:
+      capability: 25
+      safety: 25
+      evidence: 15
+      operation: 25
+      flywheel: 10
     canonicalFamilies: [customer-ops, operations, delivery, people]
-    canonicalDivisions: [customer-service, support, user-operations, project-management, operations]
+    canonicalDivisions: [customer-service]
     benchmarkRefs: [tau-bench, enterprise-workflow-eval]
     minimumEvidenceRef: enterprise-ops-core
     notes: "只对 customer-service / support 局部场景给出 readiness。"
@@ -36,6 +69,17 @@ families:
     readinessStatus: governance_ready
     targetClaimLevel: designed
     owner: growth-content-owner
+    claimReviewOwner: growth-content-owner
+    claimExpiryDays: 45
+    revokeOnExpiry: true
+    noGoBoundaryRef: config/policy/no-go-actions.yaml#gtm-content
+    leadershipTypes: [controlled_content_leadership, brand_governance_leadership, roi_attribution_leadership]
+    scoreWeights:
+      capability: 20
+      safety: 30
+      evidence: 20
+      operation: 20
+      flywheel: 10
     canonicalFamilies: [growth, content, commerce]
     canonicalDivisions: [advertising, content, ecommerce]
     benchmarkRefs: [tau-bench-retail, brand-safety-eval, copyright-eval]
@@ -46,6 +90,17 @@ families:
     readinessStatus: governance_ready
     targetClaimLevel: designed
     owner: creative-platform-owner
+    claimReviewOwner: creative-platform-owner
+    claimExpiryDays: 45
+    revokeOnExpiry: true
+    noGoBoundaryRef: config/policy/no-go-actions.yaml#creative-production
+    leadershipTypes: [multimodal_evidence_leadership, asset_governance_leadership]
+    scoreWeights:
+      capability: 20
+      safety: 20
+      evidence: 30
+      operation: 15
+      flywheel: 15
     canonicalFamilies: [product, media, content]
     canonicalDivisions: [design, live-streaming, content]
     benchmarkRefs: [osworld, webarena, visualwebarena]
@@ -56,6 +111,17 @@ families:
     readinessStatus: governance_ready
     targetClaimLevel: designed
     owner: regulated-governance-owner
+    claimReviewOwner: regulated-governance-owner
+    claimExpiryDays: 30
+    revokeOnExpiry: true
+    noGoBoundaryRef: config/policy/no-go-actions.yaml#regulated
+    leadershipTypes: [safety_governance_leadership, audit_leadership, hitl_leadership]
+    scoreWeights:
+      capability: 10
+      safety: 35
+      evidence: 25
+      operation: 15
+      flywheel: 15
     canonicalFamilies: [legal, finance, healthcare, security]
     canonicalDivisions: [legal, finance-accounting, financial-services, healthcare, security]
     benchmarkRefs: [nist-genai-profile, owasp-ai-agent, csa-agentic-rmf]

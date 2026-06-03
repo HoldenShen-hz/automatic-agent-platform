@@ -33,10 +33,12 @@ test("collectExplanationEvidence creates bundle with IDs and grouped categories"
   ];
 
   const bundle = collectExplanationEvidence(evidence);
+  const logEvidence = bundle.groupedByCategory["log"];
+  const metricEvidence = bundle.groupedByCategory["metric"];
 
   assert.deepEqual(bundle.evidenceIds, ["e1", "e2", "e3"]);
-  assert.deepEqual(bundle.groupedByCategory["log"], [evidence[0], evidence[2]]);
-  assert.deepEqual(bundle.groupedByCategory["metric"], [evidence[1]]);
+  assert.deepEqual(logEvidence, [evidence[0], evidence[2]]);
+  assert.deepEqual(metricEvidence, [evidence[1]]);
 });
 
 test("collectExplanationEvidence handles empty array", () => {
@@ -57,8 +59,8 @@ test("collectExplanationEvidence groups by category correctly", () => {
 
   const bundle = collectExplanationEvidence(evidence);
 
-  assert.equal(bundle.groupedByCategory["alpha"].length, 2);
-  assert.equal(bundle.groupedByCategory["beta"].length, 3);
+  assert.equal(bundle.groupedByCategory["alpha"]?.length, 2);
+  assert.equal(bundle.groupedByCategory["beta"]?.length, 3);
   assert.equal(bundle.evidenceIds.length, 5);
 });
 
@@ -69,10 +71,11 @@ test("collectExplanationEvidence preserves evidence with optional fields", () =>
   ];
 
   const bundle = collectExplanationEvidence(evidence);
+  const logEntries = bundle.groupedByCategory["log"];
 
-  assert.equal(bundle.groupedByCategory["log"].length, 2);
-  assert.equal(bundle.groupedByCategory["log"][0].excerpt, "Error occurred");
-  assert.equal(bundle.groupedByCategory["log"][1].sourceRef, undefined);
+  assert.equal(logEntries?.length, 2);
+  assert.equal(logEntries?.[0]?.excerpt, "Error occurred");
+  assert.equal(logEntries?.[1]?.sourceRef, undefined);
 });
 
 test("ExplanationEvidenceBundle has correct structure", () => {

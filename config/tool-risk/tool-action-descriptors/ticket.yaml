@@ -6,19 +6,24 @@ actions:
     reversible: true
     requiresHITL: false
     requiresPreparedAction: false
-    rollbackPolicyRef: docs_zh/pilots/customer-service-pilot.md
+    rollbackPolicyRef: docs_zh/governance/rollback-policies/customer-service-action-rollback.md
     dataClassesTouched:
       - customer_record
     allowedFamilies:
       - enterprise-ops
+    mitigations:
+      - policy_lookup
   - actionId: assign_ticket
     riskClass: R3
     sideEffect: external_write
     reversible: true
     requiresHITL: true
     requiresPreparedAction: true
-    rollbackPolicyRef: docs_zh/pilots/customer-service-pilot.md
+    rollbackPolicyRef: docs_zh/governance/rollback-policies/customer-service-action-rollback.md
     dataClassesTouched:
       - customer_record
     allowedFamilies:
       - enterprise-ops
+    mitigations:
+      - escalation_policy_check
+      - assignee_verification

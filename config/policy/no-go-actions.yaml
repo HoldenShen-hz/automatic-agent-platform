@@ -7,18 +7,91 @@ globalActions:
     scopes: [finance, commerce, regulated]
     enforcementSurfaces: [ToolRisk, ReleaseGate, ClaimScanner]
     blockModes: [autonomous_execution, prepared_action_without_hitl]
+    sources: [issue, pr, comment, log, external_input]
+  - id: no-live-trading
+    description: "禁止自动交易、下单、投资或量化策略实盘执行。"
+    riskClass: R5
+    scopes: [finance, commerce, regulated]
+    enforcementSurfaces: [ToolRisk, ReleaseGate, ClaimScanner]
+    blockModes: [autonomous_execution, autonomous_external_write]
+    sources: [issue, pr, comment, log, external_input]
+  - id: no-destructive-production-deletion
+    description: "禁止自动删除生产数据、清空数据库、销毁备份或自动回滚生产系统。"
+    riskClass: R5
+    scopes: [engineering, operations, regulated]
+    enforcementSurfaces: [ToolRisk, ReleaseGate]
+    blockModes: [destructive_production_write, autonomous_external_write]
+    sources: [issue, pr, comment, log, external_input]
+  - id: no-automatic-permission-revocation
+    description: "禁止自动撤销用户、员工或租户权限。"
+    riskClass: R5
+    scopes: [security, enterprise-ops, regulated]
+    enforcementSurfaces: [ToolRisk, ReleaseGate]
+    blockModes: [identity_write, autonomous_external_write]
+    sources: [issue, pr, comment, log, external_input]
+  - id: no-external-high-impact-notice
+    description: "禁止自动发送对外法律、财务、医疗或 HR 高影响通知。"
+    riskClass: R5
+    scopes: [legal, finance, healthcare, hr, regulated]
+    enforcementSurfaces: [ToolRisk, ReleaseGate, ClaimScanner]
+    blockModes: [autonomous_final_decision, external_publish]
+    sources: [issue, pr, comment, log, external_input]
   - id: no-untrusted-command-execution
     description: "禁止把 untrusted issue / PR / comment / log 内容直接转成 shell 或 workflow 执行。"
     riskClass: R4
     scopes: [engineering, operations, regulated]
     enforcementSurfaces: [ToolRisk, ReleaseGate]
     blockModes: [shell_execution, workflow_write, external_request]
+    sources: [issue, pr, comment, log]
+  - id: no-untrusted-external-model-export
+    description: "禁止自动把 customer、employee、regulated 数据导出到训练或外部模型。"
+    riskClass: R5
+    scopes: [knowledge, enterprise-ops, regulated]
+    enforcementSurfaces: [ToolRisk, ReleaseGate, ClaimScanner]
+    blockModes: [training_export, unrestricted_model_routing]
+    sources: [issue, pr, comment, log, external_input]
+  - id: no-restricted-data-external-model
+    description: "禁止自动把 restricted data 发送给外部模型或外部代理。"
+    riskClass: R5
+    scopes: [knowledge, regulated, enterprise-ops]
+    enforcementSurfaces: [ToolRisk, ReleaseGate, ClaimScanner]
+    blockModes: [unrestricted_model_routing, external_request]
+    sources: [issue, pr, comment, log, external_input]
+  - id: no-hitl-bypass-or-capability-expansion
+    description: "禁止自动绕过 HITL、提前授权 future actions 或扩大 capability scope。"
+    riskClass: R5
+    scopes: [engineering, enterprise-ops, regulated]
+    enforcementSurfaces: [ToolRisk, ReleaseGate]
+    blockModes: [hitl_bypass, capability_scope_expansion]
+    sources: [issue, pr, comment, log, external_input]
   - id: no-final-high-impact-advice
     description: "禁止自动输出最终医疗、法律、金融高影响结论。"
     riskClass: R5
     scopes: [legal, healthcare, finance, regulated]
     enforcementSurfaces: [ToolRisk, ReleaseGate, ClaimScanner]
     blockModes: [autonomous_final_decision, external_publish]
+    sources: [issue, pr, comment, log, external_input]
+  - id: no-blanket-no-go-exception
+    description: "禁止通过 blanket exception 永久放开 no-go 限制。"
+    riskClass: R5
+    scopes: [engineering, enterprise-ops, regulated]
+    enforcementSurfaces: [ToolRisk, ReleaseGate]
+    blockModes: [blanket_exception]
+    sources: [issue, pr, comment, log, external_input]
+  - id: no-untrusted-shell-through-prepared-action
+    description: "禁止用 prepared action 为 untrusted shell 输入做事后背书。"
+    riskClass: R4
+    scopes: [engineering, enterprise-ops, regulated]
+    enforcementSurfaces: [ToolRisk, ReleaseGate]
+    blockModes: [prepared_action_without_hitl, shell_execution]
+    sources: [issue, pr, comment, log]
+  - id: no-autonomous-public-claim-publication
+    description: "禁止自动发布未经 claim gate 审核的 production-ready 或 industry-leading 对外表述。"
+    riskClass: R4
+    scopes: [marketing, sales, release, regulated]
+    enforcementSurfaces: [ClaimScanner, ReleaseGate]
+    blockModes: [external_publish, sales_material_publish]
+    sources: [issue, pr, comment, log, external_input]
 familyActions:
   - familyId: regulated
     actions:
@@ -28,6 +101,14 @@ familyActions:
         scopes: [legal, healthcare, financial-services, security]
         enforcementSurfaces: [ToolRisk, ReleaseGate]
         blockModes: [autonomous_final_decision, autonomous_external_write, unrestricted_model_routing]
+        sources: [issue, pr, comment, log, external_input]
+      - id: regulated-mandatory-hitl
+        description: "Regulated family 的高影响动作必须经过具名人工审批。"
+        riskClass: R5
+        scopes: [legal, healthcare, financial-services, security]
+        enforcementSurfaces: [ToolRisk, ReleaseGate]
+        blockModes: [prepared_action_without_hitl, hitl_bypass]
+        sources: [issue, pr, comment, log, external_input]
   - familyId: gtm-content
     actions:
       - id: no-unreviewed-public-publishing
@@ -36,6 +117,43 @@ familyActions:
         scopes: [advertising, content, ecommerce]
         enforcementSurfaces: [ToolRisk, ReleaseGate]
         blockModes: [public_publish, crm_critical_write]
+        sources: [issue, pr, comment, log, external_input]
+  - familyId: engineering
+    actions:
+      - id: engineering-no-untrusted-shell
+        description: "Engineering family 不允许把 untrusted issue/PR/comment/log 直接转成 shell、CI 或 repo write。"
+        riskClass: R4
+        scopes: [coding, devops, engineering-ops]
+        enforcementSurfaces: [ToolRisk, ReleaseGate]
+        blockModes: [shell_execution, workflow_write, repo_write]
+        sources: [issue, pr, comment, log]
+  - familyId: knowledge-research
+    actions:
+      - id: knowledge-no-ungrounded-public-answer
+        description: "Knowledge / Research family 不允许在缺 citation/evidence 时对外给出权威结论。"
+        riskClass: R4
+        scopes: [knowledge-base, research, analytics]
+        enforcementSurfaces: [ToolRisk, ReleaseGate, ClaimScanner]
+        blockModes: [external_publish, autonomous_final_decision]
+        sources: [issue, pr, comment, log, external_input]
+  - familyId: enterprise-ops
+    actions:
+      - id: enterprise-ops-no-policyless-write
+        description: "Enterprise Ops family 不允许在缺 policy proof 或 handoff owner 时执行 refund/order/ticket write。"
+        riskClass: R4
+        scopes: [customer-service, support, operations, project-management]
+        enforcementSurfaces: [ToolRisk, ReleaseGate]
+        blockModes: [crm_critical_write, ticket_write, order_write]
+        sources: [issue, pr, comment, log, external_input]
+  - familyId: creative-production
+    actions:
+      - id: creative-no-asset-publish-without-provenance
+        description: "Creative / Production family 不允许在缺 asset provenance、diff review 或 human sign-off 时发布素材。"
+        riskClass: R4
+        scopes: [design, live-streaming, content]
+        enforcementSurfaces: [ToolRisk, ReleaseGate]
+        blockModes: [asset_publish, multimodal_output_publish]
+        sources: [issue, pr, comment, log, external_input]
 exceptionPolicy:
   requiresPreparedAction: true
   requiresNamedApprover: true
@@ -43,3 +161,13 @@ exceptionPolicy:
   requiresAuditEvent: true
   requiresPostActionVerification: true
   forbidsBlanketApproval: true
+  requiresMultiApproverByRiskClass:
+    R3: 1
+    R4: 2
+    R5: 3
+  forbiddenBehaviors:
+    - permanent_open_exception
+    - future_action_preapproval
+    - hitl_bypass
+    - capability_scope_expansion
+    - untrusted_shell_authorization

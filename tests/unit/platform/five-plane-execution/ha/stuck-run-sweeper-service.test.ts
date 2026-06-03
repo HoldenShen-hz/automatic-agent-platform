@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { setTimeout as delay } from "node:timers/promises";
 
 import { StuckRunSweeperService } from "../../../../../src/platform/five-plane-execution/ha/stuck-run-sweeper-service.js";
+import { waitForMs } from "../../../../helpers/wait.js";
 
 test("StuckRunSweeperService can be instantiated", () => {
   const service = new StuckRunSweeperService({});
@@ -178,7 +178,7 @@ test("StuckRunSweeperService onStuckRunDetected callback is called", async () =>
   service.start();
   try {
     // timing-contract: sweeper cadence test requires real delay between scans.
-    await delay(50);
+    await waitForMs(50);
     assert.ok(callbackCalled, "onStuckRunDetected should be called");
   } finally {
     service.dispose();

@@ -7,7 +7,6 @@
 
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import assert from "node:assert";
 
 import {
   QueueMetricCollector,
@@ -246,7 +245,6 @@ describe("QueueMetricsService", () => {
         delayed: 3,
         active: 2,
         completed: 100,
-        failed: 0,
         deadLetter: 0,
       };
       service.deriveFromStats(stats);

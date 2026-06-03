@@ -1,28 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { IntelligenceRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/intelligence-repository.js";
-
-function createMockDb() {
-  const runCalls: unknown[][] = [];
-  return {
-    db: {
-      connection: {
-        prepare: () => ({
-          run: (...args: unknown[]) => {
-            runCalls.push(args);
-            return { changes: 1 };
-          },
-          get: () => undefined,
-          all: () => [],
-        }),
-      },
-    },
-    runCalls,
-  };
-}
+import { createMockAuthoritativeSqlDatabase } from "./test-helpers.js";
 
 test("IntelligenceRepository has all required methods", () => {
-  const { db } = createMockDb();
+  const { db } = createMockAuthoritativeSqlDatabase();
   const repo = new IntelligenceRepository(db);
 
   assert.equal(typeof repo.upsertPerceptionSource, "function");
@@ -40,16 +22,16 @@ test("IntelligenceRepository has all required methods", () => {
 });
 
 test("IntelligenceRepository upserts perception source", () => {
-  const { db, runCalls } = createMockDb();
+  const { db, runCalls } = createMockAuthoritativeSqlDatabase();
   const repo = new IntelligenceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
-  const source = {
+  const source: Parameters<IntelligenceRepository["upsertPerceptionSource"]>[0] = {
     sourceId: "source_1",
     tenantId: "tenant_1",
     type: "rss",
     name: "Tech News",
-    enabled: true,
+    enabled: 1,
     scheduleJson: "{}",
     filtersJson: "[]",
     priority: 100,
@@ -64,15 +46,7 @@ test("IntelligenceRepository upserts perception source", () => {
 });
 
 test("IntelligenceRepository gets perception source", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => null,
-        all: () => [],
-      }),
-    },
-  } as any;
+  const { db } = createMockAuthoritativeSqlDatabase({ getResult: null });
   const repo = new IntelligenceRepository(db);
 
   const result = repo.getPerceptionSource("nonexistent");
@@ -80,15 +54,7 @@ test("IntelligenceRepository gets perception source", () => {
 });
 
 test("IntelligenceRepository gets perception source with tenant scope", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => null,
-        all: () => [],
-      }),
-    },
-  } as any;
+  const { db } = createMockAuthoritativeSqlDatabase({ getResult: null });
   const repo = new IntelligenceRepository(db);
 
   const result = repo.getPerceptionSource("source_1", "tenant_1");
@@ -96,15 +62,7 @@ test("IntelligenceRepository gets perception source with tenant scope", () => {
 });
 
 test("IntelligenceRepository lists perception sources", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
+  const { db } = createMockAuthoritativeSqlDatabase();
   const repo = new IntelligenceRepository(db);
 
   const result = repo.listPerceptionSources();
@@ -112,15 +70,7 @@ test("IntelligenceRepository lists perception sources", () => {
 });
 
 test("IntelligenceRepository lists enabled perception sources", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
+  const { db } = createMockAuthoritativeSqlDatabase();
   const repo = new IntelligenceRepository(db);
 
   const result = repo.listPerceptionSources(true);
@@ -128,11 +78,11 @@ test("IntelligenceRepository lists enabled perception sources", () => {
 });
 
 test("IntelligenceRepository inserts intel item", () => {
-  const { db, runCalls } = createMockDb();
+  const { db, runCalls } = createMockAuthoritativeSqlDatabase();
   const repo = new IntelligenceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
-  const item = {
+  const item: Parameters<IntelligenceRepository["insertIntelItem"]>[0] = {
     intelId: "intel_1",
     tenantId: "tenant_1",
     sourceId: "source_1",
@@ -154,15 +104,7 @@ test("IntelligenceRepository inserts intel item", () => {
 });
 
 test("IntelligenceRepository gets intel item by source and dedupe key", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => null,
-        all: () => [],
-      }),
-    },
-  } as any;
+  const { db } = createMockAuthoritativeSqlDatabase({ getResult: null });
   const repo = new IntelligenceRepository(db);
 
   const result = repo.getIntelItemBySourceAndDedupeKey("source_1", "nonexistent");
@@ -170,15 +112,7 @@ test("IntelligenceRepository gets intel item by source and dedupe key", () => {
 });
 
 test("IntelligenceRepository lists intel items", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
+  const { db } = createMockAuthoritativeSqlDatabase();
   const repo = new IntelligenceRepository(db);
 
   const result = repo.listIntelItems({});
@@ -186,15 +120,7 @@ test("IntelligenceRepository lists intel items", () => {
 });
 
 test("IntelligenceRepository lists intel items with source filter", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
+  const { db } = createMockAuthoritativeSqlDatabase();
   const repo = new IntelligenceRepository(db);
 
   const result = repo.listIntelItems({ sourceIds: ["source_1", "source_2"] });
@@ -202,15 +128,7 @@ test("IntelligenceRepository lists intel items with source filter", () => {
 });
 
 test("IntelligenceRepository lists intel items by ids", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
+  const { db } = createMockAuthoritativeSqlDatabase();
   const repo = new IntelligenceRepository(db);
 
   const result = repo.listIntelItemsByIds(["intel_1", "intel_2"]);
@@ -218,7 +136,7 @@ test("IntelligenceRepository lists intel items by ids", () => {
 });
 
 test("IntelligenceRepository lists intel items by ids with empty array", () => {
-  const { db } = createMockDb();
+  const { db } = createMockAuthoritativeSqlDatabase();
   const repo = new IntelligenceRepository(db);
 
   const result = repo.listIntelItemsByIds([]);
@@ -226,11 +144,11 @@ test("IntelligenceRepository lists intel items by ids with empty array", () => {
 });
 
 test("IntelligenceRepository inserts intel brief", () => {
-  const { db, runCalls } = createMockDb();
+  const { db, runCalls } = createMockAuthoritativeSqlDatabase();
   const repo = new IntelligenceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
-  const brief = {
+  const brief: Parameters<IntelligenceRepository["insertIntelBrief"]>[0] = {
     briefId: "brief_1",
     tenantId: "tenant_1",
     periodStart: "2026-04-01T00:00:00.000Z",
@@ -249,15 +167,7 @@ test("IntelligenceRepository inserts intel brief", () => {
 });
 
 test("IntelligenceRepository gets intel brief", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => null,
-        all: () => [],
-      }),
-    },
-  } as any;
+  const { db } = createMockAuthoritativeSqlDatabase({ getResult: null });
   const repo = new IntelligenceRepository(db);
 
   const result = repo.getIntelBrief("nonexistent");
@@ -265,15 +175,7 @@ test("IntelligenceRepository gets intel brief", () => {
 });
 
 test("IntelligenceRepository lists intel briefs", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
+  const { db } = createMockAuthoritativeSqlDatabase();
   const repo = new IntelligenceRepository(db);
 
   const result = repo.listIntelBriefs();
@@ -281,11 +183,11 @@ test("IntelligenceRepository lists intel briefs", () => {
 });
 
 test("IntelligenceRepository inserts action proposal", () => {
-  const { db, runCalls } = createMockDb();
+  const { db, runCalls } = createMockAuthoritativeSqlDatabase();
   const repo = new IntelligenceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
-  const proposal = {
+  const proposal: Parameters<IntelligenceRepository["insertActionProposal"]>[0] = {
     proposalId: "proposal_1",
     tenantId: "tenant_1",
     briefId: "brief_1",
@@ -294,8 +196,8 @@ test("IntelligenceRepository inserts action proposal", () => {
     title: "Apply Security Update",
     summary: "Security update available",
     actionType: "apply_update",
-    status: "pending",
-    requiresApproval: true,
+    status: "proposed",
+    requiresApproval: 1,
     proposalJson: "{}",
     createdAt: now,
     decidedAt: null,
@@ -308,15 +210,7 @@ test("IntelligenceRepository inserts action proposal", () => {
 });
 
 test("IntelligenceRepository lists action proposals by brief", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
+  const { db } = createMockAuthoritativeSqlDatabase();
   const repo = new IntelligenceRepository(db);
 
   const result = repo.listActionProposalsByBrief("brief_1");

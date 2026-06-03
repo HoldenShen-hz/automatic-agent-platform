@@ -18,6 +18,14 @@ inputDataTypes:
 outputActions:
   - remediation_plan
   - patch_draft
+outputActionBindings:
+  - outputActionId: remediation_plan
+    bindingType: tool_action
+    toolId: test-runner
+    actionId: analyze_failure
+  - outputActionId: patch_draft
+    bindingType: derived_artifact
+    notes: bounded remediation proposal without direct write
 toolActions:
   - toolId: test-runner
     actionId: analyze_failure

@@ -58,7 +58,7 @@ test("integration: learning feedback orchestration promotes validated learnings 
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "reviewed",
+    trustLevel: "team_reviewed",
     maxDocuments: 1000,
     maxTotalSizeBytes: 5_000_000,
   });

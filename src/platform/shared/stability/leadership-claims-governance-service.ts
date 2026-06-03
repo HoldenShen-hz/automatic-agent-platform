@@ -41,6 +41,7 @@ export interface LeadershipClaimReviewRequest {
   readonly scenarioId: string | null;
   readonly requestedClaimLevel: LeadershipClaimLevel;
   readonly requestedSurfaces: readonly LeadershipClaimSurface[];
+  readonly evidenceRefs: readonly string[];
   readonly requestedBy: string;
   readonly rationale: string;
   readonly requestedAt: string;
@@ -64,6 +65,7 @@ export interface LeadershipClaimStatusOverride {
 export interface LeadershipClaimRecordView extends LeadershipClaimRecord {
   readonly effectiveStatus: LeadershipClaimStatus;
   readonly effectiveStatusReasonCode: string | null;
+  readonly freshnessStatus: "fresh" | "expiring_soon" | "expired";
   readonly revokedBy: string | null;
   readonly revokedAt: string | null;
   readonly replacementRequired: boolean;
@@ -87,6 +89,7 @@ export interface LeadershipClaimsConsoleSnapshot {
     readonly expiredAllowlistCount: number;
     readonly revokedClaimCount: number;
     readonly expiredClaimCount: number;
+    readonly upcomingExpiryCount: number;
   };
 }
 
@@ -147,6 +150,20 @@ function isExpired(iso: string | null, now: Date): boolean {
   return Date.parse(iso) < now.getTime();
 }
 
+function toFreshnessStatus(iso: string | null, now: Date): "fresh" | "expiring_soon" | "expired" {
+  if (iso == null) {
+    return "fresh";
+  }
+  const deltaMs = Date.parse(iso) - now.getTime();
+  if (deltaMs < 0) {
+    return "expired";
+  }
+  if (deltaMs <= 1000 * 60 * 60 * 24 * 30) {
+    return "expiring_soon";
+  }
+  return "fresh";
+}
+
 function resolvePlatformRoot(platformRoot?: string): string {
   return platformRoot ?? process.env.AA_PLATFORM_ROOT ?? process.cwd();
 }
@@ -197,6 +214,7 @@ export class LeadershipClaimsGovernanceService {
         ...claim,
         effectiveStatus,
         effectiveStatusReasonCode,
+        freshnessStatus: toFreshnessStatus(claim.expiresAt, now),
         revokedBy: override?.revokedBy ?? null,
         revokedAt: override?.revokedAt ?? null,
         replacementRequired: override?.replacementRequired ?? false,
@@ -223,6 +241,7 @@ export class LeadershipClaimsGovernanceService {
           ? entry.requestedClaimLevel as LeadershipClaimLevel
           : "designed",
         requestedSurfaces: toStringArray(entry.requestedSurfaces) as LeadershipClaimSurface[],
+        evidenceRefs: toStringArray(entry.evidenceRefs),
         requestedBy: typeof entry.requestedBy === "string" ? entry.requestedBy : "unknown-requester",
         rationale: typeof entry.rationale === "string" ? entry.rationale : "",
         requestedAt: normalizeIsoOrNull(entry.requestedAt) ?? new Date(0).toISOString(),
@@ -241,6 +260,7 @@ export class LeadershipClaimsGovernanceService {
     readonly scenarioId?: string | null;
     readonly requestedClaimLevel: LeadershipClaimLevel;
     readonly requestedSurfaces: readonly LeadershipClaimSurface[];
+    readonly evidenceRefs?: readonly string[];
     readonly requestedBy: string;
     readonly rationale: string;
     readonly requestedAt?: string;
@@ -254,6 +274,7 @@ export class LeadershipClaimsGovernanceService {
       scenarioId: input.scenarioId?.trim() || null,
       requestedClaimLevel: input.requestedClaimLevel,
       requestedSurfaces: [...input.requestedSurfaces],
+      evidenceRefs: [...(input.evidenceRefs ?? [])],
       requestedBy: input.requestedBy.trim(),
       rationale: input.rationale.trim(),
       requestedAt: normalizeIsoOrNull(input.requestedAt) ?? new Date().toISOString(),
@@ -332,17 +353,14 @@ export class LeadershipClaimsGovernanceService {
         familyCount: families.length,
         approvedClaimCount: claims.filter((claim) => claim.effectiveStatus === "approved").length,
         expiringClaimCount: claims.filter((claim) => {
-          if (claim.expiresAt == null || claim.effectiveStatus !== "approved") {
-            return false;
-          }
-          const deltaMs = Date.parse(claim.expiresAt) - now.getTime();
-          return deltaMs >= 0 && deltaMs <= 1000 * 60 * 60 * 24 * 30;
+          return claim.effectiveStatus === "approved" && claim.freshnessStatus === "expiring_soon";
         }).length,
         pendingReviewRequestCount: reviewRequests.filter((request) => request.status === "pending").length,
         blockedScannerHitCount: scanReport.hits.filter((hit) => hit.status === "blocked" || hit.status === "expired_allowlist").length,
         expiredAllowlistCount: allowlist.filter((entry) => entry.expired).length,
         revokedClaimCount: claims.filter((claim) => claim.effectiveStatus === "revoked").length,
         expiredClaimCount: claims.filter((claim) => claim.effectiveStatus === "expired").length,
+        upcomingExpiryCount: claims.filter((claim) => claim.freshnessStatus === "expiring_soon").length,
       },
     };
   }

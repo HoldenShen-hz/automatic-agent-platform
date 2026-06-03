@@ -2,7 +2,21 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { validateGoalDecomposition } from "../../../../../src/interaction/goal-decomposer/validator/index.js";
-import type { GoalDecomposition } from "../../../../../src/interaction/goal-decomposer/index.js";
+import type { GoalDecomposition, PlannedTask } from "../../../../../src/interaction/goal-decomposer/index.js";
+
+function makeTask(overrides: Partial<PlannedTask> = {}): PlannedTask {
+  return {
+    taskId: "task1",
+    domainId: "d1",
+    description: "Task 1",
+    inputs: {},
+    expectedOutputs: ["out1"],
+    delegationMode: "auto",
+    estimatedDuration: "1h",
+    estimatedCost: { estimatedCostUsd: 0.01, confidence: "default", sampleCount: 0, divisionId: null, basedOn: "default" },
+    ...overrides,
+  };
+}
 
 const makeGoalDecomposition = (overrides: Partial<GoalDecomposition> = {}): GoalDecomposition => ({
   goalId: "goal:test",
@@ -15,22 +29,49 @@ const makeGoalDecomposition = (overrides: Partial<GoalDecomposition> = {}): Goal
   requiresHumanReview: false,
   depthUsed: 1,
   maxDepthReached: false,
+  lifecycleState: "decomposed",
+  goalGraphDraft: {
+    goalId: "goal:test",
+    lifecycleState: "decomposed",
+    constraintEnvelope: {
+      budgetLimitUsd: null,
+      riskTolerance: "high",
+      requiresApproval: false,
+      requiredPermissions: [],
+      requiredCapabilities: [],
+    },
+    plannerIntent: "template",
+    evidenceRefs: [],
+  },
+  taskGraphDraft: {
+    graphId: "graph:test",
+    goalId: "goal:test",
+    tasks: [],
+    dependencyGraph: [],
+    normalized: true,
+    validationMessages: [],
+    worstPathTaskIds: [],
+  },
+  plannerHandoff: {
+    handoffId: "handoff:test",
+    goalId: "goal:test",
+    state: "ready_for_planner",
+    graphId: "graph:test",
+    constraintEnvelope: {
+      budgetLimitUsd: null,
+      riskTolerance: "high",
+      requiresApproval: false,
+      requiredPermissions: [],
+      requiredCapabilities: [],
+    },
+  },
   ...overrides,
 });
 
 test("validateGoalDecomposition returns empty array for valid decomposition", () => {
   const decomposition = makeGoalDecomposition({
     tasks: [
-      {
-        taskId: "task1",
-        domainId: "d1",
-        description: "Task 1",
-        inputs: {},
-        expectedOutputs: ["out1"],
-        delegationMode: "auto",
-        estimatedDuration: "1h",
-        estimatedCost: { estimatedCostUsd: 0.01, confidence: "default", sampleCount: 0, divisionId: null, basedOn: "default" },
-      },
+      makeTask(),
     ],
     dependencyGraph: [],
   });
@@ -69,17 +110,7 @@ test("validateGoalDecomposition reports invalid_confidence when above 1", () => 
 test("validateGoalDecomposition reports invalid_depends_on for non-existent task", () => {
   const decomposition = makeGoalDecomposition({
     tasks: [
-      {
-        taskId: "task1",
-        domainId: "d1",
-        description: "Task 1",
-        inputs: {},
-        expectedOutputs: ["out1"],
-        delegationMode: "auto",
-        estimatedDuration: "1h",
-        estimatedCost: { estimatedCostUsd: 0.01, confidence: "default", sampleCount: 0, divisionId: null, basedOn: "default" },
-        dependsOn: ["nonexistent"],
-      },
+      makeTask({ dependsOn: ["nonexistent"] }),
     ],
   });
 
@@ -90,17 +121,7 @@ test("validateGoalDecomposition reports invalid_depends_on for non-existent task
 test("validateGoalDecomposition reports self_dependency when task depends on itself", () => {
   const decomposition = makeGoalDecomposition({
     tasks: [
-      {
-        taskId: "task1",
-        domainId: "d1",
-        description: "Task 1",
-        inputs: {},
-        expectedOutputs: ["out1"],
-        delegationMode: "auto",
-        estimatedDuration: "1h",
-        estimatedCost: { estimatedCostUsd: 0.01, confidence: "default", sampleCount: 0, divisionId: null, basedOn: "default" },
-        dependsOn: ["task1"],
-      },
+      makeTask({ dependsOn: ["task1"] }),
     ],
   });
 
@@ -111,26 +132,8 @@ test("validateGoalDecomposition reports self_dependency when task depends on its
 test("validateGoalDecomposition reports cycle_detected when cycle exists in graph", () => {
   const decomposition = makeGoalDecomposition({
     tasks: [
-      {
-        taskId: "task1",
-        domainId: "d1",
-        description: "Task 1",
-        inputs: {},
-        expectedOutputs: ["out1"],
-        delegationMode: "auto",
-        estimatedDuration: "1h",
-        estimatedCost: { estimatedCostUsd: 0.01, confidence: "default", sampleCount: 0, divisionId: null, basedOn: "default" },
-      },
-      {
-        taskId: "task2",
-        domainId: "d1",
-        description: "Task 2",
-        inputs: {},
-        expectedOutputs: ["out2"],
-        delegationMode: "auto",
-        estimatedDuration: "1h",
-        estimatedCost: { estimatedCostUsd: 0.01, confidence: "default", sampleCount: 0, divisionId: null, basedOn: "default" },
-      },
+      makeTask({ taskId: "task1" }),
+      makeTask({ taskId: "task2", expectedOutputs: ["out2"] }),
     ],
     dependencyGraph: [
       { fromTask: "task1", toTask: "task2", type: "blocks" },
@@ -165,16 +168,7 @@ test("validateGoalDecomposition returns multiple findings", () => {
 });
 
 test("validateGoalDecomposition accepts valid confidence boundaries", () => {
-  const validTask = {
-    taskId: "task1",
-    domainId: "d1",
-    description: "Task 1",
-    inputs: {},
-    expectedOutputs: ["out1"],
-    delegationMode: "auto" as const,
-    estimatedDuration: "1h",
-    estimatedCost: { estimatedCostUsd: 0.01, confidence: "default" as const, sampleCount: 0, divisionId: null, basedOn: "default" as const },
-  };
+  const validTask = makeTask();
   const decomposition0 = makeGoalDecomposition({ decompositionConfidence: 0, tasks: [validTask] });
   const decomposition1 = makeGoalDecomposition({ decompositionConfidence: 1, tasks: [validTask] });
 

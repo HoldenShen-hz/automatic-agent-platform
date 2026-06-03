@@ -4,7 +4,12 @@ import { writeFileSync } from "node:fs";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
+import { createConfigReadPolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { loadRiskConfig } from "../../../../../src/platform/five-plane-control-plane/risk-control/risk-config-loader.js";
+
+function loadTestRiskConfig(configPath: string, configRoot: string) {
+  return loadRiskConfig(configPath, createConfigReadPolicy(configRoot));
+}
 
 test("loadRiskConfig parses valid risk config file", () => {
   const tempDir = mkdtempSync(join("/", "tmp", "risk-config-test-"));
@@ -42,7 +47,7 @@ test("loadRiskConfig parses valid risk config file", () => {
 
     writeFileSync(configPath, JSON.stringify(validConfig), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTestRiskConfig(configPath, tempDir);
 
     assert.equal(config.factorWeights.stepTypeRisk, 0.2);
     assert.equal(config.factorWeights.targetSystemRisk, 0.25);
@@ -106,7 +111,7 @@ test("loadRiskConfig parses priorFailureRateThresholds correctly", () => {
 
     writeFileSync(configPath, JSON.stringify(validConfig), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTestRiskConfig(configPath, tempDir);
     const thresholds = config.priorFailureRateThresholds;
     assert.ok(thresholds);
 
@@ -120,7 +125,7 @@ test("loadRiskConfig parses priorFailureRateThresholds correctly", () => {
   }
 });
 
-test("loadRiskConfig loads and parses config without sandbox policy", () => {
+test("loadRiskConfig rejects reads without sandbox policy", () => {
   const tempDir = mkdtempSync(join("/", "tmp", "risk-config-test-"));
   const configPath = join(tempDir, "test-risk-config.json");
 
@@ -156,9 +161,13 @@ test("loadRiskConfig loads and parses config without sandbox policy", () => {
 
     writeFileSync(configPath, JSON.stringify(validConfig), "utf-8");
 
-    // Without sandbox policy, the function should work
-    const config = loadRiskConfig(configPath);
-    assert.equal(config.factorWeights.stepTypeRisk, 0.2);
+    assert.throws(
+      () => loadRiskConfig(configPath),
+      (error: unknown) =>
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "config.risk_sandbox_policy_required",
+    );
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
@@ -200,7 +209,7 @@ test("loadRiskConfig parses all confidence levels", () => {
 
     writeFileSync(configPath, JSON.stringify(validConfig), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTestRiskConfig(configPath, tempDir);
     const confidenceValues = config.confidenceValues;
     assert.ok(confidenceValues);
     assert.equal(confidenceValues.high, 1.0);
@@ -219,7 +228,7 @@ test("loadRiskConfig rejects invalid JSON", () => {
     writeFileSync(configPath, "not valid json {", "utf-8");
 
     assert.throws(
-      () => loadRiskConfig(configPath),
+      () => loadTestRiskConfig(configPath, tempDir),
       (error: unknown) => error instanceof SyntaxError,
     );
   } finally {
@@ -263,7 +272,7 @@ test("loadRiskConfig handles missing optional riskLevelActions fields", () => {
 
     writeFileSync(configPath, JSON.stringify(minimalConfig), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTestRiskConfig(configPath, tempDir);
     assert.equal(config.riskLevelActions.low.sideEffect, "normal");
     assert.equal(config.riskLevelActions.high.approvalType, "standard");
   } finally {
@@ -307,7 +316,7 @@ test("loadRiskConfig parses stepTypeRiskValues correctly", () => {
 
     writeFileSync(configPath, JSON.stringify(validConfig), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTestRiskConfig(configPath, tempDir);
     const stepTypeRiskValues = config.stepTypeRiskValues;
     assert.ok(stepTypeRiskValues);
     assert.equal(stepTypeRiskValues.read, 1);
@@ -355,7 +364,7 @@ test("loadRiskConfig parses targetSystemRiskValues correctly", () => {
 
     writeFileSync(configPath, JSON.stringify(validConfig), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTestRiskConfig(configPath, tempDir);
     const targetSystemRiskValues = config.targetSystemRiskValues;
     assert.ok(targetSystemRiskValues);
     assert.equal(targetSystemRiskValues.internal, 1);
@@ -402,7 +411,7 @@ test("loadRiskConfig parses blastRadiusValues correctly", () => {
 
     writeFileSync(configPath, JSON.stringify(validConfig), "utf-8");
 
-    const config = loadRiskConfig(configPath);
+    const config = loadTestRiskConfig(configPath, tempDir);
     assert.equal(config.blastRadiusValues.single_task, 1);
     assert.equal(config.blastRadiusValues.workflow, 2);
     assert.equal(config.blastRadiusValues.tenant, 4);

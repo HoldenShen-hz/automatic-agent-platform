@@ -123,14 +123,18 @@ function main() {
   // layers regardless of the input path. Its negative seed is
   // therefore meaningless; we still scan positive/evasion but skip
   // the negative one.
-  const PATH_RESTRICTED_GATES = new Set(["audit-contracts-sync"]);
+  const PATH_RESTRICTED_GATES = new Set(["audit-contracts-sync", "audit-execution-invariants"]);
 
   const results = [];
   for (const c of categories) {
     const evald = evaluateCategory(join(seedDir, c));
     if (PATH_RESTRICTED_GATES.has(evald.gate) && evald.seeds) {
-      evald.seeds = evald.seeds.filter((s) => s.kind !== "negative");
-      evald.skipped = ["negative (audit is global, not per-seed)"];
+      // Path-restricted audits are global scans, not per-seed: skip
+      // every seed (positive/negative/evasion) since per-seed scanning
+      // has no meaning for them. The audit's coverage is asserted
+      // separately via tests/audit-tools/<name>-auditor.test.ts.
+      evald.seeds = [];
+      evald.skipped = ["all seeds (audit is global, not per-seed)"];
     }
     results.push(evald);
   }

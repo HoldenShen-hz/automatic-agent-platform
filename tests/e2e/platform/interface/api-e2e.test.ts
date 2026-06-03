@@ -234,7 +234,11 @@ function createE2eServer(options: {
   });
 }
 
-const ADMIN_HEADERS = { "x-api-key": ADMIN_API_KEY };
+function createAdminHeaders(): Record<string, string> {
+  return {
+    authorization: `Bearer ${createAuthService().exchangeApiKey(ADMIN_API_KEY).accessToken}`,
+  };
+}
 
 async function canBindLocalSockets(): Promise<boolean> {
   return await new Promise((resolve) => {
@@ -290,7 +294,7 @@ networkPathTest("E2E API: GET /api/v1/tasks returns the task list with authentic
   await server.start();
 
   try {
-    const response = await server.inject({ url: "/api/v1/tasks", method: "GET", headers: ADMIN_HEADERS });
+    const response = await server.inject({ url: "/api/v1/tasks", method: "GET", headers: createAdminHeaders() });
     const body = response.json<{ data: { tasks: unknown[] } }>();
 
     assert.equal(response.statusCode, 200);
@@ -305,7 +309,7 @@ networkPathTest("E2E API: GET /api/v1/tasks/:id returns the task cockpit", async
   await server.start();
 
   try {
-    const response = await server.inject({ url: "/api/v1/tasks/task-1", method: "GET", headers: ADMIN_HEADERS });
+    const response = await server.inject({ url: "/api/v1/tasks/task-1", method: "GET", headers: createAdminHeaders() });
     const body = response.json<{ data: { snapshot: { task: unknown } } }>();
 
     assert.equal(response.statusCode, 200);
@@ -320,8 +324,9 @@ networkPathTest("E2E API: workflow and approval listing routes succeed with auth
   await server.start();
 
   try {
-    const workflows = await server.inject({ url: "/api/v1/workflows", method: "GET", headers: ADMIN_HEADERS });
-    const approvals = await server.inject({ url: "/v1/approvals", method: "GET", headers: ADMIN_HEADERS });
+    const adminHeaders = createAdminHeaders();
+    const workflows = await server.inject({ url: "/api/v1/workflows", method: "GET", headers: adminHeaders });
+    const approvals = await server.inject({ url: "/v1/approvals", method: "GET", headers: adminHeaders });
 
     assert.equal(workflows.statusCode, 200);
     assert.equal(approvals.statusCode, 200);
@@ -341,7 +346,7 @@ networkPathTest("E2E API: POST /approvals/:id/decision validates required fields
       url: "/approvals/appr-1/decision",
       method: "POST",
       headers: {
-        ...ADMIN_HEADERS,
+        ...createAdminHeaders(),
         "content-type": "application/json",
       },
       body: JSON.stringify({ decisionType: "option_selected" }),
@@ -358,7 +363,7 @@ networkPathTest("E2E API: GET /v1/stability returns the stability panel for an a
   await server.start();
 
   try {
-    const response = await server.inject({ url: "/v1/stability", method: "GET", headers: ADMIN_HEADERS });
+    const response = await server.inject({ url: "/v1/stability", method: "GET", headers: createAdminHeaders() });
     const body = response.json<{ data: { health: unknown } }>();
 
     assert.equal(response.statusCode, 200);

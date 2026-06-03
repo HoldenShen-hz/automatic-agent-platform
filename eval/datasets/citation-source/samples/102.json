@@ -1,0 +1,7 @@
+{
+  "caseId": "cite-102",
+  "question": "What evidence supports knowledge claim 102?",
+  "expectedSource": "source-13",
+  "freshnessDays": 13,
+  "category": "grounding"
+}

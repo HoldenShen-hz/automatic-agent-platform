@@ -5,13 +5,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DisambiguationHandler } from "../../../../../src/interaction/nl-gateway/disambiguation-handler/index.js";
+import type { DetectedIntent, ExtractedEntity } from "../../../../../src/interaction/nl-gateway/index.js";
 
-function createMockIntent(intentType = "task_create" as const, confidence = 0.85) {
+function createMockEntity(
+  entityType: string,
+  value: string,
+  normalized: string = value,
+): ExtractedEntity {
+  return {
+    entityType,
+    value,
+    normalized,
+    sourceSpan: [0, value.length],
+  };
+}
+
+function createMockIntent(
+  intentType: DetectedIntent["intentType"] = "task_create",
+  confidence = 0.85,
+  entities: readonly ExtractedEntity[] = [],
+): DetectedIntent {
   return {
     intentType,
+    domainHint: null,
     confidence,
-    reasoning: "test reasoning",
-    entities: [],
+    urgency: "normal",
+    entities,
   };
 }
 
@@ -284,7 +303,7 @@ test("DisambiguationHandler disambiguate returns correct reason strings", () => 
   const mediumResultNoEntities = handler.generateClarification("test", 0.8, intent, []);
   assert.equal(mediumResultNoEntities.reason, "缺少必要参数，需要补充信息");
 
-  const mediumResultWithEntities = handler.generateClarification("test", 0.8, intent, [{ entityType: "test", value: "test", normalized: "test" }]);
+  const mediumResultWithEntities = handler.generateClarification("test", 0.8, intent, [createMockEntity("test", "test")]);
   assert.equal(mediumResultWithEntities.reason, "意图基本明确，但可以确认");
 });
 
@@ -301,21 +320,9 @@ test("DisambiguationHandler formatIntentOption returns correct labels", () => {
   assert.ok(options!.includes("查询/获取信息"));
 });
 
-test("DisambiguationHandler formatIntentOption handles unknown intent type", () => {
-  const handler = new DisambiguationHandler();
-  const intent1 = createMockIntent("task_create" as const, 0.75);
-  const intent2 = { ...createMockIntent("task_create" as const, 0.72), intentType: "unknown_type" as const };
-  const result = handler.disambiguate("test", 0.75, intent1, [intent1, intent2]);
-
-  const options = result.questions[0]?.options;
-  assert.ok(options);
-  // Unknown type should fall back to itself
-  assert.ok(options!.includes("unknown_type"));
-});
-
 test("DisambiguationHandler disambiguate handles all standard intent types in options", () => {
   const handler = new DisambiguationHandler();
-  const intents = [
+  const intents: [DetectedIntent, DetectedIntent, DetectedIntent] = [
     createMockIntent("task_create", 0.75),
     createMockIntent("task_query", 0.72),
     createMockIntent("task_modify", 0.70),

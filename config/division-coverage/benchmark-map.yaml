@@ -6,14 +6,17 @@ families:
       - benchmarkId: swe-bench-verified
         label: SWE-bench Verified
         url: "https://www.swebench.com/verified.html"
+        version: "2026-05"
         purpose: "issue-to-patch correctness and heldout evaluation"
       - benchmarkId: bfcl-v4
         label: Berkeley Function Calling Leaderboard V4
         url: "https://gorilla.cs.berkeley.edu/leaderboard.html"
+        version: "v4"
         purpose: "tool selection and argument correctness"
       - benchmarkId: aidev-github
         label: AIDev Studying AI Coding Agents on GitHub
         url: "https://arxiv.org/abs/2602.09185"
+        version: "2026-02"
         purpose: "real PR acceptance and review dynamics"
     internalMappings:
       - metricId: patch_correctness
@@ -25,14 +28,17 @@ families:
       - benchmarkId: rag-citation-eval
         label: RAG citation evaluation
         url: "https://arxiv.org/abs/2401.15884"
+        version: "2024-01"
         purpose: "citation grounding and source reliability"
       - benchmarkId: source-grounding
         label: Source grounding evaluation
         url: "https://arxiv.org/abs/2406.16890"
+        version: "2024-06"
         purpose: "claim-to-source traceability"
       - benchmarkId: otel-genai-spans
         label: OpenTelemetry GenAI spans
         url: "https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-agent-spans/"
+        version: "1.37.0"
         purpose: "observability and evidence trace semantics"
     internalMappings:
       - metricId: citation_verifier_pass_rate
@@ -44,10 +50,12 @@ families:
       - benchmarkId: tau-bench
         label: tau-bench
         url: "https://github.com/sierra-research/tau-bench"
+        version: "main@2026-05"
         purpose: "dynamic user-agent-tool interaction and policy adherence"
       - benchmarkId: enterprise-workflow-eval
         label: Enterprise workflow benchmark set
         url: "https://arxiv.org/abs/2406.07496"
+        version: "2024-06"
         purpose: "workflow completion under policy and state changes"
     internalMappings:
       - metricId: policy_adherence
@@ -59,14 +67,17 @@ families:
       - benchmarkId: tau-bench-retail
         label: tau-bench retail workflows
         url: "https://github.com/sierra-research/tau-bench"
+        version: "main@2026-05"
         purpose: "CRM and ecommerce workflow safety"
       - benchmarkId: brand-safety-eval
         label: Brand safety evaluation
         url: "https://research.google/pubs/responsible-generative-ai-for-marketing/"
+        version: "2025"
         purpose: "brand policy compliance"
       - benchmarkId: copyright-eval
         label: Copyright risk evaluation
         url: "https://arxiv.org/abs/2407.21046"
+        version: "2024-07"
         purpose: "copyright and attribution risk screening"
     internalMappings:
       - metricId: draft_only_compliance
@@ -78,14 +89,17 @@ families:
       - benchmarkId: osworld
         label: OSWorld
         url: "https://os-world.github.io/"
+        version: "2025"
         purpose: "computer-use task execution"
       - benchmarkId: webarena
         label: WebArena
         url: "https://webarena.dev/"
+        version: "2024"
         purpose: "browser workflow execution"
       - benchmarkId: visualwebarena
         label: VisualWebArena
         url: "https://arxiv.org/abs/2401.13649"
+        version: "2024-01"
         purpose: "visual grounding and multimodal action quality"
     internalMappings:
       - metricId: visual_grounding
@@ -97,14 +111,17 @@ families:
       - benchmarkId: nist-genai-profile
         label: NIST AI RMF Generative AI Profile
         url: "https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence"
+        version: "1.0"
         purpose: "risk management and control mapping"
       - benchmarkId: owasp-ai-agent
         label: OWASP AI Agent Security Cheat Sheet
         url: "https://cheatsheetseries.owasp.org/cheatsheets/AI_Agent_Security_Cheat_Sheet.html"
+        version: "2026-04"
         purpose: "agent security, least privilege, prompt injection defense"
       - benchmarkId: csa-agentic-rmf
         label: CSA Agentic NIST AI RMF Profile
         url: "https://labs.cloudsecurityalliance.org/agentic/agentic-nist-ai-rmf-profile-v1/"
+        version: "v1"
         purpose: "runtime governance and accountability"
     internalMappings:
       - metricId: hitl_coverage

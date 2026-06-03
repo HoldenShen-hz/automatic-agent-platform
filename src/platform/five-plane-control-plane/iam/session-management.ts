@@ -21,16 +21,28 @@ const REFRESH_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const TOKEN_SIZE = 32;
 const MAX_SESSION_STORE_ENTRIES = 10_000;
 const MAX_TOKEN_INDEX_ENTRIES = 20_000;
-const DEFAULT_TOKEN_LOOKUP_HMAC_SEED = "automatic-agent.session-token-lookup.v1";
+let cachedTokenLookupHmacKey: Buffer | null = null;
+
 function loadTokenLookupHmacKey(env: NodeJS.ProcessEnv = process.env): Buffer {
   const configured = env["AA_SESSION_TOKEN_LOOKUP_HMAC_KEY"]?.trim();
   if (configured) {
     return createHash("sha256").update(configured, "utf8").digest();
   }
-  return createHash("sha256").update(DEFAULT_TOKEN_LOOKUP_HMAC_SEED, "utf8").digest();
+  if (env.NODE_ENV === "production") {
+    throw new ValidationError(
+      "session.token_lookup_hmac_key_required",
+      "session.token_lookup_hmac_key_required",
+    );
+  }
+  return randomBytes(32);
 }
 
-const TOKEN_LOOKUP_HMAC_KEY = loadTokenLookupHmacKey();
+function getTokenLookupHmacKey(env: NodeJS.ProcessEnv = process.env): Buffer {
+  if (cachedTokenLookupHmacKey == null) {
+    cachedTokenLookupHmacKey = loadTokenLookupHmacKey(env);
+  }
+  return cachedTokenLookupHmacKey;
+}
 
 // ============================================================================
 // Session Types
@@ -172,7 +184,7 @@ function generateTokenId(): string {
 }
 
 function hashToken(token: string): string {
-  return createHmac("sha256", TOKEN_LOOKUP_HMAC_KEY).update(token).digest("base64url");
+  return createHmac("sha256", getTokenLookupHmacKey()).update(token).digest("base64url");
 }
 
 function deriveTokenLookupKey(token: string): string {
@@ -574,6 +586,7 @@ export function __dangerousResetSessionStoreForTests(): void {
   refreshTokenIndex.clear();
   revokedAccessTokenIndex.clear();
   rotatedRefreshTokenIndex.clear();
+  cachedTokenLookupHmacKey = null;
 }
 
 export function __dangerousExpireSessionForTests(sessionId: string): void {

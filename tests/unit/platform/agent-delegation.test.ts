@@ -330,7 +330,7 @@ test("ContextIsolator.mergePermissions takes more restrictive values", () => {
   assert.equal(merged.constraints.maxTokens, 1000);
 });
 
-test("ContextIsolator.mergePermissions with empty override falls back to base resources and actions", () => {
+test("ContextIsolator.mergePermissions with empty override preserves the strict intersection", () => {
   const isolator = createContextIsolator();
   const base: PermissionSet = {
     resources: ["resource-1"],
@@ -346,8 +346,8 @@ test("ContextIsolator.mergePermissions with empty override falls back to base re
 
   const merged = isolator.mergePermissions(base, override);
 
-  assert.deepEqual(merged.resources, ["resource-1"]);
-  assert.deepEqual(merged.actions, ["action-1"]);
+  assert.deepEqual(merged.resources, []);
+  assert.deepEqual(merged.actions, []);
   assert.equal(merged.constraints.maxDurationMs, 60000);
 });
 

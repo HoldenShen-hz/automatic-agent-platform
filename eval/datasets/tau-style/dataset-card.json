@@ -4,13 +4,18 @@
   "scenarioId": "customer-refund-policy",
   "version": "2026.06",
   "source": "redacted_support_cases",
-  "taskCount": 120,
+  "taskCount": 121,
   "split": "heldout",
+  "samples": "eval/datasets/tau-style/samples",
+  "sampleCount": 121,
   "contaminationStatus": "clean",
+  "contaminationEvidence": [
+    "docs_zh/divisions/customer-service/leadership-evidence/eval-report.md"
+  ],
   "privacyStatus": "redacted",
   "labelingMethod": "policy_team_review",
   "allowedForTraining": false,
   "allowedForReleaseGate": true,
   "retentionPolicyRef": "training-data-policy/retention.yaml",
-  "frozenHash": "sha256:224a9d9980d96cea19236239af9d5091233c06bd115b73b6c0661852216d533d"
+  "frozenHash": "sha256:981906d7e8d63e5f6a22a1d7592bef5cdf9677c923bbeb61fd1292e8521872d7"
 }

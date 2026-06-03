@@ -234,4 +234,17 @@ describe("audit-tool: auth-role-mapping self-test", () => {
       );
     }
   });
+
+  it("real repo dedupeKey-protected delegate vote path is NOT misreported as missing dedupe", () => {
+    const relativePath = "src/scale-ecosystem/multi-region/failover-controller/index.ts";
+    const report = runAudit(relativePath);
+    const falsePositive = report.findings.find(
+      (f) => f.rule === "auth_role.delegate_vote_no_dedupe" && f.path.endsWith(relativePath),
+    );
+    assert.equal(
+      falsePositive,
+      undefined,
+      `expected no delegate_vote_no_dedupe false positive for ${relativePath}, got ${JSON.stringify(falsePositive)}`,
+    );
+  });
 });

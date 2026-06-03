@@ -12,13 +12,14 @@ It currently serves three consumers:
 
 ## Required Artifacts
 
-Implementations must emit at least these four files:
+Implementations must emit at least these files:
 
 ```text
 artifacts/assurance/review-ledger.raw.jsonl
 artifacts/assurance/review-ledger.normalized.jsonl
 artifacts/assurance/review-source-coverage-report.json
 artifacts/assurance/review-conflict-resolution-report.jsonl
+artifacts/assurance/review-evidence-readiness-report.json
 ```
 
 `assurance:full` must also emit:
@@ -45,6 +46,13 @@ Key field semantics:
 - `sourceRefs`: minimum trace-back locations to the original review text.
 - `evidenceRefs`: code, test, doc, or command evidence tied to the finding.
 - `freshness`: whether the review conclusion is still current.
+
+`review-evidence-readiness-report.json` additionally reports per review source:
+
+- whether the checklist covers `reviewed files / reviewed contracts / reviewed tests / reviewed CI gates / unverified assumptions / found issues / missed areas / confidence score`
+- whether a blind-spot declaration is explicit
+- whether P0 findings satisfy the dual-review requirement
+- whether the current review is eligible to serve as release evidence
 
 ## Allowed Status Values
 

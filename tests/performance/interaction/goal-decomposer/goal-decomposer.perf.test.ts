@@ -68,7 +68,7 @@ class FastMockLlmPlanGenerator implements LlmPlanGenerator {
           confidence: "medium" as const,
           sampleCount: 3,
           divisionId: null,
-          basedOn: "llm_plan_proportional",
+          basedOn: "llm_estimate" as const,
         },
         constraintEnvelope: {
           budgetLimitUsd: null,
@@ -96,7 +96,7 @@ class FastMockLlmPlanGenerator implements LlmPlanGenerator {
           confidence: "medium" as const,
           sampleCount: 3,
           divisionId: null,
-          basedOn: "llm_plan_proportional",
+          basedOn: "llm_estimate" as const,
         },
         constraintEnvelope: {
           budgetLimitUsd: null,
@@ -454,10 +454,11 @@ test("performance: Budget control overhead P99 < 100ms", async () => {
     llmPlanGenerator: new FastMockLlmPlanGenerator(),
     budgetControl: {
       policy: {
-        mode: "hard_limit",
+        mode: "enforcement",
         maxTaskCostUsd: 1.0,
         maxDailyCostUsd: 10.0,
         maxMonthlyCostUsd: 100.0,
+        warnAtRatio: 0.8,
       },
       currentTaskCostUsd: 0.01,
       currentDailyCostUsd: 0.5,

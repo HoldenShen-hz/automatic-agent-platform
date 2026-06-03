@@ -6,10 +6,19 @@ function createMockConstraintPack(overrides: Partial<ConstraintPack["budget"]> =
   return {
     policyIds: [],
     approvalMode: "none",
-    autonomyMode: "manual",
-    toolPolicy: { allowedTools: [] },
+    autonomyMode: "manual-only",
+    tool_policy: { allowedTools: [] },
     risk_policy: { maxRiskScore: 100, escalationThreshold: 80 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
+    sandboxRequirement: {
+      sandboxMode: "ephemeral",
+      timeoutMs: 60_000,
+    },
+    approvalRequirement: {
+      requiredForRiskClass: ["high", "critical"],
+      approverRoles: ["operator"],
+      escalationTimeoutMs: 30_000,
+    },
     budget: {
       maxSteps: 30,
       maxDurationMs: 60000,

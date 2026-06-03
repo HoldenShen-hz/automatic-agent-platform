@@ -4,23 +4,36 @@ import assert from "node:assert/strict";
 import { AutonomyBoundaryPolicy } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/autonomy-boundary-policy.js";
 import type { LearningObject } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/learn/learning-object-model.js";
 
-test("AutonomyBoundaryPolicy allows high-confidence validated learning objects", () => {
-  const policy = new AutonomyBoundaryPolicy();
-  const learningObjects: LearningObject[] = [
-    {
-      learningObjectId: "lo_1",
-      learningType: "failure_pattern",
+function createLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
+  return {
+    learningObjectId: "lo_1",
+    objectId: "lo_1",
+    learningType: "failure_pattern",
+    kind: "failure_pattern",
+    title: "Pattern",
+    summary: "Summary",
+    content: {
       title: "Pattern",
       summary: "Summary",
-      confidence: 0.95,
       evidenceRefs: ["artifact:1"],
       sourceSignalIds: ["sig_1"],
       recommendation: "Use narrower scope",
-      validatedBy: "evidence",
-      promotionStatus: "validated",
-      createdAt: Date.now(),
     },
-  ];
+    confidence: 0.95,
+    evidenceRefs: ["artifact:1"],
+    sourceSignalIds: ["sig_1"],
+    recommendation: "Use narrower scope",
+    validatedBy: "evidence",
+    promotionStatus: "validated",
+    status: "validated",
+    createdAt: new Date(0).toISOString(),
+    ...overrides,
+  };
+}
+
+test("AutonomyBoundaryPolicy allows high-confidence validated learning objects", () => {
+  const policy = new AutonomyBoundaryPolicy();
+  const learningObjects: LearningObject[] = [createLearningObject()];
 
   const decision = policy.decide("planning_policy", learningObjects);
   assert.equal(decision.allowed, true);
@@ -28,21 +41,7 @@ test("AutonomyBoundaryPolicy allows high-confidence validated learning objects",
 
 test("AutonomyBoundaryPolicy blocks learning objects with draft promotion status", () => {
   const policy = new AutonomyBoundaryPolicy();
-  const learningObjects: LearningObject[] = [
-    {
-      learningObjectId: "lo_1",
-      learningType: "failure_pattern",
-      title: "Pattern",
-      summary: "Summary",
-      confidence: 0.3,
-      evidenceRefs: ["artifact:1"],
-      sourceSignalIds: ["sig_1"],
-      recommendation: "Use narrower scope",
-      validatedBy: "evidence",
-      promotionStatus: "draft",
-      createdAt: Date.now(),
-    },
-  ];
+  const learningObjects: LearningObject[] = [createLearningObject({ confidence: 0.3, promotionStatus: "draft", status: "created" })];
 
   const decision = policy.decide("planning_policy", learningObjects);
   assert.equal(decision.allowed, false);
@@ -51,21 +50,7 @@ test("AutonomyBoundaryPolicy blocks learning objects with draft promotion status
 
 test("AutonomyBoundaryPolicy blocks unvalidated learning objects for sensitive targets", () => {
   const policy = new AutonomyBoundaryPolicy();
-  const learningObjects: LearningObject[] = [
-    {
-      learningObjectId: "lo_1",
-      learningType: "failure_pattern",
-      title: "Pattern",
-      summary: "Summary",
-      confidence: 0.9,
-      evidenceRefs: ["artifact:1"],
-      sourceSignalIds: ["sig_1"],
-      recommendation: "Use narrower scope",
-      validatedBy: "evidence",
-      promotionStatus: "draft",
-      createdAt: Date.now(),
-    },
-  ];
+  const learningObjects: LearningObject[] = [createLearningObject({ confidence: 0.9, promotionStatus: "draft", status: "created" })];
 
   const decision = policy.decide("execution_policy", learningObjects);
   assert.equal(decision.allowed, false);
@@ -73,19 +58,7 @@ test("AutonomyBoundaryPolicy blocks unvalidated learning objects for sensitive t
 
 test("AutonomyBoundaryPolicy allows validated learning objects for auto-allowed targets", () => {
   const policy = new AutonomyBoundaryPolicy();
-  const validatedLo: LearningObject = {
-    learningObjectId: "lo_1",
-    learningType: "failure_pattern",
-    title: "Pattern",
-    summary: "Summary",
-    confidence: 0.9,
-    evidenceRefs: ["artifact:1"],
-    sourceSignalIds: ["sig_1"],
-    recommendation: "Use narrower scope",
-    validatedBy: "evidence",
-    promotionStatus: "validated",
-    createdAt: Date.now(),
-  };
+  const validatedLo: LearningObject = createLearningObject({ confidence: 0.9 });
 
   const targets = ["routing_policy", "planning_policy", "execution_policy", "memory_policy"] as const;
   for (const target of targets) {
@@ -96,19 +69,7 @@ test("AutonomyBoundaryPolicy allows validated learning objects for auto-allowed 
 
 test("AutonomyBoundaryPolicy requires manual approval for sandbox_policy and provider_registry", () => {
   const policy = new AutonomyBoundaryPolicy();
-  const validatedLo: LearningObject = {
-    learningObjectId: "lo_1",
-    learningType: "failure_pattern",
-    title: "Pattern",
-    summary: "Summary",
-    confidence: 0.9,
-    evidenceRefs: ["artifact:1"],
-    sourceSignalIds: ["sig_1"],
-    recommendation: "Use narrower scope",
-    validatedBy: "evidence",
-    promotionStatus: "validated",
-    createdAt: Date.now(),
-  };
+  const validatedLo: LearningObject = createLearningObject({ confidence: 0.9 });
 
   const decision = policy.decide("sandbox_policy", [validatedLo]);
   assert.equal(decision.allowed, false);
@@ -117,21 +78,13 @@ test("AutonomyBoundaryPolicy requires manual approval for sandbox_policy and pro
 
 test("AutonomyBoundaryPolicy requires evidence refs for policy changes", () => {
   const policy = new AutonomyBoundaryPolicy();
-  const learningObjects: LearningObject[] = [
-    {
-      learningObjectId: "lo_1",
-      learningType: "failure_pattern",
-      title: "Pattern",
-      summary: "Summary",
-      confidence: 0.9,
-      evidenceRefs: [],
-      sourceSignalIds: ["sig_1"],
-      recommendation: "Use narrower scope",
-      validatedBy: "evidence",
-      promotionStatus: "validated",
-      createdAt: Date.now(),
-    },
-  ];
+  const learningObjects: LearningObject[] = [createLearningObject({ confidence: 0.9, evidenceRefs: [], content: {
+    title: "Pattern",
+    summary: "Summary",
+    evidenceRefs: [],
+    sourceSignalIds: ["sig_1"],
+    recommendation: "Use narrower scope",
+  } })];
 
   const decision = policy.decide("planning_policy", learningObjects);
   assert.equal(decision.allowed, false);
@@ -149,17 +102,7 @@ test("AutonomyBoundaryPolicy requires promoted multi-evidence learning objects f
   const policy = new AutonomyBoundaryPolicy();
   const decision = policy.decide("planning_policy", [
     {
-      learningObjectId: "lo_1",
-      learningType: "failure_pattern",
-      title: "Pattern",
-      summary: "Summary",
-      confidence: 0.95,
-      evidenceRefs: ["artifact:1"],
-      sourceSignalIds: ["sig_1"],
-      recommendation: "Use narrower scope",
-      validatedBy: "evidence",
-      promotionStatus: "validated",
-      createdAt: Date.now(),
+      ...createLearningObject({ promotionStatus: "validated" }),
     },
   ], { actionMode: "auto_execute" });
   assert.equal(decision.allowed, false);

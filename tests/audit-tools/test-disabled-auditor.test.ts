@@ -104,7 +104,7 @@ describe("audit-tool: test-disabled self-test", () => {
     assert.ok(existsSync(manifestPath), "manifest.json missing");
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     assert.equal(manifest.expectedGate, "audit-test-disabled");
-    const kinds = new Set((manifest.seeds ?? []).map((s) => s.kind));
+    const kinds = new Set((manifest.seeds ?? []).map((seed: { kind: string }) => seed.kind));
     assert.ok(kinds.has("positive"), "manifest missing positive seed");
     assert.ok(kinds.has("negative"), "manifest missing negative seed");
     assert.ok(kinds.has("evasion"), "manifest missing evasion seed");

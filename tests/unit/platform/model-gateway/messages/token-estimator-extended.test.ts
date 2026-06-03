@@ -149,7 +149,7 @@ describe("estimateTextTokens", () => {
   });
 
   test("handles file paths", () => {
-    const tokens = estimateTextTokens("/Users/name/Documents/project/file.ts");
+    const tokens = estimateTextTokens("/workspace/name/Documents/project/file.ts");
     assert.ok(tokens >= 8);
   });
 

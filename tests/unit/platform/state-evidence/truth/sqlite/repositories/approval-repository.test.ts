@@ -8,6 +8,7 @@ import { ExecutionRepository } from "../../../../../../../src/platform/five-plan
 import { SqliteDatabase } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../../helpers/fs.js";
 import type { ApprovalRecord, TakeoverSessionRecord, OperatorActionRecord } from "../../../../../../../src/platform/contracts/types/domain.js";
+import type { ExecutionRecord } from "../../../../../../../src/platform/contracts/types/domain/execution-types.js";
 
 function createTestTask(
   db: SqliteDatabase,
@@ -45,11 +46,12 @@ function createTestExecution(
   now = "2026-04-14T10:00:00.000Z",
 ): void {
   const execRepo = new ExecutionRepository(db.connection);
-  execRepo.insertExecution({
+  const execution: ExecutionRecord = {
     id: execId,
     taskId,
     workflowId: "single_agent_minimal",
     parentExecutionId: null,
+    harnessRunId: null,
     agentId: "agent-1",
     roleId: "general_executor",
     runKind: "task_run",
@@ -59,6 +61,8 @@ function createTestExecution(
     attempt: 1,
     timeoutMs: 60000,
     budgetUsdLimit: 1.0,
+    budgetReservationId: null,
+    budgetLedgerId: null,
     requiresApproval: 0,
     sandboxMode: "workspace_write",
     allowedToolsJson: "[]",
@@ -71,7 +75,8 @@ function createTestExecution(
     finishedAt: null,
     createdAt: now,
     updatedAt: now,
-  });
+  };
+  execRepo.insertExecution(execution);
 }
 
 test("ApprovalRepository insertApproval and getApproval work", () => {
@@ -344,11 +349,11 @@ test("ApprovalRepository listApprovalsByStatus filters correctly", () => {
 
     const requested = repo.listApprovalsByStatus("requested");
     assert.equal(requested.length, 1);
-    assert.equal(requested[0].id, "approval-status-1");
+    assert.equal(requested[0]?.id, "approval-status-1");
 
     const approved = repo.listApprovalsByStatus("approved");
     assert.equal(approved.length, 1);
-    assert.equal(approved[0].id, "approval-status-2");
+    assert.equal(approved[0]?.id, "approval-status-2");
   } finally {
     cleanupPath(workspace);
   }
@@ -456,7 +461,7 @@ test("ApprovalRepository listOperatorActionsByTask returns actions", () => {
       taskId: "task-operator-action-1",
       executionId: "exec-operator-action-1",
       operatorId: "operator-1",
-      actionType: "approve",
+      actionType: "acknowledge_takeover",
       reasonCode: "approved",
       actionPayloadJson: '{"approved":true}',
       beforeStateJson: '{"status":"blocked"}',
@@ -466,7 +471,7 @@ test("ApprovalRepository listOperatorActionsByTask returns actions", () => {
 
     const results = repo.listOperatorActionsByTask("task-operator-action-1");
     assert.equal(results.length, 1);
-    assert.equal(results[0].actionType, "approve");
+    assert.equal(results[0]?.actionType, "acknowledge_takeover");
   } finally {
     cleanupPath(workspace);
   }

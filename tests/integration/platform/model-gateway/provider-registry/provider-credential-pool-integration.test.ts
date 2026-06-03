@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { ProviderCredentialPool } from "../../../../../src/platform/model-gateway/provider-registry/provider-credential-pool.js";
 import type { ProviderCredentialRecord } from "../../../../../src/platform/model-gateway/provider-registry/provider-credential-pool-support.js";
+import { waitForMs } from "../../../../helpers/wait.js";
 
 test("ProviderCredentialPool full lifecycle: select, use, markSuccess", async () => {
   const pool = new ProviderCredentialPool({
@@ -88,7 +89,7 @@ test("ProviderCredentialPool recovery after cooldown", async () => {
   assert.equal(state1?.effectiveStatus, "cooling_down");
 
   // timing-contract: verifies credential cooldown expires before reselection.
-  await new Promise(resolve => setTimeout(resolve, 60));
+  await waitForMs(60);
 
   // Should be active again
   const selection = await pool.selectCredential();

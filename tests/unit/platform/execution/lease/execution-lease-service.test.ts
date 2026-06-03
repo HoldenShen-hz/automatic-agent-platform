@@ -474,6 +474,7 @@ test("releaseLease releases lease when valid [execution-lease-service]", () => {
   const result = service.releaseLease({
     leaseId: "lease-1",
     workerId: "worker-1",
+    fencingToken: existingLease.fencingToken,
   });
 
   assert.equal(result.outcome, "released");
@@ -544,6 +545,7 @@ test("releaseLease blocks when lease not active [execution-lease-service]", () =
   const result = service.releaseLease({
     leaseId: "lease-1",
     workerId: "worker-1",
+    fencingToken: existingLease.fencingToken,
   });
 
   assert.equal(result.outcome, "blocked");
@@ -568,6 +570,7 @@ test("releaseLease creates audit record [execution-lease-service]", () => {
   service.releaseLease({
     leaseId: "lease-1",
     workerId: "worker-1",
+    fencingToken: existingLease.fencingToken,
     reasonCode: "work_complete",
   });
 

@@ -10,6 +10,9 @@ import { DurableEventBus } from "../../../../../src/platform/five-plane-state-ev
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
+import { waitForMs } from "../../../../helpers/wait.js";
+
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
 
 test.describe("Event Delivery Acknowledgment unit tests", () => {
   let workspace: string;
@@ -73,7 +76,7 @@ test.describe("Event Delivery Acknowledgment unit tests", () => {
     });
 
     // timing-contract: ack status is updated by async polling.
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await waitForMs(50);
 
     const delivered = await bus.deliverPending("consumer-ack");
 
@@ -99,7 +102,7 @@ test.describe("Event Delivery Acknowledgment unit tests", () => {
     // Wait for multiple polling cycles
     for (let i = 0; i < 5; i++) {
       // timing-contract: exponential backoff requires real poll intervals.
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await waitForMs(150);
       if (callCount >= 3) break;
     }
 
@@ -123,7 +126,7 @@ test.describe("Event Delivery Acknowledgment unit tests", () => {
     // Wait for all retries to exhaust
     for (let i = 0; i < 10; i++) {
       // timing-contract: retry exhaustion requires real poll intervals.
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await waitForMs(100);
       if (callCount >= 4) break; // Initial + retries
     }
 
@@ -215,7 +218,7 @@ test.describe("Event Delivery Acknowledgment unit tests", () => {
     });
 
     // timing-contract: ack status is updated by async polling.
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await waitForMs(50);
 
     await bus.deliverPending("consumer-filter-a");
 

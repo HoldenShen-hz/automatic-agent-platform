@@ -30,6 +30,7 @@ test("R28-21 adapter healthCheck implementations are not hardcoded to true", asy
   const deniedLivestreamPlugin = createLivestreamAdapterPlugin({
     policy: new NetworkEgressPolicyService({ mode: "enforce", allowedDomains: ["example.com"] }),
   });
+  assert.ok(deniedLivestreamPlugin.healthCheck);
   assert.equal(await deniedLivestreamPlugin.healthCheck(), false);
   await livestreamPlugin.authenticate({ obsToken: "ABCDEFGHIJKLMNOPQRSTUV==" });
   assert.equal(await livestreamPlugin.healthCheck(), true);

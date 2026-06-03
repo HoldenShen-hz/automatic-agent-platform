@@ -35,10 +35,9 @@ test("QueueJobStatus covers all job lifecycle states", () => {
     "delayed",
     "active",
     "completed",
-    "failed",
     "dead_letter",
   ];
-  assert.equal(statuses.length, 6);
+  assert.equal(statuses.length, 5);
 });
 
 // ---------------------------------------------------------------------------
@@ -101,7 +100,6 @@ test("QueueStats structure", () => {
     delayed: 2,
     active: 1,
     completed: 100,
-    failed: 3,
     deadLetter: 1,
   };
   assert.equal(stats.queueName, "test-queue");

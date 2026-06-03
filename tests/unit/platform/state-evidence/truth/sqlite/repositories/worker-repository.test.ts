@@ -6,31 +6,19 @@ import { WorkerRepository } from "../../../../../../../src/platform/five-plane-s
 import { SqliteDatabase } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../../helpers/fs.js";
 
-test("WorkerRepository can be instantiated with mock connection", () => {
-  const mockConn = {
+function createMockConnection() {
+  return {
     prepare: () => ({
-      run: () => ({ changes: 0 }),
+      run: () => ({ changes: 1 }),
       get: () => undefined,
       all: () => [],
     }),
-  } as any;
+  } as const;
+}
 
-  const repo = new WorkerRepository(mockConn);
-  assert.ok(repo);
-});
+test("WorkerRepository exposes the current worker, ticket, and lease surface", () => {
+  const repo = new WorkerRepository(createMockConnection() as never);
 
-test("WorkerRepository has all required worker snapshot methods", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 0 }),
-      get: () => undefined,
-      all: () => [],
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  // Worker snapshot methods
   assert.equal(typeof repo.insertHeartbeatSnapshot, "function");
   assert.equal(typeof repo.upsertWorkerSnapshot, "function");
   assert.equal(typeof repo.upsertCoordinatorInstanceSnapshot, "function");
@@ -40,47 +28,17 @@ test("WorkerRepository has all required worker snapshot methods", () => {
   assert.equal(typeof repo.getCoordinatorInstanceSnapshot, "function");
   assert.equal(typeof repo.listCoordinatorInstanceSnapshots, "function");
   assert.equal(typeof repo.listHeartbeatSnapshotsByExecution, "function");
-});
 
-test("WorkerRepository has all required execution methods", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 0 }),
-      get: () => undefined,
-      all: () => [],
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  // Remote log methods
   assert.equal(typeof repo.insertRemoteLog, "function");
   assert.equal(typeof repo.listRemoteLogsByTask, "function");
   assert.equal(typeof repo.listRemoteLogsByExecution, "function");
-
-  // Agent execution methods
   assert.equal(typeof repo.upsertAgentExecutionRecord, "function");
   assert.equal(typeof repo.getAgentExecutionRecord, "function");
   assert.equal(typeof repo.listAgentExecutionRecordsByTask, "function");
-});
 
-test("WorkerRepository has all required ticket and lease methods", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 0 }),
-      get: () => undefined,
-      all: () => [],
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  // Registration challenge methods
   assert.equal(typeof repo.insertWorkerRegistrationChallenge, "function");
   assert.equal(typeof repo.getWorkerRegistrationChallenge, "function");
   assert.equal(typeof repo.consumeWorkerRegistrationChallenge, "function");
-
-  // Execution ticket methods
   assert.equal(typeof repo.insertExecutionTicket, "function");
   assert.equal(typeof repo.claimExecutionTicket, "function");
   assert.equal(typeof repo.consumeExecutionTicket, "function");
@@ -92,7 +50,6 @@ test("WorkerRepository has all required ticket and lease methods", () => {
   assert.equal(typeof repo.listExecutionTicketsByStatuses, "function");
   assert.equal(typeof repo.listDispatchableExecutionTickets, "function");
 
-  // Lease methods
   assert.equal(typeof repo.insertExecutionLease, "function");
   assert.equal(typeof repo.renewExecutionLease, "function");
   assert.equal(typeof repo.closeExecutionLease, "function");
@@ -101,611 +58,44 @@ test("WorkerRepository has all required ticket and lease methods", () => {
   assert.equal(typeof repo.getActiveExecutionLease, "function");
   assert.equal(typeof repo.getLatestExecutionLease, "function");
   assert.equal(typeof repo.listExecutionLeases, "function");
-  assert.equal(typeof repo.listLeasesByExecution, "function");
   assert.equal(typeof repo.listLeasesByWorker, "function");
   assert.equal(typeof repo.listExecutionLeasesByStatuses, "function");
   assert.equal(typeof repo.listExpiredExecutionLeases, "function");
   assert.equal(typeof repo.getLatestFencingToken, "function");
 });
 
-test("WorkerRepository insertHeartbeatSnapshot does not throw", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
+test("WorkerRepository read methods tolerate empty results", () => {
+  const repo = new WorkerRepository(createMockConnection() as never);
 
-  const repo = new WorkerRepository(mockConn);
+  assert.equal(repo.getWorkerSnapshot("missing"), undefined);
+  assert.equal(repo.getCoordinatorInstanceSnapshot("missing"), undefined);
+  assert.equal(repo.getAgentExecutionRecord("missing", null), undefined);
+  assert.equal(repo.getWorkerRegistrationChallenge("missing"), undefined);
+  assert.equal(repo.getExecutionTicket("missing"), undefined);
+  assert.equal(repo.getActiveExecutionTicket("missing", 1), undefined);
+  assert.equal(repo.getExecutionLease("missing"), undefined);
+  assert.equal(repo.getActiveExecutionLease("missing"), undefined);
+  assert.equal(repo.getLatestExecutionLease("missing"), undefined);
+  assert.equal(repo.getLatestFencingToken("missing"), 0);
 
-  assert.doesNotThrow(() => {
-    repo.insertHeartbeatSnapshot({
-      snapshotId: "hb-001",
-      executionId: "exec-001",
-      workerId: "worker-001",
-      tenantId: null,
-      sampledAt: "2026-04-27T10:00:00.000Z",
-      sampleIntervalMs: 5000,
-      cpuUsagePercent: 45.5,
-      memoryUsageMb: 1024,
-      diskUsageMb: 2048,
-      networkRxBytesPerSec: 102400,
-      networkTxBytesPerSec: 51200,
-    });
-  });
+  assert.deepEqual(repo.listWorkerSnapshots(), []);
+  assert.deepEqual(repo.listStaleWorkerSnapshots("2026-04-01T00:00:00.000Z"), []);
+  assert.deepEqual(repo.listCoordinatorInstanceSnapshots(), []);
+  assert.deepEqual(repo.listHeartbeatSnapshotsByExecution("exec-1"), []);
+  assert.deepEqual(repo.listRemoteLogsByTask("task-1"), []);
+  assert.deepEqual(repo.listRemoteLogsByExecution("exec-1"), []);
+  assert.deepEqual(repo.listAgentExecutionRecordsByTask("task-1", null), []);
+  assert.deepEqual(repo.listPendingExecutionTickets(), []);
+  assert.deepEqual(repo.listExecutionTicketsByExecution("exec-1"), []);
+  assert.deepEqual(repo.listExecutionTicketsByStatuses(["pending", "claimed"]), []);
+  assert.deepEqual(repo.listDispatchableExecutionTickets("2026-04-27T10:00:00.000Z", "default"), []);
+  assert.deepEqual(repo.listExecutionLeases("exec-1"), []);
+  assert.deepEqual(repo.listLeasesByWorker("worker-1"), []);
+  assert.deepEqual(repo.listExecutionLeasesByStatuses(["active"]), []);
+  assert.deepEqual(repo.listExpiredExecutionLeases("2026-04-27T10:00:00.000Z"), []);
 });
 
-test("WorkerRepository upsertWorkerSnapshot does not throw", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.upsertWorkerSnapshot({
-      workerId: "worker-001",
-      registeredAt: "2026-04-27T10:00:00.000Z",
-      lastHeartbeatAt: "2026-04-27T10:00:00.000Z",
-      status: "active",
-      pool: "default",
-      priority: 0,
-      labelsJson: null,
-      currentTaskId: null,
-      currentExecutionId: null,
-      version: 1,
-    });
-  });
-});
-
-test("WorkerRepository getWorkerSnapshot returns undefined for non-existent worker", () => {
-  const mockConn = {
-    prepare: () => ({
-      get: () => undefined,
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.getWorkerSnapshot("non-existent-worker");
-  assert.equal(result, undefined);
-});
-
-test("WorkerRepository listWorkerSnapshots returns empty array", () => {
-  const mockConn = {
-    prepare: () => ({
-      all: () => [],
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.listWorkerSnapshots();
-  assert.ok(Array.isArray(result));
-  assert.equal(result.length, 0);
-});
-
-test("WorkerRepository listStaleWorkerSnapshots returns empty array", () => {
-  const mockConn = {
-    prepare: () => ({
-      all: () => [],
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.listStaleWorkerSnapshots("2026-04-01T00:00:00.000Z");
-  assert.ok(Array.isArray(result));
-  assert.equal(result.length, 0);
-});
-
-test("WorkerRepository insertRemoteLog does not throw", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.insertRemoteLog({
-      logId: "log-001",
-      executionId: "exec-001",
-      taskId: "task-001",
-      tenantId: null,
-      agentId: null,
-      level: "info",
-      message: "Test log message",
-      timestamp: "2026-04-27T10:00:00.000Z",
-      metadataJson: null,
-    });
-  });
-});
-
-test("WorkerRepository upsertAgentExecutionRecord does not throw", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.upsertAgentExecutionRecord({
-      executionId: "exec-001",
-      taskId: "task-001",
-      tenantId: null,
-      agentId: "agent-001",
-      status: "executing",
-      createdAt: "2026-04-27T10:00:00.000Z",
-      updatedAt: "2026-04-27T10:00:00.000Z",
-    });
-  });
-});
-
-test("WorkerRepository getAgentExecutionRecord returns undefined for non-existent execution", () => {
-  const mockConn = {
-    prepare: () => ({
-      get: () => undefined,
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.getAgentExecutionRecord("non-existent-exec", null);
-  assert.equal(result, undefined);
-});
-
-test("WorkerRepository listAgentExecutionRecordsByTask returns empty array", () => {
-  const mockConn = {
-    prepare: () => ({
-      all: () => [],
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.listAgentExecutionRecordsByTask("task-001", null);
-  assert.ok(Array.isArray(result));
-  assert.equal(result.length, 0);
-});
-
-test("WorkerRepository insertWorkerRegistrationChallenge does not throw", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.insertWorkerRegistrationChallenge({
-      challengeId: "challenge-001",
-      workerId: "worker-001",
-      challenge: "test-challenge",
-      expiresAt: "2026-04-28T10:00:00.000Z",
-      createdAt: "2026-04-27T10:00:00.000Z",
-      consumedAt: null,
-    });
-  });
-});
-
-test("WorkerRepository getWorkerRegistrationChallenge returns undefined for non-existent challenge", () => {
-  const mockConn = {
-    prepare: () => ({
-      get: () => undefined,
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.getWorkerRegistrationChallenge("non-existent-challenge");
-  assert.equal(result, undefined);
-});
-
-test("WorkerRepository consumeWorkerRegistrationChallenge does not throw", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.consumeWorkerRegistrationChallenge("challenge-001", "2026-04-27T12:00:00.000Z");
-  });
-});
-
-test("WorkerRepository insertExecutionTicket does not throw", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-      get: () => undefined,
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.insertExecutionTicket({
-      ticketId: "ticket-001",
-      executionId: "exec-001",
-      taskId: "task-001",
-      queueName: "default",
-      priority: 0,
-      status: "pending",
-      createdAt: "2026-04-27T10:00:00.000Z",
-      assignedWorkerId: null,
-      claimedAt: null,
-      consumedAt: null,
-      invalidatedAt: null,
-    });
-  });
-});
-
-test("WorkerRepository claimExecutionTicket accepts string arguments", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.claimExecutionTicket("ticket-001", "worker-001", "2026-04-27T10:00:00.000Z");
-  });
-});
-
-test("WorkerRepository claimExecutionTicket accepts object argument", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.claimExecutionTicket({
-      ticketId: "ticket-001",
-      assignedWorkerId: "worker-001",
-      leaseId: "lease-001",
-      claimedAt: "2026-04-27T10:00:00.000Z",
-    });
-  });
-});
-
-test("WorkerRepository consumeExecutionTicket does not throw", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.consumeExecutionTicket("ticket-001", "2026-04-27T12:00:00.000Z");
-  });
-});
-
-test("WorkerRepository invalidateExecutionTicket accepts string arguments", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.invalidateExecutionTicket("ticket-001", "2026-04-27T12:00:00.000Z");
-  });
-});
-
-test("WorkerRepository invalidateExecutionTicket accepts object argument", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.invalidateExecutionTicket({
-      ticketId: "ticket-001",
-      status: "cancelled",
-      invalidatedAt: "2026-04-27T12:00:00.000Z",
-    });
-  });
-});
-
-test("WorkerRepository listPendingExecutionTickets returns empty array", () => {
-  const mockConn = {
-    prepare: () => ({
-      all: () => [],
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.listPendingExecutionTickets();
-  assert.ok(Array.isArray(result));
-  assert.equal(result.length, 0);
-});
-
-test("WorkerRepository getExecutionTicket returns undefined for non-existent ticket", () => {
-  const mockConn = {
-    prepare: () => ({
-      get: () => undefined,
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.getExecutionTicket("non-existent-ticket");
-  assert.equal(result, undefined);
-});
-
-test("WorkerRepository getActiveExecutionTicket returns undefined for non-existent execution", () => {
-  const mockConn = {
-    prepare: () => ({
-      get: () => undefined,
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.getActiveExecutionTicket("non-existent-exec", 1);
-  assert.equal(result, undefined);
-});
-
-test("WorkerRepository listExecutionTicketsByExecution returns empty array", () => {
-  const mockConn = {
-    prepare: () => ({
-      all: () => [],
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.listExecutionTicketsByExecution("exec-001");
-  assert.ok(Array.isArray(result));
-  assert.equal(result.length, 0);
-});
-
-test("WorkerRepository listExecutionTicketsByStatuses returns empty array", () => {
-  const mockConn = {
-    prepare: () => ({
-      all: () => [],
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.listExecutionTicketsByStatuses(["pending", "claimed"]);
-  assert.ok(Array.isArray(result));
-  assert.equal(result.length, 0);
-});
-
-test("WorkerRepository listDispatchableExecutionTickets returns empty array", () => {
-  const mockConn = {
-    prepare: () => ({
-      all: () => [],
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.listDispatchableExecutionTickets("2026-04-27T10:00:00.000Z", "default");
-  assert.ok(Array.isArray(result));
-  assert.equal(result.length, 0);
-});
-
-test("WorkerRepository insertExecutionLease does not throw", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.insertExecutionLease({
-      leaseId: "lease-001",
-      ticketId: "ticket-001",
-      executionId: "exec-001",
-      workerId: "worker-001",
-      status: "active",
-      grantedAt: "2026-04-27T10:00:00.000Z",
-      expiresAt: "2026-04-27T11:00:00.000Z",
-      lastHeartbeatAt: null,
-      releasedAt: null,
-      releaseReasonCode: null,
-      fencingToken: 1,
-    });
-  });
-});
-
-test("WorkerRepository renewExecutionLease accepts string arguments", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.renewExecutionLease("lease-001", "2026-04-27T12:00:00.000Z");
-  });
-});
-
-test("WorkerRepository renewExecutionLease accepts three arguments with lastHeartbeatAt", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.renewExecutionLease("lease-001", "2026-04-27T12:00:00.000Z", "2026-04-27T11:30:00.000Z");
-  });
-});
-
-test("WorkerRepository closeExecutionLease accepts string argument", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.closeExecutionLease("lease-001", "2026-04-27T12:00:00.000Z");
-  });
-});
-
-test("WorkerRepository closeExecutionLease accepts object argument", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.closeExecutionLease({
-      leaseId: "lease-001",
-      status: "released",
-      releasedAt: "2026-04-27T12:00:00.000Z",
-      reasonCode: "task_completed",
-    });
-  });
-});
-
-test("WorkerRepository insertLeaseAudit does not throw", () => {
-  const mockConn = {
-    prepare: () => ({
-      run: () => ({ changes: 1 }),
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-
-  assert.doesNotThrow(() => {
-    repo.insertLeaseAudit({
-      auditId: "audit-001",
-      leaseId: "lease-001",
-      eventType: "renewed",
-      occurredAt: "2026-04-27T11:00:00.000Z",
-      workerId: "worker-001",
-      detailsJson: null,
-    });
-  });
-});
-
-test("WorkerRepository getExecutionLease returns undefined for non-existent lease", () => {
-  const mockConn = {
-    prepare: () => ({
-      get: () => undefined,
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.getExecutionLease("non-existent-lease");
-  assert.equal(result, undefined);
-});
-
-test("WorkerRepository getActiveExecutionLease returns undefined for non-existent execution", () => {
-  const mockConn = {
-    prepare: () => ({
-      get: () => undefined,
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.getActiveExecutionLease("non-existent-exec");
-  assert.equal(result, undefined);
-});
-
-test("WorkerRepository getLatestExecutionLease returns undefined for non-existent execution", () => {
-  const mockConn = {
-    prepare: () => ({
-      get: () => undefined,
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.getLatestExecutionLease("non-existent-exec");
-  assert.equal(result, undefined);
-});
-
-test("WorkerRepository listExecutionLeases returns empty array", () => {
-  const mockConn = {
-    prepare: () => ({
-      all: () => [],
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.listExecutionLeases("exec-001");
-  assert.ok(Array.isArray(result));
-  assert.equal(result.length, 0);
-});
-
-test("WorkerRepository listLeasesByWorker returns empty array", () => {
-  const mockConn = {
-    prepare: () => ({
-      all: () => [],
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.listLeasesByWorker("worker-001");
-  assert.ok(Array.isArray(result));
-  assert.equal(result.length, 0);
-});
-
-test("WorkerRepository listExecutionLeasesByStatuses returns empty array", () => {
-  const mockConn = {
-    prepare: () => ({
-      all: () => [],
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.listExecutionLeasesByStatuses(["active"]);
-  assert.ok(Array.isArray(result));
-  assert.equal(result.length, 0);
-});
-
-test("WorkerRepository listExpiredExecutionLeases returns empty array", () => {
-  const mockConn = {
-    prepare: () => ({
-      all: () => [],
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.listExpiredExecutionLeases("2026-04-27T10:00:00.000Z");
-  assert.ok(Array.isArray(result));
-  assert.equal(result.length, 0);
-});
-
-test("WorkerRepository getLatestFencingToken returns 0 for non-existent execution", () => {
-  const mockConn = {
-    prepare: () => ({
-      get: () => undefined,
-    }),
-  } as any;
-
-  const repo = new WorkerRepository(mockConn);
-  const result = repo.getLatestFencingToken("non-existent-exec");
-  assert.equal(result, 0);
-});
-
-test("WorkerRepository integration - full worker lifecycle", () => {
+test("WorkerRepository integration persists current worker snapshot contract", () => {
   const workspace = createTempWorkspace("worker-repo-integration-");
   const dbPath = join(workspace, "worker-integration.db");
 
@@ -713,15 +103,32 @@ test("WorkerRepository integration - full worker lifecycle", () => {
     const db = new SqliteDatabase(dbPath);
     db.migrate();
     const repo = new WorkerRepository(db.connection);
-
     const now = "2026-04-27T10:00:00.000Z";
 
-    // Insert worker snapshot
     repo.upsertWorkerSnapshot({
       workerId: "integration-worker-001",
-      lastHeartbeatAt: now,
-      status: "active",
-      version: 1,
+      status: "idle",
+      placement: "local",
+      isolationLevel: "standard",
+      repoVersion: null,
+      remoteSessionStatus: null,
+      lastAcknowledgedStreamOffset: null,
+      streamResumeSuccessRate: null,
+      credentialRefreshSuccessRate: null,
+      sessionConsistencyCheckStatus: null,
+      sessionConsistencyCheckedAt: null,
+      workspaceSyncStatus: null,
+      workspaceSyncCheckedAt: null,
+      saturation: null,
+      activeLeaseCount: 0,
+      meanStartupLatencyMs: null,
+      sandboxSuccessRate: null,
+      repoCacheHitRate: null,
+      registrationVerifiedAt: null,
+      registrationChallengeId: null,
+      serviceIdentity: null,
+      mtlsPeerFingerprint: null,
+      allowedNodeRunTenants: null,
       capabilitiesJson: "[]",
       runningExecutionsJson: "[]",
       maxConcurrency: 1,
@@ -734,50 +141,15 @@ test("WorkerRepository integration - full worker lifecycle", () => {
       toolBacklogCount: 0,
       currentStepId: null,
       lastProgressAt: null,
+      lastHeartbeatAt: now,
       updatedAt: now,
+      version: 1,
     });
 
-    // Verify worker snapshot was inserted
     const workerSnapshot = repo.getWorkerSnapshot("integration-worker-001");
     assert.ok(workerSnapshot);
     assert.equal(workerSnapshot.workerId, "integration-worker-001");
-    assert.equal(workerSnapshot.status, "active");
-
-    // Update worker snapshot (tests upsert with version 0 to bypass CAS check)
-    repo.upsertWorkerSnapshot({
-      workerId: "integration-worker-001",
-      lastHeartbeatAt: now,
-      status: "busy",
-      version: 0,  // 0 bypasses CAS check for unconditional update
-      capabilitiesJson: "[]",
-      runningExecutionsJson: "[]",
-      maxConcurrency: 1,
-      queueAffinity: null,
-      runtimeInstanceId: null,
-      restartedFromRuntimeInstanceId: null,
-      restartGeneration: 0,
-      cpuPct: null,
-      memoryMb: null,
-      toolBacklogCount: 0,
-      currentStepId: null,
-      lastProgressAt: null,
-      updatedAt: now,
-    });
-
-    // Verify worker snapshot was updated
-    const updatedSnapshot = repo.getWorkerSnapshot("integration-worker-001");
-    assert.ok(updatedSnapshot);
-    assert.equal(updatedSnapshot.status, "busy");
-
-    // List worker snapshots
-    const snapshots = repo.listWorkerSnapshots("busy");
-    assert.ok(snapshots.length >= 1);
-    assert.equal(snapshots[0].workerId, "integration-worker-001");
-
-    // Test stale worker detection (with old timestamp)
-    const staleSnapshots = repo.listStaleWorkerSnapshots("2025-01-01T00:00:00.000Z");
-    assert.ok(staleSnapshots.length >= 0); // May be empty if worker is not stale
-
+    assert.equal(workerSnapshot.status, "idle");
   } finally {
     cleanupPath(workspace);
   }

@@ -7,12 +7,20 @@ import {
   type InteractionTemplate,
 } from "../../../../../src/interaction/ux/template-engine/index.js";
 
-test("applyInteractionTemplate returns template with all original fields", () => {
-  const template: InteractionTemplate = {
+function makeTemplate(overrides: Partial<InteractionTemplate> = {}): InteractionTemplate {
+  return {
     templateId: "tpl_001",
     title: "Test Template",
     steps: ["step1", "step2", "step3"],
+    parameters: [],
+    requiredCapabilities: [],
+    catalogTags: [],
+    ...overrides,
   };
+}
+
+test("applyInteractionTemplate returns template with all original fields", () => {
+  const template = makeTemplate();
 
   const result = applyInteractionTemplate(template);
 
@@ -22,11 +30,7 @@ test("applyInteractionTemplate returns template with all original fields", () =>
 });
 
 test("applyInteractionTemplate applies overrides correctly", () => {
-  const template: InteractionTemplate = {
-    templateId: "tpl_001",
-    title: "Original Title",
-    steps: ["step1"],
-  };
+  const template = makeTemplate({ title: "Original Title", steps: ["step1"] });
 
   const result = applyInteractionTemplate(template, { title: "New Title" });
 
@@ -36,11 +40,7 @@ test("applyInteractionTemplate applies overrides correctly", () => {
 });
 
 test("applyInteractionTemplate applies multiple overrides", () => {
-  const template: InteractionTemplate = {
-    templateId: "tpl_001",
-    title: "Original",
-    steps: ["a", "b"],
-  };
+  const template = makeTemplate({ title: "Original", steps: ["a", "b"] });
 
   const result = applyInteractionTemplate(template, {
     title: "Updated",
@@ -52,11 +52,7 @@ test("applyInteractionTemplate applies multiple overrides", () => {
 });
 
 test("applyInteractionTemplate does not modify original template", () => {
-  const template: InteractionTemplate = {
-    templateId: "tpl_001",
-    title: "Original",
-    steps: ["step1"],
-  };
+  const template = makeTemplate({ title: "Original", steps: ["step1"] });
 
   applyInteractionTemplate(template, { title: "Modified" });
 
@@ -64,11 +60,7 @@ test("applyInteractionTemplate does not modify original template", () => {
 });
 
 test("applyInteractionTemplate handles empty override object", () => {
-  const template: InteractionTemplate = {
-    templateId: "tpl_001",
-    title: "Title",
-    steps: ["step1", "step2"],
-  };
+  const template = makeTemplate({ title: "Title", steps: ["step1", "step2"] });
 
   const result = applyInteractionTemplate(template, {});
 
@@ -135,11 +127,7 @@ test("InteractionTemplateSchema accepts template with optional fields omitted", 
 });
 
 test("applyInteractionTemplate handles partial override with only templateId", () => {
-  const template: InteractionTemplate = {
-    templateId: "tpl_001",
-    title: "Original Title",
-    steps: ["step1", "step2"],
-  };
+  const template = makeTemplate({ title: "Original Title", steps: ["step1", "step2"] });
 
   const result = applyInteractionTemplate(template, {
     templateId: "tpl_002",

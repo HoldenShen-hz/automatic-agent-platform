@@ -3,19 +3,32 @@ import test from "node:test";
 
 import { RolloutStateMachine } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/rollout/rollout-state-machine.js";
 import type { ImprovementCandidate } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/improvement-candidate.js";
+import { parseImprovementCandidate } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/types/improvement-candidate.js";
 
 function createCandidate(status: ImprovementCandidate["status"]): ImprovementCandidate {
-  return {
+  return parseImprovementCandidate({
     candidateId: `candidate_${status}`,
     taskId: "task_rollout",
+    learningObjectId: "learning_1",
+    source: "failure_pattern",
+    targetScope: "platform",
+    priority: "medium",
+    rolloutLevel: "L0_off",
+    metrics: {
+      errorRate: 0,
+      latencyP99: 0,
+      successRate: 1,
+      sampleCount: 0,
+    },
+    guardrails: [],
     sourceSignalRefs: ["signal_1"],
     sourceLearningObjectIds: ["learning_1"],
     changeScope: "policy",
     description: "rollout candidate",
     expectedBenefit: "safer progressive promotion",
     status,
-    createdAt: Date.now(),
-  };
+    createdAt: new Date().toISOString(),
+  });
 }
 
 test("RolloutStateMachine promotes approved candidates into evaluation lane", () => {

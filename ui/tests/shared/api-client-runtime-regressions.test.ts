@@ -394,8 +394,10 @@ describe("shared api-client runtime regressions", () => {
       },
     });
 
-    const request = createRequest("/api/v1/slow");
-    request.timeoutMs = 5;
+    const request: RestClientRequest = {
+      ...createRequest("/api/v1/slow"),
+      timeoutMs: 5,
+    };
     const result = transport.send(request).then(
       () => ({ ok: true as const }),
       (error) => ({ ok: false as const, error }),

@@ -2,9 +2,36 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { ApprovalRoutingService } from "../../../../src/org-governance/approval-routing/approval-routing-service.js";
+import type { ApprovalRoutingServiceOptions } from "../../../../src/org-governance/approval-routing/approval-routing-service.js";
 import type { OrgNode } from "../../../../src/org-governance/org-model/org-node/index.js";
 
 type ApprovalRouteInput = Parameters<ApprovalRoutingService["route"]>[0];
+const TEST_FX_RATES: NonNullable<ApprovalRoutingServiceOptions["fxRatesToCny"]> = {
+  CNY: {
+    rate: 1,
+    asOf: "2026-04-01T00:00:00.000Z",
+    source: "test.fx.identity-cny",
+  },
+  USD: {
+    rate: 7.2,
+    asOf: "2026-04-01T00:00:00.000Z",
+    source: "test.fx.usd-cny",
+  },
+};
+
+function createApprovalRoutingService(
+  options: Omit<ApprovalRoutingServiceOptions, "fxRatesToCny"> & {
+    readonly fxRatesToCny?: ApprovalRoutingServiceOptions["fxRatesToCny"];
+  },
+): ApprovalRoutingService {
+  return new ApprovalRoutingService({
+    ...options,
+    fxRatesToCny: {
+      ...TEST_FX_RATES,
+      ...(options.fxRatesToCny ?? {}),
+    },
+  });
+}
 
 function createMockOrgNode(overrides: Partial<OrgNode> = {}): OrgNode {
   return {
@@ -34,7 +61,7 @@ function createMockRequest(overrides: Partial<ApprovalRouteInput> = {}): Approva
 
 test("ApprovalRoutingService route returns routing decision", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const result = service.route(
     createMockRequest(),
@@ -49,7 +76,7 @@ test("ApprovalRoutingService route returns routing decision", () => {
 
 test("ApprovalRoutingService route builds audit record", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const result = service.route(
     createMockRequest({ requesterId: "audit-test-requester" }),
@@ -63,7 +90,7 @@ test("ApprovalRoutingService route builds audit record", () => {
 
 test("ApprovalRoutingService getAmountThresholdMatrix returns configured rules", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     amountThresholdRules: [
       {
@@ -84,7 +111,7 @@ test("ApprovalRoutingService getAmountThresholdMatrix returns configured rules",
 
 test("ApprovalRoutingService getAmountThresholdMatrix returns empty when no rules configured", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const matrix = service.getAmountThresholdMatrix();
 
@@ -93,7 +120,7 @@ test("ApprovalRoutingService getAmountThresholdMatrix returns empty when no rule
 
 test("ApprovalRoutingService planChain returns chain plan with sequential mode", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const plan = service.planChain(
     createMockRequest(),
@@ -108,7 +135,7 @@ test("ApprovalRoutingService planChain returns chain plan with sequential mode",
 
 test("ApprovalRoutingService planChain respects chainMode option", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const plan = service.planChain(
     createMockRequest(),
@@ -122,7 +149,7 @@ test("ApprovalRoutingService planChain respects chainMode option", () => {
 
 test("ApprovalRoutingService planChain respects timeoutMinutes option", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const now = "2026-04-01T00:00:00.000Z";
   const plan = service.planChain(createMockRequest(), now, now, { timeoutMinutes: 30 });
@@ -132,7 +159,7 @@ test("ApprovalRoutingService planChain respects timeoutMinutes option", () => {
 
 test("ApprovalRoutingService planChain with no timeoutMinutes has null deadline", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const plan = service.planChain(
     createMockRequest(),
@@ -145,7 +172,7 @@ test("ApprovalRoutingService planChain with no timeoutMinutes has null deadline"
 
 test("ApprovalRoutingService planChain with conditional mode adds extra approvers", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const plan = service.planChain(
     createMockRequest(),
@@ -160,7 +187,7 @@ test("ApprovalRoutingService planChain with conditional mode adds extra approver
 
 test("ApprovalRoutingService planChain filters empty conditional approver IDs", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const plan = service.planChain(
     createMockRequest(),
@@ -174,7 +201,7 @@ test("ApprovalRoutingService planChain filters empty conditional approver IDs", 
 
 test("ApprovalRoutingService route handles different risk levels", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const lowRisk = service.route(createMockRequest({ riskLevel: "low" }), "2026-04-01T00:00:00.000Z", "2026-04-01T00:00:00.000Z");
   const mediumRisk = service.route(createMockRequest({ riskLevel: "medium" }), "2026-04-01T00:00:00.000Z", "2026-04-01T00:00:00.000Z");
@@ -187,7 +214,7 @@ test("ApprovalRoutingService route handles different risk levels", () => {
 
 test("ApprovalRoutingService route handles different request amounts", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   const zeroAmount = service.route(createMockRequest({ amountUsd: 0 }), "2026-04-01T00:00:00.000Z", "2026-04-01T00:00:00.000Z");
   const normalAmount = service.route(createMockRequest({ amountUsd: 5000 }), "2026-04-01T00:00:00.000Z", "2026-04-01T00:00:00.000Z");
@@ -200,7 +227,7 @@ test("ApprovalRoutingService route handles different request amounts", () => {
 
 test("ApprovalRoutingService constructor accepts empty arrays for optional params", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     delegations: [],
     escalationRules: [],
@@ -212,14 +239,14 @@ test("ApprovalRoutingService constructor accepts empty arrays for optional param
 
 test("ApprovalRoutingService constructor handles undefined optional params", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({ orgNodes });
+  const service = createApprovalRoutingService({ orgNodes });
 
   assert.ok(service != null);
 });
 
-test("ApprovalRoutingService route prefers the most specific eligible escalation rule instead of first match", () => {
+test("ApprovalRoutingService route prefers the earliest eligible escalation rule", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     escalationRules: [
       {
@@ -251,13 +278,13 @@ test("ApprovalRoutingService route prefers the most specific eligible escalation
     "2026-04-01T01:00:00.000Z",
   );
 
-  assert.equal(result.escalatedTo, "director");
-  assert.equal(result.escalationRuleId, "escalate-director");
+  assert.equal(result.escalatedTo, "manager");
+  assert.equal(result.escalationRuleId, "escalate-manager");
 });
 
 test("ApprovalRoutingService route enforces escalation cooldown and max depth", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     escalationRules: [
       {
@@ -295,7 +322,7 @@ test("ApprovalRoutingService route enforces escalation cooldown and max depth", 
 
 test("ApprovalRoutingService route surfaces SLA breach notification targets", () => {
   const orgNodes = [createMockOrgNode()];
-  const service = new ApprovalRoutingService({
+  const service = createApprovalRoutingService({
     orgNodes,
     escalationRules: [
       {

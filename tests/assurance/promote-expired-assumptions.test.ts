@@ -30,28 +30,56 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..", "..");
 const fixtureRoot = join(repoRoot, "tests", "fixtures", "seeded-defects", "assumption-promotion");
 const scriptPath = join(repoRoot, "scripts", "assurance", "promote-expired-assumptions.mjs");
+type PromotionReport = {
+  readonly generatedAt: string;
+  readonly now: string;
+  readonly assumptionsFile: string;
+  readonly issuesFile: string;
+  readonly promoted: ReadonlyArray<{
+    assumptionId: string;
+    issueId: string;
+    sourceRef: string;
+    expiry: string;
+    severity: string;
+  }>;
+  readonly skipped: ReadonlyArray<{
+    assumptionId: string;
+    reason: string;
+    expiry?: string;
+    status?: string;
+  }>;
+  readonly errors: ReadonlyArray<{
+    assumptionId: string | null;
+    message: string;
+  }>;
+  readonly counts: {
+    promoted: number;
+    skipped: number;
+    errors: number;
+  };
+};
 
-/**
- * @typedef {Object} PromotionReport
- * @property {string} generatedAt
- * @property {string} now
- * @property {string} assumptionsFile
- * @property {string} issuesFile
- * @property {Array<{ assumptionId: string; issueId: string; sourceRef: string; expiry: string; severity: string }>} promoted
- * @property {Array<{ assumptionId: string; reason: string; expiry?: string; status?: string }>} skipped
- * @property {Array<{ assumptionId: string | null; message: string }>} errors
- * @property {{ promoted: number; skipped: number; errors: number }} counts
- */
+type AssumptionRecord = {
+  readonly assumptionId: string;
+  readonly status: string;
+};
+
+type IssueRecord = {
+  readonly issueId: string;
+  readonly source: string;
+  readonly category: string;
+  readonly severity: string;
+  readonly status: string;
+  readonly linkedPromiseIds?: readonly string[];
+};
 
 /**
  * Run the promote CLI against the supplied fixture dir and return the parsed
  * report. The CLI writes its report and updated inputs into a fresh tmp dir
  * so the repo's real artifacts/assurance/* is never touched.
  *
- * @param {string} fixtureName  "positive" | "negative" | "evasion"
- * @returns {{ report: PromotionReport; tmpDir: string; issueId: string | null }}
  */
-function runPromote(fixtureName) {
+function runPromote(fixtureName: string): { report: PromotionReport; tmpDir: string; issueId: string | null } {
   const srcAssumptions = join(fixtureRoot, fixtureName, "assumptions.jsonl");
   const srcIssues = join(fixtureRoot, fixtureName, "issues.deduped.jsonl");
 
@@ -85,35 +113,32 @@ function runPromote(fixtureName) {
     { cwd: repoRoot, stdio: "pipe", encoding: "utf8" },
   );
 
-  const report = JSON.parse(readFileSync(tmpReportJson, "utf8"));
-  const issueId = report.promoted.length === 1 ? report.promoted[0].issueId : null;
+  const report = JSON.parse(readFileSync(tmpReportJson, "utf8")) as PromotionReport;
+  const promotedEntry = report.promoted.length === 1 ? report.promoted[0] : undefined;
+  const issueId = promotedEntry?.issueId ?? null;
   return { report, tmpDir, issueId };
 }
 
 /**
- * @param {string} tmpDir
  */
-function readAssumptionsAfter(tmpDir) {
+function readAssumptionsAfter(tmpDir: string): AssumptionRecord[] {
   const text = readFileSync(join(tmpDir, "assumptions.jsonl"), "utf8");
   return text
     .split(/\r?\n/)
-    .filter((l) => l.trim().length > 0)
-    .map((l) => JSON.parse(l));
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as AssumptionRecord);
 }
 
-/**
- * @param {string} tmpDir
- */
-function readIssuesAfter(tmpDir) {
+function readIssuesAfter(tmpDir: string): IssueRecord[] {
   const text = readFileSync(join(tmpDir, "issues.deduped.jsonl"), "utf8");
   return text
     .split(/\r?\n/)
-    .filter((l) => l.trim().length > 0)
-    .map((l) => JSON.parse(l));
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as IssueRecord);
 }
 
-const keptTmpDirs = [];
-function trackTmp(dir) {
+const keptTmpDirs: string[] = [];
+function trackTmp(dir: string): string {
   keptTmpDirs.push(dir);
   return dir;
 }
@@ -154,8 +179,10 @@ describe("assurance: promote-expired-assumptions self-test", () => {
     // Source assumption has been marked expired in-place.
     const assumptions = readAssumptionsAfter(tmpDir);
     assert.equal(assumptions.length, 1);
-    assert.equal(assumptions[0].assumptionId, "AAS-ASSUMPTION-EXPIRED-000001");
-    assert.equal(assumptions[0].status, "expired");
+    const [assumption] = assumptions;
+    assert.ok(assumption, "expected promoted assumption row");
+    assert.equal(assumption.assumptionId, "AAS-ASSUMPTION-EXPIRED-000001");
+    assert.equal(assumption.status, "expired");
   });
 
   it("negative: future-dated unverified assumption is NOT promoted", () => {
@@ -165,15 +192,19 @@ describe("assurance: promote-expired-assumptions self-test", () => {
     assert.equal(report.counts.promoted, 0, `expected 0 promotions, got ${report.counts.promoted}`);
     assert.equal(report.counts.errors, 0, `unexpected errors: ${JSON.stringify(report.errors)}`);
     assert.equal(report.counts.skipped, 1);
-    assert.equal(report.skipped[0].assumptionId, "AAS-ASSUMPTION-FUTURE-000001");
-    assert.equal(report.skipped[0].reason, "not-yet-due");
+    const [skipped] = report.skipped;
+    assert.ok(skipped, "expected skipped assumption entry");
+    assert.equal(skipped.assumptionId, "AAS-ASSUMPTION-FUTURE-000001");
+    assert.equal(skipped.reason, "not-yet-due");
 
     // No new issues and assumption status untouched.
     const issues = readIssuesAfter(tmpDir);
     assert.equal(issues.length, 0, "issues.deduped.jsonl should remain empty");
     const assumptions = readAssumptionsAfter(tmpDir);
     assert.equal(assumptions.length, 1);
-    assert.equal(assumptions[0].status, "unverified");
+    const [assumption] = assumptions;
+    assert.ok(assumption, "expected future-dated assumption row");
+    assert.equal(assumption.status, "unverified");
   });
 
   it("evasion: expired but already verified assumption is NOT promoted (status bypass)", () => {
@@ -183,11 +214,13 @@ describe("assurance: promote-expired-assumptions self-test", () => {
     assert.equal(report.counts.promoted, 0, `expected 0 promotions, got ${report.counts.promoted}`);
     assert.equal(report.counts.errors, 0, `unexpected errors: ${JSON.stringify(report.errors)}`);
     assert.equal(report.counts.skipped, 1);
-    assert.equal(report.skipped[0].assumptionId, "AAS-ASSUMPTION-VERIFIED-000001");
+    const [skipped] = report.skipped;
+    assert.ok(skipped, "expected skipped verified assumption entry");
+    assert.equal(skipped.assumptionId, "AAS-ASSUMPTION-VERIFIED-000001");
     assert.match(
-      String(report.skipped[0].reason),
+      String(skipped.reason),
       /^status-bypass:/,
-      `expected status-bypass reason, got ${report.skipped[0].reason}`,
+      `expected status-bypass reason, got ${skipped.reason}`,
     );
 
     const issues = readIssuesAfter(tmpDir);
@@ -196,7 +229,9 @@ describe("assurance: promote-expired-assumptions self-test", () => {
     assert.equal(assumptions.length, 1);
     // Verified status is preserved (not downgraded to expired) because the
     // promotion pipeline only acts on unverified entries.
-    assert.equal(assumptions[0].status, "verified");
+    const [assumption] = assumptions;
+    assert.ok(assumption, "expected verified assumption row");
+    assert.equal(assumption.status, "verified");
   });
 
   it("re-running promote on the same expired assumption is a no-op (idempotent)", () => {
@@ -227,9 +262,9 @@ describe("assurance: promote-expired-assumptions self-test", () => {
     assert.equal(report2.counts.promoted, 0, "2nd run must not re-promote the same assumption");
     assert.equal(report2.counts.skipped, 1);
     assert.match(
-      String(report2.skipped[0].reason),
+      String(report2.skipped[0]?.reason),
       /^already-promoted:/,
-      `expected already-promoted reason, got ${report2.skipped[0].reason}`,
+      `expected already-promoted reason, got ${report2.skipped[0]?.reason}`,
     );
     void second;
   });

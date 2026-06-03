@@ -26,6 +26,8 @@ import { canonicalMemoryLayerToScope, DEFAULT_LAYER_TTL_CONFIGS, scopeToCanonica
 import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 function createApprovalHarness(prefix: string) {
   const tmpDir = join("/tmp", `${prefix}-${Date.now()}`);
   mkdirSync(tmpDir, { recursive: true });

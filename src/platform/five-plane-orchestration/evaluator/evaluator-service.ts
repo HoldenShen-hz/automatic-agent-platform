@@ -11,9 +11,11 @@
  * graph-level metadata including node risk, budget reservation, and graph version.
  */
 
+import { resolve } from "node:path";
 import { newId } from "../../contracts/types/ids.js";
 import type { PlanGraphBundle } from "../../contracts/executable-contracts/index.js";
 import type { FeedbackBatch } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
+import { createConfigReadPolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
 import { RiskEvaluationEngine } from "../../five-plane-control-plane/risk-control/risk-evaluation-engine.js";
 import { loadRiskConfig } from "../../five-plane-control-plane/risk-control/risk-config-loader.js";
 import type { RiskFactors, RiskLevel } from "../../five-plane-control-plane/risk-control/types.js";
@@ -82,6 +84,9 @@ const DEFAULT_EVALUATOR_CONFIG: EvaluatorConfig = {
   },
 };
 
+const DEFAULT_RISK_CONFIG_ROOT = resolve(process.cwd(), "config");
+const DEFAULT_RISK_CONFIG_PATH = resolve(DEFAULT_RISK_CONFIG_ROOT, "risk/default.json");
+
 export interface EvaluatorServiceOptions {
   readonly config?: EvaluatorConfig;
   readonly riskEvaluationEngine?: RiskEvaluationEngine;
@@ -94,7 +99,10 @@ export class EvaluatorService {
   public constructor(options: EvaluatorServiceOptions = {}) {
     this.config = options.config ?? DEFAULT_EVALUATOR_CONFIG;
     this.riskEvaluationEngine = options.riskEvaluationEngine ?? new RiskEvaluationEngine({
-      config: loadRiskConfig(),
+      config: loadRiskConfig(
+        DEFAULT_RISK_CONFIG_PATH,
+        createConfigReadPolicy(DEFAULT_RISK_CONFIG_ROOT),
+      ),
     });
   }
 

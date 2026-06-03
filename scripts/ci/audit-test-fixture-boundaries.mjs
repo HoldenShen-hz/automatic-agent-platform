@@ -7,6 +7,7 @@ const allowedTopLevelEntries = new Set([
   "migration",
   "packs",
   "prompt-engine",
+  "seeded-defects",
 ]);
 
 const topLevelEntries = readdirSync(fixturesRoot, { withFileTypes: true });
@@ -16,7 +17,12 @@ const unexpectedTopLevelEntries = topLevelEntries
   .sort((left, right) => left.localeCompare(right));
 
 const fixtureTestFiles = walkFiles(fixturesRoot)
-  .filter((path) => /\.test\.(ts|tsx|js|jsx|mjs|cjs)$/u.test(path))
+  .filter((path) => {
+    if (!/\.test\.(ts|tsx|js|jsx|mjs|cjs)$/u.test(path)) {
+      return false;
+    }
+    return !path.startsWith("tests/fixtures/seeded-defects/");
+  })
   .sort((left, right) => left.localeCompare(right));
 
 const summary = {

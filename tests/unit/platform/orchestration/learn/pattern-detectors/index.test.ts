@@ -10,6 +10,24 @@ import {
   FailurePatternSchema,
   FailurePatternTypeSchema,
 } from "../../../../../../src/platform/five-plane-orchestration/learn/pattern-detectors/index.js";
+import type { LearningSignal } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/dto.js";
+
+function createSignal(overrides: Partial<LearningSignal> = {}): LearningSignal {
+  return {
+    learningSignalId: "signal-1",
+    taskId: "task-1",
+    sourceFeedbackId: "feedback-1",
+    learningType: "failure_pattern",
+    confidence: 0.9,
+    valueSummary: "test signal",
+    evidenceRefs: [],
+    sourceSignalIds: [],
+    relatedSignalIds: [],
+    evidence: {},
+    generatedAt: Date.now(),
+    ...overrides,
+  };
+}
 
 test("detectLlmTruncation is exported as function", () => {
   assert.equal(typeof detectLlmTruncation, "function");
@@ -36,21 +54,32 @@ test("FailurePatternTypeSchema is exported", () => {
 });
 
 test("detectLlmTruncation can be called with valid input", () => {
-  const result = detectLlmTruncation({ text: "", modelId: "test" });
+  const result = detectLlmTruncation(createSignal({
+    evidence: { modelId: "test", finishReason: "stop", maxTokens: 10, tokensUsed: 1 },
+  }));
   assert.ok(result !== undefined);
 });
 
 test("detectModelHallucination can be called with valid input", () => {
-  const result = detectModelHallucination({ text: "", expectedFacts: [] });
+  const result = detectModelHallucination(createSignal({
+    evidence: { evalScore: 0.25, modelId: "test-model" },
+  }));
   assert.ok(result !== undefined);
 });
 
 test("detectSchemaValidationLoop can be called with valid input", () => {
-  const result = detectSchemaValidationLoop({ schemaAttempts: 0, maxRetries: 5 });
+  const result = detectSchemaValidationLoop([
+    createSignal({ evidence: { stepId: "step-1" } }),
+    createSignal({ learningSignalId: "signal-2", evidence: { stepId: "step-1" } }),
+    createSignal({ learningSignalId: "signal-3", evidence: { stepId: "step-1" } }),
+  ]);
   assert.ok(result !== undefined);
 });
 
 test("detectToolPermissionDenial can be called with valid input", () => {
-  const result = detectToolPermissionDenial({ toolName: "test", errorCode: "permission_denied" });
+  const result = detectToolPermissionDenial(createSignal({
+    valueSummary: "permission denied",
+    evidence: { toolName: "test", errorCode: "permission_denied" },
+  }));
   assert.ok(result !== undefined);
 });

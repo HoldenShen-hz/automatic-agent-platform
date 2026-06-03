@@ -44,8 +44,8 @@ describe("Queue Adapter Types", () => {
   });
 
   it("QueueJobStatus includes all expected statuses", () => {
-    const statuses: QueueJobStatus[] = ["waiting", "delayed", "active", "completed", "failed", "dead_letter"];
-    assert.equal(statuses.length, 6);
+    const statuses: QueueJobStatus[] = ["waiting", "delayed", "active", "completed", "dead_letter"];
+    assert.equal(statuses.length, 5);
   });
 
   it("DEFAULT_RETRY_POLICY has correct values", () => {
@@ -100,7 +100,6 @@ describe("Queue Adapter Types", () => {
       delayed: 2,
       active: 1,
       completed: 10,
-      failed: 0,
       deadLetter: 0,
     };
     assert.equal(stats.waiting, 5);
@@ -210,8 +209,9 @@ describe("SqliteQueueAdapter", () => {
     assert.ok(result);
     result.nack("test error");
     const job = adapter.getJob(result.job.id);
-    assert.equal(job?.status, "waiting");
+    assert.equal(job?.status, "delayed");
     assert.equal(job?.lastError, "test error");
+    assert.ok(job?.delayUntil);
   });
 
   it("nack with max attempts moves to dead letter", () => {

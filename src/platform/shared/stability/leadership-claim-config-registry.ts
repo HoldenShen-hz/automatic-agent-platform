@@ -37,6 +37,23 @@ export interface LeadershipEvidenceThreshold {
   readonly requirement: string;
 }
 
+export interface FamilyLeadershipScoreWeights {
+  readonly capability: number;
+  readonly safety: number;
+  readonly evidence: number;
+  readonly operation: number;
+  readonly flywheel: number;
+}
+
+export interface FamilyPolicy {
+  readonly claimReviewOwner: string;
+  readonly claimExpiryDays: number;
+  readonly revokeOnExpiry: boolean;
+  readonly noGoBoundaryRef: string | null;
+  readonly leadershipTypes: readonly string[];
+  readonly scoreWeights: FamilyLeadershipScoreWeights | null;
+}
+
 export interface FamilyLeadershipReadiness {
   readonly familyId: string;
   readonly displayName: string;
@@ -52,6 +69,7 @@ export interface FamilyLeadershipReadiness {
   readonly internalMappings: readonly LeadershipMetricMapping[];
   readonly mvpThresholds: readonly LeadershipEvidenceThreshold[];
   readonly leadershipThresholds: readonly LeadershipEvidenceThreshold[];
+  readonly familyPolicy: FamilyPolicy;
 }
 
 export interface LeadershipClaimRecord {
@@ -63,6 +81,9 @@ export interface LeadershipClaimRecord {
   readonly claimText: string;
   readonly allowedSurfaces: readonly LeadershipClaimSurface[];
   readonly evidenceRefs: readonly string[];
+  readonly owner: string | null;
+  readonly requestedBy: string | null;
+  readonly submittedAt: string | null;
   readonly reviewedBy: readonly string[];
   readonly expiresAt: string | null;
   readonly status: LeadershipClaimStatus;
@@ -71,10 +92,13 @@ export interface LeadershipClaimRecord {
 export interface LeadershipClaimAllowlistEntry {
   readonly filePath: string;
   readonly matchedText: string;
+  readonly claimLevel: LeadershipClaimLevel | null;
+  readonly surface: LeadershipClaimSurface | null;
   readonly reason: string;
   readonly owner: string;
   readonly expiresAt: string | null;
   readonly expired: boolean;
+  readonly replacementSuggestion: string | null;
 }
 
 export interface LeadershipClaimConfigRegistryOptions {
@@ -104,6 +128,27 @@ function toThresholds(value: unknown): LeadershipEvidenceThreshold[] {
     label: typeof entry.label === "string" ? entry.label : "unnamed-threshold",
     requirement: typeof entry.requirement === "string" ? entry.requirement : "unspecified",
   }));
+}
+
+function toScoreWeights(value: unknown): FamilyLeadershipScoreWeights | null {
+  if (!isPlainObject(value)) {
+    return null;
+  }
+  const capability = typeof value.capability === "number" ? value.capability : null;
+  const safety = typeof value.safety === "number" ? value.safety : null;
+  const evidence = typeof value.evidence === "number" ? value.evidence : null;
+  const operation = typeof value.operation === "number" ? value.operation : null;
+  const flywheel = typeof value.flywheel === "number" ? value.flywheel : null;
+  if (
+    capability == null
+    || safety == null
+    || evidence == null
+    || operation == null
+    || flywheel == null
+  ) {
+    return null;
+  }
+  return { capability, safety, evidence, operation, flywheel };
 }
 
 function toBenchmarkEntries(value: unknown): LeadershipBenchmark[] {
@@ -171,6 +216,14 @@ export class LeadershipClaimConfigRegistry {
         internalMappings: toMetricMappings(benchmark.internalMappings),
         mvpThresholds: toThresholds(evidence.mvpThresholds),
         leadershipThresholds: toThresholds(evidence.leadershipThresholds),
+        familyPolicy: {
+          claimReviewOwner: typeof family.claimReviewOwner === "string" ? family.claimReviewOwner : (typeof family.owner === "string" ? family.owner : "unassigned-owner"),
+          claimExpiryDays: typeof family.claimExpiryDays === "number" ? family.claimExpiryDays : 90,
+          revokeOnExpiry: family.revokeOnExpiry !== false,
+          noGoBoundaryRef: toNullableString(family.noGoBoundaryRef),
+          leadershipTypes: toStringArray(family.leadershipTypes),
+          scoreWeights: toScoreWeights(family.scoreWeights),
+        },
       };
     });
   }
@@ -186,6 +239,9 @@ export class LeadershipClaimConfigRegistry {
       claimText: typeof claim.claimText === "string" ? claim.claimText : "",
       allowedSurfaces: toStringArray(claim.allowedSurfaces) as LeadershipClaimSurface[],
       evidenceRefs: toStringArray(claim.evidenceRefs),
+      owner: toNullableString(claim.owner),
+      requestedBy: toNullableString(claim.requestedBy),
+      submittedAt: normalizeIsoOrNull(claim.submittedAt),
       reviewedBy: toStringArray(claim.reviewedBy),
       expiresAt: normalizeIsoOrNull(claim.expiresAt),
       status: typeof claim.status === "string" ? claim.status as LeadershipClaimStatus : "draft",
@@ -199,10 +255,13 @@ export class LeadershipClaimConfigRegistry {
       return {
         filePath: typeof entry.filePath === "string" ? entry.filePath : "",
         matchedText: typeof entry.matchedText === "string" ? entry.matchedText : "",
+        claimLevel: typeof entry.claimLevel === "string" ? entry.claimLevel as LeadershipClaimLevel : null,
+        surface: typeof entry.surface === "string" ? entry.surface as LeadershipClaimSurface : null,
         reason: typeof entry.reason === "string" ? entry.reason : "unspecified",
         owner: typeof entry.owner === "string" ? entry.owner : "unassigned-owner",
         expiresAt,
         expired: isExpired(expiresAt, now),
+        replacementSuggestion: toNullableString(entry.replacementSuggestion),
       };
     });
   }

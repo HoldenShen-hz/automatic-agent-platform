@@ -4,6 +4,7 @@ import test from "node:test";
 import { IncidentCaseService } from "../../../../../../src/platform/five-plane-state-evidence/incident/index.js";
 import { createIncidentRoutes } from "../../../../../../src/platform/five-plane-interface/api/http-server/incident-routes.js";
 import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
+import type { IncidentCase as FacadeIncidentCase, IncidentFacadeService } from "../../../../../../src/platform/five-plane-interface/api/facade-interfaces.js";
 import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockAuthService(roles: string[] = ["viewer"], tenantId: string | null = null): ApiAuthService {
@@ -38,6 +39,48 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
     }
   }
   return null;
+}
+
+function toFacadeIncident(incident: ReturnType<IncidentCaseService["openIncident"]>): FacadeIncidentCase {
+  return {
+    incidentId: incident.incidentId,
+    severity: incident.severity,
+    status:
+      incident.status === "open"
+        ? "open"
+        : incident.status === "acknowledged" || incident.status === "triaged"
+          ? "acknowledged"
+          : incident.status === "resolved" || incident.status === "closed"
+            ? "resolved"
+            : "mitigating",
+    title: incident.title,
+    linkedEvidenceRefs: incident.linkedEvidenceRefs,
+    owner: incident.owner,
+    createdAt: incident.createdAt,
+    updatedAt: incident.updatedAt,
+    resolvedAt: incident.resolvedAt,
+  };
+}
+
+function createIncidentFacade(service: IncidentCaseService): IncidentFacadeService {
+  return {
+    listIncidents: (limit, tenantId) => service.listIncidents(limit, tenantId).map(toFacadeIncident),
+    listIncidentsPaginated: (limit, tenantId, cursor) => {
+      const result = service.listIncidentsPaginated(limit, tenantId, cursor);
+      return {
+        incidents: result.incidents.map(toFacadeIncident),
+        nextToken: result.nextToken,
+      };
+    },
+    getIncident: (incidentId, tenantId) => {
+      const incident = service.getIncident(incidentId, tenantId);
+      return incident == null ? null : toFacadeIncident(incident);
+    },
+    openIncident: (input) => toFacadeIncident(service.openIncident(input)),
+    acknowledge: (incidentId, owner, tenantId) => toFacadeIncident(service.acknowledge(incidentId, owner, tenantId)),
+    startMitigation: (incidentId, tenantId) => toFacadeIncident(service.startMitigation(incidentId, tenantId)),
+    resolve: (incidentId, tenantId) => toFacadeIncident(service.resolve(incidentId, tenantId)),
+  };
 }
 
 test("IncidentCaseService opens incident", () => {
@@ -112,7 +155,7 @@ test("GET /v1/incidents lists incidents from service", async () => {
   incidentService.openIncident({ severity: "high", title: "Database latency" });
   const routes = createIncidentRoutes({
     authService: createMockAuthService(),
-    incidentService,
+    incidentService: createIncidentFacade(incidentService),
   });
 
   const response = await callRoute(routes, createMockContext("/v1/incidents", ["v1", "incidents"]));
@@ -127,7 +170,7 @@ test("GET /v1/incidents only returns incidents for the caller tenant", async () 
   incidentService.openIncident({ severity: "critical", title: "Tenant B outage", tenantId: "tenant-b" });
   const routes = createIncidentRoutes({
     authService: createMockAuthService(["viewer"], "tenant-a"),
-    incidentService,
+    incidentService: createIncidentFacade(incidentService),
   });
 
   const response = await callRoute(routes, createMockContext("/v1/incidents", ["v1", "incidents"]));
@@ -140,7 +183,7 @@ test("POST /v1/incidents creates a new incident", async () => {
   const incidentService = new IncidentCaseService();
   const routes = createIncidentRoutes({
     authService: createMockAuthService(["operator"]),
-    incidentService,
+    incidentService: createIncidentFacade(incidentService),
   });
 
   const response = await callRoute(

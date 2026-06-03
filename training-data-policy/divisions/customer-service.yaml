@@ -2,6 +2,8 @@ $schema: training-data-policy/schemas/division-policy.schema.json
 divisionId: customer-service
 policyMode: redacted_only
 policyModeRef: training-data-policy/policy-modes.md
+heldoutTrainingPolicy: no_train
+requiresModelDataTombstone: true
 allowedSources:
   - redacted_support_cases
 forbiddenSources:

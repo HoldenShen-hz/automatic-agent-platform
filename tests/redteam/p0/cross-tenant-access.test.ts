@@ -98,7 +98,7 @@ describe("redteam:p0 cross-tenant-access", () => {
     // A legitimate platform.* fact from tenant A must be allowed.
     // This is the negative case for the deny-by-default check.
     assert.doesNotThrow(() =>
-      guard.assertNoLegacyTruthWrite({ eventType: "platform.task_run.claimed", tenantId: "tenant-A" }),
+      guard.assertNoLegacyTruthWrite({ eventType: "platform.task_run.claimed" }),
     );
   });
 });

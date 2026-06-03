@@ -1,28 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { MarketplaceRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/marketplace-repository.js";
 
-function createMockDb() {
-  const runCalls: unknown[][] = [];
-  return {
-    db: {
-      connection: {
-        prepare: () => ({
-          run: (...args: unknown[]) => {
-            runCalls.push(args);
-            return { changes: 1 };
-          },
-          get: () => undefined,
-          all: () => [],
-        }),
-      },
-    },
-    runCalls,
-  };
-}
+import { MarketplaceRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/marketplace-repository.js";
+import { createMockAuthoritativeSqlDatabase } from "./test-helpers.js";
 
 test("MarketplaceRepository has all required methods", () => {
-  const { db } = createMockDb();
+  const { db } = createMockAuthoritativeSqlDatabase();
   const repo = new MarketplaceRepository(db);
 
   assert.equal(typeof repo.upsertMarketplaceReview, "function");
@@ -41,15 +24,15 @@ test("MarketplaceRepository has all required methods", () => {
 });
 
 test("MarketplaceRepository upserts marketplace review", () => {
-  const { db, runCalls } = createMockDb();
+  const { db, runCalls } = createMockAuthoritativeSqlDatabase();
   const repo = new MarketplaceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
-  const review = {
+  const review: Parameters<MarketplaceRepository["upsertMarketplaceReview"]>[0] = {
     reviewId: "review_1",
     tenantId: "tenant_1",
     packageId: "pkg_1",
-    status: "pending",
+    status: "submitted",
     submitter: "user_1",
     reviewer: "admin_1",
     decisionReasonCode: "auto_approved",
@@ -66,11 +49,11 @@ test("MarketplaceRepository upserts marketplace review", () => {
 });
 
 test("MarketplaceRepository upserts marketplace publication", () => {
-  const { db, runCalls } = createMockDb();
+  const { db, runCalls } = createMockAuthoritativeSqlDatabase();
   const repo = new MarketplaceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
-  const publication = {
+  const publication: Parameters<MarketplaceRepository["upsertMarketplacePublication"]>[0] = {
     publicationId: "pub_1",
     tenantId: "tenant_1",
     packageId: "pkg_1",
@@ -90,11 +73,11 @@ test("MarketplaceRepository upserts marketplace publication", () => {
 });
 
 test("MarketplaceRepository inserts marketplace governance report", () => {
-  const { db, runCalls } = createMockDb();
+  const { db, runCalls } = createMockAuthoritativeSqlDatabase();
   const repo = new MarketplaceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
-  const report = {
+  const report: Parameters<MarketplaceRepository["insertMarketplaceGovernanceReport"]>[0] = {
     reportId: "gov_report_1",
     tenantId: "tenant_1",
     summaryJson: "{}",
@@ -109,11 +92,11 @@ test("MarketplaceRepository inserts marketplace governance report", () => {
 });
 
 test("MarketplaceRepository upserts extension package", () => {
-  const { db, runCalls } = createMockDb();
+  const { db, runCalls } = createMockAuthoritativeSqlDatabase();
   const repo = new MarketplaceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
-  const pkg = {
+  const pkg: Parameters<MarketplaceRepository["upsertExtensionPackage"]>[0] = {
     packageId: "pkg_1",
     tenantId: "tenant_1",
     extensionId: "ext_1",
@@ -126,10 +109,13 @@ test("MarketplaceRepository upserts extension package", () => {
     capabilitiesJson: "[]",
     permissionsJson: "[]",
     compatibilityJson: "{}",
-    signatureVerified: true,
+    signatureVerified: 1,
     manifestChecksum: "checksum123",
-    lifecycleState: "active",
-    reviewRequired: false,
+    lifecycleState: "enabled",
+    reviewRequired: 0,
+    sbomVerified: 1,
+    sandboxCertVerified: 1,
+    egressPolicyCompliant: 1,
     createdAt: now,
     updatedAt: now,
   };
@@ -140,178 +126,25 @@ test("MarketplaceRepository upserts extension package", () => {
   assert.ok(runCalls[0]?.includes(pkg.displayName));
 });
 
-test("MarketplaceRepository gets extension package", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => null,
-        all: () => [],
-      }),
-    },
-  } as any;
+test("MarketplaceRepository read methods tolerate empty results", () => {
+  const { db } = createMockAuthoritativeSqlDatabase({ getResult: null });
   const repo = new MarketplaceRepository(db);
 
-  const result = repo.getExtensionPackage("nonexistent");
-  assert.equal(result, null);
+  assert.equal(repo.getExtensionPackage("nonexistent"), null);
+  assert.equal(repo.getExtensionPackage("pkg_1", "tenant_1"), null);
+  assert.equal(repo.getMarketplaceReview("nonexistent"), null);
+  assert.equal(repo.getLatestMarketplaceReviewForPackage("pkg_1"), null);
+  assert.equal(repo.getMarketplacePublication("nonexistent"), null);
+  assert.equal(repo.getActiveMarketplacePublicationForPackage("pkg_1"), null);
 });
 
-test("MarketplaceRepository gets extension package with tenant scope", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => null,
-        all: () => [],
-      }),
-    },
-  } as any;
+test("MarketplaceRepository list methods tolerate empty results", () => {
+  const { db } = createMockAuthoritativeSqlDatabase();
   const repo = new MarketplaceRepository(db);
 
-  const result = repo.getExtensionPackage("pkg_1", "tenant_1");
-  assert.equal(result, null);
-});
-
-test("MarketplaceRepository lists extension packages", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new MarketplaceRepository(db);
-
-  const result = repo.listExtensionPackages();
-  assert.ok(Array.isArray(result));
-});
-
-test("MarketplaceRepository lists extension packages with tenant scope", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new MarketplaceRepository(db);
-
-  const result = repo.listExtensionPackages(50, "tenant_1");
-  assert.ok(Array.isArray(result));
-});
-
-test("MarketplaceRepository gets marketplace review", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => null,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new MarketplaceRepository(db);
-
-  const result = repo.getMarketplaceReview("nonexistent");
-  assert.equal(result, null);
-});
-
-test("MarketplaceRepository lists marketplace reviews", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new MarketplaceRepository(db);
-
-  const result = repo.listMarketplaceReviews();
-  assert.ok(Array.isArray(result));
-});
-
-test("MarketplaceRepository gets latest review for package", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => null,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new MarketplaceRepository(db);
-
-  const result = repo.getLatestMarketplaceReviewForPackage("pkg_1");
-  assert.equal(result, null);
-});
-
-test("MarketplaceRepository gets marketplace publication", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => null,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new MarketplaceRepository(db);
-
-  const result = repo.getMarketplacePublication("nonexistent");
-  assert.equal(result, null);
-});
-
-test("MarketplaceRepository gets active marketplace publication for package", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => null,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new MarketplaceRepository(db);
-
-  const result = repo.getActiveMarketplacePublicationForPackage("pkg_1");
-  assert.equal(result, null);
-});
-
-test("MarketplaceRepository lists marketplace publications", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new MarketplaceRepository(db);
-
-  const result = repo.listMarketplacePublications();
-  assert.ok(Array.isArray(result));
-});
-
-test("MarketplaceRepository lists marketplace governance reports", () => {
-  const db = {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 0 }),
-        get: () => undefined,
-        all: () => [],
-      }),
-    },
-  } as any;
-  const repo = new MarketplaceRepository(db);
-
-  const result = repo.listMarketplaceGovernanceReports();
-  assert.ok(Array.isArray(result));
+  assert.ok(Array.isArray(repo.listExtensionPackages()));
+  assert.ok(Array.isArray(repo.listExtensionPackages(50, "tenant_1")));
+  assert.ok(Array.isArray(repo.listMarketplaceReviews()));
+  assert.ok(Array.isArray(repo.listMarketplacePublications()));
+  assert.ok(Array.isArray(repo.listMarketplaceGovernanceReports()));
 });

@@ -17,6 +17,9 @@ import {
 } from "../../../../src/domains/yono/index.js";
 import { DomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
 
+const FUTURE_CLOSE_AT = "2030-06-01T00:00:00.000Z";
+const FUTURE_RESOLUTION_DEADLINE = "2030-06-07T00:00:00.000Z";
+
 test("YONO domain registers as a business domain capability", () => {
   const registry = new DomainRegistryService();
   const definition = registerYonoDomain(registry);
@@ -39,8 +42,8 @@ test("YONO market, comment signal, forecast and consensus flow works", () => {
     title: "Will a major Web3 project announce an airdrop?",
     description: "Resolves YES if the project officially announces an airdrop before the deadline.",
     creatorId: "user_001",
-    closeAt: "2026-06-01T00:00:00.000Z",
-    resolutionDeadline: "2026-06-07T00:00:00.000Z",
+    closeAt: FUTURE_CLOSE_AT,
+    resolutionDeadline: FUTURE_RESOLUTION_DEADLINE,
     tags: ["web3", "airdrop"],
   });
   const comment = commentService.createComment({
@@ -75,8 +78,8 @@ test("YONO market review and resolution agents surface governance decisions", ()
     title: "Will a Web3 protocol ship mainnet?",
     description: "Resolves YES if official mainnet launch evidence is published before deadline.",
     creatorId: "user_001",
-    closeAt: "2026-06-01T00:00:00.000Z",
-    resolutionDeadline: "2026-06-07T00:00:00.000Z",
+    closeAt: FUTURE_CLOSE_AT,
+    resolutionDeadline: FUTURE_RESOLUTION_DEADLINE,
   });
   const review = reviewAgent.review(market);
   const draft = resolutionAgent.draft(market, ["evidence:official-announcement:yes"]);
@@ -93,8 +96,8 @@ test("YONO points trading creates and cancels orders without real-money settleme
     title: "Will benchmark X be beaten?",
     description: "Resolves YES if benchmark X is beaten by the stated deadline.",
     creatorId: "user_001",
-    closeAt: "2026-06-01T00:00:00.000Z",
-    resolutionDeadline: "2026-06-07T00:00:00.000Z",
+    closeAt: FUTURE_CLOSE_AT,
+    resolutionDeadline: FUTURE_RESOLUTION_DEADLINE,
   });
   const trading = new YonoTradingService(repository);
   const order = trading.createOrder({
@@ -178,8 +181,8 @@ test("YONO market and order validation fail closed for invalid timing and negati
     title: "Valid market",
     description: "Resolves YES if valid evidence is published after launch.",
     creatorId: "user_001",
-    closeAt: "2026-06-01T00:00:00.000Z",
-    resolutionDeadline: "2026-06-07T00:00:00.000Z",
+    closeAt: FUTURE_CLOSE_AT,
+    resolutionDeadline: FUTURE_RESOLUTION_DEADLINE,
   });
   assert.throws(
     () => trading.createOrder({
@@ -199,8 +202,8 @@ test("YONO resolution assist can select matching no outcome from evidence refs",
     title: "Will rollout fail?",
     description: "Resolves NO if no official outage report is published before the deadline.",
     creatorId: "user_001",
-    closeAt: "2026-06-01T00:00:00.000Z",
-    resolutionDeadline: "2026-06-07T00:00:00.000Z",
+    closeAt: FUTURE_CLOSE_AT,
+    resolutionDeadline: FUTURE_RESOLUTION_DEADLINE,
   });
   const noOutcome = market.outcomes.find((outcome) => outcome.type === "no");
   const draft = new YonoResolutionAssistAgent().draft(market, ["evidence:official:no"]);
