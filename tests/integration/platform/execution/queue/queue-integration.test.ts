@@ -65,8 +65,13 @@ test("SqliteQueueAdapter integration: failed jobs are requeued with backoff", ()
     assert.equal(result1.job.attempts, 1);
 
     result1.nack(); // Return to queue
+    const delayed = adapter.getJob(job.id);
+    assert.equal(delayed?.status, "delayed");
+    assert.equal(delayed?.attempts, 1);
+    assert.equal(adapter.dequeue("tasks"), null);
+    adapter.retryJob(job.id);
 
-    // Should be requeued
+    // Retry job makes the delayed job immediately claimable again.
     const result2 = adapter.dequeue("tasks");
     assert.ok(result2);
     assert.equal(result2.job.id, job.id);
@@ -91,6 +96,8 @@ test("SqliteQueueAdapter integration: dead letter after max retries", () => {
     const r1 = adapter.dequeue("tasks");
     assert.ok(r1);
     r1.nack();
+    assert.equal(adapter.getJob(job.id)?.status, "delayed");
+    adapter.retryJob(job.id);
 
     const r2 = adapter.dequeue("tasks");
     assert.ok(r2);

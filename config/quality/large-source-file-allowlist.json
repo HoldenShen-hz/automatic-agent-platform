@@ -68,7 +68,7 @@
     },
     {
       "path": "src/platform/five-plane-control-plane/incident-control/human-takeover-service-async.ts",
-      "maxLines": 1032
+      "maxLines": 1039
     },
     {
       "path": "src/platform/five-plane-control-plane/iam/secret-management-service.ts",
@@ -92,7 +92,7 @@
     },
     {
       "path": "src/scale-ecosystem/tenant-platform/tenant-platform-service.ts",
-      "maxLines": 1007
+      "maxLines": 1013
     }
   ]
 }

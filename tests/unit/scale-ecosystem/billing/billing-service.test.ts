@@ -916,7 +916,7 @@ test("BillingService settlePaymentSession creates credit ledger entry [billing-s
   // Credit should have negative amount equal to invoice total
   const credits = store.billing.listLedgerEntriesForAccount("acct_credit").filter(e => e.entryType === "credit");
   assert.ok(credits.length >= 1);
-  assert.equal(credits[credits.length - 1].amountUsd, -result.invoice.totalUsd);
+  assert.equal(credits[credits.length - 1].amountUsd, result.invoice.totalUsd === 0 ? 0 : -result.invoice.totalUsd);
 });
 
 test("BillingService reconcilePaymentSession handles cancelled status [billing-service]", async () => {

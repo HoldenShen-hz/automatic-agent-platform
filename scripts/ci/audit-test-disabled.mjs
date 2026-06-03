@@ -35,10 +35,11 @@
  *   1  one or more P0/P1 findings (with --check)
  *   2  invalid usage / IO error
  */
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { extname, join, relative, resolve } from "node:path";
 
 const repoRoot = resolve(process.cwd());
+const outputRoot = join(repoRoot, "artifacts", "assurance");
 const checkMode = process.argv.includes("--check");
 const focusPath = (() => {
   const idx = process.argv.indexOf("--path");
@@ -302,8 +303,28 @@ function main() {
     bySeverity,
     findings,
   };
+  const flakyReport = {
+    generatedAt: report.generatedAt,
+    repoRoot,
+    scannedPath: focusPath,
+    findingCount: findings.filter((finding) => finding.rule === "disabled_tests.flaky_no_ledger").length,
+    findings: findings.filter((finding) => finding.rule === "disabled_tests.flaky_no_ledger"),
+  };
+  const quarantineReport = {
+    generatedAt: report.generatedAt,
+    repoRoot,
+    scannedPath: focusPath,
+    findingCount: findings.filter((finding) => finding.rule.startsWith("disabled_tests.quarantine_")).length,
+    findings: findings.filter((finding) => finding.rule.startsWith("disabled_tests.quarantine_")),
+  };
+
+  mkdirSync(outputRoot, { recursive: true });
+  writeFileSync(join(outputRoot, "disabled-tests-report.json"), `${JSON.stringify(report, null, 2)}\n`, "utf8");
+  writeFileSync(join(outputRoot, "flaky-tests-report.json"), `${JSON.stringify(flakyReport, null, 2)}\n`, "utf8");
+  writeFileSync(join(outputRoot, "quarantine-tests-report.json"), `${JSON.stringify(quarantineReport, null, 2)}\n`, "utf8");
+
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  if (checkMode && (bySeverity.P0 ?? 0) > 0) {
+  if (checkMode && ((bySeverity.P0 ?? 0) > 0 || (bySeverity.P1 ?? 0) > 0)) {
     process.exitCode = 1;
   }
 }

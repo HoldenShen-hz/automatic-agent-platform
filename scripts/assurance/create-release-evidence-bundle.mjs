@@ -17,6 +17,9 @@ const assuranceDir = join(repoRoot, "artifacts", "assurance");
 const INCLUDED = [
   "artifacts/release/rc-check-report.json",
   "artifacts/assurance/audit-coverage-scorecard.json",
+  "artifacts/assurance/invariant-test-report.json",
+  "artifacts/assurance/chaos-test-report.json",
+  "artifacts/assurance/audit-tool-test-report.json",
   "artifacts/assurance/eval-oracle-report.json",
   "artifacts/assurance/redteam-report.json",
   "artifacts/assurance/golden-replay-report.json",
@@ -26,6 +29,8 @@ const INCLUDED = [
   "artifacts/assurance/assumptions.jsonl",
   "artifacts/assurance/issues.deduped.jsonl",
   "artifacts/assurance/test-to-issue-map.json",
+  "artifacts/assurance/issue-to-test-map.json",
+  "artifacts/assurance/test-coverage-report.json",
   "artifacts/assurance/historical-issue-regression-map.json",
   "artifacts/assurance/completeness-coverage-matrix.json",
   "artifacts/assurance/seeded-defect-report.json",

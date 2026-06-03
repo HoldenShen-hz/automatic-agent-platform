@@ -69,6 +69,7 @@ test("createStableEvidenceBundle writes a full smoke bundle with provided valida
 
     assert.equal(report.profile.name, "smoke");
     assert.equal(report.summary.passed, false);
+    assert.equal(report.acceptanceLine.status, "partial");
     assert.equal(report.summary.totalValidationRuns, 1);
     assert.equal(report.summary.totalSoakRuns, 1);
   } finally {

@@ -328,9 +328,10 @@ describe("stable-evidence-campaign comprehensive", () => {
 
         assert.equal(report.state.completed, true);
         assert.equal(report.state.segments.length, 1);
-        assert.equal(report.state.finalEvidencePassed, true);
+        assert.equal(report.state.finalEvidencePassed, false);
         assert.ok(report.finalEvidenceReport);
-        assert.equal(report.finalEvidenceReport.summary.passed, true);
+        assert.equal(report.finalEvidenceReport.summary.passed, false);
+        assert.equal(report.finalEvidenceReport.acceptanceLine.status, "partial");
       } finally {
         rmSync(outputDir, { recursive: true, force: true });
       }

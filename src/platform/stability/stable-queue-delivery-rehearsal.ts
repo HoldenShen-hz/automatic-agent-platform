@@ -243,10 +243,15 @@ async function runQueueReplayScenario(outputDir: string): Promise<StableQueueDel
       leaseTtlMs: 30_000,
       occurredAt: "2026-04-07T10:00:06.000Z",
     });
-    if (firstDispatch.leaseId) {
+    const dispatchedLease =
+      firstDispatch.leaseId == null
+        ? null
+        : store.worker.getExecutionLease(firstDispatch.leaseId);
+    if (dispatchedLease != null) {
       leases.releaseLease({
-        leaseId: firstDispatch.leaseId,
-        workerId: "worker-queue-replay",
+        leaseId: dispatchedLease.id,
+        workerId: dispatchedLease.workerId,
+        fencingToken: dispatchedLease.fencingToken,
         reasonCode: "queue_delivery_replay.seed",
         occurredAt: "2026-04-07T10:00:07.000Z",
       });

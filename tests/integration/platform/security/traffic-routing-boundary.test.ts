@@ -38,7 +38,7 @@ test("rollback of nonexistent shift does not crash", () => {
   try {
     const svc = new TrafficRoutingService(h.db);
     const rollback = svc.rollbackShift("tshift_nonexistent", "manual", "test");
-    assert.equal(rollback.success, true); // logged but no-op
+    assert.equal(rollback.success, false);
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

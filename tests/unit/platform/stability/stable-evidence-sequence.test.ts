@@ -187,9 +187,10 @@ test("runStableEvidenceSequence advances through a minimal smoke profile", async
       },
     });
 
-    assert.equal(report.state.completed, true);
-    assert.equal(report.state.blocked, false);
-    assert.deepEqual(report.advancedProfiles, ["smoke"]);
+    assert.equal(report.state.completed, false);
+    assert.equal(report.state.blocked, true);
+    assert.equal(report.state.blockReason, "smoke stable evidence completed with failing verdict");
+    assert.deepEqual(report.advancedProfiles, []);
   } finally {
     rmSync(evidenceRootDir, { recursive: true, force: true });
   }
@@ -214,9 +215,10 @@ test("runStableEvidenceSequenceUntilComplete finishes a minimal smoke sequence",
       maxPasses: 2,
     });
 
-    assert.equal(report.state.completed, true);
-    assert.equal(report.state.blocked, false);
-    assert.deepEqual(report.advancedProfiles, ["smoke"]);
+    assert.equal(report.state.completed, false);
+    assert.equal(report.state.blocked, true);
+    assert.equal(report.state.blockReason, "smoke stable evidence completed with failing verdict");
+    assert.deepEqual(report.advancedProfiles, []);
   } finally {
     rmSync(evidenceRootDir, { recursive: true, force: true });
   }

@@ -48,7 +48,7 @@ function createTestDb(): AuthoritativeSqlDatabase {
 // Edge Case: Rollback Shift Not Found
 // ---------------------------------------------------------------------------
 
-test("rollbackShift handles non-existent shift gracefully", () => {
+test("rollbackShift records unsuccessful rollback for non-existent shift", () => {
   const db = createTestDb();
   const service = new TrafficRoutingService(db);
 
@@ -56,10 +56,10 @@ test("rollbackShift handles non-existent shift gracefully", () => {
   service.registerSlot("blue", "v1.0.0", 1);
   service.registerSlot("green", "v2.0.0", 1);
 
-  // Rollback non-existent shift - should still create a rollback record with unknown versions
+  // Rollback non-existent shift still records an audit entry, but it is unsuccessful.
   const rollback = service.rollbackShift("nonexistent_shift_id", "manual", "Testing rollback on missing shift");
 
-  assert.equal(rollback.success, true);
+  assert.equal(rollback.success, false);
   assert.equal(rollback.fromVersion, "unknown");
   assert.equal(rollback.toVersion, "unknown");
   assert.equal(rollback.reason, "Testing rollback on missing shift");

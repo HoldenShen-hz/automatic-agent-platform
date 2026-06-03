@@ -149,6 +149,7 @@ test("security: double-relative-path traversal is blocked", async () => {
 
     assert.equal(result.status, "blocked");
     assert.ok(
+      result.error?.code === "tool.command_meta_syntax_denied" ||
       result.error?.code === "sandbox.command_arg_path_denied" ||
       result.error?.code === "tool.path_scope_command_arg_denied",
     );
@@ -539,6 +540,7 @@ test("security: path with encoded slash (%2f) traversal is blocked", async () =>
 
     assert.equal(result.status, "blocked");
     assert.ok(
+      result.error?.code === "tool.command_meta_syntax_denied" ||
       result.error?.code === "sandbox.command_arg_path_denied" ||
       result.error?.code === "tool.path_scope_command_arg_denied",
     );

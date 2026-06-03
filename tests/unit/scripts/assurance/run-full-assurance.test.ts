@@ -52,6 +52,7 @@ test("run-full-assurance emits a report and executes the current required baseli
       "issue_ledger",
       "test_to_issue",
       "historical_regression_map",
+      "assurance_verify_test_coverage",
       "completeness_matrix",
       "coverage_scorecard",
     ],

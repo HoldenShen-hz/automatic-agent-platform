@@ -361,6 +361,13 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
 
     const approval = new ApprovalRoutingService({
       orgNodes,
+      fxRatesToCny: {
+        USD: {
+          rate: 7.2,
+          asOf: "2026-04-22T00:00:00.000Z",
+          source: "test.usd_cny",
+        },
+      },
       delegations: [
         {
           delegationId: "approval_del_finance",

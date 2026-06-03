@@ -208,13 +208,13 @@ test("IntakeRouter handles query continuation correctly", async () => {
   }
 });
 
-test("IntakeRouter with preferred intent uses high confidence", async () => {
+test("IntakeRouter adopts a matching preferred intent with high confidence", async () => {
   const workspace = createTempWorkspace("aa-int-preferred-");
 
   try {
     const router = new IntakeRouter();
     const input = createRouteInput({
-      request: "please do something",
+      request: "please create something",
       preferredIntent: {
         intent: "create",
         confidence: 0.92,

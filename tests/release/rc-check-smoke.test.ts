@@ -29,6 +29,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..", "..");
 const evidencePath = join(repoRoot, "artifacts", "release", "evidence-bundle.json");
 const rcReportPath = join(repoRoot, "artifacts", "release", "rc-check-report.json");
+const evidenceSchemaPath = join(repoRoot, "schemas", "release-evidence-bundle.schema.json");
 
 interface EvidenceBundle {
   schemaVersion?: string;
@@ -39,7 +40,7 @@ interface EvidenceBundle {
   contractSchemaVersion?: string;
   eventRegistryHash?: string;
   validationRunId?: string;
-  includedReports?: { path: string; present: boolean; sha256: string; sizeBytes: number }[];
+  includedReports?: { path: string; present: boolean; sha256: string | null; sizeBytes: number }[];
 }
 
 describe("release: rc-check-smoke (P0)", () => {
@@ -48,8 +49,24 @@ describe("release: rc-check-smoke (P0)", () => {
       t.skip(`evidence-bundle.json not present at ${evidencePath} (CI has not generated it yet)`);
       return;
     }
+    assert.ok(existsSync(evidenceSchemaPath), `missing schema: ${evidenceSchemaPath}`);
     const raw = readFileSync(evidencePath, "utf8");
     const bundle = JSON.parse(raw) as EvidenceBundle;
+    const schema = JSON.parse(readFileSync(evidenceSchemaPath, "utf8")) as {
+      properties?: Record<string, unknown>;
+      required?: string[];
+      additionalProperties?: boolean;
+    };
+    const schemaProperties = new Set(Object.keys(schema.properties ?? {}));
+    const required = new Set(schema.required ?? []);
+
+    assert.equal(schema.additionalProperties, false, "release-evidence-bundle schema must be fail-closed");
+    for (const field of required) {
+      assert.ok(Object.prototype.hasOwnProperty.call(bundle, field), `bundle missing required field: ${field}`);
+    }
+    for (const key of Object.keys(bundle)) {
+      assert.ok(schemaProperties.has(key), `bundle contains unexpected top-level key: ${key}`);
+    }
     assert.equal(bundle.schemaVersion, "1.0", "schemaVersion must be 1.0");
     assert.ok(bundle.generatedAt, "generatedAt is required");
     assert.match(
@@ -75,13 +92,34 @@ describe("release: rc-check-smoke (P0)", () => {
       t.skip("evidence-bundle.json not present");
       return;
     }
+    const schema = JSON.parse(readFileSync(evidenceSchemaPath, "utf8")) as {
+      properties?: {
+        includedReports?: {
+          items?: {
+            properties?: Record<string, unknown>;
+            required?: string[];
+            additionalProperties?: boolean;
+          };
+        };
+      };
+    };
+    const itemSchema = schema.properties?.includedReports?.items;
+    const itemProperties = new Set(Object.keys(itemSchema?.properties ?? {}));
+    const itemRequired = new Set(itemSchema?.required ?? []);
     const bundle = JSON.parse(readFileSync(evidencePath, "utf8")) as EvidenceBundle;
     for (const entry of bundle.includedReports ?? []) {
+      assert.equal(itemSchema?.additionalProperties, false, "includedReports schema must be fail-closed");
+      for (const field of itemRequired) {
+        assert.ok(Object.prototype.hasOwnProperty.call(entry, field), `includedReports entry missing ${field}`);
+      }
+      for (const key of Object.keys(entry)) {
+        assert.ok(itemProperties.has(key), `includedReports entry has unexpected key: ${key}`);
+      }
       const abs = join(repoRoot, entry.path);
       assert.ok(existsSync(abs), `includedReports entry missing on disk: ${entry.path}`);
       assert.equal(entry.present, true, `includedReports.present must be true for ${entry.path}`);
       assert.match(
-        entry.sha256,
+        entry.sha256 ?? "",
         /^[a-f0-9]{64}$/,
         `includedReports.sha256 must be 64-hex, got: ${entry.sha256}`,
       );

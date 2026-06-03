@@ -3,12 +3,17 @@ import test from "node:test";
 
 import { EdgeRuntimeSyncService } from "../../../src/ops-maturity/edge-runtime/edge-runtime-sync-service.js";
 
+function recentIso(offsetMs = 60_000): string {
+  return new Date(Date.now() - offsetMs).toISOString();
+}
+
 test("integration: offline execute reconnects through explicit sync ordering and policy enforcement", () => {
   const service = new EdgeRuntimeSyncService();
+  const createdAt = recentIso(5 * 60_000);
   const profile = {
     edgeNodeId: "edge_store_1",
     deviceId: "device_store_1",
-    deviceAttestation: { attestedAt: "2026-04-20T00:00:00.000Z", status: "valid" as const },
+    deviceAttestation: { attestedAt: recentIso(), status: "valid" as const },
     capabilities: ["text", "sync"],
     connectivityMode: "intermittent" as const,
     maxLocalRetentionHours: 12,
@@ -29,7 +34,7 @@ test("integration: offline execute reconnects through explicit sync ordering and
       edgeNodeId: "edge_store_1",
       taskId: "task_inventory_1",
       modality: "text",
-      createdAt: "2026-04-20T00:00:00.000Z",
+      createdAt,
       riskScore: 0.2,
       taskType: "summarize",
     },
@@ -40,7 +45,7 @@ test("integration: offline execute reconnects through explicit sync ordering and
     "digest:safe",
     2,
     "internal",
-    "2026-04-20T00:05:00.000Z",
+    recentIso(4 * 60_000),
   );
   const restrictedEnvelope = service.buildSyncEnvelope(
     profile,
@@ -48,7 +53,7 @@ test("integration: offline execute reconnects through explicit sync ordering and
     "digest:restricted",
     3,
     "restricted",
-    "2026-04-20T00:06:00.000Z",
+    recentIso(3 * 60_000),
   );
 
   const receipt = service.sync(profile, [safeEnvelope, restrictedEnvelope], {});

@@ -311,6 +311,13 @@ test("contract: ApprovalRoutingService preserves delegation and escalation const
   ];
   const service = new ApprovalRoutingService({
     orgNodes,
+    fxRatesToCny: {
+      USD: {
+        rate: 7.2,
+        asOf: "2026-04-20T00:00:00.000Z",
+        source: "test.usd_cny",
+      },
+    },
     delegations: [
       {
         delegationId: "delegate_finance",
@@ -754,6 +761,7 @@ test("contract: ComplianceReportPipelineService cannot mark missing-evidence rep
 
 test("contract: EdgeRuntimeSyncService blocks restricted uploads when sync policy forbids them", () => {
   const service = new EdgeRuntimeSyncService();
+  const createdAt = new Date(Date.now() - 5 * 60_000).toISOString();
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "edge_store_1",
     deviceId: "device_edge_store_1",
@@ -767,7 +775,7 @@ test("contract: EdgeRuntimeSyncService blocks restricted uploads when sync polic
       allowRestrictedDataUpload: false,
       requireOrdering: true,
     },
-    deviceAttestation: { status: "valid" as const, attestedAt: "2026-04-20T00:00:00.000Z" },
+    deviceAttestation: { status: "valid" as const, attestedAt: new Date(Date.now() - 60_000).toISOString() },
     certificateStatus: "valid" as const,
     riskLevel: "low" as const,
   };
@@ -778,7 +786,7 @@ test("contract: EdgeRuntimeSyncService blocks restricted uploads when sync polic
       edgeNodeId: "edge_store_1",
       taskId: "task_inventory_1",
       modality: "text",
-      createdAt: "2026-04-20T00:00:00.000Z",
+      createdAt,
       riskScore: 0.2,
       taskType: "summarize",
     },
@@ -789,7 +797,7 @@ test("contract: EdgeRuntimeSyncService blocks restricted uploads when sync polic
     "digest:restricted",
     3,
     "restricted",
-    "2026-04-20T00:06:00.000Z",
+    new Date(Date.now() - 4 * 60_000).toISOString(),
   );
   const receipt = service.sync(profile, [restrictedEnvelope], {});
   assert.deepEqual(receipt.rejectedEnvelopeIds, [restrictedEnvelope.envelopeId]);

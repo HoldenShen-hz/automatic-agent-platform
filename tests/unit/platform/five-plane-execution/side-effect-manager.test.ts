@@ -139,13 +139,14 @@ test("SideEffectManager embeds reason codes in emitted event payloads", () => {
 
 test("SideEffectManager requires lease and fencing token for compensation transitions regardless of prior state", () => {
   const manager = new SideEffectManager();
+  const { leaseId: _leaseId, fencingToken: _fencingToken, ...sideEffectWithoutLease } = createSideEffect({
+    status: "proposed",
+  });
 
   assert.throws(
     () =>
       manager.applyReconciliation(
-        createSideEffect({
-          status: "proposed",
-        }),
+        sideEffectWithoutLease,
         createReconciliation({
           result: "failed",
           nextAction: "compensate",

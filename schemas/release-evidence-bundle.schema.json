@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/release-evidence-bundle.schema.json",
+  "title": "Release Evidence Bundle",
+  "description": "Signed manifest emitted by scripts/assurance/create-release-evidence-bundle.mjs and consumed by scripts/assurance/verify-release-evidence-bundle.mjs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "generatedAt",
+    "commitSha",
+    "branch",
+    "configVersion",
+    "contractSchemaVersion",
+    "eventRegistryHash",
+    "validationRunId",
+    "includedReports"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "commitSha": {
+      "type": "string",
+      "minLength": 1
+    },
+    "branch": {
+      "type": "string",
+      "minLength": 1
+    },
+    "configVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contractSchemaVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "eventRegistryHash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "validationRunId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "includedReports": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "present",
+          "sha256",
+          "sizeBytes"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "present": {
+            "type": "boolean"
+          },
+          "sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

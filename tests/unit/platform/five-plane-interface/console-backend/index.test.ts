@@ -55,7 +55,7 @@ test("buildSnapshot filters tasks by tenantId when operator has tenantId", () =>
       { taskId: "t3", tenantId: "tenant-1", workspaceId: null, status: "blocked", riskLevel: "medium", updatedAt: now },
     ],
   });
-  const operator = { operatorId: "op-1", roles: [], tenantId: "tenant-1" };
+  const operator = { operatorId: "op-1", roles: ["human_operator"], tenantId: "tenant-1" };
   const snapshot = service.buildSnapshot(operator);
 
   assert.equal(snapshot.taskBoard.length, 2);
@@ -82,7 +82,7 @@ test("buildSnapshot filters approvals by tenantId when operator has tenantId", (
       { approvalId: "a2", taskId: "t2", tenantId: "tenant-2", riskLevel: "critical", reason: "test", createdAt: now },
     ],
   });
-  const operator = { operatorId: "op-1", roles: [], tenantId: "tenant-1" };
+  const operator = { operatorId: "op-1", roles: ["human_operator"], tenantId: "tenant-1" };
   const snapshot = service.buildSnapshot(operator);
 
   assert.equal(snapshot.approvalQueue.length, 1);
@@ -96,7 +96,7 @@ test("buildSnapshot filters incidents by tenantId when operator has tenantId", (
       { incidentId: "i2", taskId: "t2", tenantId: "tenant-2", severity: "warning", summary: "test", createdAt: now },
     ],
   });
-  const operator = { operatorId: "op-1", roles: [], tenantId: "tenant-1" };
+  const operator = { operatorId: "op-1", roles: ["human_operator"], tenantId: "tenant-1" };
   const snapshot = service.buildSnapshot(operator);
 
   assert.equal(snapshot.incidentTimeline.length, 1);
@@ -130,7 +130,7 @@ test("buildSnapshot filters tenants by operator tenantId", () => {
       { tenantId: "tenant-2", organizationId: "org-2", isolationMode: "isolated" },
     ],
   });
-  const operator = { operatorId: "op-1", roles: [], tenantId: "tenant-1" };
+  const operator = { operatorId: "op-1", roles: ["human_operator"], tenantId: "tenant-1" };
   const snapshot = service.buildSnapshot(operator);
 
   assert.equal(snapshot.tenantPanel.length, 1);
@@ -264,7 +264,7 @@ test("planHumanTakeoverAction creates action plan with valid input", () => {
     actionId: "action-1",
     actionType: "take_over_task",
     taskId: "task-1",
-    operator: { operatorId: "op-1", roles: ["operator"], tenantId: "tenant-1" },
+    operator: { operatorId: "op-1", roles: ["human_operator"], tenantId: "tenant-1" },
     reasonCode: "R1",
   });
 
@@ -284,7 +284,7 @@ test("planHumanTakeoverAction throws ValidationError when taskId is empty", () =
         actionId: "action-1",
         actionType: "take_over_task",
         taskId: "",
-        operator: { operatorId: "op-1", roles: [] },
+        operator: { operatorId: "op-1", roles: ["human_operator"] },
         reasonCode: "R1",
       }),
     (err: unknown) => err instanceof ValidationError && err.code === "console.task_id_required",
@@ -299,7 +299,7 @@ test("planHumanTakeoverAction throws ValidationError when reasonCode is empty", 
         actionId: "action-1",
         actionType: "take_over_task",
         taskId: "task-1",
-        operator: { operatorId: "op-1", roles: [] },
+        operator: { operatorId: "op-1", roles: ["human_operator"] },
         reasonCode: "",
       }),
     (err: unknown) => err instanceof ValidationError && err.code === "console.reason_required",
@@ -323,21 +323,21 @@ test("planHumanTakeoverAction throws ValidationError when operatorId is empty", 
 
 test("planHumanTakeoverAction requires policy evaluation for high risk actions", () => {
   const service = new OperatorConsoleBackendService({});
-  const highRiskActions: Array<{ actionType: Parameters<typeof service.planHumanTakeoverAction>[0]["actionType"] }> = [
-    { actionType: "skip_step" },
-    { actionType: "switch_worker" },
-    { actionType: "attach_artifact" },
-    { actionType: "advance_rollout" },
-    { actionType: "rollback_rollout" },
-    { actionType: "finish_task" },
+  const highRiskActions: Array<{ actionType: Parameters<typeof service.planHumanTakeoverAction>[0]["actionType"]; roles: string[] }> = [
+    { actionType: "skip_step", roles: ["admin", "break_glass"] },
+    { actionType: "switch_worker", roles: ["admin", "break_glass"] },
+    { actionType: "attach_artifact", roles: ["admin"] },
+    { actionType: "advance_rollout", roles: ["admin"] },
+    { actionType: "rollback_rollout", roles: ["admin", "break_glass"] },
+    { actionType: "finish_task", roles: ["admin", "break_glass"] },
   ];
 
-  for (const { actionType } of highRiskActions) {
+  for (const { actionType, roles } of highRiskActions) {
     const plan = service.planHumanTakeoverAction({
       actionId: "action-1",
       actionType,
       taskId: "task-1",
-      operator: { operatorId: "op-1", roles: [], tenantId: "tenant-1" },
+      operator: { operatorId: "op-1", roles, tenantId: "tenant-1" },
       reasonCode: "R1",
     });
     assert.equal(plan.requiresPolicyEvaluation, true, `${actionType} should require policy evaluation`);
@@ -354,14 +354,18 @@ test("planHumanTakeoverAction requires break glass for break glass actions witho
   ];
 
   for (const { actionType } of breakGlassActions) {
-    const plan = service.planHumanTakeoverAction({
-      actionId: "action-1",
-      actionType,
-      taskId: "task-1",
-      operator: { operatorId: "op-1", roles: [], tenantId: "tenant-1" },
-      reasonCode: "R1",
-    });
-    assert.equal(plan.requiresBreakGlass, true, `${actionType} should require break glass`);
+    assert.throws(
+      () =>
+        service.planHumanTakeoverAction({
+          actionId: "action-1",
+          actionType,
+          taskId: "task-1",
+          operator: { operatorId: "op-1", roles: ["admin"], tenantId: "tenant-1" },
+          reasonCode: "R1",
+        }),
+      (err: unknown) => err instanceof ValidationError && err.code === "console.break_glass_required",
+      `${actionType} should require break glass`,
+    );
   }
 });
 
@@ -384,7 +388,7 @@ test("planHumanTakeoverAction uses operator tenantId when tenantId not provided"
     actionId: "action-1",
     actionType: "take_over_task",
     taskId: "task-1",
-    operator: { operatorId: "op-1", roles: [], tenantId: "my-tenant" },
+    operator: { operatorId: "op-1", roles: ["human_operator"], tenantId: "my-tenant" },
     reasonCode: "R1",
   });
 
@@ -398,7 +402,7 @@ test("planHumanTakeoverAction uses provided tenantId over operator tenantId", ()
     actionType: "take_over_task",
     taskId: "task-1",
     tenantId: "other-tenant",
-    operator: { operatorId: "op-1", roles: [], tenantId: "my-tenant" },
+    operator: { operatorId: "op-1", roles: ["human_operator"], tenantId: "my-tenant" },
     reasonCode: "R1",
   });
 
@@ -411,7 +415,7 @@ test("planHumanTakeoverAction uses operator workspaceId when workspaceId not pro
     actionId: "action-1",
     actionType: "take_over_task",
     taskId: "task-1",
-    operator: { operatorId: "op-1", roles: [], tenantId: "tenant-1", workspaceId: "my-workspace" },
+    operator: { operatorId: "op-1", roles: ["human_operator"], tenantId: "tenant-1", workspaceId: "my-workspace" },
     reasonCode: "R1",
   });
 
@@ -424,7 +428,7 @@ test("planHumanTakeoverAction includes beforeStateRef and afterStateRef in audit
     actionId: "action-1",
     actionType: "modify_next_input",
     taskId: "task-1",
-    operator: { operatorId: "op-1", roles: [], tenantId: "tenant-1" },
+    operator: { operatorId: "op-1", roles: ["human_operator"], tenantId: "tenant-1" },
     reasonCode: "R1",
     beforeStateRef: "state-before",
     afterStateRef: "state-after",
@@ -452,7 +456,7 @@ test("planHumanTakeoverAction includes low risk actions in auditPayload", () => 
       actionId: "action-1",
       actionType,
       taskId: "task-1",
-      operator: { operatorId: "op-1", roles: [], tenantId: "tenant-1" },
+      operator: { operatorId: "op-1", roles: ["human_operator"], tenantId: "tenant-1" },
       reasonCode: "R1",
     });
     assert.equal(plan.requiresPolicyEvaluation, false, `${actionType} should not require policy evaluation`);

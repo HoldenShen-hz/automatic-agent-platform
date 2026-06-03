@@ -757,6 +757,13 @@ export class HumanTakeoverServiceAsync {
   }
 
   private restoreEscalationTracking(): void {
+    if (
+      this.store.event?.listEventsByType == null ||
+      this.store.event?.listEventsForTask == null ||
+      this.store.approval?.getTakeoverSession == null
+    ) {
+      return;
+    }
     const openedEvents = this.store.event.listEventsByType("takeover:session_opened", 10_000);
     const sessionIds = new Set<string>();
     for (const event of openedEvents) {

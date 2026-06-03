@@ -328,6 +328,7 @@ test("lease: release closes the lease and allows new acquisition", () => {
     const released = service.releaseLease({
       leaseId: granted.lease!.id,
       workerId: "worker-release",
+      fencingToken: granted.lease!.fencingToken,
       reasonCode: "completed",
       occurredAt: advanceTime(15_000),
     });
@@ -417,6 +418,7 @@ test("lease: release creates audit record for lease_released event", () => {
     service.releaseLease({
       leaseId: granted.lease!.id,
       workerId: "worker-audit-release",
+      fencingToken: granted.lease!.fencingToken,
       reasonCode: "test_completion",
       occurredAt: advanceTime(15_000),
     });
@@ -602,6 +604,7 @@ test("lease: fencing token increments on each new grant after release", () => {
     service.releaseLease({
       leaseId: first.lease!.id,
       workerId: "worker-fencing",
+      fencingToken: first.lease!.fencingToken,
       occurredAt: advanceTime(15_000),
     });
 
@@ -683,6 +686,7 @@ test("lease: validateWriteAccess rejects stale fencing token", () => {
     service.releaseLease({
       leaseId: first.lease!.id,
       workerId: "worker-stale",
+      fencingToken: first.lease!.fencingToken,
       occurredAt: advanceTime(15_000),
     });
 

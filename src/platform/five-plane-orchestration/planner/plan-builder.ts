@@ -310,11 +310,16 @@ export class PlanBuilder {
             timeout: payload.timeout ?? DEFAULT_PLAN_STEP_TIMEOUT_MS,
             retryPolicy: { maxRetries: 0, backoffMs: DEFAULT_PLAN_RETRY_BACKOFF_BASE_MS },
           };
-          const targetIdx = patchedSteps.findIndex((s) => s.stepId === op.targetRef);
           const normalizedNewStep = {
             ...newStep,
             outputs: newStep.outputs ?? [],
           };
+          const targetIdx = patchedSteps.findIndex((s) => s.stepId === op.targetRef);
+          const existingIdx = patchedSteps.findIndex((s) => s.stepId === normalizedNewStep.stepId);
+          if (existingIdx >= 0) {
+            patchedSteps.splice(existingIdx, 1, normalizedNewStep);
+            break;
+          }
           if (targetIdx >= 0) {
             patchedSteps.splice(targetIdx + 1, 0, normalizedNewStep);
           } else {

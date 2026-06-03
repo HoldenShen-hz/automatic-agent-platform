@@ -399,6 +399,7 @@ test("Integration: lease lifecycle during execution", () => {
     const releaseResult = leaseService.releaseLease({
       leaseId: acquireResult.lease!.id,
       workerId,
+      fencingToken: acquireResult.lease!.fencingToken,
       reasonCode: "work_completed",
       occurredAt: new Date(Date.now() + 10000).toISOString(),
     });

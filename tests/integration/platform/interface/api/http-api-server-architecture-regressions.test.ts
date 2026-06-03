@@ -22,7 +22,7 @@ function createServerHarness(options: {
   const db = new SqliteDatabase(join(workspace, "api.db"));
   db.migrate();
   const store = new AuthoritativeTaskStore(db);
-  const incidentService = new IncidentCaseService();
+  const incidentService = new IncidentCaseService({ persistencePath: join(workspace, "incidents.json") });
   const authService = new ApiAuthService({
     apiKeys: [
       {
@@ -121,6 +121,7 @@ function createServerHarness(options: {
   return {
     workspace,
     store,
+    authService,
     server: new HttpApiServer({
       approvalService: approvalService as never,
       authService,
@@ -169,12 +170,13 @@ function networkPathTest(name: string, body: Parameters<typeof test>[1]): void {
 test("HttpApiServer enforces Accept-Version negotiation and propagates correlation IDs", async (t) => {
   const harness = createServerHarness();
   t.after(() => harness.cleanup());
+  const token = harness.authService.exchangeApiKey("test-api-key").accessToken;
 
   const rejected = await harness.server.inject({
     method: "GET",
     url: "/api/v1/tasks",
     headers: {
-      "x-api-key": "test-api-key",
+      authorization: `Bearer ${token}`,
       "accept-version": "2025-01-01",
       "x-correlation-id": "corr-version-reject",
     },
@@ -187,7 +189,7 @@ test("HttpApiServer enforces Accept-Version negotiation and propagates correlati
     method: "GET",
     url: "/api/v1/tasks",
     headers: {
-      "x-api-key": "test-api-key",
+      authorization: `Bearer ${token}`,
       "accept-version": "2026-04-01",
       "x-correlation-id": "corr-version-accept",
     },
@@ -200,12 +202,13 @@ test("HttpApiServer enforces Accept-Version negotiation and propagates correlati
 test("HttpApiServer replays idempotent task creation and persists the RSM fact event with the task", async (t) => {
   const harness = createServerHarness();
   t.after(() => harness.cleanup());
+  const token = harness.authService.exchangeApiKey("test-api-key").accessToken;
 
   const request = {
     method: "POST",
     url: "/api/v1/tasks",
     headers: {
-      "x-api-key": "test-api-key",
+      authorization: `Bearer ${token}`,
       "idempotency-key": "task-create-001",
       "accept-version": "2026-04-01",
       "x-correlation-id": "corr-task-create",

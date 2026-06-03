@@ -51,9 +51,11 @@ test("execution dispatch reconciliation service requeues claimed tickets that lo
       leaseTtlMs: 30_000,
       occurredAt: "2026-04-04T14:00:06.000Z",
     });
+    const claimedLease = store.worker.getActiveExecutionLease("exec-dispatch-reconcile");
     leases.releaseLease({
       leaseId: claimed.leaseId ?? "",
       workerId: "worker-dispatch-reconcile",
+      fencingToken: claimedLease?.fencingToken ?? null,
       reasonCode: "test.seed",
       occurredAt: "2026-04-04T14:00:07.000Z",
     });

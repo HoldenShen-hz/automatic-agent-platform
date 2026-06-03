@@ -622,9 +622,9 @@ test("HITL runtime opens and resolves human review requests", () => {
     assert.equal(request.evidenceRefs.length, 2);
 
     const resolved = runtime.resolve(request.requestId, "approved", "operator_1");
-    assert.equal(resolved.status, "approved");
-    assert.equal(resolved.resolvedBy, "operator_1");
-    assert.ok(resolved.resolvedAt !== null);
+    assert.equal(resolved.request.status, "approved");
+    assert.equal(resolved.request.resolvedBy, "operator_1");
+    assert.ok(resolved.request.resolvedAt !== null);
 
     const retrieved = runtime.get(request.requestId);
     assert.ok(retrieved, "Should retrieve resolved request");
@@ -648,8 +648,8 @@ test("HITL runtime rejects request and run aborts", () => {
     });
 
     const resolved = runtime.resolve(request.requestId, "rejected", "operator_2");
-    assert.equal(resolved.status, "rejected");
-    assert.equal(resolved.resolvedBy, "operator_2");
+    assert.equal(resolved.request.status, "rejected");
+    assert.equal(resolved.request.resolvedBy, "operator_2");
   } finally {
     ctx.db.close();
     cleanupPath(ctx.workspace);

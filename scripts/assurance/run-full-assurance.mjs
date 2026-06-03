@@ -117,7 +117,7 @@ const steps = [
     id: "assurance_verify_test_coverage",
     command: "npm",
     args: ["run", "assurance:verify-test-coverage"],
-    required: false,
+    required: true,
     rationale: "P0 issue 必须绑定至少 1 个 test。",
   },
   {

@@ -128,7 +128,9 @@ test("security: createWorkspaceWritePolicy creates valid policy", () => {
   assert.strictEqual(policy.policyId, "workspace_write");
   assert.strictEqual(policy.mode, "workspace_write");
   assert.deepStrictEqual(policy.allowedRoots, ["/workspace/project"]);
-  assert.deepStrictEqual(policy.deniedRoots, ["/etc", "/proc", "/sys", `${homedir()}/.ssh`]);
+  for (const expectedRoot of ["/etc", "/proc", "/root", "/sys", "/var/log", "/var/run/docker.sock", `${homedir()}/.aws`, `${homedir()}/.config`, `${homedir()}/.kube`, `${homedir()}/.ssh`]) {
+    assert.ok(policy.deniedRoots.includes(expectedRoot));
+  }
   assert.strictEqual(policy.realpathEnforced, true);
   assert.strictEqual(policy.symlinkPolicy, "deny");
 });

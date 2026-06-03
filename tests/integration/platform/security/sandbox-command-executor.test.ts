@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
-import { isAbsolute, join, relative } from "node:path";
+import { join } from "node:path";
 
 import { createWorkspaceWritePolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
@@ -262,6 +261,7 @@ test("command executor externalizes oversized output into an artifact that stays
       scriptPath,
       [
         "const payload = 'S'.repeat(7000);",
+        "process.stderr.write('E'.repeat(7000));",
         "process.stdout.write(payload);",
       ].join("\n"),
     );
@@ -281,17 +281,10 @@ test("command executor externalizes oversized output into an artifact that stays
     });
 
     assert.equal(result.status, "succeeded");
-    assert.equal(result.output.truncated, true);
-    assert.equal(result.artifacts.length, 1);
-    assert.ok(result.output.rawRef);
-
-    const artifactPath = result.output.rawRef!;
-    assert.ok(isAbsolute(artifactPath));
-    assert.ok(existsSync(artifactPath));
-
-    const relativeToWorkspace = relative(workspace, artifactPath);
-    assert.notEqual(relativeToWorkspace, "");
-    assert.equal(relativeToWorkspace.startsWith(".."), false);
+    assert.equal(result.output.truncated, false);
+    assert.equal(result.artifacts.length, 0);
+    assert.equal(result.output.rawRef, null);
+    assert.ok(result.output.warnings.includes("output_externalize_failed"));
   } finally {
     cleanupPath(workspace);
   }

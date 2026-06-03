@@ -7,7 +7,6 @@ import { PromptRolloutService } from "../../../../src/platform/prompt-engine/rol
 import { PlatformPromptReleaseOrchestrationService } from "../../../../src/platform/prompt-engine/rollout/platform-prompt-release-orchestration-service.js";
 
 test("integration: platform prompt release uses dataset gate, judge assignment, and rollout activation", () => {
-  const datasets = new EvalDatasetJudgeService();
   const cases: EvalDatasetCase[] = [
     {
       caseId: "safe_answer",
@@ -56,6 +55,24 @@ test("integration: platform prompt release uses dataset gate, judge assignment, 
       ],
     })),
   ];
+  const datasets = new EvalDatasetJudgeService(
+    Object.fromEntries(
+      cases
+        .flatMap((testCase) => testCase.qualityCriteria)
+        .filter((criterion) => criterion.type === "llm_judge")
+        .map((criterion) => [
+          criterion.criterionId,
+          ({ criterion: currentCriterion, criterionSignals }: { criterion: { criterionId: string; threshold: number }; criterionSignals: Record<string, number> }) => {
+            const score = criterionSignals[currentCriterion.criterionId] ?? 0;
+            return {
+              score,
+              passed: score >= currentCriterion.threshold,
+              reason: score >= currentCriterion.threshold ? "llm_judge_passed" : "llm_judge_failed",
+            };
+          },
+        ]),
+    ),
+  );
   datasets.registerDataset({
     datasetId: "dataset_release_readiness",
     name: "Release Readiness",

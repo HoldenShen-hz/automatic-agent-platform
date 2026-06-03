@@ -384,6 +384,11 @@ networkPathTest("HttpApiServer: broadcastTaskEvent does not throw when WebSocket
 
 networkPathTest("HttpApiServer: GET /v1/stability returns stability panel", async () => {
   const server = createTestServer();
+  const authService = new ApiAuthService({
+    apiKeys: [{ apiKey: "test-api-key", actorId: "test-actor", roles: ["viewer"] }],
+    jwtSecret: "test-jwt-secret-for-integration-tests-only",
+  });
+  const token = authService.exchangeApiKey("test-api-key").accessToken;
   await server.start();
 
   try {
@@ -391,7 +396,7 @@ networkPathTest("HttpApiServer: GET /v1/stability returns stability panel", asyn
       url: "/v1/stability",
       method: "GET",
       headers: {
-        "x-api-key": "test-api-key",
+        authorization: `Bearer ${token}`,
       },
     });
 

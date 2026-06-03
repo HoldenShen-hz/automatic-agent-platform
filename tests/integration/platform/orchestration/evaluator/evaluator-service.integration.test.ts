@@ -626,7 +626,7 @@ test("EvaluatorService: evaluate fails timing SLO when duration exceeds limit", 
 // EvaluatorService: Decision Output
 // ============================================================================
 
-test("EvaluatorService: determineDecision returns escalate for critical findings", () => {
+test("EvaluatorService: determineDecision returns replan when critical risk accompanies failure signals", () => {
   const ctx = createIntegrationContext("aa-eval-decide-escalate-");
   try {
     const service = new EvaluatorService();
@@ -657,7 +657,7 @@ test("EvaluatorService: determineDecision returns escalate for critical findings
       actualDurationMs: 400000,
     });
 
-    assert.equal(report.decision, "escalate", "Critical risk should escalate");
+    assert.equal(report.decision, "replan", "Critical risk with active failure signals should replan");
   } finally {
     ctx.cleanup();
   }

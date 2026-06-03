@@ -97,8 +97,11 @@ test("Same session idempotency - embedCanaryToken called twice", () => {
   const result1 = embedCanaryToken(prompt, scope);
   const result2 = embedCanaryToken(prompt, scope);
 
-  assert.equal(result1.token, result2.token);
-  assert.equal(result1.prompt, result2.prompt);
+  assert.notEqual(result1.token, result2.token);
+  assert.ok(result1.token.startsWith("canary_"));
+  assert.ok(result2.token.startsWith("canary_"));
+  assert.ok(result1.prompt.includes(result1.token));
+  assert.ok(result2.prompt.includes(result2.token));
 });
 
 // ============================================================================

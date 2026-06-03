@@ -305,7 +305,7 @@ test("EscalationService: custom cost threshold is respected", () => {
   }
 });
 
-test("EscalationService: high risk triggers approval decision without production/cost factors", () => {
+test("EscalationService: high risk outside assess triggers takeover before approval", () => {
   const ctx = createIntegrationContext("aa-escalation-approval-high-risk-");
   try {
     const db = ctx.db;
@@ -330,8 +330,8 @@ test("EscalationService: high risk triggers approval decision without production
 
     const decision = service.decide(request);
 
-    assert.equal(decision.decision, "approval", "High risk should trigger approval");
-    assert.ok(decision.approvalRequestId, "Approval request ID should be created");
+    assert.equal(decision.decision, "takeover", "High risk should trigger takeover before approval");
+    assert.equal(decision.reasonCode, "escalation.human_takeover_required");
   } finally {
     ctx.cleanup();
   }

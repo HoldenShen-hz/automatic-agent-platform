@@ -179,12 +179,19 @@ async function runOrphanClaimScenario(outputDir: string): Promise<StableDispatch
       leaseTtlMs: 30_000,
       occurredAt: "2026-04-04T14:00:06.000Z",
     });
-    leases.releaseLease({
-      leaseId: claimed.leaseId ?? "",
-      workerId: "worker-dispatch-reconcile",
-      reasonCode: "reconcile.seed",
-      occurredAt: "2026-04-04T14:00:07.000Z",
-    });
+    const claimedLease =
+      claimed.leaseId == null
+        ? null
+        : store.worker.getExecutionLease(claimed.leaseId);
+    if (claimedLease != null) {
+      leases.releaseLease({
+        leaseId: claimedLease.id,
+        workerId: claimedLease.workerId,
+        fencingToken: claimedLease.fencingToken,
+        reasonCode: "reconcile.seed",
+        occurredAt: "2026-04-04T14:00:07.000Z",
+      });
+    }
 
     const before = reconcile.scan("2026-04-04T14:00:08.000Z");
     const repaired = reconcile.repair("2026-04-04T14:00:08.000Z");

@@ -168,7 +168,7 @@ test("R16-38 and R16-39 memory promotion and eviction reporting are wired", () =
       agentId: null,
       executionId: null,
       memoryLayer: "layer_3",
-      scope: "task_runtime",
+      scope: "session",
       contentJson: "{\"content\":\"stale\"}",
       classification: "fact",
       sourceTrustLevel: "trusted",

@@ -171,7 +171,7 @@ test("integration: DLQ service setFailureCategory updates category with operator
     assert.equal(updated.failureCategory, "configuration");
     const lastAction = updated.operatorActionLog[updated.operatorActionLog.length - 1]!;
     assert.equal(lastAction.action, "category_changed");
-    assert.deepEqual(lastAction.details, { previousCategory: null, newCategory: "configuration" });
+    assert.deepEqual(lastAction.details, { previousCategory: "unknown", newCategory: "configuration" });
   } finally {
     ctx.cleanup();
   }

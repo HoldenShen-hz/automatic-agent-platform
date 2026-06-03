@@ -22,7 +22,7 @@ test("OperatorConsoleBackendService builds snapshot with empty data sources", ()
   const ctx = createIntegrationContext("aa-console-empty-");
   try {
     const service = new OperatorConsoleBackendService({});
-    const operator: OperatorIdentity = { operatorId: "op-1", roles: ["viewer"] };
+    const operator: OperatorIdentity = { operatorId: "op-1", roles: ["human_operator"] };
 
     const snapshot = service.buildSnapshot(operator);
 
@@ -253,7 +253,7 @@ test("OperatorConsoleBackendService plans human takeover action", () => {
   const ctx = createIntegrationContext("aa-console-takeover-");
   try {
     const service = new OperatorConsoleBackendService({});
-    const operator: OperatorIdentity = { operatorId: "op-1", roles: ["viewer"] };
+    const operator: OperatorIdentity = { operatorId: "op-1", roles: ["admin", "break_glass"] };
 
     const plan = service.planHumanTakeoverAction({
       actionId: "action-1",
@@ -278,7 +278,7 @@ test("OperatorConsoleBackendService flags high-risk actions requiring policy eva
   const ctx = createIntegrationContext("aa-console-highrisk-");
   try {
     const service = new OperatorConsoleBackendService({});
-    const operator: OperatorIdentity = { operatorId: "op-1", roles: ["viewer"] };
+    const operator: OperatorIdentity = { operatorId: "op-1", roles: ["admin", "break_glass"] };
 
     const highRiskActions: Array<"switch_worker" | "attach_artifact" | "advance_rollout" | "rollback_rollout" | "finish_task"> = [
       "switch_worker",
@@ -316,16 +316,18 @@ test("OperatorConsoleBackendService flags break-glass actions without break_glas
       "rollback_rollout",
     ];
 
-    for (const actionType of breakGlassActions) {
-      const plan = service.planHumanTakeoverAction({
+  for (const actionType of breakGlassActions) {
+    assert.throws(
+      () => service.planHumanTakeoverAction({
         actionId: `action-${actionType}`,
         actionType,
         taskId: "task-123",
         operator,
         reasonCode: "test",
-      });
-      assert.equal(plan.requiresBreakGlass, true, `${actionType} should require break-glass`);
-    }
+      }),
+      (error: unknown) => typeof error === "object" && error !== null && "code" in error && error.code === "console.high_risk_action_requires_admin",
+    );
+  }
 
     // With break_glass role, should not require break-glass
     const authorizedOperator: OperatorIdentity = { operatorId: "op-2", roles: ["viewer", "break_glass"] };

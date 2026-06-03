@@ -179,7 +179,7 @@ test("ReplayRepairControlService.listRecoveryCandidates infers correct dispositi
 
   const candidates = service.listRecoveryCandidates(report);
 
-  assert.equal(candidates[0]?.disposition, "retry");
+  assert.equal(candidates[0]?.disposition, "manual_handoff");
 });
 
 test("ReplayRepairControlService.listRecoveryCandidates infers correct disposition for tier1_ack_backlog", () => {
@@ -191,7 +191,7 @@ test("ReplayRepairControlService.listRecoveryCandidates infers correct dispositi
 
   const candidates = service.listRecoveryCandidates(report);
 
-  assert.equal(candidates[0]?.disposition, "resume");
+  assert.equal(candidates[0]?.disposition, "manual_handoff");
 });
 
 test("ReplayRepairControlService.listRecoveryCandidates infers manual_handoff for manual_intervention_required", () => {
@@ -300,18 +300,21 @@ test("ReplayRepairControlService.planRepairActions preserves candidateId relatio
 
 test("ReplayRepairControlService.assertCanOpenForTraffic does not throw for open_for_traffic", () => {
   const service = new ReplayRepairControlService();
-  const findings: StartupConsistencyFinding[] = [makeFinding({ severity: "info" })];
+  const findings: StartupConsistencyFinding[] = [makeFinding({ severity: "info", recoverable: false })];
   const report = service.buildStartupConsistencyReport({ findings });
 
   service.assertCanOpenForTraffic(report); // should not throw
 });
 
-test("ReplayRepairControlService.assertCanOpenForTraffic does not throw for repair_required", () => {
+test("ReplayRepairControlService.assertCanOpenForTraffic throws for repair_required", () => {
   const service = new ReplayRepairControlService();
   const findings: StartupConsistencyFinding[] = [makeFinding({ recoverable: true })];
   const report = service.buildStartupConsistencyReport({ findings });
 
-  service.assertCanOpenForTraffic(report); // should not throw
+  assert.throws(
+    () => service.assertCanOpenForTraffic(report),
+    (error: unknown) => error instanceof Error && "code" in error && error.code === "replay_repair.fail_closed",
+  );
 });
 
 test("ReplayRepairControlService.assertCanOpenForTraffic throws for fail_closed", () => {
@@ -321,7 +324,7 @@ test("ReplayRepairControlService.assertCanOpenForTraffic throws for fail_closed"
 
   assert.throws(
     () => service.assertCanOpenForTraffic(report),
-    /P0 findings/,
+    (error: unknown) => error instanceof Error && "code" in error && error.code === "replay_repair.fail_closed",
   );
 });
 

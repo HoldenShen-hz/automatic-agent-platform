@@ -67,7 +67,7 @@ test("SdkVersionHandshakeService.evaluate checks platform min version compatibil
   assert.equal(decision.reasonCode, "sdk.upgrade_required");
 });
 
-test("SdkVersionHandshakeService.evaluate adds warning for contract version mismatch", () => {
+test("SdkVersionHandshakeService.evaluate rejects contract version mismatch", () => {
   const service = new SdkVersionHandshakeService(makePolicy());
   const request = makeRequest({
     "x-sdk-version": "2.0.0",
@@ -75,7 +75,8 @@ test("SdkVersionHandshakeService.evaluate adds warning for contract version mism
   });
 
   const decision = service.evaluate(request);
-  assert.equal(decision.accepted, true);
+  assert.equal(decision.accepted, false);
+  assert.equal(decision.reasonCode, "sdk.contract_incompatible");
   assert.ok(decision.warnings.some((w) => w.includes("contract")));
 });
 

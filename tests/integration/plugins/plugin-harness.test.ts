@@ -30,6 +30,7 @@ test("PluginHarness: invokeRetriever calls plugin retrieve method", async () => 
     registry.register(retriever);
 
     const results = await registry.invokeRetriever("plugin.coding.retriever", {
+      namespace: "code",
       query: {
         taskId: "task_harness_1",
         intent: "VERSION constant",
@@ -169,9 +170,15 @@ test("PluginHarness: invokeAdapterExecute performs adapter action", async () => 
     },
   });
 
-  const r = result as { endpoint: string; payload: { title: string }; status: number; data: { id: number } };
-  assert.ok(r.endpoint.includes("/repos/test/harness-repo/issues"));
-  assert.equal(r.payload.title, "Harness test issue");
+  const r = result as {
+    requestSummary: { endpointTemplate: string; payloadKeys: string[] };
+    status: number;
+    data: { id: number };
+    method: string;
+  };
+  assert.equal(r.method, "POST");
+  assert.equal(r.requestSummary.endpointTemplate, "/repos/{repository}/issues");
+  assert.deepEqual(r.requestSummary.payloadKeys, ["body", "labels", "title"]);
   assert.equal(r.status, 201);
   assert.equal(r.data.id, 202);
 });
@@ -269,6 +276,7 @@ test("PluginHarness: operations retriever can be invoked", async () => {
   registry.register(retriever);
 
   const results = await registry.invokeRetriever("plugin.operations.retriever", {
+    namespace: "ops",
     query: {
       taskId: "task_ops_harness",
       intent: "incident runbook",
@@ -291,6 +299,7 @@ test("PluginHarness: growth plugins work together (retriever + presenter)", asyn
 
   // Retrieve
   const retrievalResults = await registry.invokeRetriever("plugin.growth.retriever", {
+    namespace: "growth",
     query: {
       taskId: "task_growth_harness",
       intent: "campaign performance",

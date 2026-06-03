@@ -97,7 +97,7 @@ test("IncidentDetector detects from checks - creates SEV2 for degraded", () => {
 
   assert.equal(incidents.length, 1);
   assert.equal(incidents[0]!.severity, "SEV2");
-  assert.equal(incidents[0]!.category, "availability");
+  assert.equal(incidents[0]!.category, "performance");
 });
 
 test("IncidentDetector maps check ID to category", () => {

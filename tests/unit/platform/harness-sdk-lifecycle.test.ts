@@ -251,9 +251,9 @@ test("2148: workflow transition service wraps state change in transaction and CA
 
 test("2152: recovery decision apply re-reads execution and candidate inside a transaction", () => {
   const text = source("src/platform/five-plane-execution/recovery/runtime-recovery-decision-service.ts");
-  assert.match(text, /await this\.db\.transaction\(async \(\) => {/);
-  assert.match(text, /const execution = this\.store\.dispatch\.getExecution\(executionId\)/);
-  assert.match(text, /const recoveryView = await this\.recoveryService\.buildRuntimeRecoveryView\(execution\.taskId\)/);
+  assert.match(text, /this\.db\.transaction\(\(\) => {/);
+  assert.match(text, /const execution = this\.requireExecution\(executionId\)/);
+  assert.match(text, /const candidate = this\.requireRecoveryCandidate\(execution\.taskId, executionId\)/);
 });
 
 test("2156: replay boundary guard blocks real side effects during reexecution replay", () => {

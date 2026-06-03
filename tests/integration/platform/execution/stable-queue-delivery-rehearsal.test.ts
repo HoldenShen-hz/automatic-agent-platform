@@ -9,6 +9,8 @@ import {
 } from "../../../../src/platform/shared/stability/stable-queue-delivery-rehearsal.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 test("stable queue delivery rehearsal validates queue replay and duplicate delivery containment", async () => {
   const workspace = createTempWorkspace("aa-stable-queue-delivery-");
 

@@ -13,7 +13,9 @@
     "severity",
     "description",
     "invariantViolated",
-    "status"
+    "status",
+    "requiredTest",
+    "requiredGate"
   ],
   "properties": {
     "issueId": {
@@ -22,7 +24,7 @@
     },
     "source": {
       "type": "string",
-      "enum": ["code", "doc", "adr", "release", "test", "ci", "runtime", "manual", "audit"]
+      "enum": ["code", "doc", "adr", "release", "test", "ci", "runtime", "manual", "audit", "review"]
     },
     "sourceRef": {
       "type": "string",

@@ -354,6 +354,7 @@ test("identity provider: evaluateAuthorizationContext allows action with tenant 
       principalType: "user",
       roles: ["service_operator"],
       action: "org_change",
+      principalTenantId: "tenant-001",
       context: { requiresTenantScope: true, tenantId: "tenant-001" },
       mode: "auto",
     });
@@ -391,7 +392,15 @@ test("identity provider: evaluateAuthorizationContext records manual takeover co
       principalType: "human_operator",
       roles: ["human_operator"],
       action: "exec_command",
-      context: { manualTakeoverActive: true },
+      principalTenantId: "tenant-ops",
+      context: {
+        manualTakeoverActive: true,
+        tenantId: "tenant-ops",
+        originalPrincipal: {
+          principalId: "user-ops",
+          tenantId: "tenant-ops",
+        },
+      },
       mode: "auto",
     });
 

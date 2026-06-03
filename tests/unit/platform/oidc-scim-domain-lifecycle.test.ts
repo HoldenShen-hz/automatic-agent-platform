@@ -298,7 +298,7 @@ test("1974..1981: domain lifecycle, quotas, delegation intersection, threshold r
     "2026-05-12T00:00:00.000Z",
   );
   assert.notEqual(route1.auditRecord.recordId, route2.auditRecord.recordId);
-  assert.match(route1.auditRecord.recordId, /approval_route_audit_requester-1_dept-1_\d+_/);
+  assert.match(route1.auditRecord.recordId, /approval_route_audit_[a-f0-9]+_route_/);
 
   const policyResult = resolveCompliancePolicyForNode(
     [{ orgNodeId: "team-1", parentOrgNodeId: null, active: true, nodeType: "team" }],
@@ -444,5 +444,5 @@ test("1987..1988: risk and dev security configs stay aligned with the audited gu
       "evidenceConfidence",
     ],
   );
-  assert.equal(devSecurityConfig.approvalMode, "supervised");
+  assert.equal(devSecurityConfig.approvalMode, "guided");
 });

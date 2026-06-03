@@ -358,7 +358,14 @@ test("integration: DashboardWebSocketServer broadcasts to all connected clients"
     type: "dashboard_snapshot" as const,
     clientId: "",
     timestamp: nowIso(),
-    payload: { test: "broadcast" },
+    payload: {
+      test: "broadcast",
+      scope: {
+        visibilityScope: "tenant" as const,
+        tenantId: TEST_WS_TENANT,
+        metrics: ["*"],
+      },
+    },
   };
 
   const broadcastCount = server.broadcast(message);

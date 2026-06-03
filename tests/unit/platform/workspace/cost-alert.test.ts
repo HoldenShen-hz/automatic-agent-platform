@@ -143,27 +143,30 @@ test("CostAlertService records cost into accumulator", () => {
   assert.equal(accumulator.accumulatedTokens, 1500);
 });
 
-test("CostAlertService emits critical threshold event on recordCost", async () => {
+test("CostAlertService emits warning and critical threshold events on recordCost", async () => {
   const service = createService({
     enabled: true,
     platformBudgetPolicy: createPlatformBudgetPolicy(100),
   });
 
-  const event = await new Promise<CostThresholdExceededEvent>((resolve) => {
-    service.once("cost:limit_reached", resolve as unknown as (payload: unknown) => void);
-    service.recordCost({
-      scope: "platform",
-      scopeId: "platform-root",
-      actualCostUsd: 96,
-      tokens: 2000,
-      tenantId: "tenant-1",
-      stepId: "step_006",
-    });
+  const events: CostThresholdExceededEvent[] = [];
+  service.on("cost:limit_reached", ((payload: unknown) => {
+    events.push(payload as CostThresholdExceededEvent);
+  }) as (payload: unknown) => void);
+
+  service.recordCost({
+    scope: "platform",
+    scopeId: "platform-root",
+    actualCostUsd: 96,
+    tokens: 2000,
+    tenantId: "tenant-1",
+    stepId: "step_006",
   });
 
-  assert.equal(event.scope, "platform");
-  assert.equal(event.alertLevel, CostAlertLevel.CRITICAL);
-  assert.equal(event.eventTier, "tier_2");
+  assert.equal(events.length, 2);
+  assert.deepEqual(events.map((event) => event.alertLevel), [CostAlertLevel.WARNING, CostAlertLevel.CRITICAL]);
+  assert.deepEqual(events.map((event) => event.eventTier), ["tier_3", "tier_2"]);
+  assert.ok(events.every((event) => event.scope === "platform"));
 });
 
 // ============================================================================

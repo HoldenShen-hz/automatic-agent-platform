@@ -77,7 +77,7 @@ test("ManualBillingPaymentGateway createCheckoutSession generates correct sessio
   const session = gateway.createCheckoutSession({ invoice, account, createdAt });
 
   assert.equal(session.gatewayKind, "manual");
-  assert.match(session.gatewaySessionRef, new RegExp(`^manual_${invoice.invoiceId}_[a-z0-9]+$`, "u"));
+  assert.equal(session.gatewaySessionRef, `manual_${invoice.invoiceId}`);
   assert.ok(session.checkoutUrl.includes(invoice.invoiceId));
   assert.ok(session.checkoutUrl.includes(account.accountId));
   assert.equal(session.expiresAt, null);

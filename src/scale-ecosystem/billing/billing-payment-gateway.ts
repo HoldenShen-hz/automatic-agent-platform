@@ -195,7 +195,7 @@ export class ManualBillingPaymentGateway implements BillingPaymentGateway {
    * @returns Checkout session with a manual payment URL
    */
   public createCheckoutSession(input: CreateBillingCheckoutSessionInput): BillingCheckoutSessionDefinition {
-    const gatewaySessionRef = `manual_${input.invoice.invoiceId}_${Date.now().toString(36)}`;
+    const gatewaySessionRef = `manual_${input.invoice.invoiceId}`;
     return {
       gatewayKind: this.kind,
       gatewaySessionRef,

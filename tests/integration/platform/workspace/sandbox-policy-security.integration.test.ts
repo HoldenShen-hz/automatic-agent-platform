@@ -185,7 +185,7 @@ test("integration: sandbox policy with complex nested paths", () => {
 test("integration: sandbox mode normalization for various inputs", () => {
   assert.equal(normalizeSandboxMode("read_only"), "read_only");
   assert.equal(normalizeSandboxMode("workspace_write"), "workspace_write");
-  assert.equal(normalizeSandboxMode("container"), "workspace_write"); // alias
+  assert.equal(normalizeSandboxMode("container"), "restricted_exec"); // alias
   assert.equal(normalizeSandboxMode("process"), "read_only"); // alias
   assert.equal(normalizeSandboxMode("restricted_exec"), "restricted_exec");
   assert.equal(normalizeSandboxMode("scoped_external_access"), "scoped_external_access");

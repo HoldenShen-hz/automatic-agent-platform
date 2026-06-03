@@ -222,9 +222,8 @@ export class DlqService {
     // R12-06: Persist to repository if available, otherwise use in-memory
     if (this.repository) {
       this.repository.insert(record);
-    } else {
-      this.records.set(record.deadLetterId, record);
     }
+    this.records.set(record.deadLetterId, record);
     return record;
   }
 

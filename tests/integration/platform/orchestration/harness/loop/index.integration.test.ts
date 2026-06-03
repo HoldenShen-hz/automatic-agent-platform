@@ -381,10 +381,10 @@ describe("HarnessLoopController", () => {
   });
 
   describe("getGuards", () => {
-    it("should calculate maxIterations as Math.floor(maxSteps / 3)", () => {
+    it("should calculate maxIterations from the normalized maxSteps budget", () => {
       const controller = new HarnessLoopController(createMockConstraintPack({ maxSteps: 30 }));
 
-      assert.strictEqual(controller.getGuards().maxIterations, 10);
+      assert.strictEqual(controller.getGuards().maxIterations, 30);
       assert.strictEqual(controller.getGuards().maxReplans, 3);
       assert.strictEqual(controller.getGuards().maxDurationMs, 60000);
       assert.strictEqual(controller.getGuards().maxCost, 50);

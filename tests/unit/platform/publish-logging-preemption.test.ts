@@ -186,7 +186,8 @@ test("R24-15: StructuredLogger counts pending async writes when deciding file ro
   assert.equal(loggerSource.includes("pendingBytes"), true);
   assert.equal(loggerSource.includes("currentBytes + state.pendingBytes"), true);
 
-  const logPath = join(process.cwd(), "data", `reaudit-r24-15-${Date.now()}.log`);
+  const workspace = createTempWorkspace("aa-reaudit-r24-15-");
+  const logPath = join(workspace, `reaudit-r24-15-${Date.now()}.log`);
   writeFileSync(logPath, "x".repeat(95), "utf8");
 
   const fsModule = await import("node:fs");
@@ -214,6 +215,7 @@ test("R24-15: StructuredLogger counts pending async writes when deciding file ro
     (fsModule.promises as { appendFile: typeof originalAppendFile }).appendFile = originalAppendFile;
     cleanupPath(logPath);
     cleanupPath(`${logPath}.1`);
+    cleanupPath(workspace);
   }
 });
 

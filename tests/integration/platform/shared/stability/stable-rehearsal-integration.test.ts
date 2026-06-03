@@ -31,6 +31,8 @@ import {
 } from "../../../../../src/platform/shared/stability/stable-db-writability-rehearsal.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 test("stable lease rehearsal validates step-boundary handover and recovery", async () => {
   const workspace = createTempWorkspace("aa-stable-lease-");
 

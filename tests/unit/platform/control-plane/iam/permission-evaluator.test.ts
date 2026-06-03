@@ -194,6 +194,7 @@ test("PermissionEvaluator evaluates org_change action with tenant scope for plat
     principalType: "user",
     roles: ["platform_admin"],
     action: "org_change",
+    principalTenantId: "tenant-001",
     context: makeMockContext({ requiresTenantScope: true, tenantId: "tenant-001" }),
     mode: "auto",
   });
@@ -309,7 +310,15 @@ test("PermissionEvaluator allows with manual takeover active", () => {
     principalType: "user",
     roles: ["human_operator"],
     action: "invoke_tool",
-    context: makeMockContext({ manualTakeoverActive: true }),
+    context: makeMockContext({
+      manualTakeoverActive: true,
+      tenantId: "tenant-001",
+      originalPrincipal: {
+        type: "user",
+        roles: ["human_operator"],
+        tenantId: "tenant-001",
+      },
+    }),
     mode: "auto",
   });
   assert.equal(result.allowed, true);
@@ -509,7 +518,15 @@ test("PermissionEvaluator explainSummary for manual takeover", () => {
     principalType: "user",
     roles: ["human_operator"],
     action: "invoke_tool",
-    context: makeMockContext({ manualTakeoverActive: true }),
+    context: makeMockContext({
+      manualTakeoverActive: true,
+      tenantId: "tenant-001",
+      originalPrincipal: {
+        type: "user",
+        roles: ["human_operator"],
+        tenantId: "tenant-001",
+      },
+    }),
     mode: "auto",
   });
   assert.ok(result.explainSummary.includes("Manual takeover") || result.explainSummary.includes("manual"));

@@ -18,6 +18,10 @@ import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-e
 import { createTempWorkspace, cleanupPath } from "../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../helpers/seed.js";
 
+function recentIso(offsetMs = 60_000): string {
+  return new Date(Date.now() - offsetMs).toISOString();
+}
+
 test("ExplanationPipelineService generates L2 explanation with causal chain and caching", () => {
   const service = new ExplanationPipelineService();
   const request = {
@@ -108,10 +112,11 @@ test("buildCausalChainSummary produces readable chain summaries", () => {
 
 test("EdgeRuntimeSyncService executes offline tasks and builds sync envelopes", () => {
   const service = new EdgeRuntimeSyncService();
+  const createdAt = recentIso(5 * 60_000);
   const profile = {
     edgeNodeId: "edge_node_001",
     deviceId: "device_node_001",
-    deviceAttestation: { attestedAt: "2026-04-23T00:00:00.000Z", status: "valid" as const },
+    deviceAttestation: { attestedAt: recentIso(), status: "valid" as const },
     capabilities: ["bash", "edit"],
     connectivityMode: "offline" as const,
     maxLocalRetentionHours: 24,
@@ -129,6 +134,7 @@ test("EdgeRuntimeSyncService executes offline tasks and builds sync envelopes", 
     edgeNodeId: "edge_node_001",
     taskId: "task_offline_001",
     modality: "code",
+    createdAt,
     riskScore: 0.2,
     taskType: "code_edit",
   };
@@ -175,10 +181,11 @@ test("EdgeRuntimeSyncService rejects restricted data when policy denies", () => 
 
 test("EdgeRuntimeSyncService merges when cloud digest differs from edge digest", () => {
   const service = new EdgeRuntimeSyncService();
+  const createdAt = recentIso(5 * 60_000);
   const profile = {
     edgeNodeId: "edge_node_003",
     deviceId: "device_node_003",
-    deviceAttestation: { attestedAt: "2026-04-23T00:00:00.000Z", status: "valid" as const },
+    deviceAttestation: { attestedAt: recentIso(), status: "valid" as const },
     capabilities: [],
     connectivityMode: "online" as const,
     maxLocalRetentionHours: 24,
@@ -188,9 +195,9 @@ test("EdgeRuntimeSyncService merges when cloud digest differs from edge digest",
     syncPolicy: { allowRestrictedDataUpload: true, requireOrdering: false },
     riskLevel: "low" as const,
   };
-  const record = buildOfflineExecutionRecord("edge_node_003", "task_101", "2026-04-23T00:00:00.000Z");
+  const record = buildOfflineExecutionRecord("edge_node_003", "task_101", createdAt);
   const envelopes = [
-    service.buildSyncEnvelope(profile, record, "edge_digest_v2", 1, "internal", "2026-04-23T00:00:00.000Z"),
+    service.buildSyncEnvelope(profile, record, "edge_digest_v2", 1, "internal", recentIso(4 * 60_000)),
   ];
   const cloudDigests = { [envelopes[0]!.recordId]: "cloud_digest_v1" };
   const receipt = service.sync(profile, envelopes, cloudDigests);

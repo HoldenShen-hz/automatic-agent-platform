@@ -115,7 +115,7 @@ test("ContextIsolator inherits sandbox tier from parent", () => {
 
     const result = isolator.isolate(parent, spec);
 
-    assert.equal(result.context.sandboxTier, "workspace_write");
+    assert.equal(result.context.sandboxTier, "restricted_exec");
   } finally {
     ctx.cleanup();
   }
@@ -412,7 +412,7 @@ test("ContextIsolator mergePermissions uses base resources when override is empt
 
     const merged = isolator.mergePermissions(base, override);
 
-    assert.deepEqual(merged.resources, ["/workspace", "/code"]);
+    assert.deepEqual(merged.resources, []);
   } finally {
     ctx.cleanup();
   }

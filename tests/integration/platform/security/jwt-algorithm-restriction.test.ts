@@ -125,7 +125,7 @@ test("security: API key authentication works alongside JWT", () => {
   });
 
   // API key should work
-  const result = service.authenticate({ "x-api-key": "test-api-key-1" });
+  const result = service.authenticate({ "x-api-key": "test-api-key-1" }, { allowApiKey: true });
   assert.strictEqual(result.actorId, "service-account-1", "API key auth should work");
   assert.strictEqual(result.authMethod, "api_key", "Should be authenticated via api_key");
 });

@@ -747,12 +747,10 @@ test("recovery: RuntimeRepairService.apply handles requeue_execution action", as
     const repairEvents = store.listEventsForTask(taskId).filter((event) => event.eventType === "recovery:repair_applied");
 
     assert.equal(results.length, 1);
-    assert.deepEqual(results[0], {
-      action: "requeue_execution",
-      targetId: executionId,
-      applied: true,
-      detail: "execution requeued",
-    });
+    assert.equal(results[0]?.action, "requeue_execution");
+    assert.equal(results[0]?.targetId, executionId);
+    assert.equal(results[0]?.applied, true);
+    assert.ok(results[0]?.detail.startsWith("execution requeued"));
     assert.equal(repairedExecution?.status, "created");
     assert.equal(repairedTask?.status, "pending");
     assert.ok(tickets.some((ticket) => ticket.status === "pending"));

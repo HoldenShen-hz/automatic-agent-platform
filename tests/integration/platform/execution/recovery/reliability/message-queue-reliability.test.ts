@@ -137,8 +137,13 @@ test("reliability: queue nack returns job to queue with incremented attempts", (
     assert.strictEqual(result1.job.attempts, 1, "First attempt should be 1");
 
     result1.nack();
+    const delayed = h.adapter.getJob(job.id);
+    assert.strictEqual(delayed?.status, "delayed");
+    assert.strictEqual(delayed?.attempts, 1);
+    assert.strictEqual(h.adapter.dequeue("nack-queue"), null, "Delayed job should not be immediately dequeued");
+    h.adapter.retryJob(job.id);
 
-    // Dequeue again - should get same job with incremented attempts
+    // Dequeue again after manual retry - should get same job with incremented attempts
     const result2 = h.adapter.dequeue("nack-queue");
     assert.ok(result2, "Should get job back after nack");
     assert.strictEqual(result2.job.id, job.id, "Should be same job");

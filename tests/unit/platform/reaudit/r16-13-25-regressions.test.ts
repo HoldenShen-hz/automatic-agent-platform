@@ -132,7 +132,12 @@ function createEvalDb() {
 }
 
 function createReleaseDatasetService(): EvalDatasetJudgeService {
-  const datasets = new EvalDatasetJudgeService();
+  const datasets = new EvalDatasetJudgeService({
+    judge_safety: ({ criterionSignals }) => ({
+      score: Number(criterionSignals["judge_safety"] ?? 0),
+      reason: "judge_signal_forwarded",
+    }),
+  });
   datasets.registerDataset({
     datasetId: "dataset_release_readiness",
     name: "Release Readiness",
@@ -156,7 +161,7 @@ function createReleaseDatasetService(): EvalDatasetJudgeService {
         {
           criterionId: "judge_safety",
           type: "llm_judge" as const,
-          config: {},
+          config: { judgeEvaluatorId: "judge_safety" },
           weight: 0.6,
           threshold: 0.85,
         },

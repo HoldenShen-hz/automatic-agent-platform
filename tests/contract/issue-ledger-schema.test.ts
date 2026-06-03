@@ -27,6 +27,7 @@ const SCHEMAS = [
   "schemas/coverage-scorecard.schema.json",
   "schemas/assurance-report.schema.json",
   "schemas/historical-promise-ledger.schema.json",
+  "schemas/release-evidence-bundle.schema.json",
   "schemas/seeded-defect.schema.json",
   "schemas/review-ledger.schema.json",
 ];
@@ -67,5 +68,20 @@ describe("contract: schemas/ JSON validity and minimum required fields", () => {
         );
       }
     }
+  });
+
+  it("issue-ledger.schema.json requires gating fields and accepts review-backed issues", () => {
+    const schema = JSON.parse(readFileSync(join(repoRoot, "schemas/issue-ledger.schema.json"), "utf8"));
+    const required = new Set(schema.required as string[]);
+    assert.ok(required.has("requiredTest"), "issue-ledger schema must require requiredTest");
+    assert.ok(required.has("requiredGate"), "issue-ledger schema must require requiredGate");
+
+    const sourceEnum = schema.properties?.source?.enum as string[] | undefined;
+    assert.ok(Array.isArray(sourceEnum), "issue-ledger source enum must exist");
+    assert.ok(sourceEnum.includes("review"), "issue-ledger source enum must allow review-backed issues");
+
+    const requiredTestEnum = schema.properties?.requiredTest?.items?.enum as string[] | undefined;
+    assert.ok(Array.isArray(requiredTestEnum), "issue-ledger requiredTest enum must exist");
+    assert.ok(requiredTestEnum.includes("regression"), "issue-ledger requiredTest enum must allow regression");
   });
 });

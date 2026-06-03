@@ -361,8 +361,8 @@ test("ContextIsolator mergePermissions takes restrictive values", async () => {
 
     const merged = isolator.mergePermissions(base, override);
 
-    assert.deepEqual(merged.resources, base.resources);
-    assert.deepEqual(merged.actions, base.actions);
+    assert.deepEqual(merged.resources, []);
+    assert.deepEqual(merged.actions, []);
     assert.equal(merged.constraints.maxTokens, 1000);
   } finally {
     ctx.cleanup();

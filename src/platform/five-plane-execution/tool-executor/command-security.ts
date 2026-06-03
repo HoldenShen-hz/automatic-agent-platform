@@ -120,6 +120,14 @@ const PATH_TRAVERSAL_PATTERN = /(?:^|[\\/])\.\.(?:[\\/]|$)|\.{4,}(?:[\\/]|$)/;
 // Glob metacharacters that should be blocked in paths: * ? [ (character classes and ranges)
 const GLOB_METACHAR_PATTERN = /[*?[]/;
 
+function decodeForSecurityInspection(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 // Fork bomb detection patterns
 // Classic bash fork bombs: :(){ :|:& };: or similar recursive function definitions
 const FORK_BOMB_PATTERNS = [
@@ -309,6 +317,9 @@ export class CommandSafetyClassifier {
   }
 
   public assess(command: string, args: readonly string[]): CommandAssessment {
+    const decodedCommand = decodeForSecurityInspection(command);
+    const decodedArgs = args.map((arg) => decodeForSecurityInspection(arg));
+
     // Fork bomb detection - check for recursive process spawning patterns
     if (isForkBomb(command, args)) {
       return deniedAssessment("tool.fork_bomb_detected", "critical");
@@ -334,8 +345,14 @@ export class CommandSafetyClassifier {
 
     if (
       META_SYNTAX_PATTERN.test(command)
+      || META_SYNTAX_PATTERN.test(decodedCommand)
       || PATH_TRAVERSAL_PATTERN.test(command)
-      || args.some((arg) => META_SYNTAX_PATTERN.test(arg) || PATH_TRAVERSAL_PATTERN.test(arg))
+      || PATH_TRAVERSAL_PATTERN.test(decodedCommand)
+      || args.some((arg, index) =>
+        META_SYNTAX_PATTERN.test(arg)
+        || PATH_TRAVERSAL_PATTERN.test(arg)
+        || META_SYNTAX_PATTERN.test(decodedArgs[index] ?? arg)
+        || PATH_TRAVERSAL_PATTERN.test(decodedArgs[index] ?? arg))
     ) {
       return deniedAssessment("tool.command_meta_syntax_denied", "critical");
     }

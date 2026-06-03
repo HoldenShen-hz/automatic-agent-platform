@@ -101,9 +101,11 @@ test("orphan cleanup service closes orphan sessions, requeues orphan claims, and
       leaseTtlMs: 30_000,
       occurredAt: "2026-04-07T13:00:05.000Z",
     });
+    const claimedLease = store.worker.getActiveExecutionLease("exec-orphan-cleanup");
     leases.releaseLease({
       leaseId: claimed.leaseId ?? "",
       workerId: "worker-orphan-cleanup",
+      fencingToken: claimedLease?.fencingToken ?? null,
       reasonCode: "test.seed",
       occurredAt: "2026-04-07T13:00:06.000Z",
     });

@@ -2,7 +2,7 @@
 
 > Version: v1.0  
 > Status: Required by `assurance:full` / `assurance:delta` / `rc:check`  
-> Companion schemas: `schemas/assurance-report.schema.json` / `schemas/seeded-defect.schema.json`  
+> Companion schemas: `schemas/assurance-report.schema.json` / `schemas/seeded-defect.schema.json` / `schemas/release-evidence-bundle.schema.json`  
 > Related documents: methodology §20, §21, §37, §38, §44
 
 ## 1. Scope
@@ -36,7 +36,7 @@ It covers three execution scenarios:
 | 1 Inventory | Full repository file/contract/event/metric/test/document/config/workflow indexing | `assurance:inventory` | `artifacts/assurance/source-inventory.json`, `routes.json`, `contracts.json`, `events.json`, `metrics.json`, `tests.json` |
 | 2 Historical Promises | Extract promises like must/done/final/production-ready and archive assumptions | `assurance:historical-promises`, `assurance:assumptions`, `audit:historical-promises` | `artifacts/assurance/historical-promises.jsonl`, `assumptions.jsonl` |
 | 3 Static Audit | contract/secret/tenant/path/import/determinism scanning | `audit:contracts-sync`, `audit:secret-sinks`, `audit:tenant-isolation`, `audit:plugin-security`, `audit:path-safety`, `audit:architecture-boundary`, `audit:fire-and-forget`, `audit:determinism`, `audit:release-claims` | `artifacts/assurance/static-audit-report.json` |
-| 4 Dynamic Invariant | invariant/chaos/multi-tenant/replay tests | `test:invariants`, `test:chaos:p0`, `test:regression:p0` | `artifacts/assurance/invariant-test-report.json` |
+| 4 Dynamic Invariant | invariant/chaos/multi-tenant/replay tests | `test:invariants`, `test:chaos:p0`, `test:regression:p0` | `artifacts/assurance/invariant-test-report.json`, `artifacts/assurance/chaos-test-report.json` |
 | 5 Eval/Redteam/Golden Anti-fake | expected-as-actual/judge read-self-score detection | `audit:eval-oracle`, `test:redteam:p0`, `test:golden:strict` | `artifacts/assurance/eval-oracle-report.json` |
 | 6 Issue Ledger | Normalization + dedup + epic grouping, plus test-to-issue and historical regression mapping | `assurance:issue-ledger`, `assurance:test-to-issue`, `assurance:historical-regression-map` | `artifacts/assurance/issues.{raw,normalized,deduped}.jsonl`, `historical-issue-regression-map.{json,md}` |
 | 7 Coverage Scorecard | 10-dimension scoring plus completeness coverage matrix, determines release blocked | `assurance:coverage-scorecard`, `assurance:completeness-matrix` | `artifacts/assurance/audit-coverage-scorecard.{json,md}`, `completeness-coverage-matrix.{json,md}` |
@@ -91,8 +91,10 @@ rc:check internally runs in order:
 3. `test:chaos:p0`
 4. `test:redteam:p0`
 5. `test:golden:strict`
-6. `evidence:bundle:create`
-7. `evidence:bundle:verify`
+6. `test:audit-tools`
+7. `test:seeded-defects`
+8. `evidence:bundle:create`
+9. `evidence:bundle:verify`
 
 ## 4. Release Blocker Rules
 
@@ -110,6 +112,7 @@ side-effect receipt missing > 0
 unsigned evidence bundle
 P0 alert without runbook
 P0 audit gate lacks seeded defect test
+P0 issue missing test binding
 ```
 
 ## 5. Evidence Bundle
@@ -129,6 +132,9 @@ P0 audit gate lacks seeded defect test
   "includedReports": [
     "artifacts/release/rc-check-report.json",
     "artifacts/assurance/audit-coverage-scorecard.json",
+    "artifacts/assurance/invariant-test-report.json",
+    "artifacts/assurance/chaos-test-report.json",
+    "artifacts/assurance/audit-tool-test-report.json",
     "artifacts/assurance/eval-oracle-report.json",
     "artifacts/assurance/redteam-report.json",
     "artifacts/assurance/golden-replay-report.json",
@@ -138,6 +144,8 @@ P0 audit gate lacks seeded defect test
     "artifacts/assurance/assumptions.jsonl",
     "artifacts/assurance/issues.deduped.jsonl",
     "artifacts/assurance/test-to-issue-map.json",
+    "artifacts/assurance/issue-to-test-map.json",
+    "artifacts/assurance/test-coverage-report.json",
     "artifacts/assurance/historical-issue-regression-map.json",
     "artifacts/assurance/completeness-coverage-matrix.json",
     "artifacts/assurance/seeded-defect-report.json",
@@ -147,6 +155,8 @@ P0 audit gate lacks seeded defect test
 ```
 
 `artifacts/release/evidence-bundle.sig` is the HMAC-SHA256 signature of the bundle (key comes from `AA_RELEASE_SIGNING_KEY`).
+
+The bundle structure must satisfy `schemas/release-evidence-bundle.schema.json`.
 
 Verifier failure means `rc:check` failure.
 

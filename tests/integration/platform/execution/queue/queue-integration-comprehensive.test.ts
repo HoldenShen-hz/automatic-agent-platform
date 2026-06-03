@@ -285,7 +285,7 @@ test("Queue integration: stats reflect complex multi-state scenario", () => {
     assert.ok(r1);
     r1.ack();
 
-    // Dequeue and nack another (goes back to waiting)
+    // Dequeue and nack another (goes into delayed backoff)
     const r2 = h.adapter.dequeue("complex-queue");
     assert.ok(r2);
     r2.nack("error");
@@ -297,10 +297,10 @@ test("Queue integration: stats reflect complex multi-state scenario", () => {
     }
 
     const stats = h.adapter.stats("complex-queue");
-    // After: 1 completed (acked), 1 nacked (back to waiting), 1 moved to DL, 2 delayed
-    // waiting count varies based on which job was nacked and which was moved to DL
+    // After: 1 completed, 1 nacked into delayed retry, 1 moved to DL, 2 still delayed from enqueue
+    // waiting count varies based on which waiting job was manually moved to DL.
     assert.ok(stats.waiting >= 0); // At least 0 (could be 1 if same job was nacked and moved)
-    assert.equal(stats.delayed, 2);
+    assert.equal(stats.delayed, 3);
     assert.equal(stats.active, 0);
     assert.equal(stats.completed, 1);
     assert.equal(stats.deadLetter, 1);

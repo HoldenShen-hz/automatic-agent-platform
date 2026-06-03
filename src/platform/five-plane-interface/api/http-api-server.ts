@@ -991,7 +991,7 @@ export class HttpApiServer {
         costReportService: this.costReportService,
         adminConfigService: this.adminConfigService,
         adminRuntimeDirectiveService: this.adminRuntimeDirectiveService,
-        platformRoot: this.options.platformRoot ?? process.cwd(),
+        platformRoot: this.options.platformRoot ?? this.env["AA_PLATFORM_ROOT"] ?? process.env.AA_PLATFORM_ROOT ?? process.cwd(),
       }),
       ...createConsoleRoutes({
         authService: this.options.authService ?? null,

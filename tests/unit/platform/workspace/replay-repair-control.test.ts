@@ -83,7 +83,7 @@ test("ReplayRepairControlService lists recovery candidates with current disposit
 
   assert.equal(candidates.length, 3);
   assert.equal(candidates[0]?.disposition, "retry");
-  assert.equal(candidates[1]?.disposition, "resume");
+  assert.equal(candidates[1]?.disposition, "manual_handoff");
   assert.equal(candidates[2]?.disposition, "manual_handoff");
   assert.equal(candidates[2]?.requiresManualApproval, true);
 });
@@ -155,7 +155,7 @@ test("ReplayRepairControlService enforces traffic-open guard and recovery drills
   });
 
   assert.doesNotThrow(() => service.assertCanOpenForTraffic(openReport));
-  assert.throws(() => service.assertCanOpenForTraffic(failClosedReport), /P0 findings/);
+  assert.throws(() => service.assertCanOpenForTraffic(failClosedReport), /not ready to open for traffic/);
   assert.equal(drill.status, "passed");
   assert.equal(drill.candidateCount, 1);
   assert.ok(drill.assertions.every((assertion) => assertion.passed));

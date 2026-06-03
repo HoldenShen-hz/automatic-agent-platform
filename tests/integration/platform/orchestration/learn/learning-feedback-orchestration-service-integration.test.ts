@@ -85,15 +85,33 @@ test("LearningFeedbackOrchestrationService.process counts learning objects by ty
     const input: LearningFeedbackOrchestrationInput = {
       taskId: "task-lfos-count",
       signals: [
-        makeSignal({ learningSignalId: "sig-lfos-count-1", taskId: "task-lfos-count", learningType: "failure_pattern" }),
-        makeSignal({ learningSignalId: "sig-lfos-count-2", taskId: "task-lfos-count", learningType: "failure_pattern" }),
+        makeSignal({
+          learningSignalId: "sig-lfos-count-1",
+          taskId: "task-lfos-count",
+          learningType: "failure_pattern",
+          valueSummary: "Retry loop exhausted while patching workspace",
+          evidenceRefs: ["artifact-lfos-count-1"],
+        }),
+        makeSignal({
+          learningSignalId: "sig-lfos-count-2",
+          taskId: "task-lfos-count",
+          learningType: "failure_pattern",
+          valueSummary: "Planner emitted invalid graph edge ordering",
+          evidenceRefs: ["artifact-lfos-count-2"],
+        }),
         makeSignal({
           learningSignalId: "sig-lfos-count-3",
           taskId: "task-lfos-count",
           learningType: "user_correction",
           confidence: 0.95,
+          evidenceRefs: ["artifact-lfos-count-3"],
         }),
-        makeSignal({ learningSignalId: "sig-lfos-count-4", taskId: "task-lfos-count", learningType: "recovery_playbook" }),
+        makeSignal({
+          learningSignalId: "sig-lfos-count-4",
+          taskId: "task-lfos-count",
+          learningType: "recovery_playbook",
+          evidenceRefs: ["artifact-lfos-count-4"],
+        }),
       ],
       promoteToKnowledge: false,
       rememberValidatedLearnings: false,
@@ -193,7 +211,7 @@ test("LearningFeedbackOrchestrationService.process includes executionId in resul
   }
 });
 
-test("LearningFeedbackOrchestrationService.process handles various learning types", () => {
+test("LearningFeedbackOrchestrationService.process canonicalizes extended learning types into supported buckets", () => {
   const ctx = createSeededIntegrationContext("aa-lfos-types-");
   try {
     const service = new LearningFeedbackOrchestrationService();
@@ -201,25 +219,40 @@ test("LearningFeedbackOrchestrationService.process handles various learning type
     const input: LearningFeedbackOrchestrationInput = {
       taskId: "task-lfos-types",
       signals: [
-        makeSignal({ learningSignalId: "sig-lfos-types-1", taskId: "task-lfos-types", learningType: "failure_pattern" }),
+        makeSignal({
+          learningSignalId: "sig-lfos-types-1",
+          taskId: "task-lfos-types",
+          learningType: "failure_pattern",
+          valueSummary: "Sandbox bootstrap failed after dependency install",
+          evidenceRefs: ["artifact-lfos-types-1"],
+        }),
         makeSignal({
           learningSignalId: "sig-lfos-types-2",
           taskId: "task-lfos-types",
           learningType: "user_correction",
           confidence: 0.95,
+          evidenceRefs: ["artifact-lfos-types-2"],
         }),
-        makeSignal({ learningSignalId: "sig-lfos-types-3", taskId: "task-lfos-types", learningType: "recovery_playbook" }),
+        makeSignal({
+          learningSignalId: "sig-lfos-types-3",
+          taskId: "task-lfos-types",
+          learningType: "recovery_playbook",
+          evidenceRefs: ["artifact-lfos-types-3"],
+        }),
         makeSignal({
           learningSignalId: "sig-lfos-types-4",
           taskId: "task-lfos-types",
           learningType: "model_retraining",
-          confidence: 0.85,
+          valueSummary: "Classifier missed escalation cue in reviewer handoff",
+          confidence: 0.95,
+          evidenceRefs: ["artifact-lfos-types-4"],
         }),
         makeSignal({
           learningSignalId: "sig-lfos-types-5",
           taskId: "task-lfos-types",
           learningType: "dataset_gap",
           confidence: 0.85,
+          evidenceRefs: ["artifact-lfos-types-5"],
         }),
       ],
       promoteToKnowledge: false,
@@ -230,7 +263,7 @@ test("LearningFeedbackOrchestrationService.process handles various learning type
 
     assert.ok(result.learningObjects.length >= 4);
     assert.ok(result.learningTypeCounts["failure_pattern"] >= 2);
-    assert.ok(result.learningTypeCounts["user_correction"] >= 1);
+    assert.ok(result.learningTypeCounts["user_correction"] >= 2);
     assert.ok(result.learningTypeCounts["recovery_playbook"] >= 1);
     assert.equal(result.learningTypeCounts["model_retraining"], 0);
     assert.equal(result.learningTypeCounts["dataset_gap"], 0);

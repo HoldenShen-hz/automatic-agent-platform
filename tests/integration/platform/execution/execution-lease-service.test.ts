@@ -45,6 +45,7 @@ test("execution lease service grants, renews, releases, and increments fencing a
     const released = service.releaseLease({
       leaseId: granted.lease?.id ?? "",
       workerId: "worker-a",
+      fencingToken: granted.lease?.fencingToken ?? null,
       reasonCode: "completed",
       occurredAt: "2026-04-03T10:00:30.000Z",
     });

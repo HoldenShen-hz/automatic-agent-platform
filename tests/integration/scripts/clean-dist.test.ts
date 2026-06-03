@@ -120,13 +120,15 @@ test("clean-dist no longer preserves dist implicitly from AA_RUNNING_TESTS witho
     mkdirSync(join(workspace, "dist"), { recursive: true });
     copyFileSync(SCRIPT_PATH, workspaceScriptPath);
     writeFileSync(join(workspace, "dist", "marker.txt"), "marker\n");
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      AA_RUNNING_TESTS: "1",
+    };
+    delete env.AA_PRESERVE_DIST;
 
     execFileSync("node", [workspaceScriptPath], {
       cwd: workspace,
-      env: {
-        ...process.env,
-        AA_RUNNING_TESTS: "1",
-      },
+      env,
       stdio: "pipe",
     });
 

@@ -2,7 +2,7 @@
 
 > 版本：v1.0  
 > 状态：Required by `assurance:full` / `assurance:delta` / `rc:check`  
-> 配套 schema：`schemas/assurance-report.schema.json` / `schemas/seeded-defect.schema.json`  
+> 配套 schema：`schemas/assurance-report.schema.json` / `schemas/seeded-defect.schema.json` / `schemas/release-evidence-bundle.schema.json`  
 > 关联文档：方法论 §20, §21, §37, §38, §44
 
 ## 1. 范围
@@ -36,7 +36,7 @@
 | 1 Inventory | 全仓文件/合同/事件/指标/测试/文档/config/workflow 索引 | `assurance:inventory` | `artifacts/assurance/source-inventory.json`, `routes.json`, `contracts.json`, `events.json`, `metrics.json`, `tests.json` |
 | 2 Historical Promises | 抽取 must/done/final/production-ready 等承诺，并归档 assumptions | `assurance:historical-promises`, `assurance:assumptions`, `audit:historical-promises` | `artifacts/assurance/historical-promises.jsonl`, `assumptions.jsonl` |
 | 3 Static Audit | contract/secret/tenant/path/import/determinism 扫描 | `audit:contracts-sync`, `audit:secret-sinks`, `audit:tenant-isolation`, `audit:plugin-security`, `audit:path-safety`, `audit:architecture-boundary`, `audit:fire-and-forget`, `audit:determinism`, `audit:release-claims` | `artifacts/assurance/static-audit-report.json` |
-| 4 Dynamic Invariant | invariant/chaos/multi-tenant/replay 测试 | `test:invariants`, `test:chaos:p0`, `test:regression:p0` | `artifacts/assurance/invariant-test-report.json` |
+| 4 Dynamic Invariant | invariant/chaos/multi-tenant/replay 测试 | `test:invariants`, `test:chaos:p0`, `test:regression:p0` | `artifacts/assurance/invariant-test-report.json`, `artifacts/assurance/chaos-test-report.json` |
 | 5 Eval/Redteam/Golden Anti-fake | expected-as-actual/judge 读自评分检测 | `audit:eval-oracle`, `test:redteam:p0`, `test:golden:strict` | `artifacts/assurance/eval-oracle-report.json` |
 | 6 Issue Ledger | 归一化 + 去重 + epic 化，并补 test↔issue / 历史回归映射 | `assurance:issue-ledger`, `assurance:test-to-issue`, `assurance:historical-regression-map` | `artifacts/assurance/issues.{raw,normalized,deduped}.jsonl`, `historical-issue-regression-map.{json,md}` |
 | 7 Coverage Scorecard | 10 维度评分 + completeness coverage matrix，判定 release blocked | `assurance:coverage-scorecard`, `assurance:completeness-matrix` | `artifacts/assurance/audit-coverage-scorecard.{json,md}`, `completeness-coverage-matrix.{json,md}` |
@@ -91,8 +91,10 @@ rc:check 内部按顺序：
 3. `test:chaos:p0`
 4. `test:redteam:p0`
 5. `test:golden:strict`
-6. `evidence:bundle:create`
-7. `evidence:bundle:verify`
+6. `test:audit-tools`
+7. `test:seeded-defects`
+8. `evidence:bundle:create`
+9. `evidence:bundle:verify`
 
 ## 4. Release Blocker 规则
 
@@ -110,6 +112,7 @@ side-effect receipt missing > 0
 unsigned evidence bundle
 P0 alert without runbook
 P0 audit gate lacks seeded defect test
+P0 issue missing test binding
 ```
 
 ## 5. Evidence Bundle
@@ -129,6 +132,9 @@ P0 audit gate lacks seeded defect test
   "includedReports": [
     "artifacts/release/rc-check-report.json",
     "artifacts/assurance/audit-coverage-scorecard.json",
+    "artifacts/assurance/invariant-test-report.json",
+    "artifacts/assurance/chaos-test-report.json",
+    "artifacts/assurance/audit-tool-test-report.json",
     "artifacts/assurance/eval-oracle-report.json",
     "artifacts/assurance/redteam-report.json",
     "artifacts/assurance/golden-replay-report.json",
@@ -138,6 +144,8 @@ P0 audit gate lacks seeded defect test
     "artifacts/assurance/assumptions.jsonl",
     "artifacts/assurance/issues.deduped.jsonl",
     "artifacts/assurance/test-to-issue-map.json",
+    "artifacts/assurance/issue-to-test-map.json",
+    "artifacts/assurance/test-coverage-report.json",
     "artifacts/assurance/historical-issue-regression-map.json",
     "artifacts/assurance/completeness-coverage-matrix.json",
     "artifacts/assurance/seeded-defect-report.json",
@@ -147,6 +155,8 @@ P0 audit gate lacks seeded defect test
 ```
 
 `artifacts/release/evidence-bundle.sig` 是 bundle 的 HMAC-SHA256 签名（密钥来自 `AA_RELEASE_SIGNING_KEY`）。
+
+bundle 结构必须满足 `schemas/release-evidence-bundle.schema.json`。
 
 verifier 失败即 `rc:check` 失败。
 

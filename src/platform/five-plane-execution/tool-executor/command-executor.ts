@@ -123,6 +123,14 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+function decodeCommandArgPath(pathArg: string): string {
+  try {
+    return decodeURIComponent(pathArg);
+  } catch {
+    return pathArg;
+  }
+}
+
 const commandExecutorLifecycleLogger = new StructuredLogger({ retentionLimit: 100 });
 
 /**
@@ -368,7 +376,8 @@ export class CommandExecutor {
     }
 
     for (const pathArg of commandAssessment.sandboxWriteArgPaths) {
-      if (pathArg.includes("\x00")) {
+      const decodedPathArg = decodeCommandArgPath(pathArg);
+      if (decodedPathArg.includes("\x00")) {
         return this.blocked(normalizedRequest, "sandbox.command_arg_path_denied", coercedRequestResult.traces);
       }
 
@@ -376,7 +385,7 @@ export class CommandExecutor {
         return this.blocked(normalizedRequest, "sandbox.write_path_denied", coercedRequestResult.traces);
       }
 
-      const resolvedPathArg = resolve(cwdCheck.normalizedPath, pathArg);
+      const resolvedPathArg = resolve(cwdCheck.normalizedPath, decodedPathArg);
       const check = checkSandboxPath(normalizedRequest.sandboxPolicy, resolvedPathArg);
       if (!check.allowed) {
         return this.blocked(normalizedRequest, "sandbox.write_path_denied", coercedRequestResult.traces);
@@ -388,13 +397,14 @@ export class CommandExecutor {
     }
 
     for (const pathArg of commandAssessment.sandboxReadArgPaths) {
+      const decodedPathArg = decodeCommandArgPath(pathArg);
       // S-07: Reject null-byte injection in path arguments before any processing.
       // Node.js's spawn validates this, but we catch it earlier to return a consistent blocked status.
-      if (pathArg.includes("\x00")) {
+      if (decodedPathArg.includes("\x00")) {
         return this.blocked(normalizedRequest, "sandbox.command_arg_path_denied", coercedRequestResult.traces);
       }
 
-      const resolvedPathArg = resolve(cwdCheck.normalizedPath, pathArg);
+      const resolvedPathArg = resolve(cwdCheck.normalizedPath, decodedPathArg);
       const check = checkSandboxPath(normalizedRequest.sandboxPolicy, resolvedPathArg);
       if (!check.allowed) {
         return this.blocked(normalizedRequest, "sandbox.command_arg_path_denied", coercedRequestResult.traces);

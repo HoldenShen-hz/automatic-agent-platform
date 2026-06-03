@@ -42,6 +42,7 @@ test("plugin execution integration: coding retriever retrieves knowledge", async
     registry.register(retriever);
 
     const results = await registry.invokeRetriever("plugin.coding.retriever", {
+      namespace: "code",
       query: {
         taskId: "task_integration_retriever",
         intent: "fetchUserData utility function",
@@ -154,7 +155,13 @@ test("plugin execution integration: github adapter authenticates and executes", 
   });
 
   assert.ok(result, "should return result");
-  assert.ok("endpoint" in result);
+  assert.equal((result as { adapter: string }).adapter, "github");
+  assert.equal((result as { method: string }).method, "POST");
+  assert.deepEqual((result as { requestSummary: { endpointHost: string; endpointTemplate: string; payloadKeys: string[] } }).requestSummary, {
+    endpointHost: "api.github.com",
+    endpointTemplate: "/repos/{repository}/issues",
+    payloadKeys: ["body", "labels", "title"],
+  });
   assert.equal((result as { status: number }).status, 201);
   assert.deepEqual((result as { data: unknown }).data, { id: 101, number: 42 });
 });
@@ -231,6 +238,7 @@ test("plugin execution integration: operations retriever returns results", async
   registry.register(retriever);
 
   const results = await registry.invokeRetriever("plugin.operations.retriever", {
+    namespace: "ops",
     query: {
       taskId: "task_ops_retriever",
       intent: "system health status",
@@ -256,6 +264,7 @@ test("plugin execution integration: growth retriever and presenter work together
 
   // Retrieve growth data
   const retrieverResults = await registry.invokeRetriever("plugin.growth.retriever", {
+    namespace: "growth",
     query: {
       taskId: "task_growth_integration",
       intent: "user engagement metrics",
@@ -307,6 +316,7 @@ test("plugin execution integration: plugin invocations track lifecycle state", a
     writeFileSync(join(workspace, "src", "main.ts"), "export const version = '1.0.0';\n", "utf8");
 
     await registry.invokeRetriever("plugin.coding.retriever", {
+      namespace: "code",
       query: {
         taskId: "task_lifecycle",
         intent: "version constant",

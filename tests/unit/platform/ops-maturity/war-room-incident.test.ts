@@ -71,15 +71,22 @@ test("R14-04 incident resolver keeps 72h post-mortem automation", () => {
     title: "service degraded",
     description: "availability drop",
   });
+  const completedAt = new Date(Date.parse(incident.detectedAt) + 60_000).toISOString();
   const resolution = {
     ...resolver.createResolution(incident),
-    completedAt: "2026-05-01T00:00:00.000Z",
+    completedAt,
     rootCause: "dependency outage",
   };
 
-  assert.equal(resolver.isPostMortemDue("2026-05-01T00:00:00.000Z", new Date("2026-05-04T00:00:00.000Z")), true);
+  assert.equal(
+    resolver.isPostMortemDue(
+      completedAt,
+      new Date(Date.parse(completedAt) + (72 * 60 * 60 * 1000)),
+    ),
+    true,
+  );
   const report = resolver.generatePostMortem(incident, resolution, [{
-    timestamp: "2026-05-01T00:00:00.000Z",
+    timestamp: incident.detectedAt,
     event: "incident detected",
     phase: "detection",
   }]);

@@ -415,7 +415,8 @@ export async function createStableEvidenceBundle(
       repairAfterSafe &&
       pendingAckBacklogAfterDrain === 0 &&
       takeoverSample.finalTaskStatus === "done" &&
-      takeoverSample.operatorActionCount >= 4,
+      takeoverSample.operatorActionCount >= 4 &&
+      acceptanceLine.status === "pass",
     chaosPassed: chaosReport.failedScenarios === 0,
     promptInjectionPassed: promptInjectionReport.failedScenarios === 0,
     concurrencyPassed: concurrencyReport.failedScenarios === 0,

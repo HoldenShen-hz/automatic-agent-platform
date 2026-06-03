@@ -79,19 +79,19 @@ test("OperatorConsoleBackendService action plan requires operator with roles", (
   try {
     const service = new OperatorConsoleBackendService({});
 
-    // Operator without roles should still work for non-breakglass actions
     const noRoleOp: OperatorIdentity = { operatorId: "op-no-roles", roles: [] };
-    const plan1 = service.planHumanTakeoverAction({
-      actionId: "plan-1",
-      actionType: "take_over_task",
-      taskId: "task-1",
-      operator: noRoleOp,
-      reasonCode: "test",
-    });
-    assert.equal(plan1.requiresBreakGlass, false);
+    assert.throws(
+      () => service.planHumanTakeoverAction({
+        actionId: "plan-1",
+        actionType: "take_over_task",
+        taskId: "task-1",
+        operator: noRoleOp,
+        reasonCode: "test",
+      }),
+      (error: unknown) => typeof error === "object" && error !== null && "code" in error && error.code === "console.operator_role_required",
+    );
 
-    // Viewer role should work for basic actions
-    const viewerOp: OperatorIdentity = { operatorId: "op-viewer", roles: ["viewer"] };
+    const viewerOp: OperatorIdentity = { operatorId: "op-viewer", roles: ["human_operator"] };
     const plan2 = service.planHumanTakeoverAction({
       actionId: "plan-2",
       actionType: "retry_step",
@@ -101,15 +101,16 @@ test("OperatorConsoleBackendService action plan requires operator with roles", (
     });
     assert.equal(plan2.requiresBreakGlass, false);
 
-    // Breakglass actions should fail without break_glass role
-    const plan3 = service.planHumanTakeoverAction({
-      actionId: "plan-3",
-      actionType: "skip_step",
-      taskId: "task-3",
-      operator: viewerOp,
-      reasonCode: "test",
-    });
-    assert.equal(plan3.requiresBreakGlass, true);
+    assert.throws(
+      () => service.planHumanTakeoverAction({
+        actionId: "plan-3",
+        actionType: "skip_step",
+        taskId: "task-3",
+        operator: viewerOp,
+        reasonCode: "test",
+      }),
+      (error: unknown) => typeof error === "object" && error !== null && "code" in error && error.code === "console.high_risk_action_requires_admin",
+    );
   } finally {
     ctx.cleanup();
   }

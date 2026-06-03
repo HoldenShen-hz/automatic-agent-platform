@@ -16,12 +16,12 @@ import {
 import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
 
 test("observability-integration: StructuredLogger writes to file sink", () => {
-  const workspace = join("data", `aa-obs-integration-${Date.now()}`);
-  const logFile = join(workspace, "app.log");
+  const workspace = createTempWorkspace("aa-obs-integration-");
 
   try {
+    StructuredLogger.setGlobalFileSinkBaseDir(workspace);
     StructuredLogger.configureGlobalFileSink({
-      filePath: logFile,
+      filePath: "app.log",
       maxBytes: null, // No rotation
     });
 
@@ -46,6 +46,7 @@ test("observability-integration: StructuredLogger writes to file sink", () => {
 
   } finally {
     StructuredLogger.configureGlobalFileSink(null);
+    StructuredLogger.setGlobalFileSinkBaseDir(process.cwd());
     cleanupPath(workspace);
   }
 });

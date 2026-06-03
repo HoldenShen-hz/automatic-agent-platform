@@ -165,6 +165,11 @@ test("Concurrent dispatch: race condition handling in nack/requeue", () => {
     assert.equal(r1.job.attempts, 1);
 
     r1.nack();
+    const delayedAfterFirstNack = queueAdapter.getJob(job.id);
+    assert.equal(delayedAfterFirstNack?.status, "delayed");
+    assert.equal(delayedAfterFirstNack?.attempts, 1);
+    assert.equal(queueAdapter.dequeue("race_queue"), null, "Delayed jobs should not be immediately dequeued");
+    queueAdapter.retryJob(job.id);
 
     const r2 = queueAdapter.dequeue("race_queue");
     assert.ok(r2);
@@ -175,6 +180,10 @@ test("Concurrent dispatch: race condition handling in nack/requeue", () => {
     assert.equal(r2ParallelAttempt, null, "Active jobs should not be dequeued twice concurrently");
 
     r2.nack();
+    const delayedAfterSecondNack = queueAdapter.getJob(job.id);
+    assert.equal(delayedAfterSecondNack?.status, "delayed");
+    assert.equal(delayedAfterSecondNack?.attempts, 2);
+    queueAdapter.retryJob(job.id);
 
     const r3 = queueAdapter.dequeue("race_queue");
     assert.ok(r3);

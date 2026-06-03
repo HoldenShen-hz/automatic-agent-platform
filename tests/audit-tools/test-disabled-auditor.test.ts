@@ -19,13 +19,15 @@
 
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
-import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..", "..");
+const auditScript = join(repoRoot, "scripts", "ci", "audit-test-disabled.mjs");
 const fixtureDir = join(repoRoot, "tests", "fixtures", "seeded-defects", "test-disabled");
 
 interface AuditFinding {
@@ -108,5 +110,81 @@ describe("audit-tool: test-disabled self-test", () => {
     assert.ok(kinds.has("positive"), "manifest missing positive seed");
     assert.ok(kinds.has("negative"), "manifest missing negative seed");
     assert.ok(kinds.has("evasion"), "manifest missing evasion seed");
+  });
+
+  it("writes disabled/flaky/quarantine artifacts for downstream assurance consumers", () => {
+    const workspace = mkdtempSync(join(tmpdir(), "aa-test-disabled-audit-"));
+    try {
+      const testDir = join(workspace, "tests");
+      mkdirSync(testDir, { recursive: true });
+      writeFileSync(
+        join(testDir, "sample.test.ts"),
+        [
+          "// @quarantine id=AAS-QUAR-000001 owner=alice reason=\"flaky network\"",
+          "test.skip(\"sample skip\", () => {});",
+          "// flaky due to upstream timing",
+          "test(\"sample\", () => {});",
+          "",
+        ].join("\n"),
+        "utf8",
+      );
+
+      execFileSync("node", [auditScript, "--path", "tests"], {
+        cwd: workspace,
+        encoding: "utf8",
+      });
+
+      const disabledReportPath = join(workspace, "artifacts", "assurance", "disabled-tests-report.json");
+      const flakyReportPath = join(workspace, "artifacts", "assurance", "flaky-tests-report.json");
+      const quarantineReportPath = join(workspace, "artifacts", "assurance", "quarantine-tests-report.json");
+
+      assert.ok(existsSync(disabledReportPath), "disabled-tests-report.json missing");
+      assert.ok(existsSync(flakyReportPath), "flaky-tests-report.json missing");
+      assert.ok(existsSync(quarantineReportPath), "quarantine-tests-report.json missing");
+
+      const disabledReport = JSON.parse(readFileSync(disabledReportPath, "utf8")) as AuditReport;
+      const flakyReport = JSON.parse(readFileSync(flakyReportPath, "utf8")) as AuditReport;
+      const quarantineReport = JSON.parse(readFileSync(quarantineReportPath, "utf8")) as AuditReport;
+
+      assert.ok(disabledReport.findingCount >= 1, "disabled report should contain findings");
+      assert.equal(flakyReport.findingCount, 1, `expected one flaky finding, got ${flakyReport.findingCount}`);
+      assert.ok(
+        quarantineReport.findings.some((finding) => finding.rule === "disabled_tests.quarantine_missing_expiry"),
+        `expected quarantine report to contain missing expiry finding, got ${JSON.stringify(quarantineReport.findings)}`,
+      );
+    } finally {
+      rmSync(workspace, { recursive: true, force: true });
+    }
+  });
+
+  it("check mode fails on quarantine metadata P1 findings", () => {
+    const workspace = mkdtempSync(join(tmpdir(), "aa-test-disabled-check-"));
+    try {
+      const testDir = join(workspace, "tests");
+      mkdirSync(testDir, { recursive: true });
+      writeFileSync(
+        join(testDir, "sample.test.ts"),
+        [
+          "// @quarantine id=AAS-QUAR-000002 owner=alice reason=\"temporary quarantine\"",
+          "test.skip(\"sample skip\", () => {});",
+          "",
+        ].join("\n"),
+        "utf8",
+      );
+
+      const result = spawnSync("node", [auditScript, "--check", "--path", "tests"], {
+        cwd: workspace,
+        encoding: "utf8",
+      });
+
+      assert.equal(result.status, 1, `expected check mode to fail on P1 findings, got ${result.status}`);
+      const report = JSON.parse(result.stdout) as AuditReport;
+      assert.ok(
+        report.findings.some((finding) => finding.rule === "disabled_tests.quarantine_missing_expiry"),
+        `expected missing expiry finding, got ${JSON.stringify(report.findings)}`,
+      );
+    } finally {
+      rmSync(workspace, { recursive: true, force: true });
+    }
   });
 });

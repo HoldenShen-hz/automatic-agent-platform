@@ -242,9 +242,14 @@ test("multi-party approval: isApproverInGroups restricts to group members", () =
     const db = new SqliteDatabase(dbPath);
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
-    const service = new MultiPartyApprovalService(db, store);
+    const service = new MultiPartyApprovalService(db, store, undefined, {
+      groupMembers: {
+        engineering: ["eng-approver", "security-shared"],
+        security: ["sec-approver", "security-shared"],
+      },
+    });
 
-    const inGroup = service.isApproverInGroups("engineering", ["engineering", "security"]);
+    const inGroup = service.isApproverInGroups("eng-approver", ["engineering", "security"]);
     const outGroup = service.isApproverInGroups("marketing", ["engineering", "security"]);
 
     assert.strictEqual(inGroup, true);

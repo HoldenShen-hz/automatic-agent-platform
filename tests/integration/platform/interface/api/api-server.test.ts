@@ -193,7 +193,7 @@ networkPathTest("Integration: unauthenticated request denied", async () => {
   }
 });
 
-networkPathTest("Integration: API key authentication via header", async () => {
+networkPathTest("Integration: protected routes reject direct API key auth header without token exchange", async () => {
   const { server } = createTestServer();
   await server.start({ port: 0 });
   try {
@@ -203,7 +203,7 @@ networkPathTest("Integration: API key authentication via header", async () => {
       headers: { "x-api-key": "test-operator-key" },
     });
 
-    assert.equal(response.statusCode, 200);
+    assert.equal(response.statusCode, 401);
   } finally {
     await server.stop();
   }

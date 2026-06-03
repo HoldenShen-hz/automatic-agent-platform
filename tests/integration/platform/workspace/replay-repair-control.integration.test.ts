@@ -55,7 +55,7 @@ test("integration: P0 findings block open_for_traffic", () => {
 
   assert.throws(
     () => service.assertCanOpenForTraffic(report),
-    /P0 findings/,
+    (error: unknown) => error instanceof Error && "code" in error && (error as Record<string, unknown>).code === "replay_repair.fail_closed",
   );
 });
 
@@ -78,9 +78,9 @@ test("integration: recovery candidates have correct dispositions", () => {
   const resumeCandidates = candidates.filter((c: RecoveryCandidate) => c.disposition === "resume");
   const manualCandidates = candidates.filter((c: RecoveryCandidate) => c.disposition === "manual_handoff");
 
-  assert.ok(retryCandidates.length >= 1);
-  assert.ok(resumeCandidates.length >= 1);
-  assert.ok(manualCandidates.length >= 1);
+  assert.equal(retryCandidates.length, 1);
+  assert.equal(resumeCandidates.length, 0);
+  assert.ok(manualCandidates.length >= 3);
 });
 
 test("integration: repair actions planned from candidates", () => {

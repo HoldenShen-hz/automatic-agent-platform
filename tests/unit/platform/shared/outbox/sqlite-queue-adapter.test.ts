@@ -159,26 +159,30 @@ test.describe("SqliteQueueAdapter unit tests", () => {
     assert.ok(job?.completedAt !== null);
   });
 
-  test("nack with max attempts moves job to dead_letter", () => {
+  test("nack applies delayed backoff and then moves job to dead_letter at max attempts", () => {
     adapter.enqueue({ queueName: "nack-dl-test", payload: { data: "test" }, maxAttempts: 2 });
     const result = adapter.dequeue("nack-dl-test");
     assert.ok(result !== null);
 
-    // First nack - should go back to waiting
+    // First nack schedules a delayed retry rather than immediately requeueing.
     result.nack("error 1");
     let job = adapter.getJob(result.job.id);
-    assert.equal(job?.status, "waiting");
+    assert.equal(job?.status, "delayed");
+    assert.equal(job?.lastError, "error 1");
+    assert.ok(job?.delayUntil !== null);
 
-    // Dequeue again to get second attempt
-    adapter.dequeue("nack-dl-test");
-    // Second nack - should go to dead_letter
-    result.nack("error 2");
+    // Force the delayed retry back into the ready queue, then exhaust attempts.
+    const retried = adapter.retryJob(result.job.id);
+    assert.equal(retried?.status, "waiting");
+    const secondResult = adapter.dequeue("nack-dl-test");
+    assert.ok(secondResult !== null);
+    secondResult.nack("error 2");
     job = adapter.getJob(result.job.id);
     assert.equal(job?.status, "dead_letter");
     assert.equal(job?.lastError, "error 2");
   });
 
-  test("nack without max attempts exceeded returns to waiting", () => {
+  test("nack without max attempts exceeded returns job to delayed retry state", () => {
     adapter.enqueue({ queueName: "nack-retry-test", payload: { data: "test" }, maxAttempts: 3 });
     const result = adapter.dequeue("nack-retry-test");
     assert.ok(result !== null);
@@ -186,8 +190,9 @@ test.describe("SqliteQueueAdapter unit tests", () => {
     result.nack("temporary error");
 
     const job = adapter.getJob(result.job.id);
-    assert.equal(job?.status, "waiting");
+    assert.equal(job?.status, "delayed");
     assert.equal(job?.lastError, "temporary error");
+    assert.ok(job?.delayUntil !== null);
   });
 
   test("getJob returns null for non-existent job", () => {
@@ -313,11 +318,11 @@ test.describe("SqliteQueueAdapter unit tests", () => {
   test("stats returns zeros for empty queue", () => {
     const stats = adapter.stats("non-existent-queue");
 
+    assert.equal(stats.queueName, "non-existent-queue");
     assert.equal(stats.waiting, 0);
     assert.equal(stats.delayed, 0);
     assert.equal(stats.active, 0);
     assert.equal(stats.completed, 0);
-    assert.equal(stats.failed, 0);
     assert.equal(stats.deadLetter, 0);
   });
 

@@ -154,7 +154,7 @@ test("integration: DLQ service discard updates status and logs operator action",
     const discarded = dlq.discard(record.deadLetterId, discardReason, "operator-discard");
 
     assert.equal(discarded.status, "discarded", "Status should be discarded");
-    assert.equal(discarded.errorCode, discardReason, "Error code should be updated to discard reason");
+    assert.equal(discarded.errorCode, "non_recoverable", "Error code should retain the normalized failure code");
     assert.equal(discarded.nextRetryAt, null, "Next retry should be null after discard");
 
     const lastAction = discarded.operatorActionLog[discarded.operatorActionLog.length - 1]!;
@@ -219,7 +219,7 @@ test("integration: DLQ service setFailureCategory updates category and logs acti
     const lastAction = categorized.operatorActionLog[categorized.operatorActionLog.length - 1]!;
     assert.equal(lastAction.action, "category_changed", "Action should be category_changed");
     assert.deepEqual(lastAction.details, {
-      previousCategory: null,
+      previousCategory: "unknown",
       newCategory: "configuration",
     }, "Details should include category transition");
   } finally {

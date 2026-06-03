@@ -151,7 +151,7 @@ test("OperatorConsoleBackendService plans human takeover action", () => {
 
 test("OperatorConsoleBackendService flags high-risk actions as requiring policy evaluation", () => {
   const service = new OperatorConsoleBackendService({});
-  const operator = { operatorId: "op-1", roles: ["viewer"] };
+  const operator = { operatorId: "op-1", roles: ["admin", "break_glass"] };
 
   const highRiskActions: Array<"switch_worker" | "attach_artifact" | "advance_rollout" | "rollback_rollout" | "finish_task"> = [
     "switch_worker",
@@ -185,14 +185,16 @@ test("OperatorConsoleBackendService flags break-glass actions without role", () 
   ];
 
   for (const actionType of breakGlassActions) {
-    const plan = service.planHumanTakeoverAction({
-      actionId: `action-${actionType}`,
-      actionType,
-      taskId: "task-123",
-      operator,
-      reasonCode: "test",
-    });
-    assert.equal(plan.requiresBreakGlass, true, `${actionType} should require break-glass`);
+    assert.throws(
+      () => service.planHumanTakeoverAction({
+        actionId: `action-${actionType}`,
+        actionType,
+        taskId: "task-123",
+        operator,
+        reasonCode: "test",
+      }),
+      (error: unknown) => typeof error === "object" && error !== null && "code" in error && error.code === "console.high_risk_action_requires_admin",
+    );
   }
 
   // With break_glass role, should not require break-glass

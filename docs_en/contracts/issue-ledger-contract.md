@@ -25,7 +25,7 @@ The Issue Ledger is the only machine-readable carrier for P0/P1 issues. Any prob
 | Field | Required | Constraint |
 |---|---|---|
 | `issueId` | Yes | `^AAS-ISSUE-[0-9]{6,}$` |
-| `source` | Yes | `code\|doc\|adr\|release\|test\|ci\|runtime\|manual\|audit` |
+| `source` | Yes | `code\|doc\|adr\|release\|test\|ci\|runtime\|manual\|audit\|review` |
 | `sourceRef` | Yes | At minimum locate to `path:line` or `doc#anchor` |
 | `category` | Yes | Dot-separated, e.g. `security.tenant_isolation` |
 | `severity` | Yes | `P0\|P1\|P2\|P3` |
@@ -42,7 +42,7 @@ The Issue Ledger is the only machine-readable carrier for P0/P1 issues. Any prob
 open
   ↓ fix landed + regression test green
 in_progress
-  ↓ PR merged + evidenceRef present
+  ↓ PR merged + evidence[] present
 fixed
   ↓ audit tool self-test passes + independent reviewer sign-off
 verified
@@ -70,7 +70,7 @@ An issue entering `closed` state must satisfy all of the following:
 status === verified
 regression test passes (at least 1 in requiredTest)
 audit gate is included in ci:baseline or rc:check
-evidenceRef is non-empty
+evidence[] is non-empty
 owner is not TBD
 At least 1 of linkedPromiseIds / linkedReviewIds is present
 ```

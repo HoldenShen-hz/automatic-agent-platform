@@ -24,9 +24,10 @@ test("review-import defaults to the implementation repo root when --repo-root is
     encoding: "utf8",
   });
 
-  assert.equal(result.status, 0);
+  assert.equal(result.status, 1);
   const payload = JSON.parse(result.stdout);
-  assert.equal(payload.pass, true);
+  assert.equal(payload.pass, false);
+  assert.match(payload.reasons.join(","), /parse_warnings/);
 });
 
 test("review-import check mode fails when explicit repo root contains parse warnings", () => {

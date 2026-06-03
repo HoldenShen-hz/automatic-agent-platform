@@ -201,14 +201,16 @@ test("real Yono business path covers market review, social forecast, trade, disp
   const consensusService = new YonoConsensusProbabilityService(repository);
   const tradingService = new YonoTradingService(repository);
   const disputeService = new YonoDisputeService(repository);
+  const closeAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const resolutionDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
 
   const market = marketService.createMarket({
     title: "Will readiness testing complete before release?",
     description: "Resolves yes if the release evidence bundle includes passing readiness tests.",
     category: "web3",
     creatorId: "user:creator",
-    closeAt: "2026-06-01T00:00:00.000Z",
-    resolutionDeadline: "2026-06-02T00:00:00.000Z",
+    closeAt,
+    resolutionDeadline,
     tags: ["readiness", "quality"],
   });
   assert.equal(new YonoMarketReviewAgent().review(market).decision, "approve");

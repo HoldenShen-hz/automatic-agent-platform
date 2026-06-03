@@ -136,14 +136,14 @@ test("integration: webhook intake, tenant boundary, console planning, and policy
     workspaceId: "workspace-1",
     operator: {
       operatorId: "op-1",
-      roles: ["operator"],
+      roles: ["admin", "break_glass"],
       tenantId: "tenant-1",
     },
     reasonCode: "org_change.manual_gate",
   });
   const policy = new PolicyCenterService({
-    subjectRoles: { "op-1": ["operator"] },
-    allowedActionsByRole: { operator: ["org_change"] },
+    subjectRoles: { "op-1": ["admin"] },
+    allowedActionsByRole: { admin: ["org_change"] },
   });
   const policyDecision = policy.evaluate({
     decisionId: "decision-1",
@@ -158,7 +158,7 @@ test("integration: webhook intake, tenant boundary, console planning, and policy
   });
   const snapshot = consoleBackend.buildSnapshot({
     operatorId: "op-1",
-    roles: ["operator"],
+    roles: ["admin", "break_glass"],
     tenantId: "tenant-1",
   });
 

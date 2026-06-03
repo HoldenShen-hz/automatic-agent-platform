@@ -220,6 +220,16 @@ test("TenantBoundaryRegistryService enforces disabled users, mismatched workspac
     status: "active",
     identityProvider: "idp-001",
   });
+  service.registerGovernanceException({
+    governanceRef: "gov-exception-001",
+    userId: "user-002",
+    tenantId: "tenant-001",
+    workspaceId: null,
+    organizationId: "org-001",
+    status: "approved",
+    reasonCode: "tenant.override",
+    approvedAt: "2024-01-15T10:00:00Z",
+  });
   assert.equal(
     service.authorizeTenantAccess({ userId: "user-002", tenantId: "tenant-001", workspaceId: "ws-002" }).reasonCode,
     "tenant.workspace_tenant_mismatch",

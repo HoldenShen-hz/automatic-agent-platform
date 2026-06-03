@@ -12,6 +12,8 @@ import {
   writeStableQueueDeliveryRehearsalReport,
 } from "../../../../src/platform/stability/stable-queue-delivery-rehearsal.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 test("StableQueueDeliveryRehearsalOptions has required outputDir", () => {
   const options: StableQueueDeliveryRehearsalOptions = {
     outputDir: "/tmp/test",

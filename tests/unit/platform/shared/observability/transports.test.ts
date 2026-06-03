@@ -807,6 +807,7 @@ test("DatadogTransport flushInternal adds service, ddsource, ddtags to entries",
     apiKey: "test-api-key",
     service: "my-service",
     source: "my-source",
+    env: "test",
     requestFactory,
   };
 
@@ -825,7 +826,7 @@ test("DatadogTransport flushInternal adds service, ddsource, ddtags to entries",
   const parsed = JSON.parse(bodies[0] ?? "[]") as Array<Record<string, unknown>>;
   assert.equal(parsed[0]?.service, "my-service");
   assert.equal(parsed[0]?.ddsource, "my-source");
-  assert.equal(parsed[0]?.ddtags, `env:${process.env.NODE_ENV ?? "dev"}`);
+  assert.equal(parsed[0]?.ddtags, "env:test");
 
   transport.close();
 });
@@ -924,14 +925,12 @@ test("DatadogTransport flushInternal returns early when batch is empty", async (
   transport.close();
 });
 
-test("DatadogTransport handles NODE_ENV in ddtags", async () => {
-  const originalEnv = process.env.NODE_ENV;
-  process.env.NODE_ENV = "production";
-
+test("DatadogTransport uses configured env in ddtags", async () => {
   const { bodies, requestFactory } = createMockDatadogRequestFactory();
   const config: DatadogTransportConfig = {
     apiKey: "test-api-key",
     service: "test-service",
+    env: "production",
     requestFactory,
   };
 
@@ -942,8 +941,6 @@ test("DatadogTransport handles NODE_ENV in ddtags", async () => {
   await transport.flush();
   const parsed = JSON.parse(bodies[0] ?? "[]") as Array<Record<string, unknown>>;
   assert.equal(parsed[0]?.ddtags, "env:production");
-
-  process.env.NODE_ENV = originalEnv;
 
   await transport.close();
 });

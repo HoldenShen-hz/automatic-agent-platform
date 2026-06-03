@@ -154,7 +154,7 @@ artifacts/assurance/issues.deduped.jsonl
 ```json
 {
   "issueId": "AAS-ISSUE-000001",
-  "source": "code|doc|adr|release|test|ci|runtime|manual",
+  "source": "code|doc|adr|release|test|ci|runtime|manual|audit|review",
   "sourceRef": "file:line or doc section",
   "category": "security.tenant_isolation",
   "severity": "P0",
@@ -165,8 +165,8 @@ artifacts/assurance/issues.deduped.jsonl
   "invariantViolated": "...",
   "evidence": ["..."],
   "fixStrategy": "...",
-  "testRequired": ["unit", "integration", "chaos"],
-  "gateRequired": ["audit:tenant-isolation"],
+  "requiredTest": ["unit", "integration", "chaos"],
+  "requiredGate": ["audit:tenant-isolation"],
   "owner": "TBD",
   "status": "open"
 }
@@ -1454,6 +1454,9 @@ npm run test:p0
 npm run test:chaos:p0
 npm run test:redteam:p0
 npm run test:golden:strict
+npm run test:audit-tools
+npm run test:seeded-defects
+npm run evidence:bundle:create
 npm run evidence:bundle:verify
 ```
 
@@ -1468,7 +1471,7 @@ audit:plugin-security
 audit:eval-oracle
 audit:path-safety
 audit:execution-invariants
-audit:historical-promises
+assurance:historical-promises
 ```
 
 ### 16.2 release blocker 规则
@@ -1497,6 +1500,9 @@ artifacts/release/evidence-bundle.json
 artifacts/release/evidence-bundle.sig
 artifacts/release/rc-check-report.json
 artifacts/assurance/audit-coverage-scorecard.json
+artifacts/assurance/invariant-test-report.json
+artifacts/assurance/chaos-test-report.json
+artifacts/assurance/audit-tool-test-report.json
 artifacts/assurance/eval-oracle-report.json
 artifacts/assurance/redteam-report.json
 artifacts/assurance/golden-replay-report.json
@@ -1506,6 +1512,8 @@ artifacts/assurance/historical-promises.jsonl
 artifacts/assurance/assumptions.jsonl
 artifacts/assurance/issues.deduped.jsonl
 artifacts/assurance/test-to-issue-map.json
+artifacts/assurance/issue-to-test-map.json
+artifacts/assurance/test-coverage-report.json
 artifacts/assurance/historical-issue-regression-map.json
 artifacts/assurance/completeness-coverage-matrix.json
 artifacts/assurance/seeded-defect-report.json
@@ -2787,7 +2795,7 @@ docs_zh/quality/issue-ledger/automatic-agent-system-issues.md
 ```json
 {
   "issueId": "AAS-ISSUE-000001",
-  "source": "code|doc|adr|release|test|ci|runtime|manual",
+  "source": "code|doc|adr|release|test|ci|runtime|manual|audit|review",
   "sourceRef": "file:line or doc section",
   "category": "security.tenant_isolation",
   "severity": "P0",
@@ -3000,11 +3008,11 @@ artifacts/release/evidence-bundle.sig
     "audit:eval-oracle": "node scripts/ci/audit-eval-oracle.mjs",
     "audit:architecture-boundary": "node scripts/ci/audit-architecture-boundary.mjs",
 
-    "test:invariant": "node --test tests/invariant/**/*.test.ts",
+    "test:invariant": "npm run test:invariants",
     "test:p0": "npm run test:invariant && npm run test:regression:p0",
-    "test:chaos:p0": "node --test tests/chaos/p0/**/*.test.ts",
-    "test:redteam:p0": "node scripts/redteam/run-p0-redteam.mjs",
-    "test:audit-tools": "node --test tests/audit-tools/**/*.test.ts",
+    "test:chaos:p0": "AA_RUNNING_TESTS=1 node scripts/assurance/run-test-suite-with-report.mjs --suite-id chaos-p0 --report artifacts/assurance/chaos-test-report.json -- node scripts/run-node-tests.mjs tests/chaos/p0/determinism-injection.test.ts",
+    "test:redteam:p0": "AA_RUNNING_TESTS=1 node scripts/redteam/run-p0-redteam.mjs",
+    "test:audit-tools": "AA_RUNNING_TESTS=1 node scripts/assurance/run-test-suite-with-report.mjs --suite-id audit-tools --report artifacts/assurance/audit-tool-test-report.json -- node scripts/run-node-tests.mjs tests/audit-tools/...",
     "test:seeded-defects": "node scripts/assurance/run-seeded-defect-tests.mjs",
 
     "evidence:bundle:create": "node scripts/assurance/create-release-evidence-bundle.mjs",
@@ -3652,11 +3660,11 @@ assurance 汇总二者，证明“能否 release”。
     "test:integration": "node --test tests/integration/**/*.test.ts",
     "test:e2e": "node --test tests/e2e/**/*.test.ts",
 
-    "test:invariant": "node --test tests/invariant/**/*.test.ts",
+    "test:invariant": "npm run test:invariants",
     "test:p0": "npm run test:invariant && npm run test:regression:p0",
-    "test:chaos:p0": "node --test tests/chaos/p0/**/*.test.ts",
-    "test:regression:p0": "node --test tests/regression/p0/**/*.test.ts",
-    "test:audit-tools": "node --test tests/audit-tools/**/*.test.ts",
+    "test:chaos:p0": "AA_RUNNING_TESTS=1 node scripts/assurance/run-test-suite-with-report.mjs --suite-id chaos-p0 --report artifacts/assurance/chaos-test-report.json -- node scripts/run-node-tests.mjs tests/chaos/p0/determinism-injection.test.ts",
+    "test:regression:p0": "AA_RUNNING_TESTS=1 node scripts/run-node-tests.mjs tests/regression/p0/audit-tools-secret-sinks.test.ts",
+    "test:audit-tools": "AA_RUNNING_TESTS=1 node scripts/assurance/run-test-suite-with-report.mjs --suite-id audit-tools --report artifacts/assurance/audit-tool-test-report.json -- node scripts/run-node-tests.mjs tests/audit-tools/...",
     "test:seeded-defects": "node scripts/assurance/run-seeded-defect-tests.mjs",
     "test:redteam:p0": "node scripts/redteam/run-p0-redteam.mjs",
     "test:golden:strict": "node scripts/golden/run-strict-golden.mjs",
@@ -3846,6 +3854,15 @@ artifacts/assurance/issue-to-test-map.json
 ```
 
 如果 P0 issue 没有测试绑定，`rc:check` 必须失败。
+
+当前实现路径：
+
+```text
+assurance:test-to-issue -> 生成双向映射
+assurance:verify-test-coverage -> 校验 P0 issue / invariant / promise-linked issue 绑定
+assurance:full(required) -> 聚合 verify-test-coverage
+rc:check -> 以 assurance:full 失败阻断 release
+```
 
 ---
 

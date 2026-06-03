@@ -349,6 +349,7 @@ test("evaluateAuthorizationContext with tenant scope and regulated data", () => 
     principalType: "user",
     roles: ["platform_admin"],
     action: "invoke_model",
+    principalTenantId: "tenant-123",
     context: {
       tenantId: "tenant-123",
       dataClassification: "regulated",
@@ -409,12 +410,20 @@ test("evaluateAuthorizationContext production install_extension requires operato
 });
 
 test("evaluateAuthorizationContext regulated data check runs before manual takeover", () => {
-  // Regulated data check is evaluated BEFORE manual takeover check in the code
   const result = evaluateAuthorizationContext({
     principalType: "user",
     roles: ["human_operator"],
     action: "invoke_model",
-    context: { dataClassification: "regulated", manualTakeoverActive: true },
+    context: {
+      tenantId: "tenant-123",
+      dataClassification: "regulated",
+      manualTakeoverActive: true,
+      originalPrincipal: {
+        type: "user",
+        roles: ["human_operator"],
+        tenantId: "tenant-123",
+      },
+    },
     mode: "full-auto",
     riskCategory: "sensitive_data",
   });

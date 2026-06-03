@@ -208,7 +208,7 @@ test("EscalationService hierarchical priority order enforced", () => {
     const highCost = createEscalationRequest({ estimatedCostUsd: 50 });
     assert.equal(service.decide(highCost).decision, "approval");
 
-    const highRisk = createEscalationRequest({ riskLevel: "high", stage: "plan" });
+    const highRisk = createEscalationRequest({ riskLevel: "high", stage: "assess" });
     assert.equal(service.decide(highRisk).decision, "approval");
 
     // Priority 4: none (low risk, no impact)

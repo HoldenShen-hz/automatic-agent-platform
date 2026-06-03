@@ -501,7 +501,14 @@ test("integration: WebSocket server broadcasts to multiple clients", () => {
     type: "dashboard_snapshot" as const,
     clientId: "",
     timestamp: nowIso(),
-    payload: { generatedAt: nowIso(), workflowBacklog: 5 },
+    payload: {
+      generatedAt: nowIso(),
+      workflowBacklog: 5,
+      scope: {
+        visibilityScope: "global" as const,
+        metrics: ["*"],
+      },
+    },
   };
 
   const broadcastCount = server.broadcast(message);

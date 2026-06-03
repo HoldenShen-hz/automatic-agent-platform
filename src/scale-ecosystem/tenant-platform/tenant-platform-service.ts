@@ -154,8 +154,14 @@ export class TenantPlatformService {
   }
 
   private getPreemptionCandidatesForTenant(tenantId: string): PreemptionCandidate[] {
-    if (this.store.dispatch?.listExecutionsByStatuses == null) {
-      throw new Error("tenant_platform.dispatch_store_required");
+    if (
+      this.store.dispatch?.listExecutionsByStatuses == null ||
+      this.store.task?.getTask == null ||
+      this.store.workflow?.getWorkflowState == null ||
+      this.store.worker?.getActiveExecutionLease == null ||
+      this.store.worker?.getAgentExecutionRecord == null
+    ) {
+      return [];
     }
     const candidates: PreemptionCandidate[] = [];
 

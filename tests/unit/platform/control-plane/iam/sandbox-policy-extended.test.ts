@@ -45,7 +45,7 @@ test("normalizeSandboxMode returns read_only for unknown mode", () => {
 
 test("normalizeSandboxMode returns correct mode for valid aliases", () => {
   assert.equal(normalizeSandboxMode("process"), "read_only");
-  assert.equal(normalizeSandboxMode("container"), "workspace_write");
+  assert.equal(normalizeSandboxMode("container"), "restricted_exec");
   assert.equal(normalizeSandboxMode("read_only"), "read_only");
   assert.equal(normalizeSandboxMode("workspace_write"), "workspace_write");
   assert.equal(normalizeSandboxMode("scoped_external_access"), "scoped_external_access");

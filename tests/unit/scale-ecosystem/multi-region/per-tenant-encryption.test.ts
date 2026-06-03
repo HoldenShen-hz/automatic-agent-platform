@@ -69,7 +69,7 @@ test("PerTenantEncryptionService encrypts and decrypts data with aes-256-cbc [pe
   assert.equal(encrypted.algorithm, "aes-256-cbc");
   assert.ok(encrypted.ciphertext);
   assert.ok(encrypted.iv);
-  assert.equal(encrypted.authTag, null);
+  assert.ok(encrypted.authTag);
 
   const decrypted = service.decryptToString("tenant-1", encrypted);
   assert.equal(decrypted, plaintext);

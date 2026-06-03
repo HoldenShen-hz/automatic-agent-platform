@@ -12,6 +12,9 @@ const verifyScript = join(repoRoot, "scripts", "assurance", "verify-release-evid
 const REQUIRED_REPORTS = [
   "artifacts/release/rc-check-report.json",
   "artifacts/assurance/audit-coverage-scorecard.json",
+  "artifacts/assurance/invariant-test-report.json",
+  "artifacts/assurance/chaos-test-report.json",
+  "artifacts/assurance/audit-tool-test-report.json",
   "artifacts/assurance/eval-oracle-report.json",
   "artifacts/assurance/redteam-report.json",
   "artifacts/assurance/golden-replay-report.json",
@@ -21,6 +24,8 @@ const REQUIRED_REPORTS = [
   "artifacts/assurance/assumptions.jsonl",
   "artifacts/assurance/issues.deduped.jsonl",
   "artifacts/assurance/test-to-issue-map.json",
+  "artifacts/assurance/issue-to-test-map.json",
+  "artifacts/assurance/test-coverage-report.json",
   "artifacts/assurance/historical-issue-regression-map.json",
   "artifacts/assurance/completeness-coverage-matrix.json",
   "artifacts/assurance/seeded-defect-report.json",
@@ -77,6 +82,19 @@ test("create and verify release evidence bundle require complete reports and a r
     assert.equal(createSummary.status, "pass");
     assert.equal(createSummary.missingReportCount, 0);
     assert.equal(createSummary.signingKeyConfigured, true);
+
+    const bundle = JSON.parse(
+      readFileSync(join(workspace, "artifacts", "release", "evidence-bundle.json"), "utf8"),
+    ) as {
+      schemaVersion: string;
+      includedReports: Array<{ path: string; present: boolean; sha256: string | null; sizeBytes: number }>;
+    };
+    assert.equal(bundle.schemaVersion, "1.0");
+    assert.equal(bundle.includedReports.length, REQUIRED_REPORTS.length);
+    assert.ok(bundle.includedReports.every((entry) => entry.path.length > 0));
+    assert.ok(bundle.includedReports.every((entry) => entry.present === true));
+    assert.ok(bundle.includedReports.every((entry) => typeof entry.sha256 === "string" && entry.sha256.length === 64));
+    assert.ok(bundle.includedReports.every((entry) => entry.sizeBytes > 0));
 
     const verify = spawnSync(process.execPath, [verifyScript], {
       cwd: workspace,

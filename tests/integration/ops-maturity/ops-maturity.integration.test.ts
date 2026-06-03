@@ -11,6 +11,10 @@ import { SimpleBenchmarkRunner } from "../../../src/ops-maturity/drift-detection
 import { PromotionGate } from "../../../src/ops-maturity/drift-detection/promotion-gate.js";
 import { SimpleRolloutManager } from "../../../src/ops-maturity/drift-detection/rollout-manager.js";
 
+function recentIso(offsetMs = 60_000): string {
+  return new Date(Date.now() - offsetMs).toISOString();
+}
+
 test("explainability integration: full pipeline from request to cached bundle", () => {
   const service = new ExplanationPipelineService();
 
@@ -142,11 +146,11 @@ test("edge integration: offline execution through sync envelope to receipt", () 
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-integrated",
     deviceId: "device-integrated",
-    deviceAttestation: { attestedAt: "2026-04-29T00:00:00.000Z", status: "valid" },
+    deviceAttestation: { attestedAt: recentIso(), status: "valid" },
     capabilities: ["text", "vision"],
     connectivityMode: "offline",
     maxLocalRetentionHours: 48,
-    offlineMaxDuration: 1800,
+    offlineMaxDuration: 1_800_000,
     keyLease: "lease-integrated",
     allowedModels: ["model-text-v1", "model-vision-v1"],
     syncPolicy: { allowRestrictedDataUpload: false, requireOrdering: true },
@@ -160,6 +164,7 @@ test("edge integration: offline execution through sync envelope to receipt", () 
     edgeNodeId: "node-integrated",
     taskId: "task-offline-integrated",
     modality: "text",
+    createdAt: recentIso(5 * 60_000),
     riskScore: 0.2,
     taskType: "summarize",
   };
@@ -179,11 +184,11 @@ test("edge integration: conflict resolution when cloud has newer digest", () => 
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-conflict",
     deviceId: "device-conflict",
-    deviceAttestation: { attestedAt: "2026-04-29T00:00:00.000Z", status: "valid" },
+    deviceAttestation: { attestedAt: recentIso(), status: "valid" },
     capabilities: ["text"],
     connectivityMode: "online",
     maxLocalRetentionHours: 24,
-    offlineMaxDuration: 600,
+    offlineMaxDuration: 600_000,
     keyLease: "lease-conflict",
     allowedModels: [],
     syncPolicy: { allowRestrictedDataUpload: true, requireOrdering: false },
@@ -193,6 +198,7 @@ test("edge integration: conflict resolution when cloud has newer digest", () => 
     edgeNodeId: "node-conflict",
     taskId: "task-conflict",
     modality: "text",
+    createdAt: recentIso(5 * 60_000),
     riskScore: 0.2,
     taskType: "summarize",
   };
@@ -419,11 +425,11 @@ test("edge integration: restricted data upload blocked by policy", () => {
   const profile: EdgeRuntimeProfile = {
     edgeNodeId: "node-restrict",
     deviceId: "device-restrict",
-    deviceAttestation: { attestedAt: "2026-04-29T00:00:00.000Z", status: "valid" },
+    deviceAttestation: { attestedAt: recentIso(), status: "valid" },
     capabilities: ["text"],
     connectivityMode: "online",
     maxLocalRetentionHours: 24,
-    offlineMaxDuration: 600,
+    offlineMaxDuration: 600_000,
     keyLease: "lease-restrict",
     allowedModels: [],
     syncPolicy: { allowRestrictedDataUpload: false, requireOrdering: false },
@@ -433,6 +439,7 @@ test("edge integration: restricted data upload blocked by policy", () => {
     edgeNodeId: "node-restrict",
     taskId: "task-restrict",
     modality: "text",
+    createdAt: recentIso(5 * 60_000),
     riskScore: 0.2,
     taskType: "summarize",
   };

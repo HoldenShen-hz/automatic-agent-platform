@@ -495,14 +495,11 @@ test.describe("RedisQueueAdapter unit tests", () => {
     assert.equal(queues.length, 2);
   });
 
-  test("sync enqueue remains available while other sync methods throw ValidationError", () => {
+  test("all sync methods throw ValidationError for Redis backend", () => {
     const config = createMockConfig();
     const adapter = new RedisQueueAdapter(config);
 
-    const job = adapter.enqueue({ queueName: "test", payload: { data: "test" } });
-    assert.equal(job.queueName, "test");
-    assert.equal(job.status, "waiting");
-
+    assert.throws(() => adapter.enqueue({ queueName: "test", payload: { data: "test" } }), /sync.*not_supported/);
     assert.throws(() => adapter.dequeue("test"), /sync.*not_supported/);
     assert.throws(() => adapter.getJob("test"), /sync.*not_supported/);
     assert.throws(() => adapter.listJobs("test"), /sync.*not_supported/);

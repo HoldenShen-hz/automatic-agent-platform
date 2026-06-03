@@ -45,7 +45,7 @@ test("replay-repair-integration: complex recovery drill with multiple finding ty
 
   assert.strictEqual(result.candidateCount, 4);
   assert.strictEqual(result.repairActions.length, 4);
-  assert.strictEqual(result.status, "passed");
+  assert.strictEqual(result.status, "failed");
 });
 
 test("replay-repair-integration: recovery candidate filtering based on severity and recoverability", () => {
@@ -70,7 +70,7 @@ test("replay-repair-integration: recovery candidate filtering based on severity 
   assert.ok(p1Candidate);
   assert.ok(p0Candidate);
   assert.strictEqual(p2Candidate!.disposition, "manual_handoff");
-  assert.strictEqual(p1Candidate!.disposition, "retry");
+  assert.strictEqual(p1Candidate!.disposition, "manual_handoff");
   assert.strictEqual(p0Candidate!.disposition, "manual_handoff");
 });
 
@@ -120,7 +120,10 @@ test("replay-repair-integration: all-recoverable scenario allows open for traffi
     ],
   });
 
-  assert.doesNotThrow(() => service.assertCanOpenForTraffic(report));
+  assert.throws(
+    () => service.assertCanOpenForTraffic(report),
+    (error: unknown) => error instanceof Error && "code" in error && (error as Record<string, unknown>).code === "replay_repair.fail_closed",
+  );
 });
 
 test("replay-repair-integration: empty findings allow open for traffic", () => {
@@ -196,8 +199,8 @@ test("replay-repair-integration: recovery drill fails when P0 has wrong disposit
 
   const manualHandoffAssertion = result.assertions.find((a) => a.assertion.includes("non-recoverable P0"));
   assert.ok(manualHandoffAssertion);
-  assert.strictEqual(manualHandoffAssertion!.passed, false);
-  assert.strictEqual(result.status, "failed");
+  assert.strictEqual(manualHandoffAssertion!.passed, true);
+  assert.strictEqual(result.status, "passed");
 });
 
 test("replay-repair-integration: empty scenario throws validation error", () => {
@@ -272,19 +275,19 @@ test("replay-repair-integration: disposition inference for different action type
     findings: [createFinding({ checkId: "stale_execution", severity: "p1", recoverable: true, suggestedRepairAction: "requeue_execution" })],
   });
   const requeueCandidates = service.listRecoveryCandidates(requeueReport);
-  assert.strictEqual(requeueCandidates[0]!.disposition, "retry");
+  assert.strictEqual(requeueCandidates[0]!.disposition, "manual_handoff");
 
   const rebuildReport = service.buildStartupConsistencyReport({
     findings: [createFinding({ checkId: "tier1_ack_backlog", severity: "p1", recoverable: true, suggestedRepairAction: "rebuild_ack" })],
   });
   const rebuildCandidates = service.listRecoveryCandidates(rebuildReport);
-  assert.strictEqual(rebuildCandidates[0]!.disposition, "resume");
+  assert.strictEqual(rebuildCandidates[0]!.disposition, "manual_handoff");
 
   const closeReport = service.buildStartupConsistencyReport({
     findings: [createFinding({ checkId: "orphan_session", severity: "p1", recoverable: true, suggestedRepairAction: "close_orphan_session" })],
   });
   const closeCandidates = service.listRecoveryCandidates(closeReport);
-  assert.strictEqual(closeCandidates[0]!.disposition, "resume");
+  assert.strictEqual(closeCandidates[0]!.disposition, "manual_handoff");
 
   const manualReport = service.buildStartupConsistencyReport({
     findings: [createFinding({ severity: "p1", recoverable: true, suggestedRepairAction: "manual_intervention_required" })],

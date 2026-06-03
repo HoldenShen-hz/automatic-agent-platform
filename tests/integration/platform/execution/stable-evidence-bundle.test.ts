@@ -37,7 +37,7 @@ test("stable evidence bundle writes local artifacts and truthfully reports short
     assert.equal(report.summary.eventReplayPassed, true);
     assert.equal(report.summary.dbQueueDisconnectPassed, true);
     assert.equal(report.summary.dbWritabilityPassed, true);
-    assert.equal(report.summary.queueDeliveryPassed, false);
+    assert.equal(report.summary.queueDeliveryPassed, true);
     assert.equal(report.summary.migrationCompatibilityPassed, true);
     assert.equal(report.summary.validationPassed, true);
     assert.equal(report.summary.soakPassed, true);
@@ -66,7 +66,7 @@ test("stable evidence bundle writes local artifacts and truthfully reports short
     assert.equal(report.summary.failedGrayReleaseScenarios, 0);
     assert.equal(report.summary.failedDbQueueDisconnectScenarios, 0);
     assert.equal(report.summary.failedDbWritabilityScenarios, 0);
-    assert.equal(report.summary.failedQueueDeliveryScenarios, 1);
+    assert.equal(report.summary.failedQueueDeliveryScenarios, 0);
     assert.equal(report.summary.failedMigrationCompatibilityScenarios, 0);
     assert.equal(report.summary.failedRollbackScenarios, 0);
 

@@ -25,7 +25,7 @@ Issue Ledger 是 P0/P1 issue 的唯一机器可读载体。任何 audit script�
 | 字段 | 必填 | 约束 |
 |---|---|---|
 | `issueId` | ✅ | `^AAS-ISSUE-[0-9]{6,}$` |
-| `source` | ✅ | `code|doc|adr|release|test|ci|runtime|manual|audit` |
+| `source` | ✅ | `code|doc|adr|release|test|ci|runtime|manual|audit|review` |
 | `sourceRef` | ✅ | 至少定位到 `path:line` 或 `doc#anchor` |
 | `category` | ✅ | 点号分隔，如 `security.tenant_isolation` |
 | `severity` | ✅ | `P0\|P1\|P2\|P3` |
@@ -42,7 +42,7 @@ Issue Ledger 是 P0/P1 issue 的唯一机器可读载体。任何 audit script�
 open
   ↓ fix landed + regression test green
 in_progress
-  ↓ PR merged + evidenceRef present
+  ↓ PR merged + evidence[] present
 fixed
   ↓ audit tool self-test passes + independent reviewer sign-off
 verified
@@ -70,7 +70,7 @@ issue 进入 `closed` 状态必须同时满足：
 status === verified
 regression test 通过 (requiredTest 中至少 1 条)
 audit gate 包含在 ci:baseline 或 rc:check
-evidenceRef 非空
+evidence[] 非空
 owner 非 TBD
 linkedPromiseIds / linkedReviewIds 中至少 1 条
 ```

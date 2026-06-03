@@ -154,6 +154,11 @@ test("Dispatch service fails job and requeues with backoff", () => {
     assert.equal(result.job.attempts, 1);
 
     result.nack();
+    const delayed = queueAdapter.getJob(job.id);
+    assert.equal(delayed?.status, "delayed");
+    assert.equal(delayed?.attempts, 1);
+    assert.equal(queueAdapter.dequeue("tasks"), null);
+    queueAdapter.retryJob(job.id);
 
     const retryResult = queueAdapter.dequeue("tasks");
     assert.ok(retryResult);
@@ -179,6 +184,8 @@ test("Dispatch service moves job to dead letter after max retries", () => {
     const r1 = queueAdapter.dequeue("tasks");
     assert.ok(r1);
     r1.nack();
+    assert.equal(queueAdapter.getJob(job.id)?.status, "delayed");
+    queueAdapter.retryJob(job.id);
 
     const r2 = queueAdapter.dequeue("tasks");
     assert.ok(r2);

@@ -186,13 +186,31 @@ test("integration: governance exception grants temporary access", () => {
 
   assert.equal(noMembershipDecision.decision, "deny");
 
-  const withException = service.authorizeTenantAccess({
+  const withMissingException = service.authorizeTenantAccess({
+    userId: "user_gov",
+    tenantId: "tenant_gov",
+    governanceRef: "emergency_access_policy",
+  });
+  assert.equal(withMissingException.decision, "deny");
+
+  service.registerGovernanceException({
+    governanceRef: "emergency_access_policy",
+    userId: "user_gov",
+    tenantId: "tenant_gov",
+    workspaceId: null,
+    organizationId: "org_gov",
+    status: "approved",
+    reasonCode: "tenant.emergency_access",
+    approvedAt: "2026-04-29T00:00:00.000Z",
+  });
+
+  const approvedExceptionDecision = service.authorizeTenantAccess({
     userId: "user_gov",
     tenantId: "tenant_gov",
     governanceRef: "emergency_access_policy",
   });
 
-  assert.equal(withException.decision, "allow_with_governance_exception");
+  assert.equal(approvedExceptionDecision.decision, "allow_with_governance_exception");
 });
 
 test("integration: disabled user denied access", () => {

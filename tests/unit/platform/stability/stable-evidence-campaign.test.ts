@@ -149,8 +149,9 @@ test("runStableEvidenceCampaign completes a minimal smoke campaign", async () =>
 
     assert.equal(report.state.completed, true);
     assert.equal(report.state.segments.length, 1);
-    assert.equal(report.state.finalEvidencePassed, true);
-    assert.equal(report.finalEvidenceReport?.summary.passed, true);
+    assert.equal(report.state.finalEvidencePassed, false);
+    assert.equal(report.finalEvidenceReport?.summary.passed, false);
+    assert.equal(report.finalEvidenceReport?.acceptanceLine.status, "partial");
   } finally {
     rmSync(outputDir, { recursive: true, force: true });
   }
@@ -181,7 +182,8 @@ test("runStableEvidenceCampaign resumes a completed campaign from disk", async (
     assert.equal(first.state.completed, true);
     assert.equal(resumed.state.completed, true);
     assert.equal(resumed.state.segments.length, 1);
-    assert.equal(resumed.finalEvidenceReport?.summary.passed, true);
+    assert.equal(resumed.finalEvidenceReport?.summary.passed, false);
+    assert.equal(resumed.finalEvidenceReport?.acceptanceLine.status, "partial");
   } finally {
     rmSync(outputDir, { recursive: true, force: true });
   }

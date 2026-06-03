@@ -355,9 +355,8 @@ test("canonical contract text directly encodes the first unresolved contract fix
   assert.match(edgeRuntime, /活跃 `NodeRun`/);
 
   const receiptContract = readFileSync("docs_zh/contracts/node-run-attempt-receipt-contract.md", "utf8");
-  assert.match(receiptContract, /\| `receiptId` \| `string` \| receipt ID \|/);
-  assert.match(receiptContract, /nodeAttemptReceiptId.*deprecated storage-shaped key/);
-  assert.doesNotMatch(receiptContract, /\| `nodeAttemptReceiptId` \| `string` \| receipt ID \|/);
+  assert.match(receiptContract, /\| `nodeAttemptReceiptId` \| `string` \| receipt ID；当前 executable contract 仍保留该存储形态主键名 \|/);
+  assert.match(receiptContract, /\| `receiptId` \| architecture target alias；当前 executable contract 尚未迁移/);
 
   const observability = readFileSync("docs_zh/contracts/observability_contract.md", "utf8");
   assert.match(observability, /harnessRunMetrics/);

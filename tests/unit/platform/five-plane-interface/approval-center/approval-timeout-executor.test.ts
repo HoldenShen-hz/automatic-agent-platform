@@ -604,7 +604,7 @@ test("executeTimeout applies confirmed decision for timeoutPolicy=approve", () =
     const result = executor.executeTimeout({ approvalId: "exec-approve" });
 
     assert.equal(result.status, "approved");
-    assert.equal(result.decisionType, "expired");
+    assert.equal(result.decisionType, "confirmed");
   } finally {
     cleanupHarness(harness);
   }

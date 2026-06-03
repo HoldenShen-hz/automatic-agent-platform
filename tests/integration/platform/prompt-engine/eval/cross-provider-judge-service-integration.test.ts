@@ -29,8 +29,29 @@ function generateStandardCases(count: number, prefix: string): EvalDatasetCase[]
   return cases;
 }
 
+function createJudgeEvaluators(criterionIds: readonly string[]) {
+  return Object.fromEntries(
+    criterionIds.map((criterionId) => [
+      criterionId,
+      ({ criterion, criterionSignals }: { criterion: { criterionId: string; threshold: number }; criterionSignals: Record<string, number> }) => {
+        const score = criterionSignals[criterion.criterionId] ?? criterionSignals[criterionId] ?? 0;
+        return {
+          score,
+          passed: score >= criterion.threshold,
+          reason: score >= criterion.threshold ? "llm_judge_passed" : "llm_judge_failed",
+        };
+      },
+    ]),
+  );
+}
+
 function createFullHarness() {
-  const judgeService = new EvalDatasetJudgeService();
+  const cases = generateStandardCases(50, "cpi-");
+  const judgeService = new EvalDatasetJudgeService(
+    createJudgeEvaluators(
+      cases.flatMap((testCase) => testCase.qualityCriteria.map((criterion) => criterion.criterionId)),
+    ),
+  );
   const registry = new JudgeProviderRegistryService();
   const crossProvider = new CrossProviderJudgeService(judgeService);
 
@@ -42,7 +63,7 @@ function createFullHarness() {
     version: "1.0.0",
     stage: "assess",
     createdBy: "integration",
-    cases: generateStandardCases(50, "cpi-"),
+    cases,
   });
   judgeService.activateDataset("cross-int-ds");
 

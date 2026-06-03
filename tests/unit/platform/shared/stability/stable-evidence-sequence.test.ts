@@ -49,7 +49,7 @@ function seedCompleted24hEvidence(evidenceRoot: string): void {
         profile: { name: "24h" },
         summary: { passed: true },
         acceptanceLine: {
-          status: "partial",
+          status: "pass",
           observed: {
             soakDurationMs: 100,
           },
@@ -85,6 +85,7 @@ test("stable evidence sequence blocks when resumed 72h evidence completes with a
     assert.equal(report.state.blocked, true);
     assert.equal(report.state.activeProfileName, "72h");
     assert.deepEqual(report.advancedProfiles, []);
+    assert.equal(report.state.blockReason, "72h stable evidence completed with failing verdict");
     assert.equal(report.state.profiles.find((profile) => profile.profileName === "24h")?.passed, true);
     assert.equal(report.state.profiles.find((profile) => profile.profileName === "72h")?.completed, true);
     assert.equal(report.state.profiles.find((profile) => profile.profileName === "72h")?.passed, false);

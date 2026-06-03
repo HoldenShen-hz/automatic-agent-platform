@@ -240,12 +240,12 @@ test("EscalationService respects decision order - takeover second", () => {
   }
 });
 
-test("EscalationService respects decision order - approval third", () => {
+test("EscalationService respects decision order - high risk outside assess takes takeover path", () => {
   const ctx = createIntegrationContext("aa-esc-order3-");
   try {
     const service = new EscalationService();
 
-    // High risk with low cost and non-production = approval
+    // High risk at plan stage now takes the takeover path before approval.
     const request = createEscalationRequest({
       riskLevel: "high",
       affectsProduction: false,
@@ -254,7 +254,7 @@ test("EscalationService respects decision order - approval third", () => {
     });
 
     const decision = service.decide(request);
-    assert.equal(decision.decision, "approval");
+    assert.equal(decision.decision, "takeover");
   } finally {
     ctx.cleanup();
   }

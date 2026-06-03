@@ -50,7 +50,7 @@ test("listRecoveryCandidates with mixed recoverable and P0 findings", () => {
 
   assert.ok(recoverable);
   assert.ok(p0);
-  assert.equal(recoverable!.disposition, "retry");
+  assert.equal(recoverable!.disposition, "manual_handoff");
   assert.equal(p0!.disposition, "manual_handoff");
 });
 
@@ -228,7 +228,7 @@ test("runRecoveryDrill verifies second assertion for non-recoverable P0", () => 
   assert.equal(secondAssertion!.passed, true);
 });
 
-test("runRecoveryDrill fails second assertion when P0 has wrong disposition", () => {
+test("runRecoveryDrill forces recoverable P0 findings into manual handoff", () => {
   const service = new ReplayRepairControlService();
   const result = service.runRecoveryDrill({
     scenario: "P0 with auto disposition",
@@ -239,15 +239,15 @@ test("runRecoveryDrill fails second assertion when P0 has wrong disposition", ()
         entityRef: "exec:1",
         summary: "stale but p0",
         recoverable: true,
-        suggestedRepairAction: "requeue_execution", // Auto action on P0 - should fail
+        suggestedRepairAction: "requeue_execution",
       },
     ],
   });
 
   const secondAssertion = result.assertions.find(a => a.assertion === "non-recoverable P0 findings require manual handoff");
   assert.ok(secondAssertion);
-  assert.equal(secondAssertion!.passed, false);
-  assert.equal(result.status, "failed");
+  assert.equal(secondAssertion!.passed, true);
+  assert.equal(result.status, "passed");
 });
 
 test("runRecoveryDrill verifies third assertion: all candidates have repair actions", () => {
@@ -488,7 +488,7 @@ test("runRecoveryDrill with various severity findings produces correct candidate
   assert.equal(result.candidateCount, 2);
 });
 
-test("assertCanOpenForTraffic with repair_required does not throw", () => {
+test("assertCanOpenForTraffic with repair_required throws fail-closed validation error", () => {
   const service = new ReplayRepairControlService();
   const report = service.buildStartupConsistencyReport({
     findings: [
@@ -496,7 +496,10 @@ test("assertCanOpenForTraffic with repair_required does not throw", () => {
     ],
   });
 
-  assert.doesNotThrow(() => service.assertCanOpenForTraffic(report));
+  assert.throws(
+    () => service.assertCanOpenForTraffic(report),
+    (error: unknown) => error instanceof Error && "code" in error && error.code === "replay_repair.fail_closed",
+  );
 });
 
 test("assertCanOpenForTraffic with open_for_traffic does not throw", () => {

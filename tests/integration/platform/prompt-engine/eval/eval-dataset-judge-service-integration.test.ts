@@ -50,6 +50,26 @@ function generateCasesByPriority(
   return cases;
 }
 
+function createJudgeEvaluators(cases: readonly EvalDatasetCase[]) {
+  const criterionIds = cases
+    .flatMap((testCase) => testCase.qualityCriteria)
+    .filter((criterion) => criterion.type === "llm_judge")
+    .map((criterion) => criterion.criterionId);
+  return Object.fromEntries(
+    criterionIds.map((criterionId) => [
+      criterionId,
+      ({ criterion, criterionSignals }: { criterion: { criterionId: string; threshold: number }; criterionSignals: Record<string, number> }) => {
+        const score = criterionSignals[criterion.criterionId] ?? criterionSignals[criterionId] ?? 0;
+        return {
+          score,
+          passed: score >= criterion.threshold,
+          reason: score >= criterion.threshold ? "llm_judge_passed" : "llm_judge_failed",
+        };
+      },
+    ]),
+  );
+}
+
 function createIntegrationDataset(service: EvalDatasetJudgeService): void {
   const cases: EvalDatasetCase[] = [
     ...generateCasesByPriority("critical", 200, "int-em-", "exact_match"),
@@ -85,8 +105,21 @@ function createSmallDataset(service: EvalDatasetJudgeService, datasetId: string)
 }
 
 test("EvalDatasetJudgeService integration: full evaluation pipeline", () => {
-  const service = new EvalDatasetJudgeService();
-  createIntegrationDataset(service);
+  const cases: EvalDatasetCase[] = [
+    ...generateCasesByPriority("critical", 200, "int-em-", "exact_match"),
+    ...generateCasesByPriority("critical", 100, "int-co-", "contains"),
+    ...generateCasesByPriority("standard", 100, "int-std-", "llm_judge"),
+  ];
+  const service = new EvalDatasetJudgeService(createJudgeEvaluators(cases));
+  service.registerDataset({
+    datasetId: "integration-ds",
+    name: "Integration Dataset",
+    version: "1.0.0",
+    stage: "assess",
+    createdBy: "integration-test",
+    cases,
+  });
+  service.activateDataset("integration-ds");
   service.registerJudge({
     judgeId: "judge-int",
     provider: "anthropic",
