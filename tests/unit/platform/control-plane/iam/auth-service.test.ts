@@ -8,6 +8,9 @@ import {
   inferCapabilitiesForAction,
   listPlatformPrincipalTypes,
   listPlatformRoles,
+  type AuthorizationContext,
+  type PlatformPrincipalType,
+  type PlatformRole,
   resolvePrincipalAccessProfile,
   roleGrantsCapabilities,
 } from "../../../../../src/platform/five-plane-control-plane/iam/access-model.js";
@@ -19,15 +22,25 @@ function makeMockContext(overrides: Partial<{
   pluginTrusted: boolean;
   requiresTenantScope: boolean;
   manualTakeoverActive: boolean;
-}> = {}): { tenantId: string | null; environment: "workspace" | "staging" | "production"; dataClassification: "internal" | "confidential" | "regulated"; pluginTrusted: boolean; requiresTenantScope: boolean; manualTakeoverActive: boolean } {
-  return {
+  originalPrincipal: {
+    type: PlatformPrincipalType;
+    roles: readonly PlatformRole[];
+    tenantId: string | null;
+  } | null;
+}> = {}): AuthorizationContext {
+  const { originalPrincipal, ...restOverrides } = overrides;
+  const baseContext: AuthorizationContext = {
     tenantId: null,
     environment: "workspace",
     dataClassification: "internal",
     pluginTrusted: false,
     requiresTenantScope: false,
     manualTakeoverActive: false,
-    ...overrides,
+  };
+  return {
+    ...baseContext,
+    ...restOverrides,
+    ...(originalPrincipal == null ? {} : { originalPrincipal }),
   };
 }
 

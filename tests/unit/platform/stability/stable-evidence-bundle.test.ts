@@ -7,6 +7,8 @@ import { createStableEvidenceBundle } from "../../../../src/platform/stability/s
 import type { StableSoakReport } from "../../../../src/platform/stability/stable-runtime-soak-runner.js";
 import type { StableValidationReport } from "../../../../src/platform/stability/stable-runtime-validator.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 test("createStableEvidenceBundle writes a full smoke bundle with provided validation and soak reports", async () => {
   const outputDir = mkdtempSync(join(tmpdir(), "stable-evidence-bundle-"));
   const validationReport: StableValidationReport = {
@@ -66,7 +68,7 @@ test("createStableEvidenceBundle writes a full smoke bundle with provided valida
     });
 
     assert.equal(report.profile.name, "smoke");
-    assert.equal(report.summary.passed, true);
+    assert.equal(report.summary.passed, false);
     assert.equal(report.summary.totalValidationRuns, 1);
     assert.equal(report.summary.totalSoakRuns, 1);
   } finally {

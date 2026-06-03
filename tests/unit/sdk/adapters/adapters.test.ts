@@ -146,9 +146,10 @@ test("GitHub adapter execute validates repository parameter (issue #2020)", asyn
     title: "Test Issue",
     body: "Test body",
   });
+  const requestSummary = (result as { requestSummary: { endpointTemplate: string } }).requestSummary;
 
   assert.equal(result.repository, "owner/repo");
-  assert.equal(result.requestSummary.endpointTemplate, "/repos/{repository}/issues");
+  assert.equal(requestSummary.endpointTemplate, "/repos/{repository}/issues");
   assert.ok(capturedUrl.includes("/repos/owner/repo/issues"));
 });
 
@@ -172,8 +173,9 @@ test("GitHub adapter execute builds correct endpoint for create_issue (issue #20
     body: "Found a bug",
     labels: ["bug", "high-priority"],
   });
+  const requestSummary = (result as { requestSummary: { endpointTemplate: string } }).requestSummary;
 
-  assert.equal(result.requestSummary.endpointTemplate, "/repos/{repository}/issues");
+  assert.equal(requestSummary.endpointTemplate, "/repos/{repository}/issues");
   assert.ok(capturedUrl.includes("/repos/owner/repo/issues"));
 });
 
@@ -196,8 +198,9 @@ test("GitHub adapter execute builds correct endpoint for get_file (issue #2020)"
     path: "src/index.ts",
     ref: "main",
   });
+  const requestSummary = (result as { requestSummary: { endpointTemplate: string } }).requestSummary;
 
-  assert.equal(result.requestSummary.endpointTemplate, "/repos/{repository}/contents/{path}");
+  assert.equal(requestSummary.endpointTemplate, "/repos/{repository}/contents/{path}");
   assert.ok(capturedUrl.includes("/repos/owner/repo/contents/src/index.ts"));
   assert.ok(capturedUrl.includes("ref=main"));
 });
@@ -242,8 +245,9 @@ test("GitHub adapter execute checks egress policy", async () => {
     title: "Test",
     body: "Test",
   });
+  const requestSummary = (result as { requestSummary: { endpointTemplate: string } }).requestSummary;
 
-  assert.equal(result.requestSummary.endpointTemplate, "/repos/{repository}/issues");
+  assert.equal(requestSummary.endpointTemplate, "/repos/{repository}/issues");
   assert.ok(capturedUrl.includes("/repos/owner/repo/issues"));
   assert.equal((result as { status: number }).status, 200);
 });

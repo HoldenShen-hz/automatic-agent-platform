@@ -12,6 +12,8 @@ import {
   type StableEvidenceCampaignReport,
 } from "../../../../src/platform/stability/stable-evidence-campaign.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 test("StableEvidenceCampaignOptions has required outputDir", () => {
   const options: StableEvidenceCampaignOptions = {
     outputDir: "/tmp/test",

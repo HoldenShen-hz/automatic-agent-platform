@@ -18,6 +18,13 @@ import {
 } from "../../../../src/sdk/pack-sdk/pack-test-local-service.js";
 import { validateBusinessPackManifest } from "../../../../src/sdk/pack-sdk/pack-manifest.js";
 
+function invokePackLocalTest(
+  service: PackTestLocalService,
+  options: unknown,
+): ReturnType<PackTestLocalService["test"]> {
+  return service.test(options as Parameters<PackTestLocalService["test"]>[0]);
+}
+
 test("PackScaffoldService.listTemplates returns all template types", () => {
   const service = new PackScaffoldService();
   const templates = service.listTemplates();
@@ -307,13 +314,13 @@ test("PackTestLocalService.validateTestOptions rejects invalid mode", async () =
   const options = {
     packId: "test-pack",
     version: "1.0.0",
-    mode: "invalid" as any,
+    mode: "invalid",
     mockLlm: false,
     recordArtifacts: false,
   };
 
   await assert.rejects(
-    () => service.test(options as any),
+    () => invokePackLocalTest(service, options),
     /Mode must be one of/i,
   );
 });

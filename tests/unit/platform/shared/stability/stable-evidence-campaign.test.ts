@@ -21,6 +21,8 @@ import {
   type StableEvidenceCampaignState,
 } from "../../../../../src/platform/shared/stability/stable-evidence-campaign.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 function createTempDir(): string {
   const dir = join("/tmp", `evidence-campaign-test-${Date.now()}`);
   return dir;

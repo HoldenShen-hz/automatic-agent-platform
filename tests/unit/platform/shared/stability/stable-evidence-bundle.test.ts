@@ -11,6 +11,8 @@ import test from "node:test";
 
 import { createStableEvidenceBundle } from "../../../../../src/platform/shared/stability/stable-evidence-bundle.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 function createTempDir(): string {
   return join("/tmp", `evidence-bundle-test-${Date.now()}`);
 }

@@ -744,34 +744,61 @@ networkPathTest("WebSocketBridge close resolves even when a client does not fini
   }
 });
 
-networkPathTest("WebSocketBridge broadcasts to all connected clients", (t) => {
+networkPathTest("WebSocketBridge broadcasts to tenant-matched connected clients", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
     const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
+    let ws: WebSocket | null = null;
+    let settled = false;
+
+    const finish = (error?: unknown) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      ws?.close();
+      void bridge.close().finally(() => {
+        server.close(() => {
+          if (error == null) {
+            resolve();
+            return;
+          }
+          reject(error);
+        });
+      });
+    };
 
     server.listen(0, "127.0.0.1", () => {
       const address = server.address() as { port: number };
-      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, "test-token");
+      ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, "test-token");
 
       let messageCount = 0;
       ws.on("open", () => {
-        bridge.broadcastToAll({ type: "pong" });
+        setTimeout(() => {
+          try {
+            assert.equal(bridge.getClientCount(), 1);
+            bridge.broadcastToAll({ type: "pong" }, { tenantId: "tenant-1" });
+          } catch (error) {
+            finish(error);
+          }
+        }, 10);
       });
 
       ws.on("message", (data: Buffer) => {
-        const msg = JSON.parse(data.toString());
-        if (msg.type === "pong") {
-          messageCount++;
-          assert.ok(messageCount >= 1);
-          ws.close();
-          bridge.close().then(() => {
-            server.close();
-            resolve();
-          });
+        try {
+          const msg = JSON.parse(data.toString());
+          if (msg.type === "pong") {
+            messageCount++;
+            assert.ok(messageCount >= 1);
+            finish();
+          }
+        } catch (error) {
+          finish(error);
         }
       });
 
-      ws.on("error", reject);
+      ws.on("error", finish);
+      setTimeout(() => finish(new Error("timed out waiting for broadcast pong")), 1_000);
     });
   });
 });

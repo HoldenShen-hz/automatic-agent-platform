@@ -354,7 +354,7 @@ async function runOrphanQueueClaimRepairScenario(outputDir: string): Promise<Sta
     leases.releaseLease({
       leaseId: claimed.leaseId ?? "",
       workerId: "worker-dispatch-chaos",
-      fencingToken: claimedLease?.fencingToken ?? null,
+      fencingToken: claimedLease?.fencingToken ?? 0,
       reasonCode: "chaos.seed",
       occurredAt: "2026-04-04T15:00:07.000Z",
     });

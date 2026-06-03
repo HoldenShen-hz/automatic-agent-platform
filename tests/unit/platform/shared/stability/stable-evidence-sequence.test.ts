@@ -6,6 +6,8 @@ import test from "node:test";
 import { runStableEvidenceSequence } from "../../../../../src/platform/shared/stability/stable-evidence-sequence.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 function seedCompleted24hEvidence(evidenceRoot: string): void {
   const outputDir = join(evidenceRoot, "24h");
   mkdirSync(outputDir, { recursive: true });
@@ -59,7 +61,7 @@ function seedCompleted24hEvidence(evidenceRoot: string): void {
   );
 }
 
-test("stable evidence sequence advances from completed 24h evidence into 72h and completes when evidence passes [stable-evidence-sequence]", async () => {
+test("stable evidence sequence blocks when resumed 72h evidence completes with a failing short-run verdict [stable-evidence-sequence]", async () => {
   const workspace = createTempWorkspace("aa-stable-sequence-unit-");
   const evidenceRoot = join(workspace, "stable-evidence");
 
@@ -79,13 +81,13 @@ test("stable evidence sequence advances from completed 24h evidence into 72h and
       },
     });
 
-    assert.equal(report.state.completed, true);
-    assert.equal(report.state.blocked, false);
-    assert.equal(report.state.activeProfileName, null);
-    assert.deepEqual(report.advancedProfiles, ["72h"]);
+    assert.equal(report.state.completed, false);
+    assert.equal(report.state.blocked, true);
+    assert.equal(report.state.activeProfileName, "72h");
+    assert.deepEqual(report.advancedProfiles, []);
     assert.equal(report.state.profiles.find((profile) => profile.profileName === "24h")?.passed, true);
     assert.equal(report.state.profiles.find((profile) => profile.profileName === "72h")?.completed, true);
-    assert.equal(report.state.profiles.find((profile) => profile.profileName === "72h")?.passed, true);
+    assert.equal(report.state.profiles.find((profile) => profile.profileName === "72h")?.passed, false);
     assert.equal(existsSync(join(evidenceRoot, "72h", "stable-evidence-report.json")), true);
     assert.equal(existsSync(join(evidenceRoot, "stable-evidence-sequence-state.json")), true);
     assert.equal(existsSync(join(evidenceRoot, "stable-evidence-sequence-report.json")), true);

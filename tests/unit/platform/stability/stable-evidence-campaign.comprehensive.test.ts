@@ -12,6 +12,8 @@ import {
   type StableEvidenceCampaignReport,
 } from "../../../../src/platform/stability/stable-evidence-campaign.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 describe("stable-evidence-campaign comprehensive", () => {
   describe("StableEvidenceCampaignOptions", () => {
     test("accepts minimal options with outputDir only", () => {

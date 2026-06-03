@@ -13,10 +13,22 @@ export interface GithubAdapterPluginOptions {
   signatureKey?: string;
   defaultTimeoutMs?: number;
   defaultRateLimitPerMinute?: number;
-  fetchImplementation?: typeof fetch;
+  fetchImplementation?: GithubFetchLike;
   maxResponseSizeBytes?: number;
   healthProbe?: (input: { readonly apiBaseUrl: string; readonly credentialFingerprint: string | null }) => Promise<boolean> | boolean;
 }
+
+export interface GithubFetchResponseLike {
+  readonly ok: boolean;
+  readonly status: number;
+  readonly headers: Pick<Headers, "get">;
+  text(): Promise<string>;
+}
+
+export type GithubFetchLike = (
+  input: string | URL | Request,
+  init?: RequestInit,
+) => Promise<GithubFetchResponseLike>;
 
 /**
  * R8-25 FIX: Plugin signature verification result
@@ -241,7 +253,11 @@ interface GithubRequestDetails {
 }
 
 async function readResponseTextWithLimit(
-  response: Partial<Pick<Response, "body" | "headers" | "text">>,
+  response: {
+    readonly body?: ReadableStream<Uint8Array> | null;
+    readonly headers?: Pick<Headers, "get">;
+    readonly text?: (() => Promise<string>) | undefined;
+  },
   maxResponseSizeBytes: number,
 ): Promise<string> {
   const headerLength = typeof response.headers?.get === "function"
@@ -283,7 +299,7 @@ async function readResponseTextWithLimit(
 }
 
 async function performGithubFetch(params: {
-  fetchImplementation: typeof fetch;
+  fetchImplementation: GithubFetchLike;
   request: GithubRequestDetails;
   credentialSecret: ZeroableCredentialSecret;
   defaultTimeoutMs: number;

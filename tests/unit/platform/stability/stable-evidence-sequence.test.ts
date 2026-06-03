@@ -13,6 +13,8 @@ import {
   type StableEvidenceSequenceReport,
 } from "../../../../src/platform/stability/stable-evidence-sequence.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 test("StableEvidenceSequenceOptions has required evidenceRootDir", () => {
   const options: StableEvidenceSequenceOptions = {
     evidenceRootDir: "/tmp/evidence",

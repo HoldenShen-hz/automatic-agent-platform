@@ -140,7 +140,7 @@ test("[ARCH-P1-5] Context layer denies high-risk action outside business hours",
  * Verifies that context-aware layer properly evaluates tenant boundaries
  * and principal context.
  */
-test("[ARCH-P1-5] Context layer evaluates tenant/principal context", () => {
+test("[ARCH-P1-5] Context layer records tenant/principal context in resolved profile", () => {
   const decision = iam.evaluateAuthorizationContext({
     principalType: "user" as PlatformPrincipalType,
     roles: ["human_operator"],

@@ -14,6 +14,8 @@ import {
 import type { StableSoakReport } from "../../../../src/platform/stability/stable-runtime-soak-runner.js";
 import type { StableValidationReport } from "../../../../src/platform/stability/stable-runtime-validator.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 function createMockValidationReport(overrides: Partial<StableValidationReport> = {}): StableValidationReport {
   return {
     startedAt: "2026-04-20T00:00:00.000Z",

@@ -6,7 +6,9 @@ import test from "node:test";
 import { runStableEvidenceSequenceUntilComplete } from "../../../../src/platform/shared/stability/stable-evidence-sequence.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-test("stable evidence sequence runs 24h and 72h profiles to completion in order", async () => {
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
+test("stable evidence sequence fail-closes on a short 24h profile before advancing to 72h", async () => {
   const workspace = createTempWorkspace("aa-stable-sequence-runtime-");
   const evidenceRoot = join(workspace, "stable-evidence");
 
@@ -32,8 +34,9 @@ test("stable evidence sequence runs 24h and 72h profiles to completion in order"
       maxPasses: 4,
     });
 
-    assert.equal(report.state.completed, true);
-    assert.equal(report.state.blocked, false);
+    assert.equal(report.state.completed, false);
+    assert.equal(report.state.blocked, true);
+    assert.equal(report.state.blockReason, "24h stable evidence completed with failing verdict");
     assert.deepEqual(
       report.state.profiles.map((profile) => ({
         profileName: profile.profileName,
@@ -41,12 +44,12 @@ test("stable evidence sequence runs 24h and 72h profiles to completion in order"
         passed: profile.passed,
       })),
       [
-        { profileName: "24h", completed: true, passed: true },
-        { profileName: "72h", completed: true, passed: true },
+        { profileName: "24h", completed: true, passed: false },
+        { profileName: "72h", completed: false, passed: null },
       ],
     );
     assert.equal(existsSync(join(evidenceRoot, "24h", "stable-evidence-report.json")), true);
-    assert.equal(existsSync(join(evidenceRoot, "72h", "stable-evidence-report.json")), true);
+    assert.equal(existsSync(join(evidenceRoot, "72h", "stable-evidence-report.json")), false);
     assert.equal(existsSync(join(evidenceRoot, "stable-evidence-sequence-state.json")), true);
     assert.equal(existsSync(join(evidenceRoot, "stable-evidence-sequence-report.json")), true);
   } finally {

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { resolveDefaultTestConcurrency } from "./lib/test-concurrency.mjs";
 
 const scriptPath = fileURLToPath(import.meta.url);
+const DEFAULT_TEST_AUDIT_INTEGRITY_HMAC_KEY = "testing-audit-integrity-key-012345";
 
 export const DEFAULT_NODE_TEST_CONCURRENCY = resolveDefaultTestConcurrency();
 
@@ -42,11 +43,16 @@ export function buildNodeTestArgs(testPaths, env = process.env) {
 
 async function main() {
   const args = buildNodeTestArgs(process.argv.slice(2));
+  const env = {
+    ...process.env,
+    AA_AUDIT_INTEGRITY_HMAC_KEY:
+      process.env.AA_AUDIT_INTEGRITY_HMAC_KEY ?? DEFAULT_TEST_AUDIT_INTEGRITY_HMAC_KEY,
+  };
 
   const exitCode = await new Promise((resolvePromise, rejectPromise) => {
     const child = spawn(process.execPath, args, {
       cwd: process.cwd(),
-      env: process.env,
+      env,
       stdio: "inherit",
     });
 

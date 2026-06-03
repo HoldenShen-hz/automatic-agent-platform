@@ -29,6 +29,7 @@ const DEFAULT_LAYER_FILE_SLICE = Object.freeze({
   offset: 0,
   limit: null,
 });
+const DEFAULT_TEST_AUDIT_INTEGRITY_HMAC_KEY = "testing-audit-integrity-key-012345";
 
 export const LAYER_DEFINITIONS = {
   leaks: {
@@ -278,6 +279,7 @@ function buildChildEnv() {
       delete env[key];
     }
   }
+  env.AA_AUDIT_INTEGRITY_HMAC_KEY ??= DEFAULT_TEST_AUDIT_INTEGRITY_HMAC_KEY;
   return env;
 }
 

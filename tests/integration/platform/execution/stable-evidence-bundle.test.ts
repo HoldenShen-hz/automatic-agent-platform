@@ -6,7 +6,9 @@ import test from "node:test";
 import { createStableEvidenceBundle } from "../../../../src/platform/shared/stability/stable-evidence-bundle.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-test("stable evidence bundle writes local artifacts and passes a short smoke profile", async () => {
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
+test("stable evidence bundle writes local artifacts and truthfully reports short smoke gaps", async () => {
   const workspace = createTempWorkspace("aa-evidence-");
   const outputDir = join(workspace, "stable-evidence");
 
@@ -22,7 +24,7 @@ test("stable evidence bundle writes local artifacts and passes a short smoke pro
       },
     });
 
-    assert.equal(report.summary.passed, true);
+    assert.equal(report.summary.passed, false);
     assert.equal(report.summary.chaosPassed, true);
     assert.equal(report.summary.promptInjectionPassed, true);
     assert.equal(report.summary.concurrencyPassed, true);
@@ -35,7 +37,7 @@ test("stable evidence bundle writes local artifacts and passes a short smoke pro
     assert.equal(report.summary.eventReplayPassed, true);
     assert.equal(report.summary.dbQueueDisconnectPassed, true);
     assert.equal(report.summary.dbWritabilityPassed, true);
-    assert.equal(report.summary.queueDeliveryPassed, true);
+    assert.equal(report.summary.queueDeliveryPassed, false);
     assert.equal(report.summary.migrationCompatibilityPassed, true);
     assert.equal(report.summary.validationPassed, true);
     assert.equal(report.summary.soakPassed, true);
@@ -64,7 +66,7 @@ test("stable evidence bundle writes local artifacts and passes a short smoke pro
     assert.equal(report.summary.failedGrayReleaseScenarios, 0);
     assert.equal(report.summary.failedDbQueueDisconnectScenarios, 0);
     assert.equal(report.summary.failedDbWritabilityScenarios, 0);
-    assert.equal(report.summary.failedQueueDeliveryScenarios, 0);
+    assert.equal(report.summary.failedQueueDeliveryScenarios, 1);
     assert.equal(report.summary.failedMigrationCompatibilityScenarios, 0);
     assert.equal(report.summary.failedRollbackScenarios, 0);
 
@@ -117,7 +119,7 @@ test("stable evidence bundle writes local artifacts and passes a short smoke pro
         schemaVersion: { upToDate: boolean };
       };
     };
-    assert.equal(saved.summary.passed, true);
+    assert.equal(saved.summary.passed, false);
     assert.equal(saved.artifacts.acceptanceReportPath, report.artifacts.acceptanceReportPath);
     assert.equal(saved.artifacts.backupRestorePlaybookPath, report.artifacts.backupRestorePlaybookPath);
     assert.equal(saved.artifacts.rollingUpgradePlaybookPath, report.artifacts.rollingUpgradePlaybookPath);

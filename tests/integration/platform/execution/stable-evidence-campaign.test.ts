@@ -6,7 +6,9 @@ import test from "node:test";
 import { runStableEvidenceCampaign } from "../../../../src/platform/shared/stability/stable-evidence-campaign.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-test("stable evidence campaign accumulates segments and finalizes a resumable long-run bundle", async () => {
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
+test("stable evidence campaign completes a resumable 24h bundle but truthfully reports partial acceptance on short runs", async () => {
   const workspace = createTempWorkspace("aa-stable-campaign-");
 
   try {
@@ -40,7 +42,8 @@ test("stable evidence campaign accumulates segments and finalizes a resumable lo
     assert.equal(second.state.remainingDurationMs, 0);
     assert.equal(second.state.segments.length, 2);
     assert.equal(second.finalEvidenceReport?.profile.name, "24h");
-    assert.equal(second.finalEvidenceReport?.summary.passed, true);
+    assert.equal(second.finalEvidenceReport?.summary.passed, false);
+    assert.equal(second.finalEvidenceReport?.acceptanceLine.status, "partial");
     assert.equal(existsSync(join(workspace, "stable-evidence-report.json")), true);
     assert.equal(existsSync(join(workspace, "stable-evidence-campaign-state.json")), true);
   } finally {

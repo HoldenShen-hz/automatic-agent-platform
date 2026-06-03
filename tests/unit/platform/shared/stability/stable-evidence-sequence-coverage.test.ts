@@ -17,6 +17,8 @@ import {
 } from "../../../../../src/platform/shared/stability/stable-evidence-sequence.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 test("runStableEvidenceSequenceUntilComplete exits when blocked [stable-evidence-sequence-coverage]", async () => {
   const workspace = createTempWorkspace("aa-seq-until-blocked-");
   const evidenceRoot = `${workspace}/evidence`;
