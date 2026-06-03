@@ -118,7 +118,6 @@ test("SqliteQueueAdapter stats returns correct counts for each status [sqlite-qu
     assert.equal(stats.delayed, 1); // 1 delayed (id 3)
     assert.equal(stats.active, 0); // dequeued job was completed
     assert.equal(stats.completed, 1); // ack moved to completed
-    assert.equal(stats.failed, 0);
     assert.equal(stats.deadLetter, 0);
   } finally {
     harness.db.close();
@@ -136,7 +135,6 @@ test("SqliteQueueAdapter stats returns zeros for empty queue [sqlite-queue-adapt
     assert.equal(stats.delayed, 0);
     assert.equal(stats.active, 0);
     assert.equal(stats.completed, 0);
-    assert.equal(stats.failed, 0);
     assert.equal(stats.deadLetter, 0);
   } finally {
     harness.db.close();
@@ -225,8 +223,9 @@ test("SqliteQueueAdapter nack with error message stores the error [sqlite-queue-
     dequeued.nack("custom error message");
 
     const stored = adapter.getJob(job.id);
-    assert.equal(stored?.status, "waiting"); // goes back to waiting since attempts < maxAttempts
+    assert.equal(stored?.status, "delayed");
     assert.equal(stored?.lastError, "custom error message");
+    assert.ok(stored?.delayUntil);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);

@@ -105,6 +105,7 @@ export function createOrchestrationBootstrapState(
   const traceId = newId("trace");
   const traceContext = createRootTraceContext({ traceId, correlationId: taskId });
   const now = nowIso();
+  const riskClass = "medium";
 
   return {
     taskId,
@@ -120,8 +121,8 @@ export function createOrchestrationBootstrapState(
       status: "queued",
       source: "user",
       priority: "normal",
-      inputJson: JSON.stringify({ request: input.request }),
-      normalizedInputJson: JSON.stringify({ request: input.request.trim() }),
+      inputJson: JSON.stringify({ request: input.request, riskClass }),
+      normalizedInputJson: JSON.stringify({ request: input.request.trim(), riskClass }),
       outputJson: null,
       estimatedCostUsd: 0.05,
       actualCostUsd: 0,

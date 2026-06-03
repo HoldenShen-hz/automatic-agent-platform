@@ -125,7 +125,7 @@ test("ack marks job as completed [queue-operation]", () => {
   }
 });
 
-test("nack without error requeues job when under maxAttempts [queue-operation]", () => {
+test("nack without error moves job into delayed retry when under maxAttempts [queue-operation]", () => {
   const h = createTestHarness("aa-op-nack-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -135,10 +135,10 @@ test("nack without error requeues job when under maxAttempts [queue-operation]",
     assert.ok(r1);
     r1.nack();
 
-    const r2 = adapter.dequeue("tasks");
-    assert.ok(r2);
-    assert.equal(r2.job.attempts, 2);
-    r2.ack();
+    const job = adapter.getJob(r1.job.id);
+    assert.equal(job?.status, "delayed");
+    assert.equal(job?.attempts, 1);
+    assert.ok(job?.delayUntil);
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

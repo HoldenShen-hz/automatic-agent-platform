@@ -23,6 +23,7 @@ export function persistHarnessRunBootstrap(params: {
   plannedWorkflow: ReturnType<WorkflowPlanner["plan"]>;
 }): string {
   const { db, store, input, taskId, traceId, plannedWorkflow } = params;
+  const budgetHardCap = Math.max(1, plannedWorkflow.executionSteps.length);
   const harnessRun = createHarnessRun({
     tenantId: input.tenantId ?? "tenant:local",
     traceId,
@@ -40,63 +41,61 @@ export function persistHarnessRunBootstrap(params: {
   });
   const harnessRunId = harnessRun.harnessRunId;
 
-  db.connection.prepare(
-    `INSERT INTO harness_runs (harness_run_id, tenant_id, org_id, trace_id, goal, risk_level, status, domain_id,
-      confirmed_task_spec_id, request_envelope_id, request_hash, constraint_pack_ref, version_lock_id,
-      budget_ledger_id, current_seq, created_at, updated_at, fencing_token)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    harnessRun.harnessRunId,
-    harnessRun.tenantId,
-    harnessRun.orgId,
-    harnessRun.traceId,
-    harnessRun.goal ?? null,
-    harnessRun.riskLevel,
-    harnessRun.status,
-    harnessRun.domainId,
-    harnessRun.confirmedTaskSpecId,
-    harnessRun.requestEnvelopeId,
-    harnessRun.requestHash,
-    harnessRun.constraintPackRef,
-    harnessRun.versionLockId,
-    harnessRun.budgetLedgerId,
-    harnessRun.currentSeq,
-    harnessRun.createdAt,
-    harnessRun.updatedAt,
-    harnessRun.fencingToken,
-  );
+  db.transaction(() => {
+    db.connection.prepare(
+      `INSERT INTO harness_runs (harness_run_id, tenant_id, org_id, trace_id, goal, risk_level, status, domain_id,
+        confirmed_task_spec_id, request_envelope_id, request_hash, constraint_pack_ref, version_lock_id,
+        budget_ledger_id, current_seq, created_at, updated_at, fencing_token)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      harnessRun.harnessRunId,
+      harnessRun.tenantId,
+      harnessRun.orgId,
+      harnessRun.traceId,
+      harnessRun.goal ?? null,
+      harnessRun.riskLevel,
+      harnessRun.status,
+      harnessRun.domainId,
+      harnessRun.confirmedTaskSpecId,
+      harnessRun.requestEnvelopeId,
+      harnessRun.requestHash,
+      harnessRun.constraintPackRef,
+      harnessRun.versionLockId,
+      harnessRun.budgetLedgerId,
+      harnessRun.currentSeq,
+      harnessRun.createdAt,
+      harnessRun.updatedAt,
+      harnessRun.fencingToken,
+    );
 
-  store.event.insertEvent({
-    id: newId("evt"),
-    taskId,
-    executionId: null,
-    eventType: "platform.harness_run.status_changed",
-    eventTier: "tier_2",
-    payloadJson: JSON.stringify({
-      harnessRunId,
-      fromStatus: null,
-      toStatus: "created",
-      planGraphBundleId: input.harnessRunId ?? null,
-    }),
-    traceId,
-    createdAt: nowIso(),
-    schemaVersion: "1.0",
-    aggregateId: harnessRunId,
-    runId: harnessRunId,
-    sequence: null,
-    causationId: null,
-    correlationId: taskId,
-    payloadHash: null,
-    idempotencyKey: `harness_run_created:${harnessRunId}`,
-    replayBehavior: "replay_as_fact",
-    principal: "system",
-    evidenceRefs: [] as readonly string[],
-  });
+    store.event.insertEvent({
+      id: newId("evt"),
+      taskId,
+      executionId: null,
+      eventType: "platform.harness_run.status_changed",
+      eventTier: "tier_2",
+      payloadJson: JSON.stringify({
+        harnessRunId,
+        fromStatus: null,
+        toStatus: "created",
+        planGraphBundleId: input.harnessRunId ?? null,
+      }),
+      traceId,
+      createdAt: nowIso(),
+      schemaVersion: "1.0",
+      aggregateId: harnessRunId,
+      runId: harnessRunId,
+      sequence: null,
+      causationId: null,
+      correlationId: taskId,
+      payloadHash: null,
+      idempotencyKey: `harness_run_created:${harnessRunId}`,
+      replayBehavior: "replay_as_fact",
+      principal: "system",
+      evidenceRefs: [] as readonly string[],
+    });
 
-  if (harnessRun.budgetLedgerId) {
-    // Reserve 1 unit for harness bootstrap plus at least 1 per execution step.
-    const budgetHardCap = Math.max(plannedWorkflow.executionSteps.length + 1, 2);
-    db.transaction(() => {
+    if (harnessRun.budgetLedgerId) {
       ensureBudgetLedger({
         connection: db.connection,
         budgetLedgerId: harnessRun.budgetLedgerId,
@@ -117,8 +116,8 @@ export function persistHarnessRunBootstrap(params: {
           principal: "multi-step-orchestration",
         },
       });
-    });
-  }
+    }
+  });
 
   return harnessRunId;
 }

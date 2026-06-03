@@ -376,11 +376,7 @@ test("createQueueAdapter redis throws for unsupported sync operations [queue-ada
 
   assert.equal(adapter.backendKind, "redis");
 
-  // enqueue works synchronously
-  const job = adapter.enqueue({ queueName: "q", payload: { test: true } });
-  assert.ok(job);
-
-  // All sync methods throw not-supported errors
+  assert.throws(() => adapter.enqueue({ queueName: "q", payload: { test: true } }), /sync_enqueue_not_supported/);
   assert.throws(() => adapter.dequeue("q"), /sync_dequeue_not_supported/);
   assert.throws(() => adapter.getJob("x"), /sync_getJob_not_supported/);
   assert.throws(() => adapter.listJobs("q"), /sync_listJobs_not_supported/);

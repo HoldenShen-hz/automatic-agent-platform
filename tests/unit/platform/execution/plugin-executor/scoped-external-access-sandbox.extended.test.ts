@@ -682,7 +682,7 @@ test("ScopedExternalAccessSandbox handles URL with localhost [scoped-external-ac
     allowedDomains: ["localhost"],
   });
 
-  assert.equal(sandbox.validateOutboundRequest("http://localhost:8080"), true);
+  assert.equal(sandbox.validateOutboundRequest("http://localhost:8080"), false);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

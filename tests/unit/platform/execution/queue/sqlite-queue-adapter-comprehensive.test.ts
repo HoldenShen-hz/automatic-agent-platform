@@ -102,7 +102,7 @@ test("SqliteQueueAdapter ack moves job to completed [sqlite-queue-adapter-compre
   }
 });
 
-test("SqliteQueueAdapter nack without max attempts returns to waiting [sqlite-queue-adapter-comprehensive]", () => {
+test("SqliteQueueAdapter nack without max attempts schedules delayed retry [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("nack-waiting-");
   try {
     const { adapter } = harness;
@@ -115,8 +115,9 @@ test("SqliteQueueAdapter nack without max attempts returns to waiting [sqlite-qu
 
     const stored = adapter.getJob(dequeued.job.id);
     assert.ok(stored);
-    assert.equal(stored.status, "waiting");
+    assert.equal(stored.status, "delayed");
     assert.equal(stored.lastError, "temporary failure");
+    assert.ok(stored.delayUntil);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);
@@ -134,6 +135,9 @@ test("SqliteQueueAdapter nack at max attempts moves to dead letter [sqlite-queue
     const dequeued1 = adapter.dequeue("tasks");
     assert.ok(dequeued1);
     dequeued1.nack();
+    harness.db.connection
+      .prepare("UPDATE queue_jobs SET delay_until = ? WHERE id = ?")
+      .run(new Date(Date.now() - 1_000).toISOString(), dequeued1.job.id);
 
     // Second attempt
     const dequeued2 = adapter.dequeue("tasks");
@@ -235,22 +239,22 @@ test("SqliteQueueAdapter moveToDeadLetter updates job status [sqlite-queue-adapt
   }
 });
 
-test("SqliteQueueAdapter retryJob resets failed job to waiting [sqlite-queue-adapter-comprehensive]", () => {
+test("SqliteQueueAdapter retryJob resets delayed job to waiting [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("retry-");
   try {
     const { adapter } = harness;
 
     const job = adapter.enqueue({ queueName: "tasks", payload: { id: "test" }, maxAttempts: 3 });
 
-    // Move to failed state directly
+    // Current implementation retries delayed/dead-letter jobs.
     harness.db.connection
-      .prepare(`UPDATE queue_jobs SET status = 'failed', attempts = 3 WHERE id = ?`)
-      .run(job.id);
+      .prepare(`UPDATE queue_jobs SET status = 'delayed', attempts = 1, delay_until = ? WHERE id = ?`)
+      .run(new Date(Date.now() + 60_000).toISOString(), job.id);
 
     const retried = adapter.retryJob(job.id);
     assert.ok(retried);
     assert.equal(retried.status, "waiting");
-    assert.equal(retried.attempts, 3);
+    assert.equal(retried.attempts, 1);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);

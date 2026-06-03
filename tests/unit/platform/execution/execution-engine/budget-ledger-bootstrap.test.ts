@@ -43,12 +43,28 @@ test("single-task execution seeds budget ledger before reserving budget [budget-
 test("multi-step execution seeds budget ledger before reserving budget [budget-ledger-bootstrap]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "multi-step-budget-ledger-"));
   const dbPath = join(tempDir, "runtime.db");
+  const planSteps = [
+    {
+      stepId: "collect_input",
+      dependencies: [],
+      outputs: ["collected_input"],
+      timeout: 30_000,
+      retryPolicy: { maxRetries: 0 },
+    },
+    {
+      stepId: "write_summary",
+      dependencies: ["collect_input"],
+      outputs: ["final"],
+      timeout: 30_000,
+      retryPolicy: { maxRetries: 0 },
+    },
+  ];
 
   try {
     const result = await runMultiStepOrchestration({
       dbPath,
       title: "Budget ledger bootstrap",
-      request: "Verify orchestration budget ledger bootstrap",
+      request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
     });
     const storage = openAuthoritativeStorageContext({ dbPath });
     try {

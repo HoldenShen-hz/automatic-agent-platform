@@ -75,7 +75,7 @@ test("queue ack moves job to completed [queue]", () => {
   }
 });
 
-test("queue nack increments attempts and returns to waiting [queue]", () => {
+test("queue nack increments attempts and moves job into delayed retry [queue]", () => {
   const h = createHarness("aa-queue-nack-");
   try {
     const job = h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 }, maxAttempts: 3 });
@@ -84,9 +84,10 @@ test("queue nack increments attempts and returns to waiting [queue]", () => {
     result.nack("test error");
 
     const retried = h.adapter.getJob(job.id);
-    assert.equal(retried?.status, "waiting");
+    assert.equal(retried?.status, "delayed");
     assert.equal(retried?.attempts, 1);
     assert.equal(retried?.lastError, "test error");
+    assert.ok(retried?.delayUntil);
   } finally {
     h.db.close();
     cleanupPath(h.workspace);
@@ -277,7 +278,6 @@ test("queue stats returns correct counts for each status [queue]", () => {
     assert.equal(stats.delayed, 1);
     assert.equal(stats.active, 0);
     assert.equal(stats.completed, 1);
-    assert.equal(stats.failed, 0);
     assert.equal(stats.deadLetter, 0);
   } finally {
     h.db.close();
@@ -293,7 +293,6 @@ test("queue stats returns zeros for empty queue [queue]", () => {
     assert.equal(stats.delayed, 0);
     assert.equal(stats.active, 0);
     assert.equal(stats.completed, 0);
-    assert.equal(stats.failed, 0);
     assert.equal(stats.deadLetter, 0);
   } finally {
     h.db.close();
@@ -378,6 +377,9 @@ test("queue dequeue respects maxAttempts from enqueue input [queue]", () => {
     const r1 = h.adapter.dequeue("tasks");
     assert.ok(r1);
     r1.nack("error 1");
+    h.db.connection
+      .prepare("UPDATE queue_jobs SET delay_until = ? WHERE id = ?")
+      .run(new Date(Date.now() - 1_000).toISOString(), r1.job.id);
 
     const r2 = h.adapter.dequeue("tasks");
     assert.ok(r2);

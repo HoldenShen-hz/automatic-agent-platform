@@ -76,6 +76,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         priority: bootstrap.task.priority,
         estimatedCostUsd: bootstrap.task.estimatedCostUsd,
         budgetRemainingUsd: plannedWorkflow.executionSteps.length,
+        riskClass: "medium",
       });
 
       const earlyResult = handleAdmissionDecision({

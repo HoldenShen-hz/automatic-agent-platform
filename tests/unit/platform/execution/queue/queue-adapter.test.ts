@@ -125,6 +125,9 @@ test("sqlite queue adapter nack with max attempts routes to dead letter [queue-a
     const r1 = adapter.dequeue("q");
     assert.ok(r1);
     r1.nack("transient_error");
+    h.db.connection
+      .prepare("UPDATE queue_jobs SET delay_until = ? WHERE id = ?")
+      .run(new Date(Date.now() - 1_000).toISOString(), r1.job.id);
 
     // Second attempt — nack again → dead letter
     const r2 = adapter.dequeue("q");
@@ -252,12 +255,7 @@ test("redis queue adapter sync methods throw not-supported errors [queue-adapter
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   assert.equal(adapter.backendKind, "redis");
 
-  // enqueue works (fire-and-forget) - it doesn't throw
-  const job = adapter.enqueue({ queueName: "q", payload: { test: true } });
-  assert.ok(job);
-  assert.equal(job.queueName, "q");
-
-  // Sync methods throw not-supported errors
+  assert.throws(() => adapter.enqueue({ queueName: "q", payload: { test: true } }), /sync_enqueue_not_supported/);
   assert.throws(() => adapter.dequeue("q"), /sync_dequeue_not_supported/);
   assert.throws(() => adapter.getJob("x"), /sync_getJob_not_supported/);
   assert.throws(() => adapter.listJobs("q"), /sync_listJobs_not_supported/);

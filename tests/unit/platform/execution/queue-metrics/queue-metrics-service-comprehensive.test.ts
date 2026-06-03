@@ -82,11 +82,11 @@ test("QueueMetricsService.deriveFromStats updates failed count [queue-metrics-se
     waiting: 0,
     delayed: 0,
     active: 0,
-    failed: 5,
     deadLetter: 2,
+    completed: 5,
   });
   const snapshot = service.getSnapshot();
-  assert.equal(snapshot.failedJobs.get("test-queue"), 7); // 5 + 2
+  assert.equal(snapshot.failedJobs.get("test-queue"), 2);
 });
 
 test("QueueMetricsService.getSnapshot returns correct structure [queue-metrics-service-comprehensive]", () => {

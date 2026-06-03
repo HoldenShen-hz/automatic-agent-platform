@@ -24,6 +24,11 @@ import type {
   EnqueueInput,
 } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 
+function assertRedisSyncEnqueueUnsupported(input: EnqueueInput): void {
+  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  assert.throws(() => adapter.enqueue(input), /sync_enqueue_not_supported/);
+}
+
 // =============================================================================
 // Queue Partitioner Edge Cases
 // =============================================================================
@@ -191,115 +196,75 @@ test("createQueueAdapter throws ValidationError with correct code for missing sq
 // =============================================================================
 
 test("RedisQueueAdapter enqueue with empty payload is stringified [queue-adapter-edge-cases]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({ queueName: "q", payload: "" });
-  // Empty string becomes '""' after JSON.stringify
-  assert.equal(job.payload, '""');
-  assert.equal(job.status, "waiting");
+  assertRedisSyncEnqueueUnsupported({ queueName: "q", payload: "" });
 });
 
 test("RedisQueueAdapter enqueue with complex nested payload [queue-adapter-edge-cases]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const complexPayload = {
     nested: { deep: { value: 123 } },
     array: [1, 2, 3],
     bool: true,
     null: null,
   };
-  const job = adapter.enqueue({ queueName: "q", payload: complexPayload });
-  const parsed = JSON.parse(job.payload);
-  assert.equal(parsed.nested.deep.value, 123);
-  assert.deepEqual(parsed.array, [1, 2, 3]);
+  assertRedisSyncEnqueueUnsupported({ queueName: "q", payload: complexPayload });
 });
 
 test("RedisQueueAdapter enqueue with negative priority [queue-adapter-edge-cases]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({ queueName: "q", payload: "test", priority: -10 });
-  assert.equal(job.priority, -10);
+  assertRedisSyncEnqueueUnsupported({ queueName: "q", payload: "test", priority: -10 });
 });
 
 test("RedisQueueAdapter enqueue with zero maxAttempts [queue-adapter-edge-cases]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({ queueName: "q", payload: "test", maxAttempts: 0 });
-  assert.equal(job.maxAttempts, 0);
+  assertRedisSyncEnqueueUnsupported({ queueName: "q", payload: "test", maxAttempts: 0 });
 });
 
 test("RedisQueueAdapter enqueue with very large maxAttempts [queue-adapter-edge-cases]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({ queueName: "q", payload: "test", maxAttempts: 1000 });
-  assert.equal(job.maxAttempts, 1000);
+  assertRedisSyncEnqueueUnsupported({ queueName: "q", payload: "test", maxAttempts: 1000 });
 });
 
 test("RedisQueueAdapter sync enqueue generates unique ids [queue-adapter-edge-cases]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job1 = adapter.enqueue({ queueName: "q", payload: "test1" });
-  const job2 = adapter.enqueue({ queueName: "q", payload: "test2" });
-  const job3 = adapter.enqueue({ queueName: "q", payload: "test3" });
-  assert.notEqual(job1.id, job2.id);
-  assert.notEqual(job2.id, job3.id);
-  assert.notEqual(job1.id, job3.id);
+  assertRedisSyncEnqueueUnsupported({ queueName: "q", payload: "test1" });
 });
 
 test("RedisQueueAdapter enqueue stores correct idempotencyKey [queue-adapter-edge-cases]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({
+  assertRedisSyncEnqueueUnsupported({
     queueName: "q",
     payload: "test",
     idempotencyKey: "my-unique-key",
   });
-  assert.equal(job.idempotencyKey, "my-unique-key");
 });
 
 test("RedisQueueAdapter enqueue with null idempotencyKey [queue-adapter-edge-cases]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({
+  assertRedisSyncEnqueueUnsupported({
     queueName: "q",
     payload: "test",
     idempotencyKey: null,
   });
-  assert.equal(job.idempotencyKey, null);
 });
 
 test("RedisQueueAdapter enqueue with delayUntil in the past becomes waiting [queue-adapter-edge-cases]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const pastDate = new Date(Date.now() - 10000).toISOString();
-  const job = adapter.enqueue({ queueName: "q", payload: "test", delayUntil: pastDate });
-  assert.equal(job.status, "waiting");
-  assert.ok(job.delayUntil !== null);
+  assertRedisSyncEnqueueUnsupported({ queueName: "q", payload: "test", delayUntil: pastDate });
 });
 
 test("RedisQueueAdapter enqueue with delayUntil far in the future becomes delayed [queue-adapter-edge-cases]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const futureDate = new Date(Date.now() + 86400000).toISOString(); // 1 day
-  const job = adapter.enqueue({ queueName: "q", payload: "test", delayUntil: futureDate });
-  assert.equal(job.status, "delayed");
-  assert.equal(job.delayUntil, futureDate);
+  assertRedisSyncEnqueueUnsupported({ queueName: "q", payload: "test", delayUntil: futureDate });
 });
 
 test("RedisQueueAdapter enqueue createdAt and updatedAt are set [queue-adapter-edge-cases]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({ queueName: "q", payload: "test" });
-  assert.ok(job.createdAt);
-  assert.ok(job.updatedAt);
-  assert.equal(job.createdAt, job.updatedAt);
+  assertRedisSyncEnqueueUnsupported({ queueName: "q", payload: "test" });
 });
 
 test("RedisQueueAdapter enqueue completedAt is null initially [queue-adapter-edge-cases]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({ queueName: "q", payload: "test" });
-  assert.equal(job.completedAt, null);
+  assertRedisSyncEnqueueUnsupported({ queueName: "q", payload: "test" });
 });
 
 test("RedisQueueAdapter enqueue lastError is null initially [queue-adapter-edge-cases]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({ queueName: "q", payload: "test" });
-  assert.equal(job.lastError, null);
+  assertRedisSyncEnqueueUnsupported({ queueName: "q", payload: "test" });
 });
 
 test("RedisQueueAdapter enqueue attempts is 0 initially [queue-adapter-edge-cases]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const job = adapter.enqueue({ queueName: "q", payload: "test" });
-  assert.equal(job.attempts, 0);
+  assertRedisSyncEnqueueUnsupported({ queueName: "q", payload: "test" });
 });
 
 test("RedisQueueAdapter close with status ready calls quit [queue-adapter-edge-cases]", async () => {

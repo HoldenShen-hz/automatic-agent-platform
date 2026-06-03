@@ -241,14 +241,20 @@ test("priority-queue: nack requeues with same priority [priority-queue]", () => 
   const harness = createHarness("aa-priority-nack-");
   try {
     const { adapter } = harness;
-    adapter.enqueue({ queueName: "tasks", payload: { id: 1 }, priority: 5, maxAttempts: 2 });
+    const job = adapter.enqueue({ queueName: "tasks", payload: { id: 1 }, priority: 5, maxAttempts: 2 });
 
     const first = adapter.dequeue("tasks");
     assert.ok(first);
     assert.equal(first.job.priority, 5);
     first.nack("test error");
 
-    // Job should be back in queue with same priority
+    const requeued = adapter.getJob(job.id);
+    assert.equal(requeued?.status, "delayed");
+    assert.equal(requeued?.priority, 5);
+
+    adapter.retryJob(job.id);
+
+    // Retried job should be back in queue with same priority
     const second = adapter.dequeue("tasks");
     assert.ok(second);
     assert.equal(JSON.parse(second!.job.payload).id, 1);

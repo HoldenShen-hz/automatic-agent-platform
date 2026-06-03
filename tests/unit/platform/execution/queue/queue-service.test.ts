@@ -86,7 +86,7 @@ test("queue-service: ack completes the job [queue-service]", () => {
   }
 });
 
-test("queue-service: nack requeues job when attempts remain [queue-service]", () => {
+test("queue-service: nack delays job when attempts remain [queue-service]", () => {
   const harness = createHarness("aa-queue-service-nack-");
   try {
     const { adapter } = harness;
@@ -97,9 +97,10 @@ test("queue-service: nack requeues job when attempts remain [queue-service]", ()
     result.nack("test error");
 
     const job = adapter.getJob(result.job.id);
-    assert.equal(job?.status, "waiting");
+    assert.equal(job?.status, "delayed");
     assert.equal(job?.lastError, "test error");
     assert.equal(job?.attempts, 1); // attempt was already incremented on dequeue
+    assert.ok(job?.delayUntil);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);
@@ -251,7 +252,6 @@ test("queue-service: stats returns correct counts [queue-service]", () => {
     assert.equal(stats.completed, 1);
     assert.equal(stats.delayed, 0);
     assert.equal(stats.deadLetter, 0);
-    assert.equal(stats.failed, 0);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);

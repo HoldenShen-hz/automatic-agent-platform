@@ -24,7 +24,11 @@ function createMockDb(rows: RawRow[] = []): AuthoritativeSqlDatabase {
           run: (..._args: unknown[]) => {
             const id = _args[0] as string;
             const [queue_name, payload, status, priority, attempts, max_attempts, last_error, delay_until, idempotency_key, created_at, updated_at, completed_at] = _args.slice(1, 13);
-            if (!data.find(r => r.id === id)) {
+            const existingById = data.find(r => r.id === id);
+            const existingByIdempotencyKey = idempotency_key == null
+              ? null
+              : data.find(r => r.queue_name === queue_name && r.idempotency_key === idempotency_key);
+            if (!existingById && !existingByIdempotencyKey) {
               data.push({
                 id,
                 queue_name,
@@ -40,7 +44,9 @@ function createMockDb(rows: RawRow[] = []): AuthoritativeSqlDatabase {
                 updated_at,
                 completed_at,
               });
+              return { changes: 1 };
             }
+            return { changes: 0 };
           },
         };
       },

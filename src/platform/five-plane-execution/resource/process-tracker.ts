@@ -189,6 +189,12 @@ export class ProcessTracker {
       return false;
     }
 
+    if (tracked.state === 'exited') {
+      this.processes.delete(pid);
+      logDebug('Skipping signal for already-exited process', { pid, signal, owner: tracked.owner });
+      return true;
+    }
+
     try {
       tracked.lastSignal = signal;
       tracked.killRequestedAt = Date.now();

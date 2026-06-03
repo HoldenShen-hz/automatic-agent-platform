@@ -49,8 +49,14 @@ function createMockDb(rows: RawRow[] = []): AuthoritativeSqlDatabase {
           return {
             run: (...args: unknown[]) => {
               data = data.map(r => {
-                if (r.id === args[1]) {
-                  return { ...r, status: "active", attempts: (Number(r.attempts) || 0) + 1, updated_at: args[0] };
+                if (r.id === args[2]) {
+                  return {
+                    ...r,
+                    status: "active",
+                    attempts: (Number(r.attempts) || 0) + 1,
+                    delay_until: args[0],
+                    updated_at: args[1],
+                  };
                 }
                 return r;
               });
@@ -91,13 +97,19 @@ function createMockDb(rows: RawRow[] = []): AuthoritativeSqlDatabase {
             },
           };
         }
-        // Handle UPDATE for waiting (nack with retries remaining) - nack does NOT reset attempts
-        if (_sql.includes("UPDATE queue_jobs SET status = 'waiting'") && _sql.includes("last_error")) {
+        // Handle UPDATE for delayed retry (nack with retries remaining)
+        if (_sql.includes("UPDATE queue_jobs SET status = 'delayed'")) {
           return {
             run: (...args: unknown[]) => {
               data = data.map(r => {
-                if (r.id === args[2]) {
-                  return { ...r, status: "waiting", last_error: args[0], updated_at: args[1] };
+                if (r.id === args[3]) {
+                  return {
+                    ...r,
+                    status: "delayed",
+                    last_error: args[0],
+                    delay_until: args[1],
+                    updated_at: args[2],
+                  };
                 }
                 return r;
               });
@@ -220,7 +232,7 @@ test("ack marks job as completed [dequeue]", () => {
   assert.ok(job?.completedAt);
 });
 
-test("nack without error retries job when under maxAttempts [dequeue]", () => {
+test("nack without error schedules delayed retry when under maxAttempts [dequeue]", () => {
   const db = createMockDb([{
     id: "qjob_1",
     queue_name: "q",
@@ -241,15 +253,13 @@ test("nack without error retries job when under maxAttempts [dequeue]", () => {
   assert.ok(result, "dequeue should return a job");
   result.nack();
   const job = adapter.getJob("qjob_1");
-  assert.equal(job?.status, "waiting");
-  // After nack, attempts stays at 1 (nack does not reset attempts)
-  // dequeue again to verify job is back in rotation
-  const result2 = adapter.dequeue("q");
-  assert.ok(result2);
-  assert.equal(result2.job.attempts, 2);
+  assert.equal(job?.status, "delayed");
+  assert.equal(job?.attempts, 1);
+  assert.equal(job?.lastError, null);
+  assert.ok(job?.delayUntil);
 });
 
-test("nack with error retries job with lastError set [dequeue]", () => {
+test("nack with error schedules delayed retry with lastError set [dequeue]", () => {
   const db = createMockDb([{
     id: "qjob_1",
     queue_name: "q",
@@ -270,7 +280,7 @@ test("nack with error retries job with lastError set [dequeue]", () => {
   assert.ok(result, "dequeue should return a job");
   result.nack("transient_error");
   const job = adapter.getJob("qjob_1");
-  assert.equal(job?.status, "waiting");
+  assert.equal(job?.status, "delayed");
   assert.equal(job?.lastError, "transient_error");
 });
 
@@ -282,7 +292,7 @@ test("nack moves job to dead letter when maxAttempts exceeded [dequeue]", () => 
     status: "waiting",
     priority: 0,
     attempts: 0,
-    max_attempts: 3,
+    max_attempts: 1,
     last_error: null,
     delay_until: null,
     idempotency_key: null,
@@ -293,18 +303,7 @@ test("nack moves job to dead letter when maxAttempts exceeded [dequeue]", () => 
   const adapter = new SqliteQueueAdapter(db);
   const result = adapter.dequeue("q");
   assert.ok(result, "dequeue should return a job");
-  result.nack("still_failing");
-  // First nack: attempts=1 (< max_attempts=3), back to waiting
-  const job1 = adapter.getJob("qjob_1");
-  assert.equal(job1?.status, "waiting");
-  // Second dequeue + nack
-  const result2 = adapter.dequeue("q");
-  assert.ok(result2);
-  result2.nack("still_failing");
-  // Third dequeue + nack -> attempts=3 == max_attempts=3 -> dead_letter
-  const result3 = adapter.dequeue("q");
-  assert.ok(result3);
-  result3.nack("final_failure");
+  result.nack("final_failure");
   const job = adapter.getJob("qjob_1");
   assert.equal(job?.status, "dead_letter");
   assert.equal(job?.lastError, "final_failure");
@@ -356,7 +355,7 @@ test("ack returns void (no error thrown) [dequeue]", () => {
   assert.doesNotThrow(() => result.ack());
 });
 
-test("nack with default error uses max_attempts_exceeded [dequeue]", () => {
+test("nack with default error uses max_attempts_exceeded when dead-lettering [dequeue]", () => {
   const db = createMockDb([{
     id: "qjob_1",
     queue_name: "q",
@@ -364,7 +363,7 @@ test("nack with default error uses max_attempts_exceeded [dequeue]", () => {
     status: "waiting",
     priority: 0,
     attempts: 0,
-    max_attempts: 3,
+    max_attempts: 1,
     last_error: null,
     delay_until: null,
     idempotency_key: null,
@@ -375,14 +374,7 @@ test("nack with default error uses max_attempts_exceeded [dequeue]", () => {
   const adapter = new SqliteQueueAdapter(db);
   const result = adapter.dequeue("q");
   assert.ok(result, "dequeue should return a job");
-  result.nack("still_failing");
-  // Now retry and nack two more times to hit dead letter
-  const result2 = adapter.dequeue("q");
-  assert.ok(result2);
-  result2.nack();
-  const result3 = adapter.dequeue("q");
-  assert.ok(result3);
-  result3.nack();
+  result.nack();
   const job = adapter.getJob("qjob_1");
   assert.equal(job?.status, "dead_letter");
   assert.equal(job?.lastError, "max_attempts_exceeded");
