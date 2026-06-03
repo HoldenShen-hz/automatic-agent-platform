@@ -83,7 +83,15 @@ test("access model rejects manual takeover for non-operator roles", () => {
     principalType: "agent",
     roles: ["agent_runtime"],
     action: "invoke_model",
-    context: { manualTakeoverActive: true },
+    context: {
+      manualTakeoverActive: true,
+      tenantId: "tenant-123",
+      originalPrincipal: {
+        type: "agent",
+        roles: ["agent_runtime"],
+        tenantId: "tenant-123",
+      },
+    },
   });
 
   assert.equal(decision.allowed, false);

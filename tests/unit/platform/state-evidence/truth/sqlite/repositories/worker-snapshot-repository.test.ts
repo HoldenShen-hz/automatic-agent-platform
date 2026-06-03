@@ -197,7 +197,7 @@ test("WorkerSnapshotRepository has listHeartbeatSnapshotsByExecution method", ()
 test("WorkerSnapshotRecord has correct structure", () => {
   const snapshot = createMockWorkerSnapshot();
   assert.equal(snapshot.workerId, "worker-1");
-  assert.equal(snapshot.status, "active");
+  assert.equal(snapshot.status, "idle");
   assert.equal(typeof snapshot.lastHeartbeatAt, "string");
 });
 

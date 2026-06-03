@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import { IncidentCaseService } from "../../../../../../src/platform/five-plane-state-evidence/incident/index.js";
@@ -10,6 +13,12 @@ import type { ApiAuthService } from "../../../../../../src/platform/five-plane-i
 import type { IncidentCase as FacadeIncidentCase, IncidentFacadeService } from "../../../../../../src/platform/five-plane-interface/api/facade-interfaces.js";
 import type { MissionControlService } from "../../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
 import type { ApiResponsePayload, RouteContext, RouteDefinition } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
+
+function createIncidentService(): IncidentCaseService {
+  return new IncidentCaseService({
+    persistencePath: join(tmpdir(), `aa-r20-incidents-${randomUUID()}.json`),
+  });
+}
 
 function createMockAuthService(): ApiAuthService {
   return {
@@ -88,7 +97,7 @@ function createIncidentFacade(backingService: IncidentCaseService): IncidentFaca
 }
 
 test("R20-30 incident routes return and consume cursor pagination", async () => {
-  const backingService = new IncidentCaseService();
+  const backingService = createIncidentService();
   backingService.openIncident({ severity: "high", title: "Incident A" });
   backingService.openIncident({ severity: "high", title: "Incident B" });
   backingService.openIncident({ severity: "high", title: "Incident C" });

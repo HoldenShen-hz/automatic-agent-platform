@@ -192,9 +192,8 @@ test("LongRunningWorkflowService resume with exact expiresAt timestamp", () => {
     assert.equal(decision.reasonCode, "workflow_sleep.expired_failed");
     assert.equal(decision.nextWorkflowStatus, "failed");
 
-    // Verify suspension status is now expired
-    const updated = service.getSuspension(suspension.suspensionId);
-    assert.equal(updated!.status, "expired");
+    // fail_workflow expiries are emitted and then pruned from active suspension state.
+    assert.equal(service.getSuspension(suspension.suspensionId), null);
   } finally {
     h.db.close();
     cleanupPath(h.workspace);
@@ -412,13 +411,10 @@ test("LongRunningWorkflowService sweepExpired with mixed suspension states", () 
     assert.equal(decisions.length, 1);
     assert.equal(decisions[0]!.reasonCode, "workflow_sleep.expired_failed");
 
-    const s1 = service.getSuspension(service.listSuspensions().find(s => s.taskId === "task_mixed_1")!.suspensionId);
-    const s2 = service.getSuspension(service.listSuspensions().find(s => s.taskId === "task_mixed_2")!.suspensionId);
-    const s3 = service.getSuspension(service.listSuspensions().find(s => s.taskId === "task_mixed_3")!.suspensionId);
-
-    assert.equal(s1!.status, "expired");
-    assert.equal(s2!.status, "active");
-    assert.equal(s3!.status, "resumable");
+    const remaining = service.listSuspensions();
+    assert.equal(remaining.some((s) => s.taskId === "task_mixed_1"), false);
+    assert.equal(remaining.find((s) => s.taskId === "task_mixed_2")?.status, "active");
+    assert.equal(remaining.find((s) => s.taskId === "task_mixed_3")?.status, "resumable");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

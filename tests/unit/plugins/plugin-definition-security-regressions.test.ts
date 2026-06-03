@@ -14,6 +14,34 @@ import {
   verifySbomRef,
 } from "../../../src/sdk/plugin-sdk/plugin-definition.js";
 
+function buildSigningPayload(definition: {
+  pluginId: string;
+  name: string;
+  version: string;
+  type: string;
+  capabilities: unknown;
+  resourceLimits?: unknown;
+  dependencies?: unknown;
+  spiTypes?: unknown;
+  domainIds?: unknown;
+}): string {
+  return JSON.stringify({
+    pluginId: definition.pluginId,
+    name: definition.name,
+    version: definition.version,
+    type: definition.type,
+    capabilities: definition.capabilities,
+    resourceLimits: definition.resourceLimits ?? {
+      maxMemoryMb: 512,
+      maxCpuMs: 5000,
+      maxDurationMs: 30000,
+    },
+    dependencies: definition.dependencies ?? [],
+    spiTypes: definition.spiTypes ?? [definition.type],
+    domainIds: definition.domainIds ?? [],
+  });
+}
+
 test("definePlugin verifies Ed25519 signatures cryptographically", async () => {
   const registry = getSigningKeyRegistry();
   registry.clear();
@@ -35,7 +63,7 @@ test("definePlugin verifies Ed25519 signatures cryptographically", async () => {
     spiTypes: ["tool"],
     domainIds: [],
   };
-  const signature = sign(null, Buffer.from(JSON.stringify(canonicalPayload)), privateKey).toString("base64url");
+  const signature = sign(null, Buffer.from(buildSigningPayload(canonicalPayload)), privateKey).toString("base64url");
 
   const plugin = await definePlugin({
     ...canonicalPayload,
@@ -134,10 +162,10 @@ test("definePlugin rejects plugins whose SBOM contains high vulnerabilities", as
       ],
     }), "utf8");
 
-    const signature = sign(null, Buffer.from(JSON.stringify(canonicalPayload)), privateKey).toString("base64url");
+    const signature = sign(null, Buffer.from(buildSigningPayload(canonicalPayload)), privateKey).toString("base64url");
 
-    await assert.rejects(
-      definePlugin({
+    assert.throws(
+      () => definePlugin({
         ...canonicalPayload,
         sbomRef: pathToFileURL(sbomPath).toString(),
         signing: {

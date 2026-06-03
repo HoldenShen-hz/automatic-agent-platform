@@ -924,17 +924,12 @@ test("WebSocketBridge bounds pending acknowledgements and forces a stream gap re
 
 test("WebSocketBridge honors zero backpressure threshold overrides", () => {
   const server = createMockServer();
-  const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
-  const previous = process.env.WS_BACK_PRESSURE_THRESHOLD;
+  const bridge = new WebSocketBridge(server, new MockApiAuthService() as any, null, {
+    backPressureThresholdBytes: 0,
+  });
   try {
-    process.env.WS_BACK_PRESSURE_THRESHOLD = "0";
     assert.equal((bridge as any).getBackPressureThreshold(), 0);
   } finally {
-    if (previous == null) {
-      delete process.env.WS_BACK_PRESSURE_THRESHOLD;
-    } else {
-      process.env.WS_BACK_PRESSURE_THRESHOLD = previous;
-    }
     void bridge.close();
     server.close();
   }

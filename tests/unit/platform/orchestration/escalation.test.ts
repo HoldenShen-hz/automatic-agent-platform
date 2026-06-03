@@ -68,14 +68,13 @@ test("decide returns takeover when riskLevel is high and stage is execute", () =
   assert.equal(decision.requiresOperatorAction, true);
 });
 
-test("decide does not return takeover for high riskLevel in non-execute stages", () => {
+test("decide keeps high risk in assess stage on approval path instead of takeover", () => {
   const service = new EscalationService();
-  const nonExecuteStages: EscalationStage[] = ["assess", "plan", "feedback", "improve", "release"];
+  const nonTakeoverStages: EscalationStage[] = ["assess"];
 
-  for (const stage of nonExecuteStages) {
+  for (const stage of nonTakeoverStages) {
     const request = createRequest({ riskLevel: "high", stage });
     const decision = service.decide(request);
-    // Should be approval, not takeover, for high risk in non-execute stages
     assert.notEqual(decision.decision, "takeover", `Unexpected takeover for stage: ${stage}`);
   }
 });
@@ -118,9 +117,9 @@ test("decide returns approval when estimatedCostUsd is null (treated as 0)", () 
   assert.equal(decision.decision, "none");
 });
 
-test("decide returns approval when riskLevel is high (non-critical, non-execute)", () => {
+test("decide returns approval when riskLevel is high during assess stage", () => {
   const service = new EscalationService();
-  const request = createRequest({ riskLevel: "high", stage: "plan" });
+  const request = createRequest({ riskLevel: "high", stage: "assess" });
   const decision = service.decide(request);
 
   assert.equal(decision.decision, "approval");

@@ -227,11 +227,11 @@ test("channel gateway service deletes closed circuit breaker entries after reset
   try {
     const service = harness.createService();
     const breakers = (service as any).circuitBreakers as Map<string, { reset: () => void }>;
-    const breaker = (service as any).getCircuitBreaker("slack") as { reset: () => void };
+    const breaker = (service as any).getCircuitBreaker("slack", null) as { reset: () => void };
 
-    assert.equal(breakers.has("slack"), true);
+    assert.equal(breakers.has("global:slack"), true);
     breaker.reset();
-    assert.equal(breakers.has("slack"), true);
+    assert.equal(breakers.has("global:slack"), true);
   } finally {
     harness.close();
   }

@@ -32,6 +32,7 @@ function makeRequest(input: {
   principalType: PlatformPrincipalType;
   roles: readonly PlatformRole[];
   action: AuthorizationAction;
+  principalTenantId?: string | null;
   context?: AuthorizationContext;
   riskCategory?: string;
   mode?: string;
@@ -40,6 +41,7 @@ function makeRequest(input: {
     principalType: input.principalType,
     roles: input.roles,
     action: input.action,
+    principalTenantId: input.principalTenantId ?? null,
     context: input.context ?? makeMockContext(),
     riskCategory: input.riskCategory ?? "sensitive_data",
     mode: input.mode ?? "auto",
@@ -305,6 +307,7 @@ test("IamService allows when tenant scope is provided", () => {
       principalType: "service",
       roles: ["service_operator"],
       action: "org_change",
+      principalTenantId: "tenant-123",
       context: makeMockContext({ requiresTenantScope: true, tenantId: "tenant-123" }),
     }),
   );
@@ -465,7 +468,15 @@ test("IamService records manual takeover without blocking", () => {
       principalType: "user",
       roles: ["human_operator"],
       action: "invoke_tool",
-      context: makeMockContext({ manualTakeoverActive: true }),
+      context: makeMockContext({
+        manualTakeoverActive: true,
+        tenantId: "tenant-123",
+        originalPrincipal: {
+          type: "user",
+          roles: ["human_operator"],
+          tenantId: "tenant-123",
+        },
+      }),
     }),
   );
   assert.equal(result.allowed, true);

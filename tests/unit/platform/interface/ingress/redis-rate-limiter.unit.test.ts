@@ -141,6 +141,7 @@ test("RedisRateLimiter - checkAndConsume returns RateLimitResult structure", asy
     host: "localhost",
     port: 6379,
   });
+  (limiter as any).redis = new MockRedis();
 
   const result = await limiter.checkAndConsume("test-key", 10, 1000);
 
@@ -154,6 +155,7 @@ test("RedisRateLimiter - checkAndConsume allowed when under limit", async () => 
     host: "localhost",
     port: 6379,
   });
+  (limiter as any).redis = new MockRedis();
 
   const result = await limiter.checkAndConsume("under-limit", 10, 1000);
 

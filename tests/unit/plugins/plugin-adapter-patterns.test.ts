@@ -91,14 +91,18 @@ test("CrmAdapter authenticate succeeds with token", async () => {
 });
 
 test("CrmAdapter execute builds correct response structure", async () => {
-  const adapter = createCrmAdapterPlugin();
+  const adapter = createCrmAdapterPlugin({
+    fetchImplementation: async () => new Response(JSON.stringify({ results: [] }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }),
+  });
   await adapter.authenticate({ token: "test_token" });
 
   const result = await adapter.execute("contacts", { email: "test@example.com" });
 
-  assert.equal(result["ok"], false);
-  assert.ok(result["error"] == null || typeof result["error"] === "string");
-  assert.equal(result["crmType"], undefined);
+  assert.equal(result["ok"], true);
+  assert.equal(typeof result["data"], "object");
   assert.equal(typeof result["latencyMs"], "number");
 });
 

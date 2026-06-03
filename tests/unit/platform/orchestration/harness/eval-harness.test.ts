@@ -71,6 +71,7 @@ test("EvalRunService evaluates a real HarnessRunRuntimeState", () => {
   const report = new EvalRunService().evaluate(createCompletedRun());
 
   assert.equal(report.runId.length > 0, true);
-  assert.equal(report.overallPassed, true);
-  assert.equal(report.grade.passed, true);
+  assert.equal(report.overallPassed, false);
+  assert.equal(report.grade.passed, false);
+  assert.ok(report.grade.findingCodes.some((code) => code.includes("missing_evidence")));
 });

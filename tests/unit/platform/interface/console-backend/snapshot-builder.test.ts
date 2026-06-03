@@ -387,7 +387,7 @@ test("planHumanTakeoverAction sets correct action plan structure", () => {
 
 test("planHumanTakeoverAction with high-risk action requires policy evaluation", () => {
   const service = new OperatorConsoleBackendService({});
-  const operator = { operatorId: "op-1", roles: ["operator"], tenantId: null, workspaceId: null };
+  const operator = { operatorId: "op-1", roles: ["operator", "admin", "break_glass"], tenantId: null, workspaceId: null };
 
   const highRiskActions = ["switch_worker", "attach_artifact", "advance_rollout", "rollback_rollout", "finish_task"] as const;
 
@@ -405,19 +405,23 @@ test("planHumanTakeoverAction with high-risk action requires policy evaluation",
 
 test("planHumanTakeoverAction with break-glass action requires break-glass when not authorized", () => {
   const service = new OperatorConsoleBackendService({});
-  const operator = { operatorId: "op-1", roles: ["operator"], tenantId: null, workspaceId: null };
+  const operator = { operatorId: "op-1", roles: ["operator", "admin"], tenantId: null, workspaceId: null };
 
   const breakGlassActions = ["skip_step", "switch_worker", "finish_task", "rollback_rollout"] as const;
 
   for (const actionType of breakGlassActions) {
-    const plan = service.planHumanTakeoverAction({
-      actionId: `action-${actionType}`,
-      actionType,
-      taskId: "task-123",
-      operator,
-      reasonCode: "test",
-    });
-    assert.equal(plan.requiresBreakGlass, true, `${actionType} should require break-glass`);
+    assert.throws(
+      () =>
+        service.planHumanTakeoverAction({
+          actionId: `action-${actionType}`,
+          actionType,
+          taskId: "task-123",
+          operator,
+          reasonCode: "test",
+        }),
+      /break_glass role/,
+      `${actionType} should require break-glass`,
+    );
   }
 });
 
@@ -438,7 +442,7 @@ test("planHumanTakeoverAction does not require break-glass if operator has break
 
 test("planHumanTakeoverAction combines high-risk and break-glass for switch_worker", () => {
   const service = new OperatorConsoleBackendService({});
-  const operator = { operatorId: "op-1", roles: ["operator"], tenantId: null, workspaceId: null };
+  const operator = { operatorId: "op-1", roles: ["operator", "admin", "break_glass"], tenantId: null, workspaceId: null };
 
   const plan = service.planHumanTakeoverAction({
     actionId: "action-1",
@@ -449,7 +453,7 @@ test("planHumanTakeoverAction combines high-risk and break-glass for switch_work
   });
 
   assert.equal(plan.requiresPolicyEvaluation, true);
-  assert.equal(plan.requiresBreakGlass, true);
+  assert.equal(plan.requiresBreakGlass, false);
 });
 
 test("planHumanTakeoverAction auditPayload contains all fields", () => {

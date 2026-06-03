@@ -8,10 +8,16 @@ import test from "node:test";
 
 // Mock Redis module before importing
 const mockRedisInstance = {
-  pipeline: () => ({
-    zremrangebyscore: () => ({ zadd: () => ({ zcard: () => ({ pexpire: () => ({ exec: () => Promise.resolve([[null, 0], [null, 1], [null, 3]]) }) }) }) }),
-    exec: () => Promise.resolve([[null, 0], [null, 1], [null, 3]]),
-  }),
+  pipeline: () => {
+    const pipeline = {
+      zremrangebyscore: () => pipeline,
+      zadd: () => pipeline,
+      zcard: () => pipeline,
+      pexpire: () => pipeline,
+      exec: () => Promise.resolve([[null, 0], [null, 1], [null, 3], [null, 1]]),
+    };
+    return pipeline;
+  },
   zrange: () => Promise.resolve([]),
   zrem: () => Promise.resolve(1),
   del: () => Promise.resolve(1),
@@ -39,6 +45,7 @@ test.describe("ingress module with mocks", () => {
       host: "localhost",
       port: 6379,
     });
+    (limiter as any).redis = mockRedisInstance;
 
     const result = await limiter.checkAndConsume("test-key", 10, 1000);
 

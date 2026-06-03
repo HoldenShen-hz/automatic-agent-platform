@@ -11,7 +11,7 @@ import { OperatorConsoleBackendService } from "../../../../../src/platform/five-
 function createOperator(overrides: Partial<{ operatorId: string; roles: string[]; tenantId: string | null; workspaceId: string | null }> = {}) {
   return {
     operatorId: "test-operator-1",
-    roles: ["operator"],
+    roles: ["operator", "admin", "break_glass"],
     tenantId: null,
     workspaceId: null,
     ...overrides,
@@ -47,20 +47,22 @@ test("planHumanTakeoverAction with switch_worker requires policy evaluation", ()
 
   assert.equal(plan.requiresPolicyEvaluation, true);
   assert.equal(plan.taskId, "task-456");
+  assert.equal(plan.requiresBreakGlass, false);
 });
 
 test("planHumanTakeoverAction with skip_step requires break_glass role", () => {
   const service = new OperatorConsoleBackendService({});
-  const plan = service.planHumanTakeoverAction({
-    actionId: "action-3",
-    actionType: "skip_step",
-    taskId: "task-789",
-    operator: createOperator({ roles: ["operator"] }),
-    reasonCode: "stuck_at_step",
-  });
-
-  assert.equal(plan.requiresBreakGlass, true);
-  assert.equal(plan.actionType, "skip_step");
+  assert.throws(
+    () =>
+      service.planHumanTakeoverAction({
+        actionId: "action-3",
+        actionType: "skip_step",
+        taskId: "task-789",
+        operator: createOperator({ roles: ["operator", "admin"] }),
+        reasonCode: "stuck_at_step",
+      }),
+    (error: unknown) => typeof error === "object" && error !== null && "code" in error && error.code === "console.break_glass_required",
+  );
 });
 
 test("planHumanTakeoverAction with operator that has break_glass role does not require break glass", () => {
@@ -82,12 +84,12 @@ test("planHumanTakeoverAction with finish_task requires both policy and break gl
     actionId: "action-5",
     actionType: "finish_task",
     taskId: "task-finish",
-    operator: createOperator({ roles: ["operator"] }),
+    operator: createOperator(),
     reasonCode: "complete_early",
   });
 
   assert.equal(plan.requiresPolicyEvaluation, true);
-  assert.equal(plan.requiresBreakGlass, true);
+  assert.equal(plan.requiresBreakGlass, false);
   assert.equal(plan.actionType, "finish_task");
 });
 
@@ -102,7 +104,7 @@ test("planHumanTakeoverAction with rollback_rollout requires policy evaluation",
   });
 
   assert.equal(plan.requiresPolicyEvaluation, true);
-  assert.equal(plan.requiresBreakGlass, true);
+  assert.equal(plan.requiresBreakGlass, false);
 });
 
 test("planHumanTakeoverAction with attach_artifact requires policy evaluation", () => {

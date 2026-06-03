@@ -17,6 +17,7 @@ const tsconfig = JSON.parse(readFileSync(join(root, "tsconfig.json"), "utf8")) a
 const scriptsTsconfig = JSON.parse(readFileSync(join(root, "tsconfig.scripts.json"), "utf8")) as {
   compilerOptions?: { allowImportingTsExtensions?: boolean };
   include?: string[];
+  files?: string[];
 };
 const rootEslintSource = readFileSync(join(root, "eslint.config.js"), "utf8");
 const uiEslintSource = readFileSync(join(root, "ui", "eslint.config.js"), "utf8");
@@ -121,12 +122,14 @@ test("CLI and repo scripts expose fast paths and avoid stale layered-test coupli
 
 test("lint and config metadata cover repo scripts, generated outputs, and schema consistency", () => {
   assert.equal(tsconfig.compilerOptions?.tsBuildInfoFile, ".cache/tsconfig.tsbuildinfo");
-  assert.deepEqual(scriptsTsconfig.include, [
-    "scripts/**/*.mjs",
-    "scripts/**/*.ts",
-    "*.config.js",
-    "*.config.cjs",
-    "*.config.mjs",
+  assert.deepEqual(scriptsTsconfig.include, undefined);
+  assert.deepEqual(scriptsTsconfig.files, [
+    "eslint.config.js",
+    "stryker.config.mjs",
+    "scripts/lib/test-concurrency.mjs",
+    "scripts/build-if-needed.mjs",
+    "scripts/clean-dist.mjs",
+    "scripts/run-node-tests.mjs",
   ]);
   assert.equal(scriptsTsconfig.compilerOptions?.allowImportingTsExtensions, false);
   assert.equal(packageJson.scripts["typecheck"]!.includes("tsconfig.scripts.json"), true);

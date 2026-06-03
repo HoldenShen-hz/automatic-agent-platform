@@ -245,6 +245,7 @@ test("PluginSpiRegistry.invokeRetriever calls retriever plugin", async () => {
   registry.register(retriever);
 
   const results = await registry.invokeRetriever(retriever.pluginId, {
+    namespace: "code",
     query: {
       taskId: "task_123",
       intent: "test intent",

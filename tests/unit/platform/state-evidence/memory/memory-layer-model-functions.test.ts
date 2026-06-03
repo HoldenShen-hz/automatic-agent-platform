@@ -112,8 +112,8 @@ test("scopeToArchitectureLayer returns meta for evolution", () => {
   assert.equal(scopeToArchitectureLayer("evolution"), "meta");
 });
 
-test("scopeToArchitectureLayer returns semantic for unknown", () => {
-  assert.equal(scopeToArchitectureLayer("unknown_scope"), "semantic");
+test("scopeToArchitectureLayer rejects unknown scope", () => {
+  assert.throws(() => scopeToArchitectureLayer("unknown_scope"), /memory\.scope_unknown:unknown_scope/);
 });
 
 // =============================================================================
@@ -238,24 +238,22 @@ test("isMemoryStale returns true for old memory without expiresAt", () => {
   assert.equal(isMemoryStale(memory, Date.now()), true);
 });
 
-test("isMemoryStale uses default 7 days for unknown scope", () => {
+test("isMemoryStale rejects unknown scope", () => {
   const memory = createTestMemory({
     scope: "unknown_scope" as any,
     createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(), // 8 days ago
     expiresAt: null,
   });
-  // Unknown scope defaults to 7 days
-  assert.equal(isMemoryStale(memory, Date.now()), true);
+  assert.throws(() => isMemoryStale(memory, Date.now()), /memory\.layer_ttl_config_missing:unknown_scope/);
 });
 
-test("isMemoryStale returns false for fresh unknown scope", () => {
+test("isMemoryStale also rejects fresh unknown scope", () => {
   const memory = createTestMemory({
     scope: "unknown_scope" as any,
     createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(), // 6 days ago
     expiresAt: null,
   });
-  // Unknown scope defaults to 7 days
-  assert.equal(isMemoryStale(memory, Date.now()), false);
+  assert.throws(() => isMemoryStale(memory, Date.now()), /memory\.layer_ttl_config_missing:unknown_scope/);
 });
 
 test("isMemoryStale with explicit expiresAt", () => {
@@ -292,13 +290,13 @@ test("getEvictionPriority for quality strategy returns 1-quality", () => {
   assert.ok(Math.abs(priority - 0.7) < 0.001);
 });
 
-test("getEvictionPriority for trust strategy returns 1-trust", () => {
+test("getEvictionPriority for trust strategy returns 1-trust-weight", () => {
   const memory = createTestMemory({
     scope: "project",
     sourceTrustLevel: "trusted",
   });
   const priority = getEvictionPriority(memory);
-  assert.ok(Math.abs(priority) < 0.001);
+  assert.ok(Math.abs(priority - 0.2) < 0.001);
 });
 
 test("getEvictionPriority for usage strategy returns 1/(hitCount+1)", () => {
@@ -444,13 +442,12 @@ test("shouldEvict returns false when priority >= 0.5 even with layer overflow", 
   assert.equal(result, false);
 });
 
-test("shouldEvict with unknown scope uses default 7 days", () => {
+test("shouldEvict rejects unknown scope", () => {
   const memory = createTestMemory({
     scope: "unknown_scope" as any,
     createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(), // 8 days ago
   });
-  // Unknown scope defaults to 7 days, so 8 days old is stale
-  assert.equal(shouldEvict(memory, 1), true);
+  assert.throws(() => shouldEvict(memory, 1), /memory\.layer_ttl_config_missing:unknown_scope/);
 });
 
 // =============================================================================

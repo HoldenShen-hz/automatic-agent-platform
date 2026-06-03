@@ -6,6 +6,8 @@ import { existsSync, unlinkSync } from "node:fs";
 
 import { runSingleTaskExecution, type HappyPathInput } from "../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 

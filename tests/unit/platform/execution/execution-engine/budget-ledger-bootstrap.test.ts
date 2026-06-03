@@ -9,6 +9,8 @@ import { runMultiStepOrchestration } from "../../../../../src/platform/five-plan
 import { openAuthoritativeStorageContext } from "../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js";
 import { BudgetRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/budget-repository.js";
 
+process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ??= "testing-audit-integrity-key-012345";
+
 test("single-task execution seeds budget ledger before reserving budget [budget-ledger-bootstrap]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "single-task-budget-ledger-"));
   const dbPath = join(tempDir, "runtime.db");

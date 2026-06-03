@@ -9,6 +9,14 @@ import { ValidationError } from "../../../../../src/platform/contracts/errors.js
 
 const STANDARD_CASE_COUNT = 50;
 
+function createJudgeAwareDatasetService(): EvalDatasetJudgeService {
+  return new EvalDatasetJudgeService({
+    llm_judge_default: ({ criterion, criterionSignals }) => ({
+      score: criterionSignals[criterion.criterionId] ?? 1,
+    }),
+  });
+}
+
 // Helper to create a dataset with enough standard-priority coverage for the current validator
 function createTestDataset(datasetId: string): {
   datasetId: string;
@@ -80,7 +88,7 @@ function createResults(datasetId: string): Array<{
 
 test("PlatformPromptReleaseOrchestrationService createRelease registers template and creates rollout", () => {
   const templates = new PromptTemplateRegistryService();
-  const datasets = new EvalDatasetJudgeService();
+  const datasets = createJudgeAwareDatasetService();
   const rollouts = new PromptRolloutService();
   const service = new PlatformPromptReleaseOrchestrationService(templates, datasets, rollouts);
 
@@ -113,7 +121,7 @@ test("PlatformPromptReleaseOrchestrationService createRelease registers template
 
 test("PlatformPromptReleaseOrchestrationService createRelease throws when dataset not found", () => {
   const templates = new PromptTemplateRegistryService();
-  const datasets = new EvalDatasetJudgeService();
+  const datasets = createJudgeAwareDatasetService();
   const rollouts = new PromptRolloutService();
   const service = new PlatformPromptReleaseOrchestrationService(templates, datasets, rollouts);
 
@@ -141,7 +149,7 @@ test("PlatformPromptReleaseOrchestrationService createRelease throws when datase
 
 test("PlatformPromptReleaseOrchestrationService createRelease aligns rollout status with gate decision", () => {
   const templates = new PromptTemplateRegistryService();
-  const datasets = new EvalDatasetJudgeService();
+  const datasets = createJudgeAwareDatasetService();
   const rollouts = new PromptRolloutService();
   const service = new PlatformPromptReleaseOrchestrationService(templates, datasets, rollouts);
 
@@ -173,7 +181,7 @@ test("PlatformPromptReleaseOrchestrationService createRelease aligns rollout sta
 
 test("PlatformPromptReleaseOrchestrationService createRelease with llm_judge resolves judge", () => {
   const templates = new PromptTemplateRegistryService();
-  const datasets = new EvalDatasetJudgeService();
+  const datasets = createJudgeAwareDatasetService();
   const rollouts = new PromptRolloutService();
   const service = new PlatformPromptReleaseOrchestrationService(templates, datasets, rollouts);
 
@@ -194,7 +202,7 @@ test("PlatformPromptReleaseOrchestrationService createRelease with llm_judge res
       caseId: `case_${i}`,
       input: { query: `test${i}` },
       qualityCriteria: [
-        { criterionId: `c${i}`, type: "llm_judge" as const, config: {}, weight: 1, threshold: 0.8 },
+        { criterionId: `c${i}`, type: "llm_judge" as const, config: { judgeEvaluatorId: "llm_judge_default" }, weight: 1, threshold: 0.8 },
       ],
       tags: [],
       priority: "standard" as const,
@@ -235,7 +243,7 @@ test("PlatformPromptReleaseOrchestrationService createRelease with llm_judge res
 
 test("PlatformPromptReleaseOrchestrationService createRelease uses explicit judgeId when provided", () => {
   const templates = new PromptTemplateRegistryService();
-  const datasets = new EvalDatasetJudgeService();
+  const datasets = createJudgeAwareDatasetService();
   const rollouts = new PromptRolloutService();
   const service = new PlatformPromptReleaseOrchestrationService(templates, datasets, rollouts);
 
@@ -256,7 +264,7 @@ test("PlatformPromptReleaseOrchestrationService createRelease uses explicit judg
       caseId: `case_${i}`,
       input: { query: `test${i}` },
       qualityCriteria: [
-        { criterionId: `c${i}`, type: "llm_judge" as const, config: {}, weight: 1, threshold: 0.8 },
+        { criterionId: `c${i}`, type: "llm_judge" as const, config: { judgeEvaluatorId: "llm_judge_default" }, weight: 1, threshold: 0.8 },
       ],
       tags: [],
       priority: "standard" as const,
@@ -298,7 +306,7 @@ test("PlatformPromptReleaseOrchestrationService createRelease uses explicit judg
 
 test("PlatformPromptReleaseOrchestrationService createRelease throws when explicit judge not found", () => {
   const templates = new PromptTemplateRegistryService();
-  const datasets = new EvalDatasetJudgeService();
+  const datasets = createJudgeAwareDatasetService();
   const rollouts = new PromptRolloutService();
   const service = new PlatformPromptReleaseOrchestrationService(templates, datasets, rollouts);
 
@@ -309,7 +317,7 @@ test("PlatformPromptReleaseOrchestrationService createRelease throws when explic
       caseId: `case_${i}`,
       input: { query: `test${i}` },
       qualityCriteria: [
-        { criterionId: `c${i}`, type: "llm_judge" as const, config: {}, weight: 1, threshold: 0.8 },
+        { criterionId: `c${i}`, type: "llm_judge" as const, config: { judgeEvaluatorId: "llm_judge_default" }, weight: 1, threshold: 0.8 },
       ],
       tags: [],
       priority: "standard" as const,

@@ -238,7 +238,7 @@ test("planHumanTakeoverAction sets correct auditPayload", () => {
 
 test("planHumanTakeoverAction with high-risk action requires policy evaluation", () => {
   const service = new OperatorConsoleBackendService({});
-  const operator = { operatorId: "op-1", roles: ["operator"], tenantId: null, workspaceId: null };
+  const operator = { operatorId: "op-1", roles: ["operator", "admin", "break_glass"], tenantId: null, workspaceId: null };
 
   const plan = service.planHumanTakeoverAction({
     actionId: "action-1",
@@ -253,17 +253,18 @@ test("planHumanTakeoverAction with high-risk action requires policy evaluation",
 
 test("planHumanTakeoverAction with break-glass action requires break-glass if not authorized", () => {
   const service = new OperatorConsoleBackendService({});
-  const operator = { operatorId: "op-1", roles: ["operator"], tenantId: null, workspaceId: null };
-
-  const plan = service.planHumanTakeoverAction({
-    actionId: "action-1",
-    actionType: "skip_step",
-    taskId: "t-123",
-    operator,
-    reasonCode: "debug",
-  });
-
-  assert.equal(plan.requiresBreakGlass, true);
+  const operator = { operatorId: "op-1", roles: ["operator", "admin"], tenantId: null, workspaceId: null };
+  assert.throws(
+    () =>
+      service.planHumanTakeoverAction({
+        actionId: "action-1",
+        actionType: "skip_step",
+        taskId: "t-123",
+        operator,
+        reasonCode: "debug",
+      }),
+    /break_glass role/,
+  );
 });
 
 test("planHumanTakeoverAction with break-glass action does not require break-glass if authorized", () => {

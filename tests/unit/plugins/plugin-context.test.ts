@@ -47,8 +47,7 @@ test("PluginContext accepts custom config", () => {
   assert.equal(context.tenantId, "tenant-abc");
   assert.equal(context.userId, "user-789");
   assert.equal(context.sessionId, "session-xyz");
-  // container maps to workspace_write
-  assert.equal(context.sandboxTier, "workspace_write");
+  assert.equal(context.sandboxTier, "restricted_exec");
 });
 
 test("PluginContext get and set values", () => {
@@ -88,11 +87,13 @@ test("PluginContext keys returns all keys", () => {
 test("PluginContext set with different sources", () => {
   const context = new PluginContext({ pluginId: "test-plugin" });
   context.set("user-key", "user-value", "user");
-  context.set("system-key", "system-value", "system");
   context.set("plugin-key", "plugin-value", "plugin");
+  assert.throws(
+    () => context.set("system-key", "system-value", "system"),
+    /forbids declaring runtime values with system source/,
+  );
 
   assert.equal(context.get("user-key"), "user-value");
-  assert.equal(context.get("system-key"), "system-value");
   assert.equal(context.get("plugin-key"), "plugin-value");
 });
 
@@ -218,12 +219,12 @@ test("PluginContext sandboxTier normalization", () => {
   const cases: Array<{ input: string; expected: string }> = [
     { input: "read_only", expected: "read_only" },
     { input: "process", expected: "read_only" },
-    { input: "container", expected: "workspace_write" },
+    { input: "container", expected: "restricted_exec" },
     { input: "workspace_write", expected: "workspace_write" },
     { input: "scoped_external_access", expected: "scoped_external_access" },
     { input: "restricted_exec", expected: "restricted_exec" },
     { input: "unknown-mode", expected: "read_only" },
-    { input: "none", expected: "read_only" },
+    { input: "none", expected: "restricted_exec" },
   ];
 
   for (const { input, expected } of cases) {

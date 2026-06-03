@@ -175,7 +175,7 @@ test("ReplanningService replans when feedback has correction category signal", (
       signals: [
         {
           signalId: "sig_correction",
-          source: "user",
+          source: "validation",
           taskId: "task_6",
           category: "correction",
           severity: "warning",
@@ -388,7 +388,7 @@ test("ReplanningService decision has correct decisionId format", () => {
     },
   );
 
-  assert.ok(decision.decisionId.startsWith("replan_decision_"), `Expected decisionId to start with replan_decision_, got ${decision.decisionId}`);
+  assert.ok(decision.decisionId.startsWith("replan_decision:"), `Expected decisionId to start with replan_decision:, got ${decision.decisionId}`);
 });
 
 test("ReplanningService decision has decidedAt timestamp", () => {

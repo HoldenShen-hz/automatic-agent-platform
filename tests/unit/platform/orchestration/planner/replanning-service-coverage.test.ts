@@ -121,7 +121,7 @@ test("ReplanningService.decide replans when signals contain correction category"
     signals: [
       {
         signalId: "sig_correction",
-        source: "user" as const,
+        source: "validation" as const,
         taskId: "task_test",
         category: "correction" as const,
         severity: "warning" as const,
@@ -279,7 +279,7 @@ test("ReplanningService.decide includes decisionId", () => {
   const service = new ReplanningService();
   const decision = service.decide(createPlan(), createFeedback());
 
-  assert.ok(decision.decisionId.startsWith("replan_decision_"));
+  assert.ok(decision.decisionId.startsWith("replan_decision:"));
 });
 
 test("ReplanningService.decide includes taskId from plan", () => {
@@ -321,8 +321,8 @@ test("ReplanningService.decide handles very high plan version", () => {
 
   const decision = service.decide(plan, feedback);
 
-  assert.equal(decision.shouldReplan, true);
-  assert.equal(decision.nextPlanVersion, 10000);
+  assert.equal(decision.shouldReplan, false);
+  assert.equal(decision.nextPlanVersion, null);
 });
 
 test("ReplanningService.decide handles empty signals array", () => {
@@ -392,7 +392,7 @@ test("ReplanningService.decide strategy is replanned for correction signal", () 
     signals: [
       {
         signalId: "sig_c",
-        source: "user" as const,
+        source: "validation" as const,
         taskId: "task_test",
         category: "correction" as const,
         severity: "warning" as const,

@@ -216,11 +216,10 @@ test("MemoryDecayService.getLayerDecayConfig returns correct config for meta lay
 // MemoryDecayService.getDecayConfig tests
 // =============================================================================
 
-test("MemoryDecayService.getDecayConfig falls back to session for unknown layer", () => {
+test("MemoryDecayService.getDecayConfig rejects unknown layer", () => {
   const service = new MemoryDecayService();
   const memory = createMemoryRecord({ scope: "unknown_scope" });
-  const config = service.getDecayConfig(memory);
-  assert.equal(config.halfLifeSeconds, 3600);
+  assert.throws(() => service.getDecayConfig(memory), /memory\.six_layer_unknown_scope:unknown_scope/);
 });
 
 test("MemoryDecayService.getDecayConfig uses memory scope to get correct config", () => {
@@ -514,12 +513,10 @@ test("DEFAULT_DECAY_CONFIGS has correct accessBoostFactor values", () => {
 // Edge cases
 // =============================================================================
 
-test("MemoryDecayService handles memory with unknown scope gracefully", () => {
+test("MemoryDecayService rejects memory with unknown scope", () => {
   const service = new MemoryDecayService();
   const memory = createMemoryRecord({ scope: "invalid_scope" });
-  const config = service.getDecayConfig(memory);
-  // Should fall back to session config
-  assert.equal(config.halfLifeSeconds, 3600);
+  assert.throws(() => service.getDecayConfig(memory), /memory\.six_layer_unknown_scope:invalid_scope/);
 });
 
 test("MemoryDecayService handles memory with null qualityScore", () => {

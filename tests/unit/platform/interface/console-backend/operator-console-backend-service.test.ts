@@ -168,10 +168,8 @@ test("OperatorConsoleBackendService planHumanTakeoverAction creates valid action
 
 test("OperatorConsoleBackendService planHumanTakeoverAction high-risk action requires policy evaluation", () => {
   const service = new OperatorConsoleBackendService({});
-  const operator = { operatorId: "op1", roles: ["viewer"], tenantId: "tenant1" };
+  const operator = { operatorId: "op1", roles: ["viewer", "admin", "break_glass"], tenantId: "tenant1" };
 
-  // skip_step is in HIGH_RISK_ACTIONS and BREAK_GLASS_ACTIONS
-  // without break_glass role, both flags are true
   const plan = service.planHumanTakeoverAction({
     actionId: "action1",
     actionType: "skip_step",
@@ -181,23 +179,23 @@ test("OperatorConsoleBackendService planHumanTakeoverAction high-risk action req
   });
 
   assert.equal(plan.requiresPolicyEvaluation, true);
-  assert.equal(plan.requiresBreakGlass, true);
+  assert.equal(plan.requiresBreakGlass, false);
 });
 
 test("OperatorConsoleBackendService planHumanTakeoverAction break-glass action requires break glass role", () => {
   const service = new OperatorConsoleBackendService({});
-  const operator = { operatorId: "op1", roles: ["viewer"] }; // no break_glass role
-
-  const plan = service.planHumanTakeoverAction({
-    actionId: "action1",
-    actionType: "skip_step",
-    taskId: "task123",
-    operator,
-    reasonCode: "user_requested",
-  });
-
-  assert.equal(plan.requiresBreakGlass, true);
-  assert.equal(plan.requiresPolicyEvaluation, true); // also high risk
+  const operator = { operatorId: "op1", roles: ["viewer", "admin"] };
+  assert.throws(
+    () =>
+      service.planHumanTakeoverAction({
+        actionId: "action1",
+        actionType: "skip_step",
+        taskId: "task123",
+        operator,
+        reasonCode: "user_requested",
+      }),
+    /break_glass role/,
+  );
 });
 
 test("OperatorConsoleBackendService planHumanTakeoverAction with break_glass role skips break-glass check", () => {

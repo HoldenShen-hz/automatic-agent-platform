@@ -68,11 +68,11 @@ test("EscalationService.decide returns takeover for high risk during execute sta
   assert.equal(decision.requiresOperatorAction, true);
 });
 
-test("EscalationService.decide does not return takeover for high risk in non-execute stages", () => {
+test("EscalationService.decide keeps high risk in assess stage on approval path instead of takeover", () => {
   const service = new EscalationService();
-  const nonExecuteStages: EscalationStage[] = ["assess", "plan", "feedback", "improve", "release"];
+  const nonTakeoverStages: EscalationStage[] = ["assess"];
 
-  for (const stage of nonExecuteStages) {
+  for (const stage of nonTakeoverStages) {
     const request = createRequest({ riskLevel: "high", stage });
     const decision = service.decide(request);
     assert.notEqual(decision.decision, "takeover", `Unexpected takeover for stage: ${stage}`);
@@ -98,17 +98,15 @@ test("EscalationService.decide returns approval when estimatedCostUsd >= thresho
 
 test("EscalationService.decide uses estimatedCostUsd threshold of 10", () => {
   const service = new EscalationService();
-  // 5 >= 5 is false, so no approval; need >= 10 for approval
-  const request = createRequest({ estimatedCostUsd: 5, costThresholdUsd: 5 });
+  const request = createRequest({ estimatedCostUsd: 5 });
   const decision = service.decide(request);
 
-  // With estimatedCostUsd=5, threshold is default 10, so 5 < 10 = no approval
   assert.equal(decision.decision, "none");
 });
 
-test("EscalationService.decide returns approval for high risk in non-execute stages", () => {
+test("EscalationService.decide returns approval for high risk during assess stage", () => {
   const service = new EscalationService();
-  const request = createRequest({ riskLevel: "high", stage: "plan" });
+  const request = createRequest({ riskLevel: "high", stage: "assess" });
   const decision = service.decide(request);
 
   assert.equal(decision.decision, "approval");

@@ -6,6 +6,10 @@
  */
 
 import assert from "node:assert/strict";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import test from "node:test";
 
 import {
@@ -148,8 +152,7 @@ test("definePlugin applies custom security config", () => {
     security: { sandboxTier: "container", egressDomains: ["api.example.com"] },
   });
 
-  // container maps to workspace_write
-  assert.deepEqual(plugin.security, { sandboxTier: "workspace_write", egressDomains: ["api.example.com"] });
+  assert.deepEqual(plugin.security, { sandboxTier: "restricted_exec", egressDomains: ["api.example.com"] });
 });
 
 test("definePlugin rejects 'none' sandbox tier (S4/R8-42)", () => {
@@ -267,16 +270,27 @@ test("definePlugin trims domainIds and filters empty", () => {
 });
 
 test("definePlugin handles sbomRef trimming", async () => {
-  const plugin = await definePlugin({
-    pluginId: "test-plugin",
-    name: "Test Plugin",
-    version: "1.0.0",
-    type: "tool",
-    capabilities: [{ name: "run", description: "", inputSchema: {}, outputSchema: {} }],
-    sbomRef: "  sha256:abc123  ",
-  });
+  const tempDir = await mkdtemp(join(tmpdir(), "plugin-definition-sbom-"));
+  const sbomPath = join(tempDir, "sbom.json");
+  try {
+    await writeFile(sbomPath, JSON.stringify({
+      bomFormat: "CycloneDX",
+      specVersion: "1.5",
+      components: [],
+    }), "utf8");
+    const plugin = await definePlugin({
+      pluginId: "test-plugin",
+      name: "Test Plugin",
+      version: "1.0.0",
+      type: "tool",
+      capabilities: [{ name: "run", description: "", inputSchema: {}, outputSchema: {} }],
+      sbomRef: `  ${pathToFileURL(sbomPath).toString()}  `,
+    });
 
-  assert.equal(plugin.sbomRef, "sha256:abc123");
+    assert.equal(plugin.sbomRef, pathToFileURL(sbomPath).toString());
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 });
 
 test("definePlugin sets sbomRef to null when empty", () => {

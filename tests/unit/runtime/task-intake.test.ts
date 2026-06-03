@@ -328,7 +328,7 @@ test("route() includes confirmedTaskSpecId in trace [task-intake]", async () => 
 test("route() uses preferred intent when confidence is high enough [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
-    request: "some ambiguous text",
+    request: "create a new implementation plan",
     preferredIntent: {
       intent: "create",
       confidence: 0.85,

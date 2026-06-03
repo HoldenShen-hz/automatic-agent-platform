@@ -35,10 +35,25 @@ test.beforeEach(() => {
  * This is the same algorithm used internally by mfa-service.ts
  */
 function generateTotpCode(secret: string, timestamp: number = Date.now()): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const normalized = secret.replace(/=+$/u, "").replace(/\s+/gu, "").toUpperCase();
+  let bits = 0;
+  let value = 0;
+  const decoded: number[] = [];
+  for (const char of normalized) {
+    const index = alphabet.indexOf(char);
+    assert.ok(index >= 0, `invalid base32 character: ${char}`);
+    value = (value << 5) | index;
+    bits += 5;
+    if (bits >= 8) {
+      decoded.push((value >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
   const counter = Math.floor(timestamp / 30000); // 30-second window
   const counterBuffer = Buffer.alloc(8);
   counterBuffer.writeBigInt64BE(BigInt(counter));
-  const hmac = createHmac("sha1", Buffer.from(secret, "utf8"));
+  const hmac = createHmac("sha1", Buffer.from(decoded));
   const hash = hmac.update(counterBuffer).digest();
   const lastByte = hash[hash.length - 1];
   assert.ok(lastByte !== undefined);

@@ -193,13 +193,11 @@ test("buildView returns MemoryPlaneView with correct layer categorization for ev
   assert.equal(result.layers.evolution.length, 1);
 });
 
-test("buildView maps unknown scope to project layer", async () => {
+test("buildView rejects unknown scope", async () => {
   const provider = createProviderWithMemoryScope("unknown_scope");
   const service = new MemoryPlaneService(provider);
 
-  const result = await service.buildView({ scopes: ["unknown_scope"] });
-
-  assert.equal(result.layers.project.length, 1);
+  await assert.rejects(() => service.buildView({ scopes: ["unknown_scope"] }), /memory\.scope_unknown:unknown_scope/);
 });
 
 test("buildView includes promptBlock from prefetch result", async () => {

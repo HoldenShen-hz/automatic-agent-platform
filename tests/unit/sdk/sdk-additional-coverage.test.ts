@@ -252,7 +252,7 @@ test("PluginContext.fork allows overriding sandboxTier", () => {
     sandboxTier: "process",
   });
   const child = ctx.fork({ sandboxTier: "container" });
-  assert.equal((child as any).config.sandboxTier, "workspace_write");
+  assert.equal((child as any).config.sandboxTier, "restricted_exec");
 });
 
 test("PluginContext.setValues uses specified source", () => {
@@ -289,12 +289,14 @@ test("PluginContext.set with pack source", () => {
 
 test("PluginContext.toRecord includes all sources", () => {
   const ctx = new PluginContext({ pluginId: "test-plugin" });
-  ctx.set("system.override", "value", "system");
+  assert.throws(
+    () => ctx.set("system.override", "value", "system"),
+    /forbids declaring runtime values with system source/,
+  );
   ctx.set("user.key", "user-value", "user");
   ctx.set("pack.key", "pack-value", "pack");
 
   const record = ctx.toRecord();
-  assert.equal(record["system.override"], "value");
   assert.equal(record["user.key"], "user-value");
   assert.equal(record["pack.key"], "pack-value");
 });

@@ -42,9 +42,8 @@ test("[ARCH-P1-2] SandboxMode supports canonical modes and safe compatibility al
   }
 });
 
-test("[ARCH-P1-2] SandboxMode falls back to read_only for unknown legacy tiers", () => {
-  // Unknown modes fall back to read_only (safe default)
-  assert.equal(normalizeSandboxMode("none"), "read_only");
+test("[ARCH-P1-2] SandboxMode keeps deprecated aliases on their canonical safe target and falls back for unknown tiers", () => {
+  assert.equal(normalizeSandboxMode("none"), "restricted_exec");
   assert.equal(normalizeSandboxMode("vm"), "read_only");
   assert.equal(normalizeSandboxMode("unknown_tier"), "read_only");
 });

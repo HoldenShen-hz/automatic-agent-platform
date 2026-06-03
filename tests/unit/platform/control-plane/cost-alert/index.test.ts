@@ -529,15 +529,15 @@ test("CostAlertService recordCost emits exceeded event when budget exceeded", ()
     executionId: "exec-1",
   });
 
-  assert.equal(events.length, 1);
-  assert.equal(events[0]!.alertLevel, "exceeded");
-  assert.equal(events[0]!.reasonCode, "cost.exceeded");
-  assert.equal(events[0]!.eventType, "cost:limit_reached");
-  assert.equal(events[0]!.scope, "tenant");
-  assert.equal(events[0]!.scopeId, "tenant-1");
-  assert.equal(events[0]!.tenantId, "tenant-1");
-  assert.equal(events[0]!.taskId, "task-1");
-  assert.equal(events[0]!.executionId, "exec-1");
+  assert.equal(events.length, 3);
+  assert.deepEqual(events.map((event) => event.alertLevel), ["warning", "critical", "exceeded"]);
+  assert.equal(events[2]!.reasonCode, "cost.exceeded");
+  assert.equal(events[2]!.eventType, "cost:limit_reached");
+  assert.equal(events[2]!.scope, "tenant");
+  assert.equal(events[2]!.scopeId, "tenant-1");
+  assert.equal(events[2]!.tenantId, "tenant-1");
+  assert.equal(events[2]!.taskId, "task-1");
+  assert.equal(events[2]!.executionId, "exec-1");
 });
 
 test("CostAlertService recordCost emits critical event when entering critical zone", () => {
@@ -974,7 +974,7 @@ test("CostAlertService emits event with correct eventTier for exceeded", () => {
   });
 
   if (events.length > 0) {
-    assert.equal(events[0]!.eventTier, "tier_1");
+    assert.equal(events[events.length - 1]!.eventTier, "tier_1");
   }
 });
 

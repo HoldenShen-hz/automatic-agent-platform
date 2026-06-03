@@ -93,8 +93,9 @@ test("EvalRunService evaluates completed runs against the normalized constraint 
   const report = new EvalRunService().evaluate(run);
 
   assert.equal(report.runId, run.runId);
-  assert.equal(report.overallPassed, true);
-  assert.equal(report.grade.passed, true);
+  assert.equal(report.overallPassed, false);
+  assert.equal(report.grade.passed, false);
+  assert.ok(report.grade.findingCodes.some((code) => code.includes("missing_evidence")));
   assert.ok(report.timelineEventCount >= 3);
 });
 

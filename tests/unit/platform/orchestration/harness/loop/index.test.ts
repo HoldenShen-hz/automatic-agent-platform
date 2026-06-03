@@ -154,7 +154,7 @@ test("HarnessLoopController getGuardViolation returns null when no guard is viol
 });
 
 test("HarnessLoopController getGuardViolation returns max_iterations_reached", () => {
-  const pack = createMockConstraintPack({ maxSteps: 6 }); // maxIterations = 2
+  const pack = createMockConstraintPack({ maxSteps: 2 });
   const controller = new HarnessLoopController(pack);
 
   controller.recordIteration();
@@ -216,7 +216,7 @@ test("HarnessLoopController getGuardViolation uses provided now parameter", () =
 });
 
 test("HarnessLoopController evaluateProgress returns violation when guard violated", () => {
-  const pack = createMockConstraintPack({ maxSteps: 6 }); // maxIterations = 2
+  const pack = createMockConstraintPack({ maxSteps: 2 });
   const controller = new HarnessLoopController(pack);
   controller.recordIteration();
   controller.recordIteration();
@@ -274,7 +274,7 @@ test("HarnessLoopController getGuards returns immutable guards", () => {
   const _guards: Readonly<{ maxIterations: number; maxReplans: number; maxDurationMs: number; maxCost: number }> = guards;
 
   // Verify properties exist and are correct
-  assert.equal(guards.maxIterations, 10);
+  assert.equal(guards.maxIterations, 30);
   assert.equal(guards.maxReplans, 3);
   assert.equal(guards.maxDurationMs, 60000);
   assert.equal(guards.maxCost, 100);

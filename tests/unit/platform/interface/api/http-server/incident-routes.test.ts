@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import { IncidentCaseService } from "../../../../../../src/platform/five-plane-state-evidence/incident/index.js";
@@ -6,6 +9,12 @@ import { createIncidentRoutes } from "../../../../../../src/platform/five-plane-
 import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 import type { IncidentCase as FacadeIncidentCase, IncidentFacadeService } from "../../../../../../src/platform/five-plane-interface/api/facade-interfaces.js";
 import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
+
+function createIncidentService(): IncidentCaseService {
+  return new IncidentCaseService({
+    persistencePath: join(tmpdir(), `aa-incident-routes-${randomUUID()}.json`),
+  });
+}
 
 function createMockAuthService(roles: string[] = ["viewer"], tenantId: string | null = null): ApiAuthService {
   return {
@@ -84,7 +93,7 @@ function createIncidentFacade(service: IncidentCaseService): IncidentFacadeServi
 }
 
 test("IncidentCaseService opens incident", () => {
-  const service = new IncidentCaseService();
+  const service = createIncidentService();
 
   const incident = service.openIncident({
     severity: "high",
@@ -100,7 +109,7 @@ test("IncidentCaseService opens incident", () => {
 });
 
 test("IncidentCaseService acknowledges incident", () => {
-  const service = new IncidentCaseService();
+  const service = createIncidentService();
   const incident = service.openIncident({ severity: "high", title: "Test" });
 
   const acknowledged = service.acknowledge(incident.incidentId, "operator-1");
@@ -110,7 +119,7 @@ test("IncidentCaseService acknowledges incident", () => {
 });
 
 test("IncidentCaseService resolves incident", () => {
-  const service = new IncidentCaseService();
+  const service = createIncidentService();
   const incident = service.openIncident({ severity: "high", title: "Test" });
   service.acknowledge(incident.incidentId, "operator-1");
   service.startMitigation(incident.incidentId);
@@ -123,7 +132,7 @@ test("IncidentCaseService resolves incident", () => {
 });
 
 test("IncidentCaseService startMitigation requires acknowledge first", () => {
-  const service = new IncidentCaseService();
+  const service = createIncidentService();
   const incident = service.openIncident({ severity: "high", title: "Test" });
 
   assert.throws(() => {
@@ -132,7 +141,7 @@ test("IncidentCaseService startMitigation requires acknowledge first", () => {
 });
 
 test("IncidentCaseService getIncident returns null for unknown", () => {
-  const service = new IncidentCaseService();
+  const service = createIncidentService();
 
   const result = service.getIncident("unknown");
 
@@ -140,7 +149,7 @@ test("IncidentCaseService getIncident returns null for unknown", () => {
 });
 
 test("IncidentCaseService listIncidents returns newest incidents first", () => {
-  const service = new IncidentCaseService();
+  const service = createIncidentService();
   service.openIncident({ severity: "low", title: "first" });
   service.openIncident({ severity: "critical", title: "second" });
 
@@ -151,7 +160,7 @@ test("IncidentCaseService listIncidents returns newest incidents first", () => {
 });
 
 test("GET /v1/incidents lists incidents from service", async () => {
-  const incidentService = new IncidentCaseService();
+  const incidentService = createIncidentService();
   incidentService.openIncident({ severity: "high", title: "Database latency" });
   const routes = createIncidentRoutes({
     authService: createMockAuthService(),
@@ -165,7 +174,7 @@ test("GET /v1/incidents lists incidents from service", async () => {
 });
 
 test("GET /v1/incidents only returns incidents for the caller tenant", async () => {
-  const incidentService = new IncidentCaseService();
+  const incidentService = createIncidentService();
   incidentService.openIncident({ severity: "high", title: "Tenant A latency", tenantId: "tenant-a" });
   incidentService.openIncident({ severity: "critical", title: "Tenant B outage", tenantId: "tenant-b" });
   const routes = createIncidentRoutes({
@@ -180,7 +189,7 @@ test("GET /v1/incidents only returns incidents for the caller tenant", async () 
 });
 
 test("POST /v1/incidents creates a new incident", async () => {
-  const incidentService = new IncidentCaseService();
+  const incidentService = createIncidentService();
   const routes = createIncidentRoutes({
     authService: createMockAuthService(["operator"]),
     incidentService: createIncidentFacade(incidentService),

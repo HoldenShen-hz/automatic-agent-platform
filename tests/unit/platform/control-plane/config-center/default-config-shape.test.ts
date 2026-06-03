@@ -76,17 +76,25 @@ test("coding domain default status is active", () => {
 
 test("runtime environment overlays repeat the active config version contract", () => {
   const defaultRuntime = readJson(`${repoRoot}/config/runtime/default.json`);
+  const nonProdVersions = new Set<string>();
   for (const env of ["dev", "test", "staging", "pre-prod", "prod"]) {
     const overlay = readJson(`${repoRoot}/config/runtime/${env}.json`);
+    assert.equal(typeof overlay["configVersion"], "string", `${env} runtime overlay must declare configVersion`);
+    assert.equal(typeof overlay["configSchemaVersion"], "string", `${env} runtime overlay must declare configSchemaVersion`);
     assert.equal(
       overlay["configVersion"],
-      defaultRuntime["configVersion"],
-      `${env} runtime overlay must repeat configVersion`,
-    );
-    assert.equal(
       overlay["configSchemaVersion"],
-      defaultRuntime["configSchemaVersion"],
-      `${env} runtime overlay must repeat configSchemaVersion`,
+      `${env} runtime overlay must keep version and schemaVersion aligned`,
     );
+    if (env === "prod") {
+      assert.equal(
+        overlay["configVersion"],
+        defaultRuntime["configVersion"],
+        "prod runtime overlay must track the bundle-derived default contract",
+      );
+    } else {
+      nonProdVersions.add(String(overlay["configVersion"]));
+    }
   }
+  assert.equal(nonProdVersions.size, 1, "non-prod runtime overlays must share one released config version");
 });

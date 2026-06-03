@@ -146,7 +146,7 @@ test("HarnessLoopController.getGuardViolation returns violation when maxDuration
 
 test("HarnessLoopController.shouldContinue returns false when guard violation exists", () => {
   const pack = createTestConstraintPack({ maxSteps: 3 });
-  const controller = new HarnessLoopController(pack, {}, { iteration: 1 });
+  const controller = new HarnessLoopController(pack, {}, { iteration: 3 });
 
   assert.equal(controller.shouldContinue("retry_same_plan", true), false);
 });
@@ -202,7 +202,7 @@ test("HarnessLoopController.shouldContinue returns false for downgrade_mode acti
 
 test("HarnessLoopController.evaluateProgress returns violation when guard violated", () => {
   const pack = createTestConstraintPack({ maxSteps: 3 });
-  const controller = new HarnessLoopController(pack, {}, { iteration: 1 });
+  const controller = new HarnessLoopController(pack, {}, { iteration: 3 });
 
   const progress = controller.evaluateProgress("retry_same_plan", true);
 
@@ -275,7 +275,7 @@ test("HarnessLoopController.getGuards returns immutable guards snapshot", () => 
   const controller = new HarnessLoopController(pack);
 
   const guards = controller.getGuards();
-  assert.equal(guards.maxIterations, 10); // floor(30/3)
+  assert.equal(guards.maxIterations, 30);
   assert.equal(guards.maxReplans, 3);
   assert.equal(guards.maxCost, 100);
   assert.equal(guards.maxDurationMs, 60000);
@@ -285,7 +285,7 @@ test("HarnessLoopController handles maxSteps less than 3 with one minimum iterat
   const pack = createTestConstraintPack({ maxSteps: 2 });
   const controller = new HarnessLoopController(pack);
 
-  assert.equal(controller.getGuards().maxIterations, 1);
+  assert.equal(controller.getGuards().maxIterations, 2);
   assert.equal(controller.getGuardViolation(), null);
 });
 
@@ -300,7 +300,7 @@ test("HarnessLoopController handles very large maxSteps", () => {
   const pack = createTestConstraintPack({ maxSteps: 1000000 });
   const controller = new HarnessLoopController(pack);
 
-  assert.equal(controller.getGuards().maxIterations, Math.floor(1000000 / 3));
+  assert.equal(controller.getGuards().maxIterations, 1000000);
 });
 
 test("HarnessLoopController handles very small maxDurationMs", () => {

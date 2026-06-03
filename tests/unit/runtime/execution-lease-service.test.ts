@@ -230,6 +230,7 @@ test("acquireLease increments fencing token for each new lease [execution-lease-
     service.releaseLease({
       leaseId: result1.lease!.id,
       workerId: "worker-a",
+      fencingToken: result1.lease!.fencingToken,
       reasonCode: "test",
       occurredAt: now,
     });
@@ -379,6 +380,7 @@ test("renewLease blocked when lease is not active (already released) [execution-
     service.releaseLease({
       leaseId: acquireResult.lease!.id,
       workerId: "worker-a",
+      fencingToken: acquireResult.lease!.fencingToken,
       reasonCode: "test",
       occurredAt: now,
     });
@@ -466,6 +468,7 @@ test("releaseLease releases an active lease [execution-lease-service]", () => {
     const releaseResult = service.releaseLease({
       leaseId: acquireResult.lease!.id,
       workerId: "worker-a",
+      fencingToken: acquireResult.lease!.fencingToken,
       reasonCode: "completed",
       occurredAt: now,
     });
@@ -569,6 +572,7 @@ test("releaseLease blocked when lease is not active [execution-lease-service]", 
     service.releaseLease({
       leaseId: acquireResult.lease!.id,
       workerId: "worker-a",
+      fencingToken: acquireResult.lease!.fencingToken,
       reasonCode: "first_release",
       occurredAt: now,
     });
@@ -577,6 +581,7 @@ test("releaseLease blocked when lease is not active [execution-lease-service]", 
     const secondRelease = service.releaseLease({
       leaseId: acquireResult.lease!.id,
       workerId: "worker-a",
+      fencingToken: acquireResult.lease!.fencingToken,
       reasonCode: "second_release",
       occurredAt: now,
     });
@@ -781,6 +786,7 @@ test("after release, new worker can acquire lease [execution-lease-service]", ()
     service.releaseLease({
       leaseId: firstResult.lease!.id,
       workerId: "worker-a",
+      fencingToken: firstResult.lease!.fencingToken,
       reasonCode: "done",
       occurredAt: now,
     });
@@ -970,6 +976,7 @@ test("validateWriteAccess denies write after lease is released [execution-lease-
     service.releaseLease({
       leaseId: acquireResult.lease!.id,
       workerId: "worker-a",
+      fencingToken: acquireResult.lease!.fencingToken,
       reasonCode: "done",
       occurredAt: now,
     });
@@ -1231,6 +1238,7 @@ test("lease operations create audit records [execution-lease-service]", () => {
     service.releaseLease({
       leaseId: acquireResult.lease!.id,
       workerId: "worker-a",
+      fencingToken: acquireResult.lease!.fencingToken,
       reasonCode: "done",
       occurredAt: now,
     });

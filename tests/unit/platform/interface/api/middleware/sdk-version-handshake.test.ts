@@ -83,7 +83,7 @@ describe("SdkVersionHandshakeService", () => {
       strictEqual(decision.reasonCode, "sdk.platform_incompatible");
     });
 
-    it("should include warnings when contract version mismatched", () => {
+    it("should reject when contract version mismatched", () => {
       const service = new SdkVersionHandshakeService(
         createPolicy({ contractVersion: "1.0.0" }),
       );
@@ -95,9 +95,11 @@ describe("SdkVersionHandshakeService", () => {
       };
 
       const decision = service.evaluate(request);
-      strictEqual(decision.accepted, true);
+      strictEqual(decision.accepted, false);
+      strictEqual(decision.statusCode, 426);
+      strictEqual(decision.reasonCode, "sdk.contract_incompatible");
       ok(decision.warnings.length > 0);
-      ok(decision.warnings.some((w) => w.includes("contract=")));
+      ok(decision.warnings.some((w) => w.includes("compatibility_error:contract=")));
     });
 
     it("should include warning when SDK below recommended version", () => {
@@ -140,7 +142,7 @@ describe("SdkVersionHandshakeService", () => {
       strictEqual(decision.responseHeaders["X-SDK-Compatibility"], "upgrade_required");
     });
 
-    it("should return compatibility_warning headers when warnings present", () => {
+    it("should return contract_incompatible headers when contract versions mismatch", () => {
       const service = new SdkVersionHandshakeService(
         createPolicy({ contractVersion: "1.0.0", recommendedSdkVersion: "2.0.0" }),
       );
@@ -152,7 +154,7 @@ describe("SdkVersionHandshakeService", () => {
       };
 
       const decision = service.evaluate(request);
-      strictEqual(decision.responseHeaders["X-SDK-Compatibility"], "compatibility_warning");
+      strictEqual(decision.responseHeaders["X-SDK-Compatibility"], "contract_incompatible");
     });
   });
 

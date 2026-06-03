@@ -9,7 +9,7 @@ import { OperatorConsoleBackendService } from "../../../../../src/platform/five-
 
 test("planHumanTakeoverAction with all action types", () => {
   const service = new OperatorConsoleBackendService({});
-  const operator = { operatorId: "op-all", roles: ["operator"], tenantId: null, workspaceId: null };
+  const operator = { operatorId: "op-all", roles: ["operator", "admin", "break_glass"], tenantId: null, workspaceId: null };
 
   const actionTypes = [
     "take_over_task",
@@ -94,7 +94,7 @@ test("planHumanTakeoverAction requires operator id", () => {
 
 test("planHumanTakeoverAction sets requiresPolicyEvaluation for high risk actions", () => {
   const service = new OperatorConsoleBackendService({});
-  const operator = { operatorId: "op-high-risk", roles: ["operator"], tenantId: null, workspaceId: null };
+  const operator = { operatorId: "op-high-risk", roles: ["operator", "admin", "break_glass"], tenantId: null, workspaceId: null };
 
   const highRiskActions = ["switch_worker", "attach_artifact", "advance_rollout", "rollback_rollout", "finish_task"] as const;
 
@@ -113,20 +113,23 @@ test("planHumanTakeoverAction sets requiresPolicyEvaluation for high risk action
 
 test("planHumanTakeoverAction sets requiresBreakGlass for break glass actions without role", () => {
   const service = new OperatorConsoleBackendService({});
-  const operator = { operatorId: "op-no-break-glass", roles: ["operator"], tenantId: null, workspaceId: null };
+  const operator = { operatorId: "op-no-break-glass", roles: ["operator", "admin"], tenantId: null, workspaceId: null };
 
   const breakGlassActions = ["skip_step", "switch_worker", "finish_task", "rollback_rollout"] as const;
 
   for (const actionType of breakGlassActions) {
-    const plan = service.planHumanTakeoverAction({
-      actionId: `action-${actionType}`,
-      actionType,
-      taskId: "task-test",
-      operator,
-      reasonCode: "test",
-    });
-
-    assert.equal(plan.requiresBreakGlass, true, `Failed for ${actionType}`);
+    assert.throws(
+      () =>
+        service.planHumanTakeoverAction({
+          actionId: `action-${actionType}`,
+          actionType,
+          taskId: "task-test",
+          operator,
+          reasonCode: "test",
+        }),
+      /break_glass role/,
+      `Failed for ${actionType}`,
+    );
   }
 });
 

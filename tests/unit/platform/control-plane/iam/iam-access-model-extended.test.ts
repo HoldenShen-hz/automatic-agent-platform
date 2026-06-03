@@ -229,7 +229,15 @@ test("evaluateAuthorizationContext requires operator role for manual takeover", 
     principalType: "worker",
     roles: ["worker_runtime"],
     action: "invoke_tool",
-    context: { manualTakeoverActive: true },
+    context: {
+      manualTakeoverActive: true,
+      tenantId: "tenant-123",
+      originalPrincipal: {
+        type: "worker",
+        roles: ["worker_runtime"],
+        tenantId: "tenant-123",
+      },
+    },
   });
 
   assert.equal(denied.allowed, false);
@@ -299,6 +307,7 @@ test("evaluateAuthorizationContext allows when tenant scope provided", () => {
     principalType: "user",
     roles: ["human_operator"],
     action: "invoke_model",
+    principalTenantId: "tenant-123",
     context: { requiresTenantScope: true, tenantId: "tenant-123" },
   });
 
@@ -390,7 +399,15 @@ test("evaluateAuthorizationContext manual takeover denies non-operators", () => 
     principalType: "agent",
     roles: ["agent_runtime"],
     action: "invoke_model",
-    context: { manualTakeoverActive: true },
+    context: {
+      manualTakeoverActive: true,
+      tenantId: "tenant-123",
+      originalPrincipal: {
+        type: "agent",
+        roles: ["agent_runtime"],
+        tenantId: "tenant-123",
+      },
+    },
   });
 
   assert.equal(decision.allowed, false);
@@ -402,7 +419,15 @@ test("evaluateAuthorizationContext manual takeover allows operators", () => {
     principalType: "user",
     roles: ["human_operator"],
     action: "invoke_model",
-    context: { manualTakeoverActive: true },
+    context: {
+      manualTakeoverActive: true,
+      tenantId: "tenant-123",
+      originalPrincipal: {
+        type: "user",
+        roles: ["human_operator"],
+        tenantId: "tenant-123",
+      },
+    },
   });
 
   // human_operator is in the allowed list for manual takeover

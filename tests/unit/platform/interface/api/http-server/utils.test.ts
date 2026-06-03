@@ -584,7 +584,7 @@ test("requirePrincipal authenticates service tokens before falling back to user 
   const identity = registerServiceIdentity({
     serviceName: "task-dispatcher",
     namespace: "execution",
-    capabilities: [],
+    capabilities: ["api:viewer"],
   });
   const token = issueServiceToken({
     serviceId: identity.serviceId,
@@ -598,7 +598,7 @@ test("requirePrincipal authenticates service tokens before falling back to user 
 
   const principal = requirePrincipal(request, null, "viewer");
   assert.equal(principal.actorId, identity.serviceId);
-  assert.deepEqual(principal.roles, ["admin"]);
+  assert.deepEqual(principal.roles, ["viewer"]);
 });
 
 test("requirePrincipal rejects service tokens whose audience does not match the route", () => {

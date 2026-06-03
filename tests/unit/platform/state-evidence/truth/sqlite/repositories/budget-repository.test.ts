@@ -79,6 +79,42 @@ function seedHarnessRunFixture(
     "fence-budget-test",
     input.now,
   );
+
+  db.connection.prepare(
+    `INSERT INTO plan_graph_bundles (
+      plan_graph_bundle_id, harness_run_id, graph_version, graph_json,
+      validation_report_json, created_at, created_by, updated_at, is_deleted
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    "plan-graph-budget-test",
+    input.harnessRunId,
+    1,
+    "{\"nodes\":[],\"edges\":[]}",
+    "{\"valid\":true,\"errors\":[]}",
+    input.now,
+    "budget-test",
+    input.now,
+    0,
+  );
+
+  db.connection.prepare(
+    `INSERT INTO node_runs (
+      node_run_id, harness_run_id, plan_graph_bundle_id, node_id, status,
+      lease_id, fencing_token, current_seq, updated_at, created_at, is_deleted
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    "node-run-1",
+    input.harnessRunId,
+    "plan-graph-budget-test",
+    "node-budget-test",
+    "running",
+    null,
+    "fence-node-budget-test",
+    0,
+    input.now,
+    input.now,
+    0,
+  );
 }
 
 test("BudgetRepository can be instantiated with mock connection", () => {

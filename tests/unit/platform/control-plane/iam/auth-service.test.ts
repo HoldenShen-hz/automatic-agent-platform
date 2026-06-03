@@ -232,7 +232,15 @@ test("evaluateAuthorizationContext records manual takeover without blocking", ()
     principalType: "user",
     roles: ["human_operator"],
     action: "invoke_tool",
-    context: makeMockContext({ manualTakeoverActive: true }),
+    context: makeMockContext({
+      manualTakeoverActive: true,
+      tenantId: "tenant-123",
+      originalPrincipal: {
+        type: "user",
+        roles: ["human_operator"],
+        tenantId: "tenant-123",
+      },
+    }),
     mode: "auto",
   });
   assert.equal(result.allowed, true);

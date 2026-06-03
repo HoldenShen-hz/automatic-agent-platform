@@ -237,15 +237,13 @@ test("buildView categorizes experience scope into evolution layer", async () => 
   assert.equal(result.layers.evolution.length, 1);
 });
 
-test("buildView maps unknown scope to project layer", async () => {
+test("buildView rejects unknown scope", async () => {
   const provider = createMockProvider();
   (provider as any).prefetch = async () =>
     createMockPrefetchResult({ memories: [createMockMemoryRecord({ scope: "unknown_scope" })] });
 
   const service = new MemoryPlaneService(provider);
-  const result = await service.buildView({ sessionId: "session_1" });
-
-  assert.equal(result.layers.project.length, 1);
+  await assert.rejects(() => service.buildView({ sessionId: "session_1" }), /memory\.scope_unknown:unknown_scope/);
 });
 
 // =============================================================================

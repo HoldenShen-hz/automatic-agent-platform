@@ -67,7 +67,7 @@ test("PackCatalogService.createPack sets optional fields", () => {
   const pack = service.createPack(input);
 
   assert.equal(pack.description, "A pack with options");
-  assert.equal(pack.sandboxTier, "workspace_write");
+  assert.equal(pack.sandboxTier, "restricted_exec");
   assert.equal(pack.riskCount, 3);
   assert.equal(pack.dependencyCount, 5);
   assert.equal(pack.pluginCount, 10);

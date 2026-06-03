@@ -331,7 +331,7 @@ test("RedisRateLimiter getUsage calls zremrangebyscore then zcard", async () => 
   });
 });
 
-test("RedisRateLimiter reset deletes the key with prefix", async () => {
+test("RedisRateLimiter reset deletes the raw key and relies on Redis keyPrefix config", async () => {
   let deletedKey = "";
 
   await withMockRedisCtor(async () => {
@@ -350,7 +350,7 @@ test("RedisRateLimiter reset deletes the key with prefix", async () => {
     (limiter as any).redis = mock;
 
     await limiter.reset("test:key");
-    assert.equal(deletedKey, "rl:test:key");
+    assert.equal(deletedKey, "test:key");
   });
 });
 

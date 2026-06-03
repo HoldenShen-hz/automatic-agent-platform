@@ -195,6 +195,12 @@ test("AuthoritativeTaskStore consumers use repository accessors instead of legac
     "listGatewayTargets(",
     "listGatewaySessionTargetCandidates(",
     "listTasks(",
+    "listExecutionsByTask(",
+    "upsertWorkerSnapshot(",
+    "insertTask(",
+    "insertSession(",
+    "insertStepOutput(",
+    "insertApproval(",
   ]);
   const offenders: string[] = [];
 

@@ -439,7 +439,14 @@ test("InMemoryDelegationEventRepository.findByDelegationId returns events", asyn
 test("InMemoryDelegationEventRepository.deleteByDelegationId removes all events", async () => {
   const delegationRepo = new InMemoryDelegationRepository();
   const eventRepo = new InMemoryDelegationEventRepository();
-  const delegation = await delegationRepo.create({ parentAgentId: "p", childAgentId: "c", delegationChain: [], depth: 1 });
+  const delegation = await delegationRepo.create({
+    parentAgentId: "p",
+    childAgentId: "c",
+    permissions: defaultDelegationPermissions,
+    grantedPermissions: defaultDelegationPermissions,
+    delegationChain: [],
+    depth: 1,
+  });
 
   await eventRepo.create({ delegationId: delegation.delegationId, eventType: "e", payload: {} });
   await eventRepo.create({ delegationId: delegation.delegationId, eventType: "e", payload: {} });

@@ -314,8 +314,8 @@ test.describe("Ingress health checks - connection resilience", () => {
     const usage = await limiter.getUsage("test_key", 1000);
     assert.equal(usage, 3);
     assert.equal(calls.length, 2);
-    assert.ok(calls[0]?.startsWith("ratelimit:test_key:0:"));
-    assert.equal(calls[1], "ratelimit:test_key");
+    assert.ok(calls[0]?.startsWith("test_key:0:"));
+    assert.equal(calls[1], "test_key");
     limiter.close();
   });
 
@@ -333,7 +333,7 @@ test.describe("Ingress health checks - connection resilience", () => {
     redis.disconnect = () => undefined;
 
     assert.equal(await limiter.reset("test_key"), undefined);
-    assert.deepEqual(deletedKeys, ["ratelimit:test_key"]);
+    assert.deepEqual(deletedKeys, ["test_key"]);
     limiter.close();
   });
 });

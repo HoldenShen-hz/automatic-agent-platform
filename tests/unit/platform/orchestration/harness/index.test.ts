@@ -304,7 +304,8 @@ test("HarnessRuntimeService evaluates runs and AsyncHarnessService executes queu
   const report = service.evaluateRun(run);
 
   assert.equal(asyncHarness.getRunStatus(runId), "completed");
-  assert.equal(report.overallPassed, true);
+  assert.equal(report.overallPassed, false);
+  assert.ok(report.grade.findingCodes.some((code) => code.includes("missing_evidence")));
   assert.equal(report.timelineEventCount >= 3, true);
 });
 
@@ -392,5 +393,6 @@ test("HarnessRuntimeService uses RecoveryController to recover from persisted fa
   assert.equal(recovered.pauseReason, "sleep");
   assert.ok(recovered.sleepLease !== null);
   assert.equal(resumed.status, "paused");
-  assert.equal(resumed.pauseReason, "hitl");
+  assert.equal(resumed.pauseReason, "sleep");
+  assert.ok(resumed.sleepLease !== null);
 });

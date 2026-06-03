@@ -102,15 +102,18 @@ test("planHumanTakeoverAction returns correct action plan structure", () => {
 
 test("planHumanTakeoverAction requires break glass for skip_step without role", () => {
   const service = new OperatorConsoleBackendService({});
-  const operator: OperatorIdentity = { operatorId: "op-1", roles: ["operator"], tenantId: null, workspaceId: null };
-  const plan = service.planHumanTakeoverAction({
-    actionId: "a1",
-    actionType: "skip_step",
-    taskId: "t1",
-    operator,
-    reasonCode: "debug",
-  });
-  assert.equal(plan.requiresBreakGlass, true);
+  const operator: OperatorIdentity = { operatorId: "op-1", roles: ["operator", "admin"], tenantId: null, workspaceId: null };
+  assert.throws(
+    () =>
+      service.planHumanTakeoverAction({
+        actionId: "a1",
+        actionType: "skip_step",
+        taskId: "t1",
+        operator,
+        reasonCode: "debug",
+      }),
+    /break_glass role/,
+  );
 });
 
 test("planHumanTakeoverAction does not require break glass when operator has break_glass role", () => {
@@ -128,7 +131,7 @@ test("planHumanTakeoverAction does not require break glass when operator has bre
 
 test("planHumanTakeoverAction requires policy evaluation for high-risk actions", () => {
   const service = new OperatorConsoleBackendService({});
-  const operator: OperatorIdentity = { operatorId: "op-1", roles: ["operator"], tenantId: null, workspaceId: null };
+  const operator: OperatorIdentity = { operatorId: "op-1", roles: ["operator", "admin", "break_glass"], tenantId: null, workspaceId: null };
   const highRiskActions: Array<{ actionType: Parameters<typeof service.planHumanTakeoverAction>[0]["actionType"] }> = [
     { actionType: "skip_step" },
     { actionType: "switch_worker" },

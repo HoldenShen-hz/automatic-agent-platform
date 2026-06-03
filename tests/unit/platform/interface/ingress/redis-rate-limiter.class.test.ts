@@ -282,7 +282,7 @@ test("RedisRateLimiter reset deletes the key", async () => {
 
     await limiter.reset("test:key");
     assert.ok(delCalled);
-    assert.equal(deletedKey, "rl:test:key");
+    assert.equal(deletedKey, "test:key");
   });
 });
 
@@ -427,7 +427,7 @@ test("RedisRateLimiter checkAndConsume removes entry when rejected", async () =>
 
     await limiter.checkAndConsume("test:key", 10, 60000);
     assert.ok(zremCalled);
-    assert.equal(zremKey, "rl:test:key");
+    assert.equal(zremKey, "test:key");
   });
 });
 
@@ -537,7 +537,7 @@ test("RedisRateLimiter getUsage calls zremrangebyscore then zcard", async () => 
   });
 });
 
-test("RedisRateLimiter reset uses correct full key with prefix", async () => {
+test("RedisRateLimiter reset uses raw key and relies on Redis keyPrefix config", async () => {
   let deletedKey = "";
 
   await withMockRedisCtor(async (MockRedis) => {
@@ -556,7 +556,7 @@ test("RedisRateLimiter reset uses correct full key with prefix", async () => {
     (limiter as any).redis = mock;
 
     await limiter.reset("mykey");
-    assert.equal(deletedKey, "myprefix:mykey");
+    assert.equal(deletedKey, "mykey");
   });
 });
 

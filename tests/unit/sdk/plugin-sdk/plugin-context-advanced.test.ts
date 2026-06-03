@@ -251,18 +251,18 @@ test("PluginContext forkForDelegation creates correct chain", () => {
   assert.equal(grandchild.delegationDepth, 2);
 });
 
-test("PluginContext sandboxTier gets normalized to workspace_write for container", () => {
+test("PluginContext sandboxTier gets normalized to restricted_exec for container", () => {
   const ctx = new PluginContext({
     pluginId: "my-plugin",
     sandboxTier: "container",
   });
 
-  assert.equal(ctx.sandboxTier, "workspace_write");
+  assert.equal(ctx.sandboxTier, "restricted_exec");
 });
 
-test("PluginContext with none sandboxTier throws", () => {
+test("PluginContext with none sandboxTier normalizes to restricted_exec", () => {
   const ctx = new PluginContext({ pluginId: "my-plugin", sandboxTier: "none" });
-  assert.equal(ctx.sandboxTier, "read_only");
+  assert.equal(ctx.sandboxTier, "restricted_exec");
 });
 
 test("PluginContext default sandboxTier is read_only", () => {

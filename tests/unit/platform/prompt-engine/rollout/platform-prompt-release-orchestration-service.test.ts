@@ -9,7 +9,11 @@ import { PlatformPromptReleaseOrchestrationService } from "../../../../../src/pl
 const CRITICAL_CASE_COUNT = 200;
 
 function createDatasetService(): EvalDatasetJudgeService {
-  const datasets = new EvalDatasetJudgeService();
+  const datasets = new EvalDatasetJudgeService({
+    llm_judge_default: ({ criterion, criterionSignals }) => ({
+      score: criterionSignals[criterion.criterionId] ?? 0,
+    }),
+  });
   datasets.registerDataset({
     datasetId: "dataset_ops_release",
     name: "Ops Prompt Release",
@@ -33,7 +37,7 @@ function createDatasetService(): EvalDatasetJudgeService {
         {
           criterionId: "judge_safe",
           type: "llm_judge" as const,
-          config: {},
+          config: { judgeEvaluatorId: "llm_judge_default" },
           weight: 0.5,
           threshold: 0.8,
         },
