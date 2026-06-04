@@ -45,18 +45,18 @@ test("ModelCallProviderService hasAnyProvider returns false when no providers co
   assert.equal(provider.hasAnyProvider(), false);
 });
 
-test("ModelCallProviderService getDefaultModel returns MiniMax-M2.7 by default [model-call-provider]", () => {
+test("ModelCallProviderService getDefaultModel returns minimax-m2.7 by default [model-call-provider]", () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 
-  assert.equal(provider.getDefaultModel(), "MiniMax-M2.7");
+  assert.equal(provider.getDefaultModel(), "minimax-m2.7");
 });
 
-test("ModelCallProviderService getDefaultModel returns configured default [model-call-provider]", () => {
+test("ModelCallProviderService getDefaultModel ignores configured non-platform default [model-call-provider]", () => {
   const config: ModelCallProviderConfig = { defaultModel: "claude-3-5-sonnet" };
   const provider = new ModelCallProviderService(config);
 
-  assert.equal(provider.getDefaultModel(), "claude-3-5-sonnet");
+  assert.equal(provider.getDefaultModel(), "minimax-m2.7");
 });
 
 test("ModelCallProviderService dispose marks provider as disposed [model-call-provider]", () => {
@@ -93,7 +93,7 @@ test("ModelCallProviderService createCompletion throws when no provider configur
   await assert.rejects(
     async () => provider.createCompletion(request),
     (error: unknown) => {
-      if (error instanceof Error && error.message.includes("No model provider configured")) {
+      if (error instanceof Error && error.message.includes("MiniMax model provider is not configured")) {
         return true;
       }
       return false;
@@ -116,7 +116,7 @@ test("ModelCallProviderService createStreamingCompletion throws when no provider
   await assert.rejects(
     async () => provider.createStreamingCompletion(request, onChunk),
     (error: unknown) => {
-      if (error instanceof Error && error.message.includes("No model provider configured")) {
+      if (error instanceof Error && error.message.includes("MiniMax model provider is not configured")) {
         return true;
       }
       return false;

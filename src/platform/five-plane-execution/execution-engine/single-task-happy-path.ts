@@ -681,7 +681,7 @@ function buildExecutionCostEvent(input: {
 }): Omit<CostEventRecord, "id"> {
   const promptTokens = input.llmResult?.usage.promptTokens ?? 30;
   const completionTokens = input.llmResult?.usage.completionTokens ?? 12;
-  const model = input.llmResult?.model ?? "MiniMax-M2.7";
+  const model = input.llmResult?.model ?? "minimax-m2.7";
   return {
     taskId: input.taskId,
     sessionId: input.sessionId,

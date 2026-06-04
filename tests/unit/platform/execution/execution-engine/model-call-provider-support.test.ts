@@ -80,9 +80,9 @@ test("estimateLlmCallCost calculates correct cost for MiniMax-M2.7 [model-call-p
   assert.equal(cost, 0.001); // $0.001 per token
 });
 
-test("estimateLlmCallCost calculates correct cost for MiniMax-M2.7-highspeed [model-call-provider-support]", () => {
+test("estimateLlmCallCost normalizes legacy MiniMax variants to platform default rate [model-call-provider-support]", () => {
   const cost = estimateLlmCallCost(1000, "MiniMax-M2.7-highspeed");
-  assert.equal(cost, 0.002); // $0.002 per token
+  assert.equal(cost, 0.001); // platform default rate
 });
 
 test("estimateLlmCallCost uses default rate for unknown model [model-call-provider-support]", () => {

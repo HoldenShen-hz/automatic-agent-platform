@@ -109,8 +109,8 @@ export const defaultMockApiShape = {
         { id: "marketplace", enabled: true, rolloutPercentage: 60, target: "shared" },
     ],
     models: [
-        { id: "model-1", provider: "minimax", model: "MiniMax-M2.7", boundDomains: ["marketing", "quant-trading"], budgetUsd: 2400 },
-        { id: "model-2", provider: "minimax", model: "MiniMax-Text-01", boundDomains: ["customer-service", "education"], budgetUsd: 900 },
+        { id: "model-1", provider: "minimax", model: "minimax-m2.7", boundDomains: ["marketing", "quant-trading"], budgetUsd: 2400 },
+        { id: "model-2", provider: "minimax", model: "minimax-m2.7", boundDomains: ["customer-service", "education"], budgetUsd: 900 },
     ],
     domainConfigs: [
         { id: "marketing", displayName: "Marketing", owner: "growth-ops", defaultDrillDepth: 3, featureVisibilityCount: 12 },

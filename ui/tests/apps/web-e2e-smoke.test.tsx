@@ -87,7 +87,7 @@ vi.mock("@aa/shared-state", () => ({
     data: [{ id: "analytics", enabled: true, rolloutPercentage: 100, target: "all" }],
   }),
   useModelsQuery: () => ({
-    data: [{ id: "model-1", provider: "minimax", model: "MiniMax-Text-01", boundDomains: ["platform"], budgetUsd: 50 }],
+    data: [{ id: "model-1", provider: "minimax", model: "minimax-m2.7", boundDomains: ["platform"], budgetUsd: 50 }],
   }),
   useDomainConfigsQuery: () => ({
     data: [{ id: "platform", displayName: "Platform", owner: "ops", defaultDrillDepth: 3, featureVisibilityCount: 8 }],

@@ -10,7 +10,9 @@ test("JudgeProviderRegistryService registers defaults and selects isolated judge
 
   const ready = service.listDescriptors("ready");
   assert.equal(ready.length, 3);
-  assert.equal(ready[0]?.providerId, "judge.openai.gpt-5.4-mini");
+  assert.equal(ready[0]?.providerId, "judge.minimax.minimax-m2.7.primary");
+  assert.ok(ready.every((descriptor) => descriptor.modelId === "minimax-m2.7"));
+  assert.ok(ready.every((descriptor) => descriptor.provider === "minimax"));
 
   const isolated = service.selectDescriptor({
     capability: "llm_judge",
@@ -19,7 +21,7 @@ test("JudgeProviderRegistryService registers defaults and selects isolated judge
     requireIsolation: true,
   });
   assert.ok(isolated);
-  assert.notEqual(isolated?.providerFamily, "openai");
+  assert.equal(isolated?.providerFamily, "minimax");
 
   const sameFamilyAllowed = service.selectDescriptor({
     capability: "llm_judge",
@@ -30,7 +32,7 @@ test("JudgeProviderRegistryService registers defaults and selects isolated judge
   assert.ok(sameFamilyAllowed);
 });
 
-test("JudgeProviderRegistryService.selectDescriptor avoids back-to-back selections from the same family when alternatives exist", () => {
+test("JudgeProviderRegistryService.selectDescriptor keeps minimax-only defaults selectable", () => {
   const service = new JudgeProviderRegistryService();
   service.registerDefaults();
 
@@ -45,7 +47,8 @@ test("JudgeProviderRegistryService.selectDescriptor avoids back-to-back selectio
 
   assert.ok(first);
   assert.ok(second);
-  assert.notEqual(second?.providerFamily, first?.providerFamily);
+  assert.equal(first?.providerFamily, "minimax");
+  assert.equal(second?.providerFamily, "minimax");
 });
 
 test("JudgeProviderRegistryService.registerDescriptor adds descriptor to registry", () => {
@@ -205,7 +208,7 @@ test("JudgeProviderRegistryService.selectDescriptor filters by capability", () =
     capability: "pairwise_rank",
   });
   assert.ok(pairwise);
-  assert.equal(pairwise?.providerId, "judge.openai.gpt-5.4-mini");
+  assert.equal(pairwise?.providerId, "judge.minimax.minimax-m2.7.primary");
 });
 
 test("JudgeProviderRegistryService.selectDescriptor filters by maxCostUsd", () => {

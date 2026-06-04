@@ -85,9 +85,9 @@ test("growthDomainDefinition has correct capabilities", () => {
 });
 
 test("growthDomainDefinition has correct model preferences", () => {
-  assert.equal(growthDomainDefinition.capabilities.modelPreferences["campaign_optimization"], "MiniMax-M1");
-  assert.equal(growthDomainDefinition.capabilities.modelPreferences["customer_analytics"], "MiniMax-M1");
-  assert.equal(growthDomainDefinition.capabilities.modelPreferences["growth_experiment"], "MiniMax-M1");
+  assert.equal(growthDomainDefinition.capabilities.modelPreferences["campaign_optimization"], "minimax-m2.7");
+  assert.equal(growthDomainDefinition.capabilities.modelPreferences["customer_analytics"], "minimax-m2.7");
+  assert.equal(growthDomainDefinition.capabilities.modelPreferences["growth_experiment"], "minimax-m2.7");
 });
 
 test("growthDomainDefinition has correct budget limits", () => {

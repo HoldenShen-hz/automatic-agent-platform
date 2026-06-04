@@ -7,8 +7,8 @@
  * ## Supported Providers
  *
  * - `anthropic`: Claude models (opus, sonnet, haiku)
- * - `openai`: GPT models (gpt-4o, gpt-4, gpt-3.5-turbo)
- * - `minimax`: MiniMax models (M2.7, M2.7-highspeed, M2, M1, Text-01)
+ * - `openai`: Compatibility provider only; runtime calls are normalized to MiniMax.
+ * - `minimax`: MiniMax models, with minimax-m2.7 as the platform default.
  */
 
 import { AnthropicChatService, type AnthropicTool, type AnthropicChatCompletionResult, type AnthropicChatCompletionRequest } from "./anthropic/anthropic-chat-service.js";
@@ -21,6 +21,8 @@ import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metri
 import { sha256HexPrefix } from "../../shared/cache/utils/sha256.js";
 import { HashEmbeddingProvider, MiniMaxEmbeddingProvider, OpenAIEmbeddingProvider, type EmbeddingProvider } from "../../five-plane-state-evidence/knowledge/indexing/embedding-provider.js";
 import { DEFAULT_MODEL_METADATA_REGISTRY } from "../../five-plane-control-plane/config-center/model-metadata-registry.js";
+
+const PLATFORM_DEFAULT_MODEL_ID = "minimax-m2.7";
 
 const llmRequestLogger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -153,6 +155,7 @@ const PROVIDER_FROM_MODEL: Record<string, ChatProviderType> = {
   "gpt-5.2": "openai",
   "gpt-5.3-codex": "openai",
   // MiniMax models
+  "minimax-m2.7": "minimax",
   "MiniMax-M2.7": "minimax",
   "MiniMax-M2.7-highspeed": "minimax",
   "MiniMax-M2": "minimax",
@@ -528,7 +531,7 @@ export class UnifiedChatProvider {
     const tenantId = options.tenantId?.trim() ? options.tenantId : "default-tenant";
     const costTag = options.costTag ?? "default";
     const result = await this.createChatCompletion({
-      model: options.model ?? "MiniMax-M2.7",
+      model: options.model ?? PLATFORM_DEFAULT_MODEL_ID,
       messages: [{ role: "user", content: prompt }],
       traceId,
       tenantId,
@@ -661,9 +664,7 @@ export class UnifiedChatProvider {
         inputCostPer1kUsd: profile.pricing.inputPer1kUsd,
       }));
     const primaryProfiles = [
-      { profileName: "claude-opus-4-5", provider: "anthropic", tier: "reasoning", healthy: true, inputCostPer1kUsd: 15 },
-      { profileName: "gpt-4o", provider: "openai", tier: "balanced", healthy: true, inputCostPer1kUsd: 5 },
-      { profileName: "MiniMax-M2.7", provider: "minimax", tier: "reasoning", healthy: true, inputCostPer1kUsd: 0.002 },
+      { profileName: "minimax-m2.7", provider: "minimax", tier: "reasoning", healthy: true, inputCostPer1kUsd: 0.002 },
     ] as const;
     for (const profile of primaryProfiles) {
       if (this.hasProvider(profile.provider) && !profiles.some((existing) => existing.profileName === profile.profileName)) {
@@ -676,6 +677,7 @@ export class UnifiedChatProvider {
   private withRequestDefaults(request: ChatCompletionRequest): ChatCompletionRequest {
     return {
       ...request,
+      model: PLATFORM_DEFAULT_MODEL_ID,
       traceId: request.traceId?.trim() ? request.traceId : "default",
       tenantId: request.tenantId?.trim() ? request.tenantId : "default-tenant",
       costTag: request.costTag?.trim() ? request.costTag : "default",

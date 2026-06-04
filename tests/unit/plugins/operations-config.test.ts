@@ -83,8 +83,8 @@ test("operationsDomainDefinition has correct capabilities", () => {
 });
 
 test("operationsDomainDefinition has correct model preferences", () => {
-  assert.equal(operationsDomainDefinition.capabilities.modelPreferences["incident_response"], "MiniMax-M2.7");
-  assert.equal(operationsDomainDefinition.capabilities.modelPreferences["runbook_execution"], "MiniMax-Text-01");
+  assert.equal(operationsDomainDefinition.capabilities.modelPreferences["incident_response"], "minimax-m2.7");
+  assert.equal(operationsDomainDefinition.capabilities.modelPreferences["runbook_execution"], "minimax-m2.7");
 });
 
 test("operationsDomainDefinition has correct budget limits", () => {

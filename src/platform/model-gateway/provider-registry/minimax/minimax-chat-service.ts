@@ -4,7 +4,7 @@
  * ## Overview
  *
  * Provides chat completion functionality using MiniMax's AI models.
- * Supports MiniMax-M2 (reasoning), MiniMax-M1 (reasoning), and MiniMax-Text-01 (standard).
+ * Supports the platform MiniMax chat integration. The active platform model is minimax-m2.7.
  *
  * ## API Documentation
  *
@@ -13,8 +13,7 @@
  * ## Supported Models
  *
  * - `MiniMax-M2`: Reasoning model (best quality)
- * - `MiniMax-M1`: Reasoning model (balanced)
- * - `MiniMax-Text-01`: Standard model (fastest)
+ * - `minimax-m2.7`: Platform default model.
  *
  * ## Region Support
  *

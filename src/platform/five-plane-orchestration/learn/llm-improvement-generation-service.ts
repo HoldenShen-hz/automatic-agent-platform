@@ -12,7 +12,7 @@ import { extractAndParseGuardedJson } from "../oapeflir/safe-llm-json.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
 
-const DEFAULT_IMPROVEMENT_MODEL = "MiniMax-M2.7";
+const DEFAULT_IMPROVEMENT_MODEL = "minimax-m2.7";
 const DEFAULT_MAX_TOKENS = 1024;
 const DEFAULT_TEMPERATURE = 0.3;
 

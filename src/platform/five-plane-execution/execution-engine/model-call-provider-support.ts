@@ -99,15 +99,7 @@ export function buildBudgetReservationRequest(
 
 export function estimateLlmCallCost(maxTokens: number, model: string): number {
   const costPerThousandTokens: Record<string, number> = {
-    "MiniMax-M2.7": 0.001,
-    "MiniMax-M2.7-highspeed": 0.002,
-    "MiniMax-M2": 0.0008,
-    "MiniMax-M1": 0.0005,
-    "claude-opus-4-5": 0.015,
-    "claude-sonnet-4": 0.008,
-    "claude-haiku-3-5": 0.002,
-    "gpt-4o": 0.005,
-    "gpt-4o-mini": 0.0015,
+    "minimax-m2.7": 0.001,
   };
   const rate = costPerThousandTokens[model] ?? 0.001;
   return (maxTokens / 1000) * rate;

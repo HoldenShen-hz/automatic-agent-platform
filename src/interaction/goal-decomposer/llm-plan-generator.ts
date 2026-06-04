@@ -217,7 +217,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
   public readonly managesBudgetReservations: boolean;
 
   public constructor(private readonly options: UnifiedChatPlanGeneratorOptions) {
-    this.model = options.model ?? "gpt-4o-mini";
+    this.model = options.model ?? "minimax-m2.7";
     this.managesBudgetReservations = options.budgetControl != null;
   }
 

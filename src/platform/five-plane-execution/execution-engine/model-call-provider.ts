@@ -44,6 +44,7 @@ export type {
 } from "./model-call-provider-support.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
+const PLATFORM_DEFAULT_MODEL_ID = "minimax-m2.7";
 
 let modelCallProviderInstance: ModelCallProviderService | null = null;
 
@@ -80,8 +81,8 @@ export class ModelCallProviderService {
     }
 
     this.unifiedProvider = createUnifiedChatProvider(providerConfig);
-    this.defaultModel = config.defaultModel ?? "MiniMax-M2.7";
-    this.fallbackModels = resolveFallbackModels(config, env);
+    this.defaultModel = PLATFORM_DEFAULT_MODEL_ID;
+    this.fallbackModels = resolveFallbackModels(config, env).filter((model) => model === PLATFORM_DEFAULT_MODEL_ID);
     this.retryMaxAttempts = Math.max(1, config.retry?.maxAttempts ?? parsePositiveInteger(env.AA_MODEL_CALL_RETRY_MAX_ATTEMPTS) ?? 2);
     this.retryBaseDelayMs = Math.max(0, config.retry?.baseDelayMs ?? parseNonNegativeInteger(env.AA_MODEL_CALL_RETRY_BASE_DELAY_MS) ?? 100);
     this.callGovernance = createModelCallGovernance(config, process.env);
@@ -122,28 +123,29 @@ export class ModelCallProviderService {
   }
 
   public hasAnyProvider(): boolean {
-    return this.hasAnthropic() || this.hasOpenAI() || this.hasMinimax();
+    return this.hasMinimax();
   }
 
   public async createCompletion(request: LlmModelCallRequest): Promise<LlmModelCallResult> {
     if (!this.hasAnyProvider()) {
-      throw new ProviderError("model_call.no_provider_configured", "No model provider configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or MINIMAX_API_KEY environment variable", {
+      throw new ProviderError("model_call.no_provider_configured", "MiniMax model provider is not configured. Set MINIMAX_API_KEY or AA_MINIMAX_API_KEY environment variable", {
         retryable: true,
       });
     }
 
+    const effectiveRequest: LlmModelCallRequest = { ...request, model: this.defaultModel };
     const policy = getDefaultBudgetPolicy();
 
     // R2-6: Enforce maxModelTokens constraint before LLM call
-    if (policy.maxModelTokens != null && policy.maxModelTokens > 0 && request.maxTokens > policy.maxModelTokens) {
-      throw new ProviderError("model_call.max_tokens_exceeded", `Maximum model tokens ${policy.maxModelTokens} exceeded for this call (requested ${request.maxTokens})`, {
+    if (policy.maxModelTokens != null && policy.maxModelTokens > 0 && effectiveRequest.maxTokens > policy.maxModelTokens) {
+      throw new ProviderError("model_call.max_tokens_exceeded", `Maximum model tokens ${policy.maxModelTokens} exceeded for this call (requested ${effectiveRequest.maxTokens})`, {
         retryable: false,
       });
     }
 
     // R4-25 (INV-BUDGET-001): Reserve budget before LLM call
-    const estimatedCostUsd = estimateLlmCallCost(request.maxTokens, request.model);
-    const reserveResult = this.budgetGuard.atomicReserve(buildBudgetReservationRequest(request, policy, estimatedCostUsd));
+    const estimatedCostUsd = estimateLlmCallCost(effectiveRequest.maxTokens, effectiveRequest.model);
+    const reserveResult = this.budgetGuard.atomicReserve(buildBudgetReservationRequest(effectiveRequest, policy, estimatedCostUsd));
     if (!reserveResult.success) {
       throw new ProviderError("model_call.budget_exceeded", `Budget limit exceeded for LLM call: ${reserveResult.reasonCode}`, {
         retryable: false,
@@ -169,27 +171,27 @@ export class ModelCallProviderService {
     }
 
     const req: ChatCompletionRequest = {
-      model: request.model,
-      messages: request.messages,
-      maxTokens: request.maxTokens,
+      model: effectiveRequest.model,
+      messages: effectiveRequest.messages,
+      maxTokens: effectiveRequest.maxTokens,
       stream: false,
-      traceId: request.traceId ?? "",
-      tenantId: request.tenantId ?? null,
-      costTag: request.costTag ?? "",
+      traceId: effectiveRequest.traceId ?? "",
+      tenantId: effectiveRequest.tenantId ?? null,
+      costTag: effectiveRequest.costTag ?? "",
       abortSignal: controller.signal,
-      ...(request.tools !== undefined ? { tools: request.tools } : {}),
+      ...(effectiveRequest.tools !== undefined ? { tools: effectiveRequest.tools } : {}),
     };
-    if (request.system !== undefined) {
-      req.system = request.system;
+    if (effectiveRequest.system !== undefined) {
+      req.system = effectiveRequest.system;
     }
-    if (request.temperature !== undefined) {
-      req.temperature = request.temperature;
+    if (effectiveRequest.temperature !== undefined) {
+      req.temperature = effectiveRequest.temperature;
     }
 
     let budgetSettled = false;
     try {
       const startTime = Date.now();
-      const result = await this.executeGovernedCompletionWithFallback(request.model, req);
+      const result = await this.executeGovernedCompletionWithFallback(effectiveRequest.model, req);
       const elapsedMs = Date.now() - startTime;
 
       // R2-6: Check duration constraint after call completes
@@ -227,11 +229,12 @@ export class ModelCallProviderService {
     onChunk: (chunk: LlmModelCallResult, isFinal: boolean) => void,
   ): Promise<void> {
     if (!this.hasAnyProvider()) {
-      throw new ProviderError("model_call.no_provider_configured", "No model provider configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or MINIMAX_API_KEY environment variable", {
+      throw new ProviderError("model_call.no_provider_configured", "MiniMax model provider is not configured. Set MINIMAX_API_KEY or AA_MINIMAX_API_KEY environment variable", {
         retryable: true,
       });
     }
 
+    const effectiveRequest: LlmModelCallRequest = { ...request, model: this.defaultModel };
     const policy = getDefaultBudgetPolicy();
     const maxDurationMs = policy.maxDurationMs;
 
@@ -245,27 +248,27 @@ export class ModelCallProviderService {
     }
 
     const req: ChatCompletionRequest = {
-      model: request.model,
-      messages: request.messages,
-      maxTokens: request.maxTokens,
+      model: effectiveRequest.model,
+      messages: effectiveRequest.messages,
+      maxTokens: effectiveRequest.maxTokens,
       stream: true,
-      traceId: request.traceId ?? "",
-      tenantId: request.tenantId ?? null,
-      costTag: request.costTag ?? "",
+      traceId: effectiveRequest.traceId ?? "",
+      tenantId: effectiveRequest.tenantId ?? null,
+      costTag: effectiveRequest.costTag ?? "",
       abortSignal: controller.signal,
-      ...(request.tools !== undefined ? { tools: request.tools } : {}),
+      ...(effectiveRequest.tools !== undefined ? { tools: effectiveRequest.tools } : {}),
     };
-    if (request.system !== undefined) {
-      req.system = request.system;
+    if (effectiveRequest.system !== undefined) {
+      req.system = effectiveRequest.system;
     }
-    if (request.temperature !== undefined) {
-      req.temperature = request.temperature;
+    if (effectiveRequest.temperature !== undefined) {
+      req.temperature = effectiveRequest.temperature;
     }
 
-    const governanceKey = buildModelGovernanceKey(request.model);
+    const governanceKey = buildModelGovernanceKey(effectiveRequest.model);
     const startTime = Date.now();
-    const estimatedCostUsd = estimateLlmCallCost(request.maxTokens, request.model);
-    const reserveResult = this.budgetGuard.atomicReserve(buildBudgetReservationRequest(request, policy, estimatedCostUsd));
+    const estimatedCostUsd = estimateLlmCallCost(effectiveRequest.maxTokens, effectiveRequest.model);
+    const reserveResult = this.budgetGuard.atomicReserve(buildBudgetReservationRequest(effectiveRequest, policy, estimatedCostUsd));
     if (!reserveResult.success) {
       throw new ProviderError("model_call.budget_exceeded", `Budget limit exceeded for LLM call: ${reserveResult.reasonCode}`, {
         retryable: false,
@@ -314,7 +317,7 @@ export class ModelCallProviderService {
 
       const settleResult = await this.budgetGuard.atomicSettle(
         budgetSessionId,
-        estimateActualLlmCallCost(latestChunk, request.model) ?? estimatedCostUsd,
+        estimateActualLlmCallCost(latestChunk, effectiveRequest.model) ?? estimatedCostUsd,
       );
       if (!settleResult.success) {
         throw new ProviderError("model_call.budget_settle_failed", `Budget settlement failed for LLM call: ${settleResult.reasonCode}`, {

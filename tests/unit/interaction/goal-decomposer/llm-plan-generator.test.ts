@@ -59,12 +59,19 @@ test("UnifiedChatPlanGenerator implements LlmPlanGenerator interface", () => {
   assert.ok(typeof generator.generate === "function");
 });
 
-test("UnifiedChatPlanGenerator uses default model gpt-4o-mini", () => {
-  const provider = createMockProvider("{}");
+test("UnifiedChatPlanGenerator uses default model minimax-m2.7", async () => {
+  let capturedModel = "";
+  const provider = {
+    complete: async (_prompt: string, options?: { model?: string; system?: string; temperature?: number; maxTokens?: number }): Promise<string> => {
+      capturedModel = options?.model ?? "";
+      return JSON.stringify({ tasks: [], dependencyGraph: [] });
+    },
+  } as UnifiedChatProvider;
   const generator = new UnifiedChatPlanGenerator({ provider });
 
-  // Constructor should not throw and should use default model
-  assert.ok(generator);
+  await generator.generate(createTestGoal());
+
+  assert.equal(capturedModel, "minimax-m2.7");
 });
 
 test("UnifiedChatPlanGenerator accepts custom model", () => {

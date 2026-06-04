@@ -244,7 +244,7 @@ test("LLMImprovementGenerationService.generateImprovements uses default model wh
 
   await service.generateImprovements([makeSignal()]);
 
-  assert.equal(capturedModel, "MiniMax-M2.7");
+  assert.equal(capturedModel, "minimax-m2.7");
 });
 
 test("LLMImprovementGenerationService.generateImprovements uses custom model when specified", async () => {

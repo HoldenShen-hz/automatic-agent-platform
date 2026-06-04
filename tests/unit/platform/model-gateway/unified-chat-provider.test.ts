@@ -52,22 +52,22 @@ function createRequest(model: string): ChatCompletionRequest {
 // Model Detection Tests
 // ============================================================================
 
-test("UnifiedChatProvider routes claude-opus-4-5 to anthropic", () => {
+test("UnifiedChatProvider can be configured with anthropic for compatibility", () => {
   const provider = new UnifiedChatProvider({ anthropic: { apiKey: "test" } });
   assert.equal(provider.hasProvider("anthropic"), true);
 });
 
-test("UnifiedChatProvider routes gpt-4o to openai", () => {
+test("UnifiedChatProvider can be configured with openai for compatibility", () => {
   const provider = new UnifiedChatProvider({ openai: { apiKey: "test" } });
   assert.equal(provider.hasProvider("openai"), true);
 });
 
-test("UnifiedChatProvider routes MiniMax-M2.7 to minimax", () => {
+test("UnifiedChatProvider uses minimax as the active call provider", () => {
   const provider = new UnifiedChatProvider({ minimax: { apiKey: "test" } });
   assert.equal(provider.hasProvider("minimax"), true);
 });
 
-test("UnifiedChatProvider throws for unknown model without configured provider", async () => {
+test("UnifiedChatProvider normalizes unknown model requests to minimax requirement", async () => {
   const provider = createMinimalProvider();
 
   await assert.rejects(
@@ -81,7 +81,7 @@ test("UnifiedChatProvider throws for unknown model without configured provider",
         costTag: "test",
       });
     },
-    /Unknown model|cannot determine provider/,
+    /MiniMax provider is not configured/,
   );
 });
 
@@ -270,7 +270,7 @@ test("UnifiedChatProvider.fromProfile creates provider from config", () => {
 // getAvailableProfiles Tests
 // ============================================================================
 
-test("getAvailableProfiles returns profiles for configured providers only", () => {
+test("getAvailableProfiles returns only active minimax routing profiles", () => {
   const provider = new UnifiedChatProvider({
     anthropic: { apiKey: "key" },
     openai: { apiKey: "key" },
@@ -279,8 +279,8 @@ test("getAvailableProfiles returns profiles for configured providers only", () =
   const profiles = provider.getAvailableProfiles();
   const providers = new Set(profiles.map((p) => p.provider));
 
-  assert.ok(providers.has("anthropic"));
-  assert.ok(providers.has("openai"));
+  assert.ok(!providers.has("anthropic"));
+  assert.ok(!providers.has("openai"));
   assert.ok(!providers.has("minimax"));
 });
 
@@ -299,9 +299,9 @@ test("getAvailableProfiles includes configured primary profiles for routing", ()
   const provider = createProvider();
   const profiles = provider.getAvailableProfiles();
 
-  assert.ok(profiles.some((profile) => profile.profileName === "claude-opus-4-5"));
-  assert.ok(profiles.some((profile) => profile.profileName === "gpt-4o"));
-  assert.ok(profiles.some((profile) => profile.profileName === "MiniMax-M2.7"));
+  assert.ok(profiles.some((profile) => profile.profileName === "minimax-m2.7"));
+  assert.ok(!profiles.some((profile) => profile.provider === "anthropic"));
+  assert.ok(!profiles.some((profile) => profile.provider === "openai"));
 });
 
 // ============================================================================

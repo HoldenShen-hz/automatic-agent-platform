@@ -17,7 +17,7 @@
   "profiles": {
     "reasoning-medium": {
       "provider": "minimax",
-      "modelId": "MiniMax-M2.7",
+      "modelId": "minimax-m2.7",
       "tier": "reasoning",
       "capabilities": ["reasoning", "tool_use", "json_mode"],
       "contextWindowTokens": 204800,
@@ -30,7 +30,7 @@
     },
     "coding-medium": {
       "provider": "minimax",
-      "modelId": "MiniMax-M2.7",
+      "modelId": "minimax-m2.7",
       "tier": "coding",
       "capabilities": ["coding", "tool_use", "json_mode"],
       "contextWindowTokens": 204800,
@@ -43,7 +43,7 @@
     },
     "balanced": {
       "provider": "minimax",
-      "modelId": "MiniMax-M1",
+      "modelId": "minimax-m2.7",
       "tier": "balanced",
       "capabilities": ["reasoning", "writing", "tool_use"],
       "contextWindowTokens": 204800,
@@ -56,7 +56,7 @@
     },
     "fast": {
       "provider": "minimax",
-      "modelId": "MiniMax-Text-01",
+      "modelId": "minimax-m2.7",
       "tier": "fast",
       "capabilities": ["classification", "summarization", "tool_use"],
       "contextWindowTokens": 204800,
