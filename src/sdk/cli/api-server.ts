@@ -154,7 +154,7 @@ async function main(): Promise<void> {
       eventPublisher,
       semanticVectorStore,
       snapshotStore: new KnowledgeSnapshotStore({
-        snapshotPath: join(dataRoot, "knowledge", "knowledge-plane.snapshot.json"),
+        snapshotPath: join("data", "knowledge", "knowledge-plane.snapshot.json"),
       }),
     });
     for (const namespace of registryBootstrap.knowledgeNamespaces) {
@@ -332,6 +332,10 @@ async function main(): Promise<void> {
 if (isCliEntryPoint(import.meta.url)) {
   void runCliMain(main, {
     onError: (error) => {
+      if (process.env["AA_CLI_VERBOSE_ERRORS"] === "1" && error instanceof Error) {
+        process.stderr.write(`${error.stack ?? error.message}\n`);
+        return;
+      }
       process.stderr.write(`${summarizeCliError(error, "api_server.failed")}\n`);
     },
   });

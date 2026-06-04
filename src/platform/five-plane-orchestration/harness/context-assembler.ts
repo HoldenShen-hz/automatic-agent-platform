@@ -30,15 +30,19 @@ export interface HarnessContext {
 interface ScoredEntry {
   readonly key: string;
   readonly value: unknown;
+  readonly serializedValue: string;
+  readonly sourceBucket: "conversation" | "task" | "memory" | "knowledge";
   readonly relevanceScore: number;
   readonly freshnessScore: number;
   readonly trustLevel: number;
   readonly estimatedTokens: number;
+  readonly compositeScore: number;
 }
 
 const TRUST_THRESHOLD = 0.3;
 const MAX_CONTEXT_ENTRIES = 50;
 const REDACTION_REGEX_CACHE = new Map<string, RegExp>();
+const INJECTION_PATTERN = /__import__\s*\(|<script|javascript:|data:text\/html/i;
 
 export class ContextAssembler {
   /**
@@ -151,74 +155,69 @@ export class ContextAssembler {
     role?: HarnessRole,
   ): HarnessContext {
     const policies = ContextAssembler.getRolePolicies(role);
-    const entries: ScoredEntry[] = [];
+    const scoredEntries: ScoredEntry[] = [];
+    const relevanceScores: Record<string, number> = {};
+    const freshnessScores: Record<string, number> = {};
+    const trustLevels: Record<string, number> = {};
+    let totalEntryTokens = 0;
 
-    // Score and collect entries from each source
-    if (sources.conversation) {
-      for (const [key, value] of Object.entries(sources.conversation)) {
-        const redactedValue = ContextAssembler.applyRedaction(value, policies.redactionPolicy);
-        entries.push(this.scoreEntry(key, redactedValue, "conversation", policies.rankingPolicy));
+    const collectEntries = (
+      source: Readonly<Record<string, unknown>> | undefined,
+      sourceBucket: "conversation" | "task" | "memory" | "knowledge",
+    ): void => {
+      if (source == null) {
+        return;
       }
-    }
-    if (sources.task) {
-      for (const [key, value] of Object.entries(sources.task)) {
+      for (const [key, value] of Object.entries(source)) {
         const redactedValue = ContextAssembler.applyRedaction(value, policies.redactionPolicy);
-        entries.push(this.scoreEntry(key, redactedValue, "task", policies.rankingPolicy));
+        const entry = this.scoreEntry(key, redactedValue, sourceBucket, policies.rankingPolicy);
+        totalEntryTokens += entry.estimatedTokens;
+        if (entry.trustLevel < TRUST_THRESHOLD || ContextAssembler.detectTaint(entry.serializedValue, policies.taintPolicy)) {
+          continue;
+        }
+        relevanceScores[entry.key] = entry.relevanceScore;
+        freshnessScores[entry.key] = entry.freshnessScore;
+        trustLevels[entry.key] = entry.trustLevel;
+        scoredEntries.push(entry);
       }
-    }
-    if (sources.memory) {
-      for (const [key, value] of Object.entries(sources.memory)) {
-        const redactedValue = ContextAssembler.applyRedaction(value, policies.redactionPolicy);
-        entries.push(this.scoreEntry(key, redactedValue, "memory", policies.rankingPolicy));
-      }
-    }
-    if (sources.knowledge) {
-      for (const [key, value] of Object.entries(sources.knowledge)) {
-        const redactedValue = ContextAssembler.applyRedaction(value, policies.redactionPolicy);
-        entries.push(this.scoreEntry(key, redactedValue, "knowledge", policies.rankingPolicy));
-      }
-    }
+    };
 
-    // Filter by trust (anti-taint) using role-specific taintPolicy
-    const trustedEntries = entries.filter((e) => {
-      if (e.trustLevel < TRUST_THRESHOLD) return false;
-      const valueStr = typeof e.value === "string" ? e.value : JSON.stringify(e.value);
-      return !ContextAssembler.detectTaint(valueStr, policies.taintPolicy);
-    });
-
-    // Sort by composite score using role-specific ranking weights
-    const scoredEntries = trustedEntries
-      .map((e) => {
-        const compositeScore =
-          e.relevanceScore * policies.rankingPolicy.relevanceWeight +
-          e.freshnessScore * policies.rankingPolicy.freshnessWeight +
-          e.trustLevel * policies.rankingPolicy.trustWeight;
-        return { ...e, compositeScore };
-      })
-      .sort((a, b) => b.compositeScore - a.compositeScore);
+    collectEntries(sources.conversation, "conversation");
+    collectEntries(sources.task, "task");
+    collectEntries(sources.memory, "memory");
+    collectEntries(sources.knowledge, "knowledge");
 
     // Trim to token budget (rough estimate: 4 chars per token)
     const maxTokens = tokenBudget;
     let currentTokens = 0;
-    const selectedEntries: ScoredEntry[] = [];
-    for (const entry of scoredEntries) {
-      if (selectedEntries.length >= MAX_CONTEXT_ENTRIES) break;
-      // R3-14 fix: Use soft truncation - if entry partially fits, include it if at least 50% fits
-      const estimatedFit = maxTokens - currentTokens;
-      if (estimatedFit <= 0) break;
-      if (currentTokens + entry.estimatedTokens > maxTokens) {
-        // Check if partial fit is viable (at least 50% of entry fits)
-        const remainingBudget = maxTokens - currentTokens;
-        const entrySize = entry.estimatedTokens;
-        if (entrySize > 0 && remainingBudget >= entrySize * 0.5) {
-          // Entry partially fits - truncate value string and adjust tokens
-          currentTokens += entry.estimatedTokens;
-          selectedEntries.push(entry);
+    let selectedEntries = scoredEntries;
+
+    if (scoredEntries.length > MAX_CONTEXT_ENTRIES || totalEntryTokens > maxTokens) {
+      selectedEntries = [...scoredEntries].sort((a, b) => b.compositeScore - a.compositeScore);
+      const trimmedSelection: ScoredEntry[] = [];
+      for (const entry of selectedEntries) {
+        if (trimmedSelection.length >= MAX_CONTEXT_ENTRIES) {
+          break;
         }
-        continue;
+        const estimatedFit = maxTokens - currentTokens;
+        if (estimatedFit <= 0) {
+          break;
+        }
+        if (currentTokens + entry.estimatedTokens > maxTokens) {
+          const remainingBudget = maxTokens - currentTokens;
+          const entrySize = entry.estimatedTokens;
+          if (entrySize > 0 && remainingBudget >= entrySize * 0.5) {
+            currentTokens += entry.estimatedTokens;
+            trimmedSelection.push(entry);
+          }
+          continue;
+        }
+        currentTokens += entry.estimatedTokens;
+        trimmedSelection.push(entry);
       }
-      currentTokens += entry.estimatedTokens;
-      selectedEntries.push(entry);
+      selectedEntries = trimmedSelection;
+    } else {
+      currentTokens = totalEntryTokens;
     }
 
     // Reconstruct context from selected entries
@@ -251,10 +250,10 @@ export class ContextAssembler {
       knowledge,
       assembledAt: nowIso(),
       metadata: {
-        relevanceScores: Object.fromEntries(scoredEntries.map((e) => [e.key, e.relevanceScore])),
-        freshnessScores: Object.fromEntries(scoredEntries.map((e) => [e.key, e.freshnessScore])),
-        trustLevels: Object.fromEntries(scoredEntries.map((e) => [e.key, e.trustLevel])),
-        trimmedTokens: Math.max(0, entries.reduce((sum, e) => sum + e.estimatedTokens, 0) - currentTokens),
+        relevanceScores,
+        freshnessScores,
+        trustLevels,
+        trimmedTokens: Math.max(0, totalEntryTokens - currentTokens),
       },
     };
   }
@@ -274,60 +273,62 @@ export class ContextAssembler {
   private scoreEntry(
     key: string,
     value: unknown,
-    source: string,
+    sourceBucket: "conversation" | "task" | "memory" | "knowledge",
     rankingPolicy: typeof DEFAULT_RANKING_POLICY,
   ): ScoredEntry {
     // Relevance scoring: task-related content scores higher
     // Ranking policy weights are applied during composite scoring
     let relevanceScore = 0.5;
-    if (source === "task") relevanceScore = 0.9;
-    else if (source === "memory") relevanceScore = 0.7;
-    else if (source === "conversation") relevanceScore = 0.6;
-    else if (source === "knowledge") relevanceScore = 0.4;
+    if (sourceBucket === "task") relevanceScore = 0.9;
+    else if (sourceBucket === "memory") relevanceScore = 0.7;
+    else if (sourceBucket === "conversation") relevanceScore = 0.6;
+    else if (sourceBucket === "knowledge") relevanceScore = 0.4;
 
     // Freshness scoring: newer content scores higher (based on key patterns)
     let freshnessScore = 0.5;
-    if (typeof key === "string") {
-      if (key.includes("recent") || key.includes("latest")) {
-        freshnessScore = 0.9;
-      } else if (key.includes("history") || key.includes("archive")) {
-        freshnessScore = 0.3;
-      }
+    if (key.includes("recent") || key.includes("latest")) {
+      freshnessScore = 0.9;
+    } else if (key.includes("history") || key.includes("archive")) {
+      freshnessScore = 0.3;
     }
 
     // Trust scoring: system-generated vs external content
     let trustLevel = 0.5;
-    if (source === "task" || source === "memory") {
+    if (sourceBucket === "task" || sourceBucket === "memory") {
       trustLevel = 0.9;
-    } else if (source === "knowledge") {
+    } else if (sourceBucket === "knowledge") {
       trustLevel = 0.6;
-    } else if (source === "conversation") {
+    } else if (sourceBucket === "conversation") {
       trustLevel = 0.4;
     }
 
-    // Taint detection: check for injection patterns using taintPolicy
-    const valueStr = typeof value === "string" ? value : JSON.stringify(value);
-    if (/__import__\s*\(|<script|javascript:|data:text\/html/i.test(valueStr)) {
+    const serializedValue = typeof value === "string" ? value : JSON.stringify(value) ?? String(value);
+    if (INJECTION_PATTERN.test(serializedValue)) {
       trustLevel = 0.1; // Mark as untrusted
     }
 
     // Apply recency bias from ranking policy
-    if (rankingPolicy.recencyBias > 0 && typeof key === "string") {
-      if (key.includes("recent") || key.includes("latest")) {
-        freshnessScore = Math.min(1, freshnessScore + rankingPolicy.recencyBias);
-      }
+    if (rankingPolicy.recencyBias > 0 && (key.includes("recent") || key.includes("latest"))) {
+      freshnessScore = Math.min(1, freshnessScore + rankingPolicy.recencyBias);
     }
 
     // Estimate token count (rough: 4 chars per token)
-    const estimatedTokens = Math.ceil(valueStr.length / 4);
+    const estimatedTokens = Math.ceil(serializedValue.length / 4);
+    const compositeScore =
+      relevanceScore * rankingPolicy.relevanceWeight +
+      freshnessScore * rankingPolicy.freshnessWeight +
+      trustLevel * rankingPolicy.trustWeight;
 
     return {
       key,
       value,
+      serializedValue,
+      sourceBucket,
       relevanceScore,
       freshnessScore,
       trustLevel,
       estimatedTokens,
+      compositeScore,
     };
   }
 }
