@@ -966,6 +966,7 @@ export class HttpApiServer {
         ...(this.options.taskStore != null ? { taskStore: this.options.taskStore } : {}),
         missionRepository: this.options.missionRepository ?? null,
         ...(this.options.intakeAdmissionService != null ? { intakeAdmissionService: this.options.intakeAdmissionService } : {}),
+        ...(this.options.realTaskExecutionService != null ? { realTaskExecutionService: this.options.realTaskExecutionService } : {}),
       }),
       ...(this.options.webhookIngressService != null
         ? createWebhookRoutes({

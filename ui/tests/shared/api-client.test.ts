@@ -18,6 +18,14 @@ import {
   fetchAgents,
   fetchDashboardSnapshot,
   fetchKnowledge,
+  fetchMissionBudget,
+  fetchMissionEvidence,
+  fetchMissionKnowledge,
+  fetchMissionLearning,
+  fetchMissionMembers,
+  fetchMissionRuns,
+  fetchMissions,
+  fetchMissionTasks,
   fetchPackVersions,
   fetchPlugins,
   fetchPrompts,
@@ -36,6 +44,7 @@ import {
 describe("shared api-client", () => {
   afterEach(() => {
     document.head.innerHTML = "";
+    localStorage.removeItem("aa.ui.mock.tasks.v1");
   });
 
   it("fetches dashboard and tasks through the mock REST client", async () => {
@@ -241,5 +250,108 @@ describe("shared api-client", () => {
     await expect(fetchPackVersions(client, "pack-1")).resolves.toBeDefined();
     await expect(fetchPlugins(client)).resolves.toBeDefined();
     await expect(fetchPrompts(client)).resolves.toBeDefined();
+  });
+
+  it("persists mock-created tasks and advances them through the local dev task history", async () => {
+    const now = new Date("2026-06-04T10:00:00.000Z").getTime();
+    const originalNow = Date.now;
+    Date.now = () => now;
+    const client = new DefaultRESTClient((request) => new MockTransport().send(request));
+
+    try {
+      await createTask(client, {
+        id: "task-prompt-code-research",
+        title: "请调研 大模型提示code 能力的方法",
+        domainId: "platform-ops",
+        owner: "platform-sre",
+        status: "queued",
+        currentStep: "intake",
+      });
+
+      const queuedTasks = await fetchTasks(client);
+      expect(queuedTasks[0]).toMatchObject({
+        id: "task-prompt-code-research",
+        title: "请调研 大模型提示code 能力的方法",
+        status: "queued",
+        currentStep: "intake",
+        executionMode: "mock_dev",
+        modelCallStatus: "not_called",
+        outputSummary: null,
+      });
+
+      Date.now = () => now + 2_000;
+      const runningTasks = await fetchTasks(client);
+      expect(runningTasks[0]).toMatchObject({
+        id: "task-prompt-code-research",
+        status: "running",
+        currentStep: "waiting-for-real-model-run",
+        evidenceCount: 0,
+        modelProvider: "minimax",
+        modelName: "minimax-m2.7",
+        modelCallStatus: "not_called",
+        outputUri: null,
+      });
+      await expect(fetchWorkflowRunSteps(client, "task-prompt-code-research")).resolves.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "task-prompt-code-research-research",
+            title: "Wait for real model gateway execution",
+            status: "running",
+          }),
+        ]),
+      );
+
+      Date.now = () => now + 7_000;
+      const stillWaitingTasks = await fetchTasks(client);
+      expect(stillWaitingTasks[0]).toMatchObject({
+        id: "task-prompt-code-research",
+        status: "running",
+        currentStep: "waiting-for-real-model-run",
+        evidenceCount: 0,
+        modelCallStatus: "not_called",
+        outputSummary: null,
+      });
+
+      await updateTask(client, "task-prompt-code-research", {
+        status: "completed",
+        currentStep: "delivered",
+        evidenceCount: 3,
+        timelineDepth: 4,
+      });
+      const repairedTasks = await fetchTasks(client);
+      expect(repairedTasks[0]).toMatchObject({
+        id: "task-prompt-code-research",
+        status: "running",
+        currentStep: "waiting-for-real-model-run",
+        evidenceCount: 0,
+        modelCallStatus: "not_called",
+        outputSummary: null,
+      });
+    } finally {
+      Date.now = originalNow;
+    }
+  });
+
+  it("serves default Mission console data through the local mock fallback", async () => {
+    const client = new DefaultRESTClient((request) => new MockTransport().send(request));
+
+    const missions = await fetchMissions(client);
+    expect(missions[0]).toMatchObject({
+      missionId: "mis_local_platform",
+      status: "active",
+      title: "本地平台验证 Mission",
+    });
+    await expect(fetchMissionMembers(client, "mis_local_platform")).resolves.toHaveLength(1);
+    await expect(fetchMissionTasks(client, "mis_local_platform")).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: "task", title: "本地任务入口验证" })]),
+    );
+    await expect(fetchMissionRuns(client, "mis_local_platform")).resolves.toHaveLength(1);
+    await expect(fetchMissionEvidence(client, "mis_local_platform")).resolves.toHaveLength(1);
+    await expect(fetchMissionKnowledge(client, "mis_local_platform")).resolves.toHaveLength(1);
+    await expect(fetchMissionLearning(client, "mis_local_platform")).resolves.toHaveLength(1);
+    await expect(fetchMissionBudget(client, "mis_local_platform")).resolves.toMatchObject({
+      missionId: "mis_local_platform",
+      status: "configured",
+    });
   });
 });

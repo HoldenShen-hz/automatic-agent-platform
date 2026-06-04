@@ -42,6 +42,7 @@ session-replay
 
 # Local secrets and generated snapshots
 .env
+config/providers/local-dev.json
 snapshot.json
 coverage-results/
 full-coverage/

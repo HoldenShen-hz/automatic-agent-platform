@@ -5,6 +5,7 @@ import { OtlpHttpTelemetryExporter, createTelemetrySink, startWebVitalsCollectio
 import { reportUiError } from "./ui-telemetry";
 const STATIC_BOOTSTRAP_SESSION_REFRESH_TOKEN = "bootstrap-session";
 const NON_EXPIRING_BOOTSTRAP_SESSION_EXPIRY = Number.MAX_SAFE_INTEGER;
+const DEFAULT_RUNTIME_API_BASE_URL = "/api";
 const runtimeFetch = (...args) => globalThis.fetch(...args);
 export function createWebRuntimeConfig(env) {
     const apiBaseUrl = normalizeOptionalEnv(env.VITE_API_BASE_URL);
@@ -12,12 +13,16 @@ export function createWebRuntimeConfig(env) {
     const tenantId = normalizeOptionalEnv(env.VITE_TENANT_ID);
     const telemetryEndpoint = normalizeOptionalEnv(env.VITE_OTLP_ENDPOINT);
     const telemetryAuthToken = normalizeOptionalEnv(env.VITE_OTLP_AUTH_TOKEN);
+    const fallbackToMockEnv = normalizeOptionalEnv(env.VITE_API_FALLBACK_TO_MOCK);
+    const fallbackToMock = fallbackToMockEnv === "true"
+        || (fallbackToMockEnv == null && env.DEV === true && apiBaseUrl == null);
     return {
         ...(apiBaseUrl == null ? {} : { apiBaseUrl }),
         ...(wsUrl == null ? {} : { wsUrl }),
         ...(tenantId == null ? {} : { tenantId }),
         ...(telemetryEndpoint == null ? {} : { telemetryEndpoint }),
         ...(telemetryAuthToken == null ? {} : { telemetryAuthToken }),
+        fallbackToMock,
     };
 }
 export function readBootstrapAuthToken(doc = document) {
@@ -96,8 +101,8 @@ export function createWebRuntimeClients(config) {
         seedTokenManager(tokenManager, config.authToken);
     }
     const client = constructOrCall(DefaultRESTClient, (request) => constructOrCall(HttpTransport, {
-        baseUrl: config.apiBaseUrl ?? "/api",
-        fallbackToMock: false,
+        baseUrl: config.apiBaseUrl ?? DEFAULT_RUNTIME_API_BASE_URL,
+        fallbackToMock: config.fallbackToMock ?? false,
     }).send(request), [
         createTraceInterceptor(),
         createRetryInterceptor(),

@@ -8,6 +8,7 @@ const mockCancelTask = vi.fn();
 const mockRetryTask = vi.fn();
 const mockResumeTask = vi.fn();
 const mockEscalateTask = vi.fn();
+const mockCreateTaskFromPrompt = vi.fn(async () => undefined);
 
 vi.mock("@aa/ui-core", async () => {
   const actual = await vi.importActual<typeof import("@aa/ui-core")>("@aa/ui-core");
@@ -42,6 +43,12 @@ vi.mock("../../../../../../packages/features/task-cockpit/src/hooks", () => ({
       domainId: "marketing",
       evidenceCount: 2,
       timelineDepth: 5,
+      executionMode: "mock_dev",
+      modelCallStatus: "not_called",
+      modelProvider: "minimax",
+      modelName: "minimax-m2.7",
+      outputSummary: null,
+      outputUri: null,
       resourceUsage: {
         cpuPercent: 62,
         memoryMb: 768,
@@ -55,6 +62,8 @@ vi.mock("../../../../../../packages/features/task-cockpit/src/hooks", () => ({
     retryTask: mockRetryTask,
     resumeTask: mockResumeTask,
     escalateTask: mockEscalateTask,
+    createTaskFromPrompt: mockCreateTaskFromPrompt,
+    pendingOperations: 0,
     stepViewer: {
       steps: [{ id: "s1", title: "Collect inputs", status: "completed", executor: "agent-1" }],
       selectedStep: null,
@@ -77,6 +86,7 @@ vi.mock("../../../../../../packages/features/task-cockpit/src/hooks", () => ({
 import { TaskCockpitWebView } from "../../../../../../packages/features/task-cockpit/src/web";
 
 afterEach(() => {
+  vi.clearAllMocks();
   cleanup();
 });
 
@@ -87,6 +97,10 @@ describe("TaskCockpitWebView", () => {
     expect(screen.queryByText(/L3 详情/)).not.toBeNull();
     expect(screen.queryByText(/CPU: 62%/)).not.toBeNull();
     expect(screen.queryByText(/内存: 768 MB/)).not.toBeNull();
+    expect(screen.queryByText(/执行模式: mock_dev/)).not.toBeNull();
+    expect(screen.queryByText(/模型调用: not_called/)).not.toBeNull();
+    expect(screen.queryByText(/模型: minimax \/ minimax-m2.7/)).not.toBeNull();
+    expect(screen.queryByText(/输出: 尚未产生真实模型输出/)).not.toBeNull();
     expect(screen.queryByText(/Collect inputs completed · agent-1/)).not.toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "L4 证据" }));
@@ -116,14 +130,35 @@ describe("TaskCockpitWebView", () => {
     expect(mockEscalateTask).toHaveBeenCalled();
   });
 
+  it("renders and submits the task creation entry", () => {
+    render(<TaskCockpitWebView />);
+
+    fireEvent.change(screen.getByLabelText("任务描述"), {
+      target: { value: "分析本周告警并生成修复计划" },
+    });
+    fireEvent.change(screen.getByLabelText("任务领域"), {
+      target: { value: "platform-ops" },
+    });
+    fireEvent.change(screen.getByLabelText("负责人"), {
+      target: { value: "platform-sre" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "创建任务" }));
+
+    expect(mockCreateTaskFromPrompt).toHaveBeenCalledWith({
+      title: "分析本周告警并生成修复计划",
+      domainId: "platform-ops",
+      owner: "platform-sre",
+    });
+  });
+
   it("sanitizes operator and escalation target inputs before invoking actions", () => {
     const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => undefined);
     render(<TaskCockpitWebView />);
 
-    fireEvent.change(screen.getAllByPlaceholderText("例如 platform-sre")[0]!, {
+    fireEvent.change(screen.getByLabelText("接管操作员 ID"), {
       target: { value: "ops<script>" },
     });
-    fireEvent.change(screen.getAllByPlaceholderText("例如 domain-admin")[0]!, {
+    fireEvent.change(screen.getByLabelText("升级目标 ID"), {
       target: { value: "domain-admin!!" },
     });
 
@@ -133,5 +168,6 @@ describe("TaskCockpitWebView", () => {
     expect(alertSpy).not.toHaveBeenCalled();
     expect(mockClaimTask).toHaveBeenCalledWith("opsscript");
     expect(mockEscalateTask).toHaveBeenCalledWith("domain-admin");
+    alertSpy.mockRestore();
   });
 });

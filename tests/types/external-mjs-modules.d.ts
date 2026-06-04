@@ -21,6 +21,14 @@ declare module "../../../scripts/dev/local-stack-lib.mjs" {
     unmanagedPids: number[];
   };
 
+  export function loadLocalStackProviderEnv(
+    repoRoot: string,
+    sourceEnv?: Record<string, string | undefined>,
+  ): {
+    env: Record<string, string>;
+    sourcePath: string | null;
+  };
+
   export function readLocalStackPort(
     env: Record<string, string | undefined>,
     key: string,

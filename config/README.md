@@ -31,6 +31,7 @@ Configuration is split by concern. Do not add new files or new layering rules wi
 
 - `config/conversation/templates.json` is intentionally not named `default.json` because it is a multi-template registry, not a single mergeable default layer.
 - `config/providers/models.json` and `config/providers/models.bundled.json` are intentionally named artifacts: `models.json` is the operator-editable local catalog, and `models.bundled.json` is the repository-bundled snapshot used by config-center tests and packaging.
+- `config/providers/local-dev.json` is a local-only developer credential overlay for backend startup helpers such as `scripts/dev/start-local-stack.mjs`. It is ignored by git, must never be treated as a repository default, and must not be consumed by browser bundles.
 - `config/validation/mission-operating-model-metric-alert-policy.yaml` remains YAML because it is human-authored policy content reviewed alongside runbook/metric semantics; the surrounding validation registries stay JSON for machine diffability.
 - JSON config files intentionally do not use generic `$schema` meta-URLs as the source of truth. This repository validates config through runtime schemas, audits, and tests rather than editor-only schema pointers.
 

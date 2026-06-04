@@ -6,6 +6,7 @@ import http from "node:http";
 import {
   buildLocalStackChildEnv,
   classifyPortListeners,
+  loadLocalStackProviderEnv,
   readLocalStackPort,
   resolveRequiredBinaryPath,
   resolveRequiredNpmCliPath,
@@ -27,6 +28,9 @@ const npmCliPath = resolveRequiredNpmCliPath(process.execPath, process.env);
 const apiPort = readLocalStackPort(process.env, "AA_LOCAL_API_PORT", 4000);
 const metricsPort = readLocalStackPort(process.env, "AA_LOCAL_METRICS_PORT", 4001);
 const uiPort = readLocalStackPort(process.env, "AA_LOCAL_UI_PORT", 5173);
+const localProviderEnv = loadLocalStackProviderEnv(repoRoot, process.env);
+const LOCAL_DEV_API_KEY = "local-dev-platform-operator";
+const LOCAL_DEV_JWT_SECRET = "AA-local-dev-jwt-2026-06-04-4n7Qp9Lc2Vx8MzK5Rt1Hy6Ws3Ef0Ud";
 
 mkdirSync(pidDir, { recursive: true });
 mkdirSync(logDir, { recursive: true });
@@ -72,7 +76,7 @@ function commandForPid(pid) {
 }
 
 function listenerPids(port) {
-  const result = spawnSync(lsofCommand, ["-ti", `tcp:${port}`], {
+  const result = spawnSync(lsofCommand, ["-tiTCP:" + String(port), "-sTCP:LISTEN"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -170,6 +174,57 @@ function request(url, timeoutMs = 5000) {
   });
 }
 
+async function requestJson(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    const payload = options.body == null ? null : JSON.stringify(options.body);
+    const req = http.request(url, {
+      method: options.method ?? (payload == null ? "GET" : "POST"),
+      headers: {
+        ...(payload == null ? {} : {
+          "content-type": "application/json",
+          "content-length": Buffer.byteLength(payload, "utf8"),
+        }),
+        ...(options.headers ?? {}),
+      },
+      timeout: options.timeoutMs ?? 5000,
+    }, (response) => {
+      let body = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => {
+        body += chunk;
+      });
+      response.on("end", () => {
+        if ((response.statusCode ?? 500) >= 400) {
+          reject(new Error(`HTTP ${response.statusCode ?? 500}: ${body}`));
+          return;
+        }
+        try {
+          resolve(JSON.parse(body));
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+    req.on("error", reject);
+    if (payload != null) {
+      req.write(payload);
+    }
+    req.end();
+  });
+}
+
+async function issueLocalDevAuthToken() {
+  const response = await requestJson(`http://127.0.0.1:${apiPort}/v1/auth/token`, {
+    method: "POST",
+    body: { apiKey: LOCAL_DEV_API_KEY },
+  });
+  const token = response?.data?.accessToken;
+  if (typeof token !== "string" || token.length === 0) {
+    throw new Error("Failed to issue local dev auth token.");
+  }
+  return token;
+}
+
 async function waitForHttp(url, matcher, timeoutMs) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
@@ -215,10 +270,19 @@ async function ensureApi() {
     AA_DB_PATH: join(repoRoot, "data", "sqlite", "automatic-agent-dev.db"),
     AA_API_HOST: "127.0.0.1",
     AA_API_PORT: String(apiPort),
+    AA_API_KEYS_JSON: JSON.stringify([
+      {
+        apiKey: LOCAL_DEV_API_KEY,
+        actorId: "local-dev-operator",
+        roles: ["admin"],
+      },
+    ]),
+    AA_API_JWT_SECRET: LOCAL_DEV_JWT_SECRET,
     AA_METRICS_HOST: "127.0.0.1",
     AA_METRICS_PORT: String(metricsPort),
     AA_LOG_STDOUT: "0",
     AA_LOG_FILE_PATH: apiLogFile,
+    ...localProviderEnv.env,
   };
 
   const pid = spawnDetached(
@@ -256,8 +320,11 @@ async function ensureUi() {
 
   await cleanupPort(uiPort, "ui");
 
+  const authToken = await issueLocalDevAuthToken();
   const env = {
     VITE_API_BASE_URL: `http://127.0.0.1:${apiPort}/api`,
+    VITE_API_FALLBACK_TO_MOCK: "false",
+    VITE_AUTH_TOKEN: authToken,
     VITE_WS_URL: `ws://127.0.0.1:${apiPort}/ws/v1/stream`,
   };
   appendFileSync(
@@ -285,6 +352,9 @@ async function ensureUi() {
 }
 
 async function main() {
+  if (localProviderEnv.sourcePath != null) {
+    console.log(`[config] loaded local provider config from ${localProviderEnv.sourcePath}`);
+  }
   runBuild();
   await ensureApi();
   await ensureUi();

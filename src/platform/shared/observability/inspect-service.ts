@@ -17,6 +17,7 @@ import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/au
 import { RuntimeRecoveryService } from "../../five-plane-execution/recovery/runtime-recovery-service.js";
 import { toWorkerSchedulingStatus } from "../../five-plane-execution/worker-pool/worker-scheduling-status.js";
 import { buildTaskResultEnvelope } from "../../contracts/result-envelope/result-envelope.js";
+import { readStoredJsonRecord } from "../../five-plane-interface/api/http-server/utils.js";
 import {
   buildLeaseHandoverSummary,
   buildRemoteRoutingSummary,
@@ -376,6 +377,9 @@ export class InspectService {
     const approvals = this.store.approval.listApprovalsByTask(task.id);
     const session = this.store.operations.loadTaskSnapshot(task.id).session;
     const events = this.store.event.listEventsForTask(task.id);
+    const outputMetadata = task.outputJson == null
+      ? {}
+      : readStoredJsonRecord(task.outputJson, { maxBytes: 512 * 1024, fallback: {} });
 
     return {
       taskId: task.id,
@@ -394,6 +398,12 @@ export class InspectService {
       dispatchDecisionCount: events.filter((event) => event.eventType === "dispatch:decision_recorded").length,
       latestEventAt: events.at(-1)?.createdAt ?? null,
       updatedAt: task.updatedAt,
+      ...(typeof outputMetadata.executionMode === "string" ? { executionMode: outputMetadata.executionMode as TaskInspectSummary["executionMode"] } : {}),
+      ...(typeof outputMetadata.modelCallStatus === "string" ? { modelCallStatus: outputMetadata.modelCallStatus as TaskInspectSummary["modelCallStatus"] } : {}),
+      ...(typeof outputMetadata.modelProvider === "string" ? { modelProvider: outputMetadata.modelProvider } : {}),
+      ...(typeof outputMetadata.modelName === "string" ? { modelName: outputMetadata.modelName } : {}),
+      ...(typeof outputMetadata.outputSummary === "string" ? { outputSummary: outputMetadata.outputSummary } : {}),
+      ...(typeof outputMetadata.outputUri === "string" ? { outputUri: outputMetadata.outputUri } : {}),
     };
   }
 

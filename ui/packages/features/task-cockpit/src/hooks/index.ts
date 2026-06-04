@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchWorkflowRunSteps, updateTask } from "@aa/shared-api-client";
-import { useRestClient, useTasksQuery } from "@aa/shared-state";
+import { useQueryClient } from "@tanstack/react-query";
+import { createTask, fetchTasks, fetchWorkflowRunSteps, updateTask } from "@aa/shared-api-client";
+import { taskQueryKeys, useRestClient, useTasksQuery } from "@aa/shared-state";
 import type { TaskDTO, WorkflowRunStepDTO } from "@aa/shared-types";
 
 type TimelineItem = { title: string; description: string };
@@ -37,11 +38,25 @@ export interface TaskCockpitVm {
   resumeTask(mode: "normal" | "supervised"): Promise<void>;
   escalateTask(target?: string): Promise<void>;
   fetchTaskDrillDown(taskId: string): Promise<void>;
+  createTaskFromPrompt(input: { readonly title: string; readonly domainId?: string; readonly owner?: string }): Promise<void>;
 }
 
 function sanitizeInput(value: string | undefined, fallback: string): string {
   const normalized = (value ?? fallback).replace(/[^a-z0-9-]/gi, "");
   return normalized.length > 0 ? normalized : fallback;
+}
+
+function sanitizeTaskTitle(value: string): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, 160);
+}
+
+function createLocalTaskId(title: string): string {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fa5]+/giu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  return `task-${slug.length > 0 ? slug : "new"}-${Date.now().toString(36)}`;
 }
 
 function areTasksEquivalent(left: readonly TaskDTO[], right: readonly TaskDTO[]): boolean {
@@ -58,7 +73,13 @@ function areTasksEquivalent(left: readonly TaskDTO[], right: readonly TaskDTO[])
       && candidate.currentStep === task.currentStep
       && candidate.owner === task.owner
       && candidate.evidenceCount === task.evidenceCount
-      && candidate.timelineDepth === task.timelineDepth;
+      && candidate.timelineDepth === task.timelineDepth
+      && candidate.executionMode === task.executionMode
+      && candidate.modelCallStatus === task.modelCallStatus
+      && candidate.modelProvider === task.modelProvider
+      && candidate.modelName === task.modelName
+      && candidate.outputSummary === task.outputSummary
+      && candidate.outputUri === task.outputUri;
   });
 }
 
@@ -72,6 +93,7 @@ export function mapTasksToVm(tasks: readonly TaskDTO[]): readonly { id: string; 
 
 export function useTaskCockpitVm(): TaskCockpitVm {
   const client = useRestClient();
+  const queryClient = useQueryClient();
   const taskQuery = useTasksQuery({ refetchInterval: 5000 });
   const tasks = taskQuery.data ?? [];
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -192,6 +214,64 @@ export function useTaskCockpitVm(): TaskCockpitVm {
     });
   }, [fetchTaskDrillDown]);
 
+  const createTaskFromPrompt = useCallback(async (
+    input: { readonly title: string; readonly domainId?: string; readonly owner?: string },
+  ) => {
+    const title = sanitizeTaskTitle(input.title);
+    if (title.length === 0) {
+      throw new Error("task.title_required");
+    }
+    const domainId = sanitizeInput(input.domainId, "platform");
+    const owner = input.owner == null || input.owner.trim().length === 0
+      ? undefined
+      : sanitizeInput(input.owner, "platform-sre");
+    const nextTask: TaskDTO = {
+      id: createLocalTaskId(title),
+      title,
+      status: "queued",
+      domainId,
+      currentStep: "intake",
+      evidenceCount: 0,
+      timelineDepth: 1,
+      outputSummary: null,
+      outputUri: null,
+      ...(owner == null ? {} : { owner }),
+    };
+    const previousTasks = visibleTasks;
+    const nextTasks = [nextTask, ...visibleTasks];
+    setOptimisticTasks(nextTasks);
+    queryClient.setQueryData<readonly TaskDTO[]>(taskQueryKeys.tasks, nextTasks);
+    setSelectedId(nextTask.id);
+    setDrillDownSteps([]);
+    setSelectedStepId(null);
+    setTimelineItems((current) => [
+      { title: `Created · ${title}`, description: `Queued in ${domainId} from operator input.` },
+      ...current,
+    ]);
+    setPendingOperations((current) => current + 1);
+
+    try {
+      await createTask(client, {
+        title,
+        divisionId: domainId,
+      });
+      const refreshedTasks = await fetchTasks(client);
+      queryClient.setQueryData<readonly TaskDTO[]>(taskQueryKeys.tasks, refreshedTasks);
+      setOptimisticTasks(null);
+      const createdTask = refreshedTasks.find((task) => task.title === title && task.domainId === domainId) ?? refreshedTasks[0] ?? null;
+      setSelectedId(createdTask?.id ?? null);
+      void queryClient.invalidateQueries({ queryKey: taskQueryKeys.tasks });
+    } catch (error) {
+      setOptimisticTasks(previousTasks);
+      queryClient.setQueryData<readonly TaskDTO[]>(taskQueryKeys.tasks, previousTasks);
+      setSelectedId(null);
+      setTimelineItems((current) => current.slice(1));
+      throw error;
+    } finally {
+      setPendingOperations((current) => Math.max(0, current - 1));
+    }
+  }, [client, queryClient, visibleTasks]);
+
   return {
     tasks: visibleTasks,
     listItems: mapTasksToVm(visibleTasks),
@@ -266,5 +346,6 @@ export function useTaskCockpitVm(): TaskCockpitVm {
       );
     },
     fetchTaskDrillDown,
+    createTaskFromPrompt,
   };
 }

@@ -63,6 +63,14 @@ export interface TaskRouteDeps {
   missionRepository?: MissionRepository | null;
   // R6-16 FIX: IntakeAdmissionService for §5.3 intake pipeline routing
   intakeAdmissionService?: IntakeAdmissionService;
+  realTaskExecutionService?: {
+    executeTask(input: {
+      readonly taskId: string;
+      readonly title: string;
+      readonly divisionId?: string | null;
+      readonly requestedBy?: string;
+    }): void;
+  };
 }
 
 interface PaginationCursor {
@@ -381,6 +389,12 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
             traceId: ctx.request.headers["x-trace-id"] ?? ctx.requestId,
             correlationId: ctx.request.headers["x-correlation-id"] ?? ctx.requestId,
           });
+          deps.realTaskExecutionService?.executeTask({
+            taskId,
+            title: payload.title,
+            divisionId: payload.divisionId ?? null,
+            requestedBy: principal.actorId,
+          });
           const cockpit = deps.missionControlService.getTaskCockpit(taskId, effectiveTenantId);
           return buildJsonResponse(ctx.requestId, 201, cockpit);
         }
@@ -422,6 +436,12 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           actorId: principal.actorId,
           traceId: ctx.request.headers["x-trace-id"] ?? ctx.requestId,
           correlationId: ctx.request.headers["x-correlation-id"] ?? ctx.requestId,
+        });
+        deps.realTaskExecutionService?.executeTask({
+          taskId,
+          title: payload.title,
+          divisionId: payload.divisionId ?? null,
+          requestedBy: principal.actorId,
         });
         const cockpit = deps.missionControlService.getTaskCockpit(taskId, tenantId);
         return buildJsonResponse(ctx.requestId, 201, cockpit);

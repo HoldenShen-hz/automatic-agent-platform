@@ -72,9 +72,13 @@ if (typeof globalThis.ResizeObserver === "undefined") {
 }
 
 afterEach(() => {
-  document.body.innerHTML = "";
-  window.localStorage.clear();
-  window.sessionStorage.clear();
+  if (typeof document !== "undefined") {
+    document.body.innerHTML = "";
+  }
+  if (typeof window !== "undefined") {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  }
   if (globalThis.fetch !== originalFetch) {
     Object.defineProperty(globalThis, "fetch", {
       configurable: true,

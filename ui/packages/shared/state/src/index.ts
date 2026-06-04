@@ -35,7 +35,7 @@ import {
   createQueuesQuery,
   createWorkersQuery,
 } from "./queries/mission-control-queries";
-import { createTasksQuery, createWorkflowsQuery } from "./queries/task-queries";
+import { createTasksQuery, createWorkflowsQuery, taskQueryKeys } from "./queries/task-queries";
 import { createQueryClientFactory } from "./query-client";
 import { createAuthStore, type AuthStoreState } from "./stores/auth-store";
 import { createRealtimeStore } from "./stores/realtime-store";
@@ -64,6 +64,7 @@ export {
   type QueryCacheTier,
 } from "./query-client";
 export * from "./mutations/index";
+export { taskQueryKeys } from "./queries/task-queries";
 
 const ApiClientContext = createContext<RESTClient | null>(null);
 const WsClientContext = createContext<WSClient | null>(null);

@@ -36,6 +36,7 @@ export interface WebRuntimeConfig {
   readonly telemetryEndpoint?: string;
   readonly telemetryAuthToken?: string;
   readonly authToken?: string;
+  readonly fallbackToMock?: boolean;
 }
 
 export interface StartupBanner {
@@ -58,6 +59,10 @@ export function createWebRuntimeConfig(env: Record<string, string | boolean | un
   const tenantId = normalizeOptionalEnv(env.VITE_TENANT_ID);
   const telemetryEndpoint = normalizeOptionalEnv(env.VITE_OTLP_ENDPOINT);
   const telemetryAuthToken = normalizeOptionalEnv(env.VITE_OTLP_AUTH_TOKEN);
+  const authToken = normalizeOptionalEnv(env.VITE_AUTH_TOKEN);
+  const fallbackToMockEnv = normalizeOptionalEnv(env.VITE_API_FALLBACK_TO_MOCK);
+  const fallbackToMock = fallbackToMockEnv === "true"
+    || (fallbackToMockEnv == null && env.DEV === true && apiBaseUrl == null);
 
   return {
     ...(apiBaseUrl == null ? {} : { apiBaseUrl }),
@@ -65,6 +70,8 @@ export function createWebRuntimeConfig(env: Record<string, string | boolean | un
     ...(tenantId == null ? {} : { tenantId }),
     ...(telemetryEndpoint == null ? {} : { telemetryEndpoint }),
     ...(telemetryAuthToken == null ? {} : { telemetryAuthToken }),
+    ...(authToken == null ? {} : { authToken }),
+    fallbackToMock,
   };
 }
 
@@ -194,7 +201,7 @@ export function createWebRuntimeClients(
     (request) =>
       constructOrCall(HttpTransport, {
         baseUrl: config.apiBaseUrl ?? DEFAULT_RUNTIME_API_BASE_URL,
-        fallbackToMock: false,
+        fallbackToMock: config.fallbackToMock ?? false,
       }).send(request),
     [
       createTraceInterceptor(),

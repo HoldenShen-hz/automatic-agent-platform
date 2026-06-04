@@ -42,7 +42,7 @@ function isPidAlive(pid) {
 }
 
 function listenerPids(port) {
-  const result = spawnSync(lsofCommand, ["-ti", `tcp:${port}`], {
+  const result = spawnSync(lsofCommand, ["-tiTCP:" + String(port), "-sTCP:LISTEN"], {
     cwd: repoRoot,
     encoding: "utf8",
   });

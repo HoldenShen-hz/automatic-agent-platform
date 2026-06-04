@@ -103,6 +103,86 @@ type AuditLogEntry = {
 };
 type ComplianceExceptionResponse = { id: string };
 type ContractVersionResponse = { contractVersion: string; minServerVersion?: string };
+type TaskLikeRecord = Partial<TaskDTO> & {
+  readonly taskId?: string;
+  readonly taskStatus?: string;
+  readonly divisionId?: string | null;
+  readonly currentStepIndex?: number | null;
+  readonly workflowStatus?: string | null;
+  readonly latestExecutionStatus?: string | null;
+  readonly sessionStatus?: string | null;
+  readonly pendingApprovalCount?: number;
+  readonly resolvedApprovalCount?: number;
+  readonly activeExecutionId?: string | null;
+};
+
+function mapTaskStatus(status: string | undefined): TaskDTO["status"] {
+  switch (status) {
+    case "done":
+      return "completed";
+    case "in_progress":
+    case "pending":
+    case "prechecking":
+    case "ready":
+    case "dispatching":
+    case "executing":
+    case "resuming":
+    case "recovering":
+      return "running";
+    case "awaiting_decision":
+    case "paused":
+    case "blocked":
+      return "blocked";
+    case "failed":
+    case "timed_out":
+    case "superseded":
+    case "cancelled":
+      return "failed";
+    case "queued":
+    default:
+      return "queued";
+  }
+}
+
+function normalizeTaskDto(task: TaskLikeRecord): TaskDTO {
+  const currentStep =
+    typeof task.currentStep === "string" && task.currentStep.length > 0
+      ? task.currentStep
+      : typeof task.currentStepIndex === "number"
+        ? `step-${task.currentStepIndex}`
+        : task.workflowStatus
+          ?? task.latestExecutionStatus
+          ?? task.sessionStatus
+          ?? "intake";
+  return {
+    id: task.id ?? task.taskId ?? "task-unknown",
+    title: task.title ?? "Untitled task",
+    status: mapTaskStatus(task.status ?? task.taskStatus),
+    domainId: task.domainId ?? task.divisionId ?? "platform",
+    currentStep,
+    ...(task.owner == null ? {} : { owner: task.owner }),
+    ...(task.evidenceCount != null
+      ? { evidenceCount: task.evidenceCount }
+      : task.pendingApprovalCount != null || task.resolvedApprovalCount != null
+        ? { evidenceCount: (task.pendingApprovalCount ?? 0) + (task.resolvedApprovalCount ?? 0) }
+        : {}),
+    ...(task.timelineDepth != null
+      ? { timelineDepth: task.timelineDepth }
+      : typeof task.currentStepIndex === "number"
+        ? { timelineDepth: Math.max(1, task.currentStepIndex + 1) }
+        : {}),
+    ...(task.executionMode != null
+      ? { executionMode: task.executionMode }
+      : task.activeExecutionId != null
+        ? { executionMode: "external" }
+        : {}),
+    ...(task.modelCallStatus == null ? {} : { modelCallStatus: task.modelCallStatus }),
+    ...(task.modelProvider == null ? {} : { modelProvider: task.modelProvider }),
+    ...(task.modelName == null ? {} : { modelName: task.modelName }),
+    ...(task.outputSummary === undefined ? {} : { outputSummary: task.outputSummary }),
+    ...(task.outputUri === undefined ? {} : { outputUri: task.outputUri }),
+  };
+}
 
 type EndpointCatalogDefinition = {
   dashboardSnapshot: EndpointDefinition<DashboardSnapshotDTO>;
@@ -322,8 +402,8 @@ export async function fetchDashboardSnapshot(client: RESTClient): Promise<Dashbo
 
 export async function fetchTasks(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly TaskDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  const response = await client.get<readonly TaskDTO[] | { tasks: readonly TaskDTO[] }>(`${endpointCatalog.tasks.path}${queryString}`);
-  return unwrapCollectionResponse(response, ["tasks"]);
+  const response = await client.get<readonly TaskLikeRecord[] | { tasks: readonly TaskLikeRecord[] }>(`${endpointCatalog.tasks.path}${queryString}`);
+  return unwrapCollectionResponse(response, ["tasks"]).map((task) => normalizeTaskDto(task));
 }
 
 export async function createTask(client: RESTClient, body: Partial<TaskDTO>): Promise<{ ok: true; body?: unknown }> {

@@ -11,6 +11,69 @@ import {
   WEB_MINIFY_MODE,
 } from "./build-config";
 
+const uiRoot = new URL("../../", import.meta.url);
+
+function fromUiRoot(relativePath: string): string {
+  return fileURLToPath(new URL(relativePath, uiRoot));
+}
+
+const sharedPackageAliases = {
+  "@aa/shared-types": fromUiRoot("packages/shared/types/src/index.ts"),
+  "@aa/shared-api-client": fromUiRoot("packages/shared/api-client/src/index.ts"),
+  "@aa/shared-auth": fromUiRoot("packages/shared/auth/src/index.ts"),
+  "@aa/shared-state": fromUiRoot("packages/shared/state/src/index.ts"),
+  "@aa/shared-sync": fromUiRoot("packages/shared/sync/src/index.ts"),
+  "@aa/shared-domain": fromUiRoot("packages/shared/domain/src/index.ts"),
+  "@aa/shared-platform": fromUiRoot("packages/shared/platform/src/index.ts"),
+  "@aa/shared-i18n": fromUiRoot("packages/shared/i18n/src/index.ts"),
+  "@aa/shared-telemetry": fromUiRoot("packages/shared/telemetry/src/index.ts"),
+  "@aa/shared-nl-client": fromUiRoot("packages/shared/nl-client/src/index.ts"),
+  "@aa/ui-core": fromUiRoot("packages/ui-core/src/index.tsx"),
+  "@aa/ui-mobile": fromUiRoot("packages/ui-mobile/src/index.ts"),
+} as const;
+
+const featurePackageAliases = Object.fromEntries(
+  [
+    "agent-manager",
+    "alerts",
+    "analytics",
+    "approval",
+    "audit",
+    "compliance",
+    "conversation",
+    "cost-center",
+    "dashboard",
+    "dispatch",
+    "division-inventory",
+    "domain-wizard",
+    "explainability",
+    "feature-flags",
+    "governance-compliance",
+    "health",
+    "hitl",
+    "incidents",
+    "inspect",
+    "marketplace",
+    "memory-review",
+    "mission-console",
+    "policy",
+    "queues",
+    "release-console",
+    "settings",
+    "stability",
+    "takeover",
+    "task-cockpit",
+    "trace-explorer",
+    "workers",
+    "workflow-builder",
+    "workflow-cockpit",
+    "workflow-debugger",
+  ].map((featureName) => [
+    `@aa/feature-${featureName}`,
+    fromUiRoot(`packages/features/${featureName}/src/index.tsx`),
+  ]),
+);
+
 function resolveConnectSrcOrigins(env: Record<string, string | undefined>): readonly string[] {
   const candidates = [env.VITE_API_BASE_URL, env.VITE_WS_URL, env.VITE_OTLP_ENDPOINT]
     .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
@@ -24,11 +87,15 @@ function resolveConnectSrcOrigins(env: Record<string, string | undefined>): read
   return Array.from(new Set(candidates));
 }
 
-export function buildCspHeader(env: Record<string, string | undefined>): string {
+export function buildCspHeader(
+  env: Record<string, string | undefined>,
+  options: { readonly allowInlineDevScript?: boolean } = {},
+): string {
   const connectSrc = ["'self'", ...resolveConnectSrcOrigins(env)].join(" ");
+  const scriptSrc = options.allowInlineDevScript ? "script-src 'self' 'unsafe-inline'" : "script-src 'self'";
   return [
     "default-src 'self'",
-    "script-src 'self'",
+    scriptSrc,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
@@ -134,7 +201,7 @@ function createCspHeadersPlugin(cspHeader: string): Plugin {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const cspHeader = buildCspHeader(env);
+  const cspHeader = buildCspHeader(env, { allowInlineDevScript: mode !== "production" });
   const uiHost = env.AA_UI_HOST ?? testTarget.host;
   const uiPreviewPort = Number.parseInt(env.AA_UI_PORT ?? String(testTarget.port), 10);
   const uiDevPort = Number.parseInt(env.AA_UI_DEV_PORT ?? String(uiPreviewPort + 1000), 10);
@@ -144,7 +211,10 @@ export default defineConfig(({ mode }) => {
       "process.env.NODE_ENV": JSON.stringify(mode),
     },
     resolve: {
+      extensions: [".tsx", ".ts", ".jsx", ".js", ".mjs", ".json"],
       alias: {
+        ...sharedPackageAliases,
+        ...featurePackageAliases,
         "react-native": fileURLToPath(new URL("./src/react-native-web-stub.tsx", import.meta.url)),
       },
     },

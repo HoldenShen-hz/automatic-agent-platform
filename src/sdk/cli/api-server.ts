@@ -39,6 +39,7 @@ import { ApprovalService } from "../../platform/five-plane-control-plane/approva
 import { ApiAuthService } from "../../platform/five-plane-interface/api/api-auth-service.js";
 import { HttpApiServer } from "../../platform/five-plane-interface/api/http-api-server.js";
 import { MissionControlService } from "../../platform/five-plane-interface/api/mission-control-service.js";
+import { RealTaskExecutionService } from "../../platform/five-plane-interface/api/real-task-execution-service.js";
 import { TaskWebSocketStatusRelay } from "../../platform/five-plane-interface/api/task-websocket-status-relay.js";
 import { loadApiServerEnv } from "../../platform/five-plane-control-plane/config-center/api-server-env.js";
 import { resolveConfigWorkspaceRoot } from "../../platform/five-plane-control-plane/config-center/runtime-env.js";
@@ -232,6 +233,9 @@ async function main(): Promise<void> {
     const missionControl = new MissionControlService(store, health, metrics, inspect, {
       gatewayTargetDirectoryService: gatewayTargets,
     });
+    const realTaskExecutionService = new RealTaskExecutionService(store, {
+      reportRoot: join(process.cwd(), "data", "dev-runtime", "reports"),
+    });
 
     // Create the HTTP API server with all services
     const server = new HttpApiServer({
@@ -250,6 +254,8 @@ async function main(): Promise<void> {
       artifactPlaneService: artifactPlane,
       domainRegistryService: domainRegistry,
       pluginRegistry,
+      taskStore: store,
+      realTaskExecutionService,
       enableWebSocket: envConfig.enableWebSocket,
     });
     const webSocketStatusRelay =

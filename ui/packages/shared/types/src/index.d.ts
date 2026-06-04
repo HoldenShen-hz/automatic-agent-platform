@@ -382,6 +382,12 @@ export interface TaskDTO {
     readonly owner?: string;
     readonly evidenceCount?: number;
     readonly timelineDepth?: number;
+    readonly executionMode?: "mock_dev" | "real_model" | "manual" | "external";
+    readonly modelCallStatus?: "not_called" | "pending" | "running" | "succeeded" | "failed";
+    readonly modelProvider?: string;
+    readonly modelName?: string;
+    readonly outputSummary?: string | null;
+    readonly outputUri?: string | null;
 }
 export interface ApprovalDTO {
     readonly approvalId: string;

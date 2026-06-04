@@ -7,6 +7,7 @@ import test from "node:test";
 import {
   buildLocalStackChildEnv,
   classifyPortListeners,
+  loadLocalStackProviderEnv,
   readLocalStackPort,
   resolveRequiredBinaryPath,
   resolveRequiredNpmCliPath,
@@ -86,4 +87,39 @@ test("classifyPortListeners only marks tracked listener pids as managed", () => 
       unmanagedPids: [101, 303],
     },
   );
+});
+
+test("loadLocalStackProviderEnv reads local minimax config and lets process env override file values", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-local-provider-config-"));
+  const configPath = join(workspace, "config", "providers", "local-dev.json");
+  mkdirSync(join(workspace, "config", "providers"), { recursive: true });
+  writeFileSync(configPath, JSON.stringify({
+    minimax: {
+      apiKey: "file-minimax-key",
+      baseUrl: "https://api.minimaxi.com/v1",
+    },
+  }, null, 2));
+
+  try {
+    assert.deepEqual(loadLocalStackProviderEnv(workspace, {}), {
+      env: {
+        MINIMAX_API_KEY: "file-minimax-key",
+        MINIMAX_API_BASE: "https://api.minimaxi.com/v1",
+      },
+      sourcePath: configPath,
+    });
+
+    assert.deepEqual(loadLocalStackProviderEnv(workspace, {
+      MINIMAX_API_KEY: "env-minimax-key",
+      MINIMAX_API_BASE: "https://override.example/v1",
+    }), {
+      env: {
+        MINIMAX_API_KEY: "env-minimax-key",
+        MINIMAX_API_BASE: "https://override.example/v1",
+      },
+      sourcePath: configPath,
+    });
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
 });

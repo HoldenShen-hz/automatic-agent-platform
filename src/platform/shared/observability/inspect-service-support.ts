@@ -175,6 +175,12 @@ export interface TaskInspectSummary {
   dispatchDecisionCount: number;
   latestEventAt: string | null;
   updatedAt: string;
+  executionMode?: "mock_dev" | "real_model" | "manual" | "external" | undefined;
+  modelCallStatus?: "not_called" | "pending" | "running" | "succeeded" | "failed" | undefined;
+  modelProvider?: string | null | undefined;
+  modelName?: string | null | undefined;
+  outputSummary?: string | null | undefined;
+  outputUri?: string | null | undefined;
 }
 
 export interface WorkflowInspectQuery {

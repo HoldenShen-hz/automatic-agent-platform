@@ -11,6 +11,10 @@ import type {
   IncidentDTO,
   LeadershipClaimsConsoleDTO,
   MarketplacePackDTO,
+  MissionBudgetSummaryDTO,
+  MissionDTO,
+  MissionMemberDTO,
+  MissionResourceDTO,
   ModelConfigDTO,
   QueueDTO,
   RoleDTO,
@@ -38,6 +42,14 @@ export interface MockApiShape {
   readonly analytics: readonly AnalyticsMetricDTO[];
   readonly costs: readonly CostReportDTO[];
   readonly marketplace: readonly MarketplacePackDTO[];
+  readonly missions: readonly MissionDTO[];
+  readonly missionMembers: Readonly<Record<string, readonly MissionMemberDTO[]>>;
+  readonly missionTasks: Readonly<Record<string, readonly MissionResourceDTO[]>>;
+  readonly missionRuns: Readonly<Record<string, readonly MissionResourceDTO[]>>;
+  readonly missionEvidence: Readonly<Record<string, readonly MissionResourceDTO[]>>;
+  readonly missionKnowledge: Readonly<Record<string, readonly MissionResourceDTO[]>>;
+  readonly missionLearning: Readonly<Record<string, readonly MissionResourceDTO[]>>;
+  readonly missionBudgets: Readonly<Record<string, MissionBudgetSummaryDTO>>;
   readonly explanations: readonly ExplanationDTO[];
   readonly roles: readonly RoleDTO[];
   readonly featureFlags: readonly FeatureFlagDTO[];
@@ -69,8 +81,8 @@ export const defaultMockApiShape: MockApiShape = {
     uptimePercent: 99.94,
   },
   tasks: [
-    { id: "task-1", title: "春季营销活动", status: "running", domainId: "marketing", currentStep: "launch-assets", owner: "growth-ops", evidenceCount: 6, timelineDepth: 5 },
-    { id: "task-2", title: "量化策略检查", status: "blocked", domainId: "quant-trading", currentStep: "approval", owner: "quant-review", evidenceCount: 9, timelineDepth: 5 },
+    { id: "task-1", title: "春季营销活动", status: "running", domainId: "marketing", currentStep: "launch-assets", owner: "growth-ops", evidenceCount: 6, timelineDepth: 5, executionMode: "mock_dev", modelCallStatus: "not_called", modelProvider: "minimax", modelName: "minimax-m2.7", outputSummary: null, outputUri: null },
+    { id: "task-2", title: "量化策略检查", status: "blocked", domainId: "quant-trading", currentStep: "approval", owner: "quant-review", evidenceCount: 9, timelineDepth: 5, executionMode: "mock_dev", modelCallStatus: "not_called", modelProvider: "minimax", modelName: "minimax-m2.7", outputSummary: null, outputUri: null },
   ],
   workflowRunSteps: {
     "task-1": [
@@ -148,6 +160,78 @@ export const defaultMockApiShape: MockApiShape = {
     { id: "pack-1", name: "Campaign Optimizer", category: "marketing", version: "1.4.0" },
     { id: "pack-2", name: "Risk Lens", category: "finance", version: "2.1.3" },
   ],
+  missions: [
+    {
+      missionId: "mis_local_platform",
+      tenantId: "tenant-default",
+      type: "formal",
+      status: "active",
+      priority: "high",
+      title: "本地平台验证 Mission",
+      description: "Local development mission used when the authenticated Mission API is not connected.",
+      objective: "让本地任务创建、调度观察和证据链路可以在未接认证后端时继续演示和验证。",
+      successCriteria: ["任务可创建并进入任务列表", "任务状态可观察", "证据与知识链路可追踪"],
+      domainId: "platform-ops",
+      ownerPrincipalId: "platform-sre",
+      accountablePrincipalId: "platform-owner",
+      policyRefs: ["policy.local-dev", "policy.mission-governance"],
+      riskProfileRef: "risk.local-dev",
+      budgetEnvelopeRef: "budget.local-dev",
+      knowledgeBoundaryRef: "kb.local-platform",
+      defaultWorkflowTemplateRefs: ["wf.local-research", "wf.task-execution"],
+      updatedAt: "2026-06-04T00:00:00.000Z",
+    },
+  ],
+  missionMembers: {
+    mis_local_platform: [
+      {
+        membershipId: "mship_local_owner",
+        missionId: "mis_local_platform",
+        tenantId: "tenant-default",
+        principalType: "user",
+        principalId: "platform-sre",
+        role: "owner",
+        permissions: ["mission:read", "mission:execute", "mission:bind_task"],
+        deniedPermissions: [],
+        status: "active",
+        grantedBy: "system",
+        grantedAt: "2026-06-04T00:00:00.000Z",
+        expiresAt: null,
+      },
+    ],
+  },
+  missionTasks: {
+    mis_local_platform: [
+      { id: "mission-task-local-intake", missionId: "mis_local_platform", type: "task", status: "running", title: "本地任务入口验证", ref: "task://local/intake", updatedAt: "2026-06-04T00:00:00.000Z" },
+    ],
+  },
+  missionRuns: {
+    mis_local_platform: [
+      { id: "mission-run-local", missionId: "mis_local_platform", type: "run", status: "running", title: "Local task execution smoke", ref: "run://local/task-smoke", updatedAt: "2026-06-04T00:00:00.000Z" },
+    ],
+  },
+  missionEvidence: {
+    mis_local_platform: [
+      { id: "mission-evidence-local", missionId: "mis_local_platform", type: "evidence", status: "recorded", title: "UI task entry verified", ref: "evidence://ui/task-entry", updatedAt: "2026-06-04T00:00:00.000Z" },
+    ],
+  },
+  missionKnowledge: {
+    mis_local_platform: [
+      { id: "mission-knowledge-local", missionId: "mis_local_platform", type: "knowledge", status: "published", title: "Local Mission fallback runbook", ref: "kb://local/mission-fallback", updatedAt: "2026-06-04T00:00:00.000Z" },
+    ],
+  },
+  missionLearning: {
+    mis_local_platform: [
+      { id: "mission-learning-local", missionId: "mis_local_platform", type: "learning", status: "pending_promotion", title: "Dev auth fallback should keep Mission visible", ref: "learning://local/auth-fallback", updatedAt: "2026-06-04T00:00:00.000Z" },
+    ],
+  },
+  missionBudgets: {
+    mis_local_platform: {
+      missionId: "mis_local_platform",
+      budgetEnvelopeRef: "budget.local-dev",
+      status: "configured",
+    },
+  },
   explanations: [
     { id: "exp-1", title: "Budget Alert Explanation", summary: "Spend increased because approval turnaround improved", evidenceCount: 4 },
     { id: "exp-2", title: "Workflow Pause Explanation", summary: "Workflow paused waiting for quant approval", evidenceCount: 7 },

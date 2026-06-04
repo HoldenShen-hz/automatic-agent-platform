@@ -16,6 +16,7 @@ import type { ChannelGatewayDeliveryService } from "../channel-gateway/channel-g
 import type { GatewayTargetDirectoryService } from "../channel-gateway/gateway-target-directory-service.js";
 import type { DistributedRateLimiter } from "../ingress/distributed-rate-limiter.js";
 import type { IntakeAdmissionService } from "../../five-plane-orchestration/harness/runtime/intake-admission-service.js";
+import type { RealTaskExecutionService } from "./real-task-execution-service.js";
 import type { ApiAuthService } from "./api-auth-service.js";
 import type { AdminConfigService } from "./admin-config-service.js";
 import type { AdminRuntimeDirectiveService } from "./admin-runtime-directive-service.js";
@@ -60,6 +61,7 @@ export interface HttpApiServerOptions {
   pluginRegistry?: PluginSpiRegistry | null;
   taskStore?: AuthoritativeTaskStore | null;
   intakeAdmissionService?: IntakeAdmissionService | null;
+  realTaskExecutionService?: RealTaskExecutionService | null;
   rateLimiter?: DistributedRateLimiter | null;
   enableWebSocket?: boolean;
   cors?: Partial<CorsConfig> | null;

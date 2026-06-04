@@ -1,8 +1,11 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
 
 const mocks = vi.hoisted(() => ({
   mockClient: { patch: vi.fn(), get: vi.fn() },
+  mockCreateTask: vi.fn(async () => ({ ok: true })),
   mockUpdateTask: vi.fn(async () => ({ ok: true })),
   mockFetchWorkflowRunSteps: vi.fn(async () => [
     { id: "step-1", title: "Collect inputs", status: "completed", executor: "agent-1", startedAt: "2026-05-04T00:00:00Z", completedAt: "2026-05-04T00:01:00Z" },
@@ -18,6 +21,12 @@ let taskData: Array<{
   owner: string;
   evidenceCount: number;
   timelineDepth: number;
+  executionMode?: "mock_dev" | "real_model" | "manual" | "external";
+  modelCallStatus?: "not_called" | "pending" | "running" | "succeeded" | "failed";
+  modelProvider?: string;
+  modelName?: string;
+  outputSummary?: string | null;
+  outputUri?: string | null;
 }> = [
   {
     id: "task-1",
@@ -28,20 +37,42 @@ let taskData: Array<{
     owner: "growth-ops",
     evidenceCount: 2,
     timelineDepth: 5,
+    executionMode: "mock_dev",
+    modelCallStatus: "not_called",
+    modelProvider: "minimax",
+    modelName: "minimax-m2.7",
+    outputSummary: null,
+    outputUri: null,
   },
 ];
 
 vi.mock("@aa/shared-state", () => ({
+  taskQueryKeys: { tasks: ["tasks"] },
   useRestClient: () => mocks.mockClient,
   useTasksQuery: mocks.mockUseTasksQuery,
 }));
 
 vi.mock("@aa/shared-api-client", () => ({
+  createTask: mocks.mockCreateTask,
   updateTask: mocks.mockUpdateTask,
   fetchWorkflowRunSteps: mocks.mockFetchWorkflowRunSteps,
 }));
 
 import { useTaskCockpitVm } from "../../../../../../packages/features/task-cockpit/src/hooks";
+
+function renderTaskCockpitHook() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  return renderHook(() => useTaskCockpitVm(), {
+    wrapper({ children }: { readonly children: ReactNode }) {
+      return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    },
+  });
+}
 
 describe("useTaskCockpitVm", () => {
   beforeEach(() => {
@@ -56,6 +87,12 @@ describe("useTaskCockpitVm", () => {
         owner: "growth-ops",
         evidenceCount: 2,
         timelineDepth: 5,
+        executionMode: "mock_dev",
+        modelCallStatus: "not_called",
+        modelProvider: "minimax",
+        modelName: "minimax-m2.7",
+        outputSummary: null,
+        outputUri: null,
       },
     ];
     mocks.mockUseTasksQuery.mockImplementation(() => ({
@@ -64,7 +101,7 @@ describe("useTaskCockpitVm", () => {
   });
 
   it("keeps selection empty until the operator explicitly picks a task and enables polling", () => {
-    const { result } = renderHook(() => useTaskCockpitVm());
+    const { result } = renderTaskCockpitHook();
 
     expect(mocks.mockUseTasksQuery).toHaveBeenCalledWith({ refetchInterval: 5000 });
     expect(result.current.selectedId).toBeNull();
@@ -72,7 +109,7 @@ describe("useTaskCockpitVm", () => {
   });
 
   it("calls backend mutations for claim, pause, cancel, retry, resume, and escalate", async () => {
-    const { result } = renderHook(() => useTaskCockpitVm());
+    const { result } = renderTaskCockpitHook();
 
     act(() => {
       result.current.selectTask("task-1");
@@ -99,8 +136,49 @@ describe("useTaskCockpitVm", () => {
     });
   });
 
+  it("creates a task from operator input and selects it optimistically", async () => {
+    const { result } = renderTaskCockpitHook();
+
+    await act(async () => {
+      await result.current.createTaskFromPrompt({
+        title: "  Analyze platform alerts and draft a remediation plan  ",
+        domainId: "platform-ops",
+        owner: "platform-sre",
+      });
+    });
+
+    expect(mocks.mockCreateTask).toHaveBeenCalledWith(
+      mocks.mockClient,
+      expect.objectContaining({
+        title: "Analyze platform alerts and draft a remediation plan",
+        status: "queued",
+        domainId: "platform-ops",
+        currentStep: "intake",
+        owner: "platform-sre",
+        executionMode: "mock_dev",
+        modelCallStatus: "not_called",
+        modelProvider: "minimax",
+        modelName: "minimax-m2.7",
+        outputSummary: null,
+        outputUri: null,
+      }),
+    );
+    expect(result.current.selectedTask?.title).toBe("Analyze platform alerts and draft a remediation plan");
+    expect(result.current.listItems[0]?.title).toBe("Analyze platform alerts and draft a remediation plan");
+  });
+
+  it("rejects empty task input before calling the backend", async () => {
+    const { result } = renderTaskCockpitHook();
+
+    await act(async () => {
+      await expect(result.current.createTaskFromPrompt({ title: "   " })).rejects.toThrow(/task.title_required/);
+    });
+
+    expect(mocks.mockCreateTask).not.toHaveBeenCalled();
+  });
+
   it("does not fabricate evidence records from the evidence count alone", () => {
-    const { result } = renderHook(() => useTaskCockpitVm());
+    const { result } = renderTaskCockpitHook();
 
     act(() => {
       result.current.selectTask("task-1");
@@ -111,7 +189,7 @@ describe("useTaskCockpitVm", () => {
 
   it("rolls back optimistic task mutations when the backend call fails", async () => {
     mocks.mockUpdateTask.mockRejectedValueOnce(new Error("network-failed"));
-    const { result } = renderHook(() => useTaskCockpitVm());
+    const { result } = renderTaskCockpitHook();
 
     act(() => {
       result.current.selectTask("task-1");
@@ -127,7 +205,7 @@ describe("useTaskCockpitVm", () => {
   });
 
   it("keeps optimistic task state across polling until the server catches up", async () => {
-    const { result, rerender } = renderHook(() => useTaskCockpitVm());
+    const { result, rerender } = renderTaskCockpitHook();
 
     act(() => {
       result.current.selectTask("task-1");

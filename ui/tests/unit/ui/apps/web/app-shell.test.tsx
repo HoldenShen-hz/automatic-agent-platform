@@ -219,7 +219,8 @@ describe("WebAppShell", () => {
     );
 
     expect(screen.getByText("页面渲染失败")).toBeInTheDocument();
-    expect(screen.getByText("Specific error message for testing")).toBeInTheDocument();
+    expect(screen.getByText("界面遇到不可恢复错误，请刷新页面或联系当前值班操作员。")).toBeInTheDocument();
+    expect(screen.queryByText("Specific error message for testing")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "上报问题" })).toBeInTheDocument();
   });
@@ -267,7 +268,7 @@ describe("WebAppShell", () => {
     expect(await screen.findByTestId("subpage-general")).toBeInTheDocument();
   });
 
-  it("renders the first feature for unknown routes", () => {
+  it("redirects the root route to the first feature", async () => {
     const firstFeature = createMockFeature({
       manifest: {
         ...createMockFeature().manifest,
@@ -289,8 +290,25 @@ describe("WebAppShell", () => {
       Component: () => <div>Second Feature</div>,
     });
 
-    renderShell([firstFeature, secondFeature], { initialEntries: ["/unknown-route"] });
-    expect(screen.getByTestId("first-feature-body")).toBeInTheDocument();
+    renderShell([firstFeature, secondFeature], { initialEntries: ["/"] });
+    expect(await screen.findByTestId("first-feature-body")).toBeInTheDocument();
+  });
+
+  it("keeps unknown routes explicit instead of hiding them behind a feature fallback", () => {
+    const firstFeature = createMockFeature({
+      manifest: {
+        ...createMockFeature().manifest,
+        id: "first",
+        title: "First Feature",
+        path: "/first",
+      },
+      route: { ...createMockRoute("/first"), featureId: "first", title: "First Feature" },
+      Component: () => <div data-testid="first-feature-body">First Feature</div>,
+    });
+
+    renderShell([firstFeature], { initialEntries: ["/unknown-route"] });
+    expect(screen.getByRole("alert")).toHaveTextContent("404");
+    expect(screen.queryByTestId("first-feature-body")).not.toBeInTheDocument();
   });
 
   it("groups features by manifest group in the sidebar", () => {

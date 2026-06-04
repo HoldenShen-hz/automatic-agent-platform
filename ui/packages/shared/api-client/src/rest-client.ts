@@ -11,6 +11,10 @@ import type {
   IncidentDTO,
   LeadershipClaimsConsoleDTO,
   MarketplacePackDTO,
+  MissionBudgetSummaryDTO,
+  MissionDTO,
+  MissionMemberDTO,
+  MissionResourceDTO,
   ModelConfigDTO,
   QueueDTO,
   RoleDTO,
@@ -98,11 +102,179 @@ export class RestHttpError extends Error {
   }
 }
 
+type StoredMockTask = TaskDTO & {
+  readonly mockCreatedAt?: string;
+};
+
+const MOCK_TASK_STORAGE_KEY = "aa.ui.mock.tasks.v1";
+
+function cloneMockTasks(tasks: readonly TaskDTO[]): StoredMockTask[] {
+  return tasks.map((task) => ({ ...task }));
+}
+
+function readStoredMockTasks(): StoredMockTask[] | null {
+  if (typeof window === "undefined" || window.localStorage == null) {
+    return null;
+  }
+  try {
+    const raw = window.localStorage.getItem(MOCK_TASK_STORAGE_KEY);
+    if (raw == null || raw.trim().length === 0) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return null;
+    }
+    return parsed.filter((item): item is StoredMockTask => (
+      item != null
+      && typeof item === "object"
+      && typeof (item as { id?: unknown }).id === "string"
+      && typeof (item as { title?: unknown }).title === "string"
+      && typeof (item as { domainId?: unknown }).domainId === "string"
+    ));
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredMockTasks(tasks: readonly StoredMockTask[]): void {
+  if (typeof window === "undefined" || window.localStorage == null) {
+    return;
+  }
+  try {
+    window.localStorage.setItem(MOCK_TASK_STORAGE_KEY, JSON.stringify(tasks.slice(0, 100)));
+  } catch {
+    // Local mock persistence must never break the UI.
+  }
+}
+
+function unwrapMockBody(body: unknown): Record<string, unknown> {
+  if (body != null && typeof body === "object" && "payload" in body) {
+    const payload = (body as { payload?: unknown }).payload;
+    return payload != null && typeof payload === "object" ? payload as Record<string, unknown> : {};
+  }
+  return body != null && typeof body === "object" ? body as Record<string, unknown> : {};
+}
+
+function normalizeMockTask(body: unknown): StoredMockTask {
+  const payload = unwrapMockBody(body);
+  const title = typeof payload.title === "string" && payload.title.trim().length > 0
+    ? payload.title.trim()
+    : "Untitled task";
+  const createdAt = new Date(Date.now()).toISOString();
+  return {
+    id: typeof payload.id === "string" && payload.id.trim().length > 0
+      ? payload.id.trim()
+      : generateStableId("task_"),
+    title,
+    status: "queued",
+    domainId: typeof payload.domainId === "string" && payload.domainId.trim().length > 0
+      ? payload.domainId.trim()
+      : "platform",
+    currentStep: "intake",
+    owner: typeof payload.owner === "string" && payload.owner.trim().length > 0
+      ? payload.owner.trim()
+      : "platform-sre",
+    evidenceCount: 0,
+    timelineDepth: 1,
+    executionMode: "mock_dev",
+    modelCallStatus: "not_called",
+    modelProvider: "minimax",
+    modelName: "minimax-m2.7",
+    outputSummary: null,
+    outputUri: null,
+    mockCreatedAt: createdAt,
+  };
+}
+
+function hasRealModelOutput(task: StoredMockTask): boolean {
+  return task.executionMode === "real_model"
+    && task.modelCallStatus === "succeeded"
+    && (
+      (typeof task.outputSummary === "string" && task.outputSummary.trim().length > 0)
+      || (typeof task.outputUri === "string" && task.outputUri.trim().length > 0)
+    );
+}
+
+function applyMockTaskProgress(task: StoredMockTask, now = Date.now()): StoredMockTask {
+  if (task.status === "completed" && !hasRealModelOutput(task)) {
+    return {
+      ...task,
+      status: "running",
+      currentStep: "waiting-for-real-model-run",
+      evidenceCount: 0,
+      timelineDepth: Math.max(task.timelineDepth ?? 1, 2),
+      executionMode: task.executionMode ?? "mock_dev",
+      modelCallStatus: task.modelCallStatus ?? "not_called",
+      modelProvider: task.modelProvider ?? "minimax",
+      modelName: task.modelName ?? "minimax-m2.7",
+      outputSummary: task.outputSummary ?? null,
+      outputUri: task.outputUri ?? null,
+    };
+  }
+  if (task.status === "blocked" || task.status === "failed" || task.status === "completed") {
+    return task;
+  }
+  const createdAtMs = task.mockCreatedAt == null ? Number.NaN : Date.parse(task.mockCreatedAt);
+  if (!Number.isFinite(createdAtMs)) {
+    return task;
+  }
+  const elapsedMs = now - createdAtMs;
+  if (elapsedMs >= 1_500) {
+    return {
+      ...task,
+      status: "running",
+      currentStep: "waiting-for-real-model-run",
+      evidenceCount: 0,
+      timelineDepth: Math.max(task.timelineDepth ?? 1, 2),
+      executionMode: task.executionMode ?? "mock_dev",
+      modelCallStatus: task.modelCallStatus ?? "not_called",
+      modelProvider: task.modelProvider ?? "minimax",
+      modelName: task.modelName ?? "minimax-m2.7",
+      outputSummary: task.outputSummary ?? null,
+      outputUri: task.outputUri ?? null,
+    };
+  }
+  return task;
+}
+
+function buildMockWorkflowSteps(task: StoredMockTask): readonly WorkflowRunStepDTO[] {
+  const runningStatus = task.status === "queued" ? "running" : "completed";
+  const synthesisStatus = task.status === "running" ? "running" : "queued";
+  return [
+    {
+      id: `${task.id}-intake`,
+      title: "Capture operator request",
+      status: runningStatus,
+      executor: task.owner ?? "platform-sre",
+      startedAt: task.mockCreatedAt,
+      ...(task.status === "queued" ? {} : { completedAt: task.mockCreatedAt }),
+    },
+    {
+      id: `${task.id}-research`,
+      title: "Wait for real model gateway execution",
+      status: synthesisStatus,
+      executor: "agent-research-runner",
+      startedAt: task.status === "queued" ? undefined : task.mockCreatedAt,
+    },
+    {
+      id: `${task.id}-deliver`,
+      title: "Deliver real model output artifact",
+      status: "queued",
+      executor: "agent-summarizer",
+    },
+  ];
+}
+
 export class MockTransport {
-  public constructor(private readonly data: MockApiShape = defaultMockApiShape) {}
+  private tasks: StoredMockTask[];
+
+  public constructor(private readonly data: MockApiShape = defaultMockApiShape) {
+    this.tasks = readStoredMockTasks() ?? cloneMockTasks(data.tasks);
+  }
 
   public async send<T>(request: RestClientRequest): Promise<TransportResponse<T>> {
-    const payload = this.resolve(request.path, request.body);
+    const payload = this.resolve(request.path, request.method, request.body);
     return {
       status: this.resolveStatus(request.method),
       data: payload as T,
@@ -119,7 +291,48 @@ export class MockTransport {
     return 200;
   }
 
-  private resolve(path: string, body?: unknown):
+  private persistTasks(): void {
+    writeStoredMockTasks(this.tasks);
+  }
+
+  private listTasks(): readonly StoredMockTask[] {
+    this.tasks = this.tasks.map((task) => applyMockTaskProgress(task));
+    this.persistTasks();
+    return this.tasks;
+  }
+
+  private upsertTask(task: StoredMockTask): StoredMockTask {
+    this.tasks = [task, ...this.tasks.filter((candidate) => candidate.id !== task.id)];
+    this.persistTasks();
+    return task;
+  }
+
+  private updateTask(path: string, body: unknown): StoredMockTask | null {
+    const taskId = path.split("/tasks/")[1]?.split(/[/?#]/)[0] ?? "";
+    const payload = unwrapMockBody(body);
+    let updated: StoredMockTask | null = null;
+    this.tasks = this.tasks.map((task) => {
+      if (task.id !== taskId) {
+        return task;
+      }
+      updated = {
+        ...task,
+        ...payload,
+        id: task.id,
+      } as StoredMockTask;
+      return updated;
+    });
+    this.persistTasks();
+    return updated;
+  }
+
+  private deleteTask(path: string): void {
+    const taskId = path.split("/tasks/")[1]?.split(/[/?#]/)[0] ?? "";
+    this.tasks = this.tasks.filter((task) => task.id !== taskId);
+    this.persistTasks();
+  }
+
+  private resolve(path: string, method: RestClientRequest["method"], body?: unknown):
     | DashboardSnapshotDTO
     | readonly TaskDTO[]
     | readonly WorkflowRunStepDTO[]
@@ -132,6 +345,10 @@ export class MockTransport {
     | readonly AnalyticsMetricDTO[]
     | readonly CostReportDTO[]
     | readonly MarketplacePackDTO[]
+    | readonly MissionDTO[]
+    | readonly MissionMemberDTO[]
+    | readonly MissionResourceDTO[]
+    | MissionBudgetSummaryDTO
     | readonly ExplanationDTO[]
     | readonly RoleDTO[]
     | readonly FeatureFlagDTO[]
@@ -157,15 +374,61 @@ export class MockTransport {
       };
     }
     | { ok: true; body?: unknown } {
+    if (path.includes("/metrics")) {
+      return this.data.analytics;
+    }
     if (path.includes("/dashboard")) {
       return this.data.dashboard;
     }
-    if (path.includes("/tasks")) {
-      return this.data.tasks;
+    if (path.includes("/missions/")) {
+      const missionId = path.split("/missions/")[1]?.split("/")[0] ?? "";
+      if (path.includes("/members")) {
+        return this.data.missionMembers[missionId] ?? [];
+      }
+      if (path.includes("/tasks")) {
+        return this.data.missionTasks[missionId] ?? [];
+      }
+      if (path.includes("/runs")) {
+        return this.data.missionRuns[missionId] ?? [];
+      }
+      if (path.includes("/evidence")) {
+        return this.data.missionEvidence[missionId] ?? [];
+      }
+      if (path.includes("/knowledge")) {
+        return this.data.missionKnowledge[missionId] ?? [];
+      }
+      if (path.includes("/learning")) {
+        return this.data.missionLearning[missionId] ?? [];
+      }
+      if (path.includes("/budget")) {
+        return this.data.missionBudgets[missionId] ?? {
+          missionId,
+          budgetEnvelopeRef: null,
+          status: "not_configured",
+        };
+      }
+    }
+    if (path.includes("/missions")) {
+      return this.data.missions;
     }
     if (path.includes("/workflow-runs/")) {
       const workflowRunId = path.split("/workflow-runs/")[1]?.split("/")[0] ?? "";
-      return this.data.workflowRunSteps[workflowRunId] ?? [];
+      const task = this.listTasks().find((candidate) => candidate.id === workflowRunId);
+      return task == null ? this.data.workflowRunSteps[workflowRunId] ?? [] : buildMockWorkflowSteps(task);
+    }
+    if (path.includes("/tasks")) {
+      if (method === "POST") {
+        const task = this.upsertTask(normalizeMockTask(body));
+        return { ok: true, body: task };
+      }
+      if (method === "PUT" || method === "PATCH") {
+        return { ok: true, body: this.updateTask(path, body) ?? unwrapMockBody(body) };
+      }
+      if (method === "DELETE") {
+        this.deleteTask(path);
+        return { ok: true };
+      }
+      return this.listTasks();
     }
     if (path.includes("/workflows")) {
       return this.data.workflows;
@@ -184,9 +447,6 @@ export class MockTransport {
     }
     if (path.includes("/agents")) {
       return this.data.agents;
-    }
-    if (path.includes("/metrics")) {
-      return this.data.analytics;
     }
     if (path.includes("/cost")) {
       return this.data.costs;
@@ -472,10 +732,22 @@ export class HttpTransport {
     }
 
     this.recordFailure();
-    if (this.fallbackTransport != null && !(lastError instanceof RestHttpError)) {
+    if (this.shouldFallbackToMock(lastError)) {
       return this.fallbackTransport.send(request);
     }
     throw lastError;
+  }
+
+  private shouldFallbackToMock(error: unknown): boolean {
+    if (this.fallbackTransport == null) {
+      return false;
+    }
+    if (!(error instanceof RestHttpError)) {
+      return true;
+    }
+    // Local dev can run without auth wiring or every Layer C endpoint; keep
+    // production-like errors visible while still letting the UI shell render.
+    return error.code === "api.auth_not_configured" || error.status === 404;
   }
 
   private async readErrorDetails(response: Response): Promise<{ message?: string; code?: string | null }> {

@@ -1,5 +1,5 @@
-import { existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 
 export const LOCAL_STACK_SECRET_ENV_PATTERNS = Object.freeze([
   /^AWS_/u,
@@ -11,6 +11,13 @@ export const LOCAL_STACK_SECRET_ENV_PATTERNS = Object.freeze([
   /^AA_API_KEYS_JSON$/u,
   /(^|_)(TOKEN|SECRET|PASSWORD|PASS|PRIVATE_KEY|API_KEY|AUTH|AUTHORIZATION|ACCESS_KEY|SESSION_KEY|CREDENTIAL|CREDENTIALS|CERT)(_|$)/iu,
   /(^|_)(FILE|KEY|KEYS)(_|$)/iu,
+]);
+
+const LOCAL_STACK_PROVIDER_CONFIG_RELATIVE_PATH = Object.freeze(["config", "providers", "local-dev.json"]);
+const LOCAL_STACK_PROVIDER_ENV_KEYS = Object.freeze([
+  "MINIMAX_API_KEY",
+  "AA_MINIMAX_API_KEY",
+  "MINIMAX_API_BASE",
 ]);
 
 export function readLocalStackPort(env, name, fallback) {
@@ -42,6 +49,69 @@ export function buildLocalStackChildEnv(sourceEnv, overrides = {}) {
   return {
     ...env,
     ...overrides,
+  };
+}
+
+function normalizeOptionalEnvValue(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function resolveLocalStackProviderConfigPath(repoRoot, sourceEnv) {
+  const configuredPath = normalizeOptionalEnvValue(sourceEnv.AA_LOCAL_PROVIDER_CONFIG_PATH);
+  if (configuredPath == null) {
+    return join(repoRoot, ...LOCAL_STACK_PROVIDER_CONFIG_RELATIVE_PATH);
+  }
+  return isAbsolute(configuredPath) ? configuredPath : resolve(repoRoot, configuredPath);
+}
+
+function readLocalStackProviderConfigEnv(configPath) {
+  if (!existsSync(configPath)) {
+    return {};
+  }
+  const parsed = JSON.parse(readFileSync(configPath, "utf8"));
+  if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`Local provider config must be a JSON object: ${configPath}`);
+  }
+
+  const minimax = parsed.minimax;
+  if (minimax == null) {
+    return {};
+  }
+  if (typeof minimax !== "object" || Array.isArray(minimax)) {
+    throw new Error(`Local provider config minimax block must be a JSON object: ${configPath}`);
+  }
+
+  const env = {};
+  const apiKey = normalizeOptionalEnvValue(minimax.apiKey);
+  const baseUrl = normalizeOptionalEnvValue(minimax.baseUrl);
+  if (apiKey != null) {
+    env.MINIMAX_API_KEY = apiKey;
+  }
+  if (baseUrl != null) {
+    env.MINIMAX_API_BASE = baseUrl;
+  }
+  return env;
+}
+
+export function loadLocalStackProviderEnv(repoRoot, sourceEnv = process.env) {
+  const configPath = resolveLocalStackProviderConfigPath(repoRoot, sourceEnv);
+  const fileEnv = readLocalStackProviderConfigEnv(configPath);
+  const env = {
+    ...fileEnv,
+  };
+  for (const key of LOCAL_STACK_PROVIDER_ENV_KEYS) {
+    const value = normalizeOptionalEnvValue(sourceEnv[key]);
+    if (value != null) {
+      env[key] = value;
+    }
+  }
+  return {
+    env,
+    sourcePath: existsSync(configPath) ? configPath : null,
   };
 }
 

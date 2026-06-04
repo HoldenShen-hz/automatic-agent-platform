@@ -174,6 +174,9 @@ export function createTenantInterceptor(tenantId: string | null): RestClientInte
 export function createCsrfInterceptor(explicitToken?: string | null): RestClientInterceptor {
   return {
     onRequest(request) {
+      if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") {
+        return request;
+      }
       const token = explicitToken ?? readCsrfToken();
       if (token != null) {
         request.headers.set("x-csrf-token", token);
@@ -235,7 +238,10 @@ function readCsrfToken(): string | null {
     .map((item) => item.trim())
     .find((item) => item.startsWith("aa-csrf-token="))
     ?.slice("aa-csrf-token=".length) ?? "";
-  if (metaToken.length === 0 || cookieToken.length === 0 || metaToken !== decodeURIComponent(cookieToken)) {
+  if (metaToken.length === 0) {
+    return null;
+  }
+  if (cookieToken.length > 0 && metaToken !== decodeURIComponent(cookieToken)) {
     return null;
   }
   return metaToken;

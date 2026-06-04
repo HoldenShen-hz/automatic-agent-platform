@@ -3,6 +3,7 @@ import React, { Suspense, useEffect, useMemo, useState } from "react";
 import {
   BrowserRouter,
   MemoryRouter,
+  Navigate,
   NavLink,
   Route,
   Routes,
@@ -392,6 +393,7 @@ function AppFrame(
             </section>
           ) : (
             <Routes>
+              <Route element={<Navigate replace to={features[0]!.route.path} />} path="/" />
               {features.map((feature) => (
                 <Route
                   key={feature.manifest.id}
@@ -510,6 +512,17 @@ function resolveLocationAuthContext(): Partial<AuthContext> {
   const domainId = params.get("domain_id");
   const mode = params.get("mode");
   const hasExplicitAuth = userId != null || permissions.length > 0 || roles.length > 0;
+  if (!hasExplicitAuth && isLocalDevelopmentOrigin(window.location.hostname)) {
+    return {
+      authenticated: true,
+      userId: "local-dev-operator",
+      tenantId: "tenant-default",
+      domainId: "platform",
+      permissions: ["authenticated", "platform_sre", "admin+"],
+      roles: ["platform-admin", "operator"],
+      ...(mode === "solo" || mode === "enterprise" ? { mode } : {}),
+    };
+  }
   const authenticated = hasExplicitAuth;
 
   return {
@@ -521,6 +534,10 @@ function resolveLocationAuthContext(): Partial<AuthContext> {
     ...(roles.length === 0 ? {} : { roles }),
     ...(mode === "solo" || mode === "enterprise" ? { mode } : {}),
   };
+}
+
+function isLocalDevelopmentOrigin(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
 function readCsvParam(params: URLSearchParams, key: string): readonly string[] {
