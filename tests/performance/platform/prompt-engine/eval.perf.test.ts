@@ -199,7 +199,15 @@ test("LlmEvalService defineSuite creates valid suite with empty cases", () => {
   });
 
   assert.ok(suite.id.startsWith("esuite_"));
-  assert.equal(suite.cases, "[]", "Empty cases should be serialized as empty array");
+  const serialized = JSON.parse(suite.cases) as {
+    version: string;
+    frozenHash: string;
+    cases: unknown[];
+  };
+  assert.equal(Array.isArray(serialized.cases), true, "Serialized payload should contain cases array");
+  assert.equal(serialized.cases.length, 0, "Empty cases should remain empty after freezing");
+  assert.match(serialized.version, /^suite-cases\/v1:sha256:/);
+  assert.match(serialized.frozenHash, /^sha256:/);
 });
 
 test("LlmEvalService runCiGate completes without JSON parse errors", () => {

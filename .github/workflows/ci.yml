@@ -7,8 +7,8 @@ on:
       - master
   pull_request:
   schedule:
-    # Weekly baseline/security sweep at Monday 05:00 UTC (Monday 13:00 Asia/Shanghai).
-    - cron: "0 5 * * 1"
+    # Nightly assurance sweep at 05:00 UTC (13:00 Asia/Shanghai).
+    - cron: "0 5 * * *"
 
 permissions:
   contents: read
@@ -70,6 +70,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: npm run assurance:delta -- --base "${{ github.event.pull_request.base.sha }}"
 
+      - name: Nightly Full Assurance
+        if: github.event_name == 'schedule'
+        run: npm run assurance:full
+
       - name: Division Inventory
         run: npm run audit:division-inventory
 
@@ -118,6 +122,8 @@ jobs:
           path: |
             test-results/
             coverage/
+            artifacts/assurance/
+            artifacts/release/
             config/division-coverage/inventory/
             config/division-coverage/reports/
 

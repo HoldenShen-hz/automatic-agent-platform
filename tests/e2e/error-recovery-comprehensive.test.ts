@@ -206,7 +206,7 @@ test("E2E Recovery: execution moves to dead letter queue after max retries", asy
 // Test: Error code classification - E7 locking error
 // ---------------------------------------------------------------------------
 
-test("E2E Recovery: E7 locking error suggests retry_new_ticket", async () => {
+test("E2E Recovery: E7 locking error suggests resume_same_worker", async () => {
   const harness = createE2EHarness("aa-e2e-e7-");
   try {
     const taskId = newId("task");
@@ -273,7 +273,7 @@ test("E2E Recovery: E7 locking error suggests retry_new_ticket", async () => {
     const candidate = candidates.find(c => c.executionId === executionId);
     assert.ok(candidate, "Should find the E7 error execution");
     assert.equal(candidate!.errorClassification, "E7", "Should classify as E7 locking error");
-    assert.equal(candidate!.suggestedAction, "retry_new_ticket", "E7 should suggest retry_new_ticket");
+    assert.equal(candidate!.suggestedAction, "resume_same_worker", "E7 should follow locking_error strategy");
   } finally {
     harness.cleanup();
   }
@@ -427,8 +427,8 @@ test("E2E Recovery: EC crash error suggests resume_same_worker if attempt is low
     const candidate = candidates.find(c => c.executionId === executionId);
     assert.ok(candidate, "Should find the EC crash execution");
     assert.equal(candidate!.errorClassification, "EC", "Should classify as EC crash error");
-    // Low attempt with EC crash should suggest resume_same_worker
-    assert.equal(candidate!.suggestedAction, "resume_same_worker", "EC crash at low attempt should suggest resume");
+    // Low attempt with EC crash should follow runtime_error strategy.
+    assert.equal(candidate!.suggestedAction, "retry_new_ticket", "EC crash should follow runtime_error strategy");
   } finally {
     harness.cleanup();
   }

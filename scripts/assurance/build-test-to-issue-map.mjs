@@ -17,12 +17,13 @@
  * Usage:
  *   node scripts/assurance/build-test-to-issue-map.mjs
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { extname, join, relative, resolve } from "node:path";
 
 const repoRoot = resolve(process.cwd());
 const outputRoot = join(repoRoot, "artifacts", "assurance");
 const testsRoot = join(repoRoot, "tests");
+const includeFixtures = process.argv.includes("--include-fixtures");
 
 const SKIP_DIRS = new Set([
   "node_modules", "dist", "coverage", ".git", "artifacts", "build",
@@ -46,6 +47,7 @@ function walk(dir, files = []) {
   if (!existsSync(dir)) return files;
   for (const entry of readdirSync(dir)) {
     if (SKIP_DIRS.has(entry)) continue;
+    if (!includeFixtures && entry === "fixtures" && dir === testsRoot) continue;
     const full = join(dir, entry);
     let stat;
     try { stat = statSync(full); } catch { continue; }
@@ -122,6 +124,12 @@ function loadIssueLedger(path) {
     }
   }
   return issues;
+}
+
+function writeJsonAtomic(targetPath, value) {
+  const tmpPath = `${targetPath}.tmp-${process.pid}`;
+  writeFileSync(tmpPath, JSON.stringify(value, null, 2));
+  renameSync(tmpPath, targetPath);
 }
 
 function main() {
@@ -205,31 +213,31 @@ function main() {
   };
 
   // 6. Write outputs.
-  writeFileSync(
+  writeJsonAtomic(
     join(outputRoot, "test-to-issue-map.json"),
-    JSON.stringify({
+    {
       generatedAt: stamp,
       totalTests: Object.keys(sortedTestToIssue).length,
       totalIssueRefs: [...reverseUnion].length,
       bindings: sortedTestToIssue,
-    }, null, 2),
+    },
   );
-  writeFileSync(
+  writeJsonAtomic(
     join(outputRoot, "issue-to-test-map.json"),
-    JSON.stringify({
+    {
       generatedAt: stamp,
       totalIssues: Object.keys(sortedIssueToTest).length,
       totalTestRefs: Object.values(sortedIssueToTest).reduce((acc, v) => acc + v.length, 0),
       bindings: sortedIssueToTest,
-    }, null, 2),
+    },
   );
-  writeFileSync(
+  writeJsonAtomic(
     join(outputRoot, "test-metadata.json"),
-    JSON.stringify({
+    {
       generatedAt: stamp,
       totalTests: testMetadata.length,
       entries: testMetadata.sort((a, b) => a.path.localeCompare(b.path)),
-    }, null, 2),
+    },
   );
 
   process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);

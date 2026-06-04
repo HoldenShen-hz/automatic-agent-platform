@@ -58,6 +58,12 @@ test("E2E: access governance bridges principal context decisions into approval f
       context: {
         environment: "production",
         manualTakeoverActive: true,
+        tenantId: "tenant-ops",
+        originalPrincipal: {
+          type: "user",
+          roles: ["viewer"],
+          tenantId: "tenant-ops",
+        },
       },
     });
     assert.equal(operatorDecision.allowed, true);
@@ -70,6 +76,7 @@ test("E2E: access governance bridges principal context decisions into approval f
       principalType: agentProfile.principalType,
       roles: agentProfile.roles,
       action: "invoke_model",
+      principalTenantId: "tenant-risk",
       mode: "full-auto",
       riskCategory: "sensitive_data",
       context: {

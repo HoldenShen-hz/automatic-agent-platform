@@ -195,8 +195,6 @@ function runCoverageBatch(c8Entrypoint, layer, aggregateTempDir, options = {}) {
         "--reporter",
         "json-summary",
         process.execPath,
-        "--import",
-        "tsx",
         "scripts/run-layered-tests.mjs",
         layer,
       ],

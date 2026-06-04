@@ -228,7 +228,7 @@ test("performance: Budget reservation throughput >2000 ops/sec", (t) => {
       tenantId: "test-tenant",
       harnessRunId: newId("hrun"),
       currency: "USD",
-      hardCap: 10000,
+      hardCap: 1_000_000,
       reservedAmount: 0,
       settledAmount: 0,
       releasedAmount: 0,
@@ -254,7 +254,7 @@ test("performance: Budget reservation throughput >2000 ops/sec", (t) => {
       tenantId: "test-tenant",
       harnessRunId: newId("hrun"),
       currency: "USD",
-      hardCap: 10000,
+      hardCap: 1_000_000,
       reservedAmount: 0,
       settledAmount: 0,
       releasedAmount: 0,
@@ -300,7 +300,7 @@ test("performance: Budget reservation P99 latency <1ms", (t) => {
       tenantId: "test-tenant",
       harnessRunId: newId("hrun"),
       currency: "USD",
-      hardCap: 10000,
+      hardCap: 1_000_000,
       reservedAmount: 0,
       settledAmount: 0,
       releasedAmount: 0,
@@ -551,7 +551,6 @@ test("performance: NodeRun state transition throughput >3000 ops/sec", (t) => {
 
 test("performance: Budget settlement throughput >1500 ops/sec", (t) => {
   const db = createTempDb();
-  const store = new AuthoritativeTaskStore(db);
   const allocator = new BudgetAllocator();
 
   try {
@@ -561,7 +560,7 @@ test("performance: Budget settlement throughput >1500 ops/sec", (t) => {
       tenantId: "test-tenant",
       harnessRunId: newId("hrun"),
       currency: "USD",
-      hardCap: 10000,
+      hardCap: 1_000_000,
       reservedAmount: 0,
       settledAmount: 0,
       releasedAmount: 0,
@@ -569,19 +568,21 @@ test("performance: Budget settlement throughput >1500 ops/sec", (t) => {
       version: 0,
     };
 
-    const reservationResult = allocator.reserve({
-      ledger,
+    let currentLedger = ledger;
+    let currentReservation = allocator.reserve({
+      ledger: currentLedger,
       amount: 100,
       resourceKind: "token",
       expiresAt: new Date(Date.now() + 3600000).toISOString(),
-      expectedVersion: 0,
+      expectedVersion: currentLedger.version,
     });
+    currentLedger = currentReservation.ledger;
 
     // Warmup
     for (let i = 0; i < 50; i++) {
-      allocator.settle({
-        ledger: reservationResult.ledger,
-        reservation: reservationResult.reservation,
+      const settled = allocator.settle({
+        ledger: currentLedger,
+        reservation: currentReservation.reservation,
         actualAmount: 50,
         context: {
           tenantId: "test-tenant",
@@ -589,6 +590,15 @@ test("performance: Budget settlement throughput >1500 ops/sec", (t) => {
           emittedBy: "test-emitter",
         },
       });
+      currentLedger = settled.ledger;
+      currentReservation = allocator.reserve({
+        ledger: currentLedger,
+        amount: 100,
+        resourceKind: "token",
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        expectedVersion: currentLedger.version,
+      });
+      currentLedger = currentReservation.ledger;
     }
 
     // Benchmark
@@ -596,18 +606,14 @@ test("performance: Budget settlement throughput >1500 ops/sec", (t) => {
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      // Recreate reservation for each settlement
       const resResult = allocator.reserve({
-        ledger: {
-          ...ledger,
-          version: i,
-        },
+        ledger: currentLedger,
         amount: 100,
         resourceKind: "token",
         expiresAt: new Date(Date.now() + 3600000).toISOString(),
-        expectedVersion: i,
+        expectedVersion: currentLedger.version,
       });
-      allocator.settle({
+      const settled = allocator.settle({
         ledger: resResult.ledger,
         reservation: resResult.reservation,
         actualAmount: 50,
@@ -617,6 +623,7 @@ test("performance: Budget settlement throughput >1500 ops/sec", (t) => {
           emittedBy: "test-emitter",
         },
       });
+      currentLedger = settled.ledger;
     }
 
     const elapsed = performance.now() - start;

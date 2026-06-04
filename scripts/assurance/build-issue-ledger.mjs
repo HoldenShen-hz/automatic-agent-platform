@@ -22,6 +22,81 @@ function nextIssueId() {
   return id;
 }
 
+function inferReviewIssueStatus(reviewRecord) {
+  switch (reviewRecord.status) {
+    case "fixed":
+    case "done":
+      return "verified";
+    case "accepted_risk":
+      return "accepted_risk";
+    case "partial":
+      return "in_progress";
+    case "needs_revalidation":
+    case "stale":
+      return "needs_revalidation";
+    case "todo":
+    default:
+      return (reviewRecord.evidenceRefs ?? []).length > 0 ? "open" : "needs_revalidation";
+  }
+}
+
+function shouldRequireCoverage(issueLike) {
+  if (issueLike.coverageRequired === false) {
+    return false;
+  }
+  return !["verified", "closed", "accepted_risk", "needs_revalidation"].includes(issueLike.status);
+}
+
+function inferRequiredGates(raw) {
+  if (raw.category.startsWith("tenant_isolation.")) {
+    return ["audit:tenant-isolation", "redteam:p0"];
+  }
+  if (raw.category.startsWith("secret_sinks.")) {
+    return ["audit:secret-sinks", "redteam:p0"];
+  }
+  if (raw.auditScript) {
+    return [`audit:${raw.auditScript.replace("audit-", "").replaceAll("_", "-")}`];
+  }
+  if (raw.category === "doc_state.release_claim_overreach" || raw.category.startsWith("release.")) {
+    return ["audit:release-claims"];
+  }
+  if (raw.category === "ui_contract.bridge_or_endpoint_mismatch") {
+    return ["audit:public-entrypoints"];
+  }
+  if (raw.category.startsWith("ops_hygiene.")) {
+    return ["audit:docs-sync"];
+  }
+  if (raw.category.startsWith("test_quality.")) {
+    return ["assurance:verify-test-coverage"];
+  }
+  if (raw.source === "review") {
+    return ["assurance:review-import:check"];
+  }
+  if (raw.source === "release") {
+    return ["audit:historical-promises"];
+  }
+  return [`audit:${raw.category.split(".")[0]}`];
+}
+
+function inferRequiredTests(raw, status, coverageRequired) {
+  if (!coverageRequired) {
+    return ["regression"];
+  }
+  if (raw.auditScript) {
+    return ["audit-tool", "seeded-defect"];
+  }
+  if (raw.category === "doc_state.release_claim_overreach" || raw.category.startsWith("release.")) {
+    return ["audit-tool", "release"];
+  }
+  if (raw.category.startsWith("test_quality.")) {
+    return ["regression"];
+  }
+  if (status === "in_progress" || status === "open") {
+    return ["unit", "regression"];
+  }
+  return ["regression"];
+}
+
 function runAudit(scriptName) {
   const out = spawnSync("node", [`scripts/ci/${scriptName}.mjs`], {
     cwd: repoRoot,
@@ -72,6 +147,9 @@ function main() {
           severity: rec.severity ?? "P1",
           title: rec.title,
           reviewSourceId: rec.reviewSourceId,
+          reviewStatus: rec.status,
+          reviewSourceKind: rec.sourceKind ?? null,
+          evidenceRefs: Array.isArray(rec.evidenceRefs) ? rec.evidenceRefs : [],
         });
       } catch {
         // ignore parse errors
@@ -85,7 +163,7 @@ function main() {
     for (const line of readFileSync(promisePath, "utf8").split(/\r?\n/).filter((l) => l.trim())) {
       try {
         const rec = JSON.parse(line);
-        if (rec.status === "drifted" || rec.status === "unverified") {
+        if ((rec.status === "drifted" || rec.status === "unverified") && rec.promiseType === "release_claim") {
           rawIssues.push({
             source: "release",
             sourceRef: `${rec.sourceFile}#${rec.sourceSection}`,
@@ -93,6 +171,7 @@ function main() {
             severity: "P1",
             title: rec.promiseText.slice(0, 120),
             promiseId: rec.promiseId,
+            evidenceRefs: Array.isArray(rec.evidenceRefs) ? rec.evidenceRefs : [],
           });
         }
       } catch {
@@ -155,6 +234,27 @@ function main() {
       existing.occurrences = (existing.occurrences ?? 1) + 1;
       continue;
     }
+    const status =
+      raw.source === "review"
+        ? inferReviewIssueStatus({
+            status: raw.reviewStatus ?? "todo",
+            sourceKind: raw.reviewSourceKind,
+            evidenceRefs: raw.evidenceRefs ?? [],
+          })
+        : raw.source === "release"
+          ? "open"
+          : "open";
+    const coverageRequired =
+      raw.source === "review"
+        ? shouldRequireCoverage({
+            status,
+            coverageRequired:
+              raw.reviewSourceKind === "issue_summary" &&
+              (raw.reviewStatus === "todo" || raw.reviewStatus === "partial"),
+          })
+        : raw.source === "release"
+          ? true
+          : true;
     const issue = {
       issueId: nextIssueId(),
       source: raw.source,
@@ -164,13 +264,17 @@ function main() {
       description: raw.title,
       rootCause: null,
       invariantViolated: `INV-${raw.category.toUpperCase().replace(/\./g, "-")}-001`,
-      evidence: [],
+      evidence: raw.evidenceRefs ?? [],
       fixStrategy: null,
-      requiredTest: ["unit", "regression"],
-      requiredGate: [raw.auditScript ? `audit:${raw.auditScript.replace("audit-", "")}` : `audit:${raw.category.split(".")[0]}`],
-      owner: "TBD",
+      requiredTest: inferRequiredTests(raw, status, coverageRequired),
+      requiredGate: inferRequiredGates(raw),
+      owner: coverageRequired ? "TBD" : null,
       expiry: null,
-      status: "open",
+      status,
+      coverageRequired,
+      coverageReason: coverageRequired
+        ? "active_issue_requires_runtime_or_regression_binding"
+        : "historical_or_resolved_issue_kept_for_traceability_only",
       linkedPromiseIds: raw.promiseId ? [raw.promiseId] : [],
       linkedReviewIds: raw.reviewSourceId ? [raw.reviewSourceId] : [],
       createdAt: stamp,

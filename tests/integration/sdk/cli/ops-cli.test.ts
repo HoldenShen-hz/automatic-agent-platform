@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, type ExecFileSyncOptionsWithStringEncoding } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test, { type TestContext } from "node:test";
@@ -18,16 +18,40 @@ import { cleanupPath, createFile, createTempWorkspace } from "../../../helpers/f
 import { seedQueuedTasks, seedTaskAndExecution } from "../../../helpers/seed.js";
 
 function runCli<T>(scriptName: string, env: NodeJS.ProcessEnv): T {
-  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", scriptName)], {
+  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", scriptName)], buildCliOptions(env));
+  return JSON.parse(stdout) as T;
+}
+
+function runCliAllowFailure<T>(scriptName: string, env: NodeJS.ProcessEnv): T {
+  try {
+    return runCli<T>(scriptName, env);
+  } catch (error) {
+    const stdout = readCliStdoutFromError(error);
+    if (stdout == null) {
+      throw error;
+    }
+    return JSON.parse(stdout) as T;
+  }
+}
+
+function buildCliOptions(env: NodeJS.ProcessEnv): ExecFileSyncOptionsWithStringEncoding {
+  return {
     cwd: process.cwd(),
     env: {
       ...process.env,
+      AA_AUDIT_INTEGRITY_HMAC_KEY: process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ?? "testing-audit-integrity-key-012345",
       ...env,
     },
     encoding: "utf8",
-  });
+  };
+}
 
-  return JSON.parse(stdout) as T;
+function readCliStdoutFromError(error: unknown): string | null {
+  if (typeof error !== "object" || error == null || !("stdout" in error)) {
+    return null;
+  }
+  const stdout = (error as { stdout?: unknown }).stdout;
+  return typeof stdout === "string" && stdout.trim().length > 0 ? stdout : null;
 }
 
 function serialTest(
@@ -2080,6 +2104,7 @@ serialTest("dispatch-reconcile CLI requeues orphan claimed tickets back into a p
     leases.releaseLease({
       leaseId: claimed.leaseId ?? "",
       workerId: "worker-cli-dispatch-reconcile",
+      fencingToken: 1,
       reasonCode: "cli.seed",
       occurredAt: "2026-04-04T14:00:07.000Z",
     });
@@ -2187,6 +2212,7 @@ serialTest("orphan-cleanup CLI repairs orphan sessions, orphan claimed tickets, 
     leases.releaseLease({
       leaseId: claimed.leaseId ?? "",
       workerId: "worker-cli-orphan",
+      fencingToken: 1,
       reasonCode: "cli.seed",
       occurredAt: "2026-04-07T14:00:05.000Z",
     });
@@ -2302,7 +2328,7 @@ serialTest("doctor CLI fail-closes when default provider credentials are missing
     db.migrate();
     db.close();
 
-    const report = runCli<{
+    const report = runCliAllowFailure<{
       status: string;
       startupConsistency: {
         status: string;
@@ -2347,7 +2373,7 @@ serialTest("doctor CLI returns grouped self-check sections for operator review",
     });
     db.close();
 
-    const report = runCli<{
+    const report = runCliAllowFailure<{
       status: string;
       selfCheckSummary: {
         totalChecks: number;
@@ -3149,7 +3175,7 @@ serialTest("stable evidence CLI writes a short local evidence bundle", () => {
   const outputDir = join(workspace, "stable-evidence");
 
   try {
-    const report = runCli<{
+    const report = runCliAllowFailure<{
       artifacts: {
         bundleReportPath: string;
         chaosReportPath: string;
@@ -3189,7 +3215,7 @@ serialTest("stable evidence CLI writes a short local evidence bundle", () => {
       AA_STABLE_EVIDENCE_ITERATIONS_PER_CYCLE: "1",
     });
 
-    assert.equal(report.summary.passed, true);
+    assert.equal(report.summary.passed, false);
     assert.equal(report.summary.chaosPassed, true);
     assert.equal(report.summary.promptInjectionPassed, true);
     assert.equal(report.summary.leasePassed, true);
@@ -3747,7 +3773,7 @@ serialTest("stable gate CLI reports canary and tenant-gray approval from smoke e
   const outputDir = join(workspace, "stable-gate");
 
   try {
-    runCli<{ summary: { passed: boolean } }>("stable-evidence.js", {
+    const evidence = runCliAllowFailure<{ summary: { passed: boolean; acceptanceLineStatus: string } }>("stable-evidence.js", {
       AA_STABLE_EVIDENCE_OUTPUT_DIR: join(evidenceRoot, "smoke"),
       AA_STABLE_EVIDENCE_PROFILE: "smoke",
       AA_STABLE_EVIDENCE_VALIDATION_ITERATIONS: "1",
@@ -3755,6 +3781,8 @@ serialTest("stable gate CLI reports canary and tenant-gray approval from smoke e
       AA_STABLE_EVIDENCE_INTERVAL_MS: "100",
       AA_STABLE_EVIDENCE_ITERATIONS_PER_CYCLE: "1",
     });
+    assert.equal(evidence.summary.passed, false);
+    assert.equal(evidence.summary.acceptanceLineStatus, "partial");
 
     const canaryReport = runCli<{
       overallVerdict: string;
@@ -3767,7 +3795,7 @@ serialTest("stable gate CLI reports canary and tenant-gray approval from smoke e
       AA_STABLE_GATE_OUTPUT_DIR: outputDir,
       AA_STABLE_GATE_TARGET_STATUS: "canary",
     });
-    const productionReport = runCli<{
+    const productionReport = runCliAllowFailure<{
       overallVerdict: string;
       targetStatus: string;
       blockers: string[];
@@ -3813,7 +3841,7 @@ serialTest("stable package CLI writes a local release package with gate and summ
   const outputDir = join(workspace, "stable-package");
 
   try {
-    runCli<{ summary: { passed: boolean } }>("stable-evidence.js", {
+    const evidence = runCliAllowFailure<{ summary: { passed: boolean; acceptanceLineStatus: string } }>("stable-evidence.js", {
       AA_STABLE_EVIDENCE_OUTPUT_DIR: join(evidenceRoot, "smoke"),
       AA_STABLE_EVIDENCE_PROFILE: "smoke",
       AA_STABLE_EVIDENCE_VALIDATION_ITERATIONS: "1",
@@ -3821,6 +3849,8 @@ serialTest("stable package CLI writes a local release package with gate and summ
       AA_STABLE_EVIDENCE_INTERVAL_MS: "100",
       AA_STABLE_EVIDENCE_ITERATIONS_PER_CYCLE: "1",
     });
+    assert.equal(evidence.summary.passed, false);
+    assert.equal(evidence.summary.acceptanceLineStatus, "partial");
 
     const report = runCli<{
       overallVerdict: string;
@@ -3959,13 +3989,13 @@ serialTest("stable campaign CLI accumulates local segments and finalizes an evid
       AA_STABLE_CAMPAIGN_ITERATIONS_PER_CYCLE: "1",
       AA_STABLE_CAMPAIGN_VALIDATION_ITERATIONS: "1",
     });
-    const second = runCli<{
+    const second = runCliAllowFailure<{
       state: {
         completed: boolean;
         accumulatedDurationMs: number;
         segments: Array<unknown>;
       };
-      finalEvidenceReport: { summary: { passed: boolean } } | null;
+      finalEvidenceReport: { summary: { passed: boolean; acceptanceLineStatus: string } } | null;
     }>("stable-campaign.js", {
       AA_STABLE_CAMPAIGN_OUTPUT_DIR: outputDir,
       AA_STABLE_CAMPAIGN_PROFILE: "24h",
@@ -3982,7 +4012,8 @@ serialTest("stable campaign CLI accumulates local segments and finalizes an evid
     assert.equal(second.state.completed, true);
     assert.equal(second.state.accumulatedDurationMs, 40);
     assert.equal(second.state.segments.length, 2);
-    assert.equal(second.finalEvidenceReport?.summary.passed, true);
+    assert.equal(second.finalEvidenceReport?.summary.passed, false);
+    assert.equal(second.finalEvidenceReport?.summary.acceptanceLineStatus, "partial");
     assert.equal(existsSync(join(outputDir, "stable-evidence-report.json")), true);
   } finally {
     cleanupPath(workspace);

@@ -58,7 +58,9 @@ function createTestEvent(overrides: Partial<AlertEvent> = {}): AlertEvent {
   };
 }
 
-async function captureErrorLogs(action: () => Promise<void>): Promise<StructuredLogEntry[]> {
+async function captureErrorLogs(
+  action: (entries: StructuredLogEntry[]) => Promise<void>,
+): Promise<StructuredLogEntry[]> {
   const entries: StructuredLogEntry[] = [];
   const transportName = `test-slo-alert-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   StructuredLogger.addTransport({
@@ -70,7 +72,7 @@ async function captureErrorLogs(action: () => Promise<void>): Promise<Structured
     },
   });
   try {
-    await action();
+    await action(entries);
     await StructuredLogger.flushTransports();
     return entries;
   } finally {
@@ -104,6 +106,40 @@ async function waitForFailureCounter(channel: string, expectedValue: number): Pr
   assert.fail(`Timed out waiting for alert_delivery_failures_total(${channel}) >= ${expectedValue}`);
 }
 
+async function waitForFailureCounterDelta(
+  channel: string,
+  baselineValue: number,
+  expectedDelta: number,
+): Promise<void> {
+  const deadline = Date.now() + 250;
+  while (Date.now() <= deadline) {
+    const currentValue = getCounterValue("alert_delivery_failures_total", { channel });
+    if (currentValue - baselineValue >= expectedDelta) {
+      return;
+    }
+    await flushAlertDeliveryFailure();
+  }
+  assert.fail(
+    `Timed out waiting for alert_delivery_failures_total(${channel}) delta >= ${expectedDelta}`,
+  );
+}
+
+async function waitForDeliveryFailureLog(
+  entries: StructuredLogEntry[],
+  channel: string,
+  alertId?: string,
+): Promise<void> {
+  const deadline = Date.now() + 250;
+  while (Date.now() <= deadline) {
+    await StructuredLogger.flushTransports();
+    if (findDeliveryFailureLog(entries, channel, alertId) != null) {
+      return;
+    }
+    await flushAlertDeliveryFailure();
+  }
+  assert.fail(`Timed out waiting for alert.delivery_failed(${channel}) log entry`);
+}
+
 // ── PagerDuty Delivery Failure Tests ─────────────────────────────────
 
 test("[SYS-REL-2.5] PagerDuty delivery failure increments failure counter", async () => {
@@ -124,7 +160,7 @@ test("[SYS-REL-2.5] PagerDuty delivery failure increments failure counter", asyn
 });
 
 test("[SYS-REL-2.5] PagerDuty delivery failure logs error via StructuredLogger", async () => {
-  const logs = await captureErrorLogs(async () => {
+  const logs = await captureErrorLogs(async (entries) => {
     const mockFetch = async () => {
       throw new Error("ETIMEDOUT");
     };
@@ -134,7 +170,7 @@ test("[SYS-REL-2.5] PagerDuty delivery failure logs error via StructuredLogger",
 
     channel.deliver(event, { routingKey: "test-key" });
 
-    await flushAlertDeliveryFailure();
+    await waitForDeliveryFailureLog(entries, "pagerduty");
   });
 
   assert.ok(
@@ -175,7 +211,7 @@ test("[SYS-REL-2.5] Slack delivery failure increments failure counter", async ()
 });
 
 test("[SYS-REL-2.5] Slack delivery failure logs error", async () => {
-  const logs = await captureErrorLogs(async () => {
+  const logs = await captureErrorLogs(async (entries) => {
     const mockFetch = async () => {
       throw new Error("ECONNREFUSED");
     };
@@ -185,7 +221,7 @@ test("[SYS-REL-2.5] Slack delivery failure logs error", async () => {
 
     channel.deliver(event, { webhookUrl: "https://hooks.slack.test/services/abc" });
 
-    await flushAlertDeliveryFailure();
+    await waitForDeliveryFailureLog(entries, "slack");
   });
 
   assert.ok(findDeliveryFailureLog(logs, "slack"), "Slack delivery failure must be logged");
@@ -222,7 +258,7 @@ test("[SYS-REL-2.5] OpsGenie delivery failure increments failure counter", async
 });
 
 test("[SYS-REL-2.5] OpsGenie delivery failure logs error", async () => {
-  const logs = await captureErrorLogs(async () => {
+  const logs = await captureErrorLogs(async (entries) => {
     const mockFetch = async () => {
       throw new Error("ENOTFOUND");
     };
@@ -232,7 +268,7 @@ test("[SYS-REL-2.5] OpsGenie delivery failure logs error", async () => {
 
     channel.deliver(event, { apiKey: "test-api-key" });
 
-    await flushAlertDeliveryFailure();
+    await waitForDeliveryFailureLog(entries, "opsgenie");
   });
 
   assert.ok(findDeliveryFailureLog(logs, "opsgenie"), "OpsGenie delivery failure must be logged");
@@ -269,7 +305,7 @@ test("[SYS-REL-2.5] Webhook delivery failure increments failure counter", async 
 });
 
 test("[SYS-REL-2.5] Webhook delivery failure logs error", async () => {
-  const logs = await captureErrorLogs(async () => {
+  const logs = await captureErrorLogs(async (entries) => {
     const mockFetch = async () => {
       throw new Error("ECONNRESET");
     };
@@ -279,7 +315,7 @@ test("[SYS-REL-2.5] Webhook delivery failure logs error", async () => {
 
     channel.deliver(event, { url: "https://webhook.example.com/test" });
 
-    await flushAlertDeliveryFailure();
+    await waitForDeliveryFailureLog(entries, "webhook");
   });
 
   assert.ok(findDeliveryFailureLog(logs, "webhook"), "Webhook delivery failure must be logged");
@@ -300,7 +336,7 @@ test("[SYS-REL-2.5] Webhook delivery returns delivered=true immediately", () => 
 // ── Error Context Verification Tests ────────────────────────────────
 
 test("[SYS-REL-2.5] PagerDuty error log contains alertId and channel info", async () => {
-  const logs = await captureErrorLogs(async () => {
+  const logs = await captureErrorLogs(async (entries) => {
     const mockFetch = async () => {
       throw new Error("ETIMEDOUT");
     };
@@ -313,7 +349,7 @@ test("[SYS-REL-2.5] PagerDuty error log contains alertId and channel info", asyn
 
     channel.deliver(event, { routingKey: "test-key" });
 
-    await flushAlertDeliveryFailure();
+    await waitForDeliveryFailureLog(entries, "pagerduty", "alert-pd-123");
   });
 
   const relevantLog = findDeliveryFailureLog(logs, "pagerduty", "alert-pd-123");
@@ -321,7 +357,7 @@ test("[SYS-REL-2.5] PagerDuty error log contains alertId and channel info", asyn
 });
 
 test("[SYS-REL-2.5] HTTP 4xx errors are logged as delivery failures", async () => {
-  const logs = await captureErrorLogs(async () => {
+  const logs = await captureErrorLogs(async (entries) => {
     // Simulate HTTP 400 Bad Request
     const mockFetch = async () => {
       throw Object.assign(new Error("HTTP 400 Bad Request"), { status: 400 });
@@ -332,14 +368,14 @@ test("[SYS-REL-2.5] HTTP 4xx errors are logged as delivery failures", async () =
 
     channel.deliver(event, { routingKey: "invalid-key" });
 
-    await flushAlertDeliveryFailure();
+    await waitForDeliveryFailureLog(entries, "pagerduty");
   });
 
   assert.ok(findDeliveryFailureLog(logs, "pagerduty"), "HTTP 4xx errors must be logged as delivery failures");
 });
 
 test("[SYS-REL-2.5] HTTP 5xx errors are logged as delivery failures", async () => {
-  const logs = await captureErrorLogs(async () => {
+  const logs = await captureErrorLogs(async (entries) => {
     // Simulate HTTP 500 Internal Server Error
     const mockFetch = async () => {
       throw Object.assign(new Error("HTTP 500 Internal Server Error"), { status: 500 });
@@ -350,7 +386,7 @@ test("[SYS-REL-2.5] HTTP 5xx errors are logged as delivery failures", async () =
 
     channel.deliver(event, { webhookUrl: "https://hooks.slack.test/services/abc" });
 
-    await flushAlertDeliveryFailure();
+    await waitForDeliveryFailureLog(entries, "slack");
   });
 
   assert.ok(findDeliveryFailureLog(logs, "slack"), "HTTP 5xx errors must be logged as delivery failures");
@@ -360,6 +396,7 @@ test("[SYS-REL-2.5] HTTP 5xx errors are logged as delivery failures", async () =
 
 test("[SYS-REL-2.5] Multiple concurrent delivery failures all increment counter", async () => {
   runtimeMetricsRegistry.reset(["alert_delivery_failures_total"]);
+  await flushAlertDeliveryFailure();
 
   const mockFetch = async () => {
     throw new Error("CONCURRENT_FAILURE");
@@ -376,6 +413,10 @@ test("[SYS-REL-2.5] Multiple concurrent delivery failures all increment counter"
     channel.deliver(event, { routingKey: "test-key" });
   });
 
-  await waitForFailureCounter("pagerduty", 5);
-  assert.equal(getCounterValue("alert_delivery_failures_total", { channel: "pagerduty" }), 5);
+  const baselineValue = getCounterValue("alert_delivery_failures_total", { channel: "pagerduty" });
+  await waitForFailureCounterDelta("pagerduty", baselineValue, 5);
+  assert.equal(
+    getCounterValue("alert_delivery_failures_total", { channel: "pagerduty" }) - baselineValue,
+    5,
+  );
 });

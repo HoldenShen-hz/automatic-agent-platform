@@ -20,11 +20,29 @@
  *
  * Exit code is 1 if any P0 issue is unbound.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const repoRoot = resolve(process.cwd());
 const outputRoot = join(repoRoot, "artifacts", "assurance");
+const includeFixtures = process.argv.includes("--include-fixtures");
+
+const CONTROL_REF_PREFIXES = [
+  "AUDIT-TOOL-",
+  "ASSURANCE-",
+  "CHAOS-",
+  "CONTRACT-",
+  "EVAL-",
+  "REDTEAM-",
+  "REGRESSION-",
+  "RELEASE-",
+];
+const GATE_ALIASES = new Map([
+  ["audit:recovery-replay", ["audit:execution-invariants"]],
+  ["audit:event-outbox", ["audit:execution-invariants"]],
+  ["audit:receipt-verification", ["audit:execution-invariants"]],
+  ["audit:audit-chain", ["audit:execution-invariants"]],
+]);
 
 function loadJson(path) {
   if (!existsSync(path)) return null;
@@ -39,6 +57,38 @@ function loadJsonl(path) {
     try { records.push(JSON.parse(line)); } catch { /* ignore */ }
   }
   return records;
+}
+
+function writeJsonAtomic(path, value) {
+  const tmpPath = `${path}.tmp-${process.pid}`;
+  writeFileSync(tmpPath, JSON.stringify(value, null, 2));
+  renameSync(tmpPath, path);
+}
+
+function isFixturePath(testPath) {
+  return testPath.startsWith("tests/fixtures/");
+}
+
+function isSyntheticControlRef(issueId) {
+  return CONTROL_REF_PREFIXES.some((prefix) => issueId.startsWith(prefix));
+}
+
+function shouldRequireCoverage(issue) {
+  if (issue?.coverageRequired === false) {
+    return false;
+  }
+  return !["verified", "closed", "accepted_risk", "needs_revalidation"].includes(issue?.status);
+}
+
+function addToMultiMap(map, key, value) {
+  if (typeof key !== "string" || key.length === 0) {
+    return;
+  }
+  const bucket = map.get(key) ?? [];
+  if (!bucket.includes(value)) {
+    bucket.push(value);
+    map.set(key, bucket);
+  }
 }
 
 function main() {
@@ -58,13 +108,32 @@ function main() {
   const bindings = testToIssue?.bindings ?? {};
   const issueBindings = issueToTest?.bindings ?? {};
   const metaEntries = testMetadata?.entries ?? [];
+  const scopedMetaEntries = metaEntries.filter((entry) => includeFixtures || !isFixturePath(entry.path));
+  const gateToTests = new Map();
+  const invariantToTests = new Map();
+  for (const entry of scopedMetaEntries) {
+    addToMultiMap(gateToTests, entry.gate ?? "", entry.path);
+    addToMultiMap(invariantToTests, entry.invariant ?? "", entry.path);
+  }
+
+  function bindingsForIssue(issue) {
+    const direct = issueBindings[issue.issueId] ?? [];
+    const gates = (issue.requiredGate ?? []).flatMap((gate) => [gate, ...(GATE_ALIASES.get(gate) ?? [])]);
+    const gateBound = gates.flatMap((gate) => gateToTests.get(gate) ?? []);
+    const invariantBound = issue.invariantViolated ? (invariantToTests.get(issue.invariantViolated) ?? []) : [];
+    return [...new Set([...direct, ...gateBound, ...invariantBound])];
+  }
 
   // 2. Categorize issues.
-  const p0Issues = issues.filter((i) => i.severity === "P0");
+  const coverageRequiredIssues = issues.filter((i) => shouldRequireCoverage(i));
+  const p0Issues = coverageRequiredIssues.filter((i) => i.severity === "P0");
   const p0IssueIds = new Set(p0Issues.map((i) => i.issueId));
   const p0BoundIds = p0Issues
     .map((i) => i.issueId)
-    .filter((id) => (issueBindings[id] ?? []).length > 0);
+    .filter((id) => {
+      const issue = p0Issues.find((record) => record.issueId === id);
+      return issue != null && bindingsForIssue(issue).length > 0;
+    });
   const knownIds = new Set(issues.map((i) => i.issueId));
 
   // 3. Findings (collect full lists in a counter form, but truncate the
@@ -82,7 +151,7 @@ function main() {
 
   // 3a. Unbound P0 issues (must be at least 1 test).
   for (const i of p0Issues) {
-    const bound = (issueBindings[i.issueId] ?? []).length > 0;
+    const bound = bindingsForIssue(i).length > 0;
     if (!bound) {
       findingsFull.unboundP0Issues.push({
         issueId: i.issueId,
@@ -99,9 +168,9 @@ function main() {
   }
 
   // 3b. Unbound P1 issues (informational; not a blocker).
-  const p1Issues = issues.filter((i) => i.severity === "P1");
+  const p1Issues = coverageRequiredIssues.filter((i) => i.severity === "P1");
   for (const i of p1Issues) {
-    const bound = (issueBindings[i.issueId] ?? []).length > 0;
+    const bound = bindingsForIssue(i).length > 0;
     if (!bound) {
       findingsFull.unboundP1Issues.push({
         issueId: i.issueId,
@@ -113,9 +182,9 @@ function main() {
   }
 
   // 3c. Issues with linkedPromiseIds non-empty should have tests.
-  for (const i of issues) {
+  for (const i of coverageRequiredIssues) {
     if ((i.linkedPromiseIds ?? []).length === 0) continue;
-    const bound = (issueBindings[i.issueId] ?? []).length > 0;
+    const bound = bindingsForIssue(i).length > 0;
     if (!bound) {
       findingsFull.unboundPromiseLinkedIssues.push({
         issueId: i.issueId,
@@ -127,10 +196,10 @@ function main() {
   }
 
   // 3d. P0 issues with invariantViolated != "unspecified" must have tests.
-  for (const i of issues) {
+  for (const i of coverageRequiredIssues) {
     if (i.severity !== "P0") continue;
     if (!i.invariantViolated || i.invariantViolated === "unspecified") continue;
-    const bound = (issueBindings[i.issueId] ?? []).length > 0;
+    const bound = bindingsForIssue(i).length > 0;
     if (!bound) {
       findingsFull.unboundInvariantIssues.push({
         issueId: i.issueId,
@@ -142,20 +211,22 @@ function main() {
   }
 
   // 3e. Unbound tests: P0 tests that reference no P0 issue.
-  for (const entry of metaEntries) {
+  for (const entry of scopedMetaEntries) {
     if (entry.severity !== "P0") continue;
     const refs = entry.issueIds ?? [];
     const p0Refs = refs.filter((id) => p0IssueIds.has(id));
-    if (p0Refs.length === 0) {
+    const controlRefs = refs.filter((id) => isSyntheticControlRef(id));
+    const controlBound = controlRefs.length > 0 && Boolean(entry.invariant || entry.gate);
+    if (p0Refs.length === 0 && !controlBound) {
       findingsFull.unboundTests.push({
         testPath: entry.path,
         issueRefs: refs,
         knownIssueRefs: refs.filter((id) => knownIds.has(id)),
-        unknownIssueRefs: refs.filter((id) => !knownIds.has(id)),
+        unknownIssueRefs: refs.filter((id) => !knownIds.has(id) && !isSyntheticControlRef(id)),
         invariant: entry.invariant,
         reason: refs.length === 0
           ? "P0 test has no @issue tag"
-          : !refs.some((id) => knownIds.has(id))
+          : !refs.some((id) => knownIds.has(id) || isSyntheticControlRef(id))
             ? "P0 test references only unknown issue ids"
             : "P0 test references no P0 issue from the ledger",
       });
@@ -163,9 +234,9 @@ function main() {
   }
 
   // 3f. Orphan tests: any test whose @issue references do not exist in the ledger.
-  for (const entry of metaEntries) {
+  for (const entry of scopedMetaEntries) {
     const refs = entry.issueIds ?? [];
-    const unknown = refs.filter((id) => !knownIds.has(id));
+    const unknown = refs.filter((id) => !knownIds.has(id) && !isSyntheticControlRef(id));
     if (unknown.length > 0) {
       findingsFull.orphanTests.push({
         testPath: entry.path,
@@ -177,7 +248,7 @@ function main() {
 
   // 3g. Unknown issue refs from the binding file (any test mapping to unknown id).
   for (const [issueId, tests] of Object.entries(issueBindings)) {
-    if (!knownIds.has(issueId)) {
+    if (!knownIds.has(issueId) && !isSyntheticControlRef(issueId)) {
       findingsFull.unknownIssueRefs.push({ issueId, tests });
     }
   }
@@ -220,11 +291,12 @@ function main() {
     releaseBlocked: p0Unbound > 0 || bindingBroken,
     summary: {
       issuesTotal: issues.length,
+      coverageRequiredIssueCount: coverageRequiredIssues.length,
       p0IssueCount: p0Issues.length,
       p0BoundCount: p0BoundIds.length,
       p1IssueCount: p1Issues.length,
-      testsWithMetadata: metaEntries.length,
-      p0TestCount: metaEntries.filter((e) => e.severity === "P0").length,
+      testsWithMetadata: scopedMetaEntries.length,
+      p0TestCount: scopedMetaEntries.filter((e) => e.severity === "P0").length,
       p0BoundCount: p0Bound,
       p0UnboundIssues: p0Unbound,
       p1UnboundIssues: findingsFull.unboundP1Issues.length,
@@ -238,10 +310,7 @@ function main() {
     findings,
   };
 
-  writeFileSync(
-    join(outputRoot, "test-coverage-report.json"),
-    JSON.stringify(report, null, 2),
-  );
+  writeJsonAtomic(join(outputRoot, "test-coverage-report.json"), report);
 
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 

@@ -49,6 +49,7 @@ test("run-full-assurance emits a report and executes the current required baseli
       "leadership_claims",
       "docs_sync",
       "static_audit",
+      "eval_oracle_pipeline",
       "issue_ledger",
       "test_to_issue",
       "historical_regression_map",

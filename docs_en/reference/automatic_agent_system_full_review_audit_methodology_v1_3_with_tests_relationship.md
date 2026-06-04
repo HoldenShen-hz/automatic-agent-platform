@@ -1463,6 +1463,9 @@ npm run evidence:bundle:verify
 Among them, `assurance:full` is responsible for aggregating the low-level audits:
 
 ```text
+assurance:review-import:check
+audit:docs-sync
+audit:leadership-claims
 audit:contracts-sync
 audit:release-claims
 audit:secret-sinks
@@ -1829,18 +1832,37 @@ Every P0 audit gate must have a seeded defect fixture to prove the gate can real
 
 ### 24.2 Seeded Defect Directories
 
+The current repository already materializes seeded defects as executable manifest directories. Directory names may be normalized to match the auditor they feed, but they must still cover the same P0 problem families.
+
 ```text
 tests/fixtures/seeded-defects/
-  tenant-isolation/
-  secret-sinks/
-  lease-fencing/
-  idempotency/
-  eval-oracle/
-  plugin-signature/
-  release-claims/
-  contract-drift/
-  side-effect-receipt/
-  ci-supply-chain/
+  tenant-query-missing/        -> tenant-isolation
+  secret-logged/               -> secret-sinks
+  idempotency-missing-key/     -> idempotency
+  eval-oracle/                 -> eval oracle anti-fake
+  plugin-security/             -> plugin signature / SBOM / fail-closed
+  release-claims/              -> release claim evidence
+  contracts-sync/              -> contract drift
+  execution-invariants/        -> lease / side-effect / receipt / truth invariants
+  path-safety/                 -> path / sandbox / script safety
+  architecture-boundary/       -> architecture boundary drift
+  auth-role-mapping/           -> auth / service principal escalation
+  docs-sot/                    -> docs source-of-truth drift
+  fire-and-forget/             -> async reliability invariant
+  ui-token-storage/            -> UI operator safety
+  redteam/                     -> redteam anti-fake
+  golden/                      -> golden anti-fake
+  dataset/                     -> dataset / eval asset integrity
+  test-disabled/               -> disabled/skip governance
+  test-coverage/               -> issue/test binding coverage
+```
+
+The requirement is not literal directory-name parity; it is:
+
+```text
+every P0 audit family must have a manifest plus positive/negative/evasion seeds;
+the seeded-defect runner must emit a machine-readable report;
+if a gate is a global scan and cannot be replayed per file, the manifest/report must declare the skip reason explicitly and a dedicated auditor test must cover that gap.
 ```
 
 ### 24.3 Each CI Validation
@@ -2995,10 +3017,13 @@ artifacts/release/evidence-bundle.sig
     "assurance:full": "node scripts/assurance/run-full-assurance.mjs",
     "assurance:delta": "node scripts/assurance/run-delta-assurance.mjs",
     "assurance:inventory": "node scripts/assurance/collect-source-inventory.mjs",
+    "assurance:review-import": "node scripts/assurance/review-import.mjs",
     "assurance:historical-promises": "node scripts/assurance/collect-historical-promises.mjs",
     "assurance:issue-ledger": "node scripts/assurance/build-issue-ledger.mjs",
     "assurance:coverage-scorecard": "node scripts/assurance/build-coverage-scorecard.mjs",
 
+    "audit:docs-sync": "node scripts/ci/audit-docs-sync.mjs",
+    "audit:leadership-claims": "node scripts/ci/audit-leadership-claims.mjs",
     "audit:contracts-sync": "node scripts/ci/audit-contracts-sync.mjs",
     "audit:release-claims": "node scripts/ci/audit-release-claims.mjs",
     "audit:secret-sinks": "node scripts/ci/audit-secret-sinks.mjs",
@@ -3009,7 +3034,7 @@ artifacts/release/evidence-bundle.sig
     "audit:architecture-boundary": "node scripts/ci/audit-architecture-boundary.mjs",
 
     "test:invariant": "npm run test:invariants",
-    "test:p0": "npm run test:invariant && npm run test:regression:p0",
+    "test:p0": "npm run test:invariants && npm run test:regression:p0",
     "test:chaos:p0": "AA_RUNNING_TESTS=1 node scripts/assurance/run-test-suite-with-report.mjs --suite-id chaos-p0 --report artifacts/assurance/chaos-test-report.json -- node scripts/run-node-tests.mjs tests/chaos/p0/determinism-injection.test.ts",
     "test:redteam:p0": "AA_RUNNING_TESTS=1 node scripts/redteam/run-p0-redteam.mjs",
     "test:audit-tools": "AA_RUNNING_TESTS=1 node scripts/assurance/run-test-suite-with-report.mjs --suite-id audit-tools --report artifacts/assurance/audit-tool-test-report.json -- node scripts/run-node-tests.mjs tests/audit-tools/...",
@@ -3661,7 +3686,7 @@ assurance aggregates both to prove "whether release is possible".
     "test:e2e": "node --test tests/e2e/**/*.test.ts",
 
     "test:invariant": "npm run test:invariants",
-    "test:p0": "npm run test:invariant && npm run test:regression:p0",
+    "test:p0": "npm run test:invariants && npm run test:regression:p0",
     "test:chaos:p0": "AA_RUNNING_TESTS=1 node scripts/assurance/run-test-suite-with-report.mjs --suite-id chaos-p0 --report artifacts/assurance/chaos-test-report.json -- node scripts/run-node-tests.mjs tests/chaos/p0/determinism-injection.test.ts",
     "test:regression:p0": "AA_RUNNING_TESTS=1 node scripts/run-node-tests.mjs tests/regression/p0/audit-tools-secret-sinks.test.ts",
     "test:audit-tools": "AA_RUNNING_TESTS=1 node scripts/assurance/run-test-suite-with-report.mjs --suite-id audit-tools --report artifacts/assurance/audit-tool-test-report.json -- node scripts/run-node-tests.mjs tests/audit-tools/...",
@@ -3776,12 +3801,19 @@ It must include:
 
 ```text
 test:p0
-test:invariant
+test:invariants
 test:chaos:p0
 test:redteam:p0
 test:golden:strict
 assurance:full
 evidence:bundle:verify
+```
+
+Notes:
+
+```text
+test:invariants is the current primary script name
+test:invariant remains only as a compatibility alias
 ```
 
 Goal:

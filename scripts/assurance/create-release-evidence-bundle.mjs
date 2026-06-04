@@ -9,12 +9,14 @@ import { createHash, createHmac } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(process.cwd());
 const outputDir = join(repoRoot, "artifacts", "release");
 const assuranceDir = join(repoRoot, "artifacts", "assurance");
+const scriptPath = fileURLToPath(import.meta.url);
 
-const INCLUDED = [
+export const INCLUDED = [
   "artifacts/release/rc-check-report.json",
   "artifacts/assurance/audit-coverage-scorecard.json",
   "artifacts/assurance/invariant-test-report.json",
@@ -126,4 +128,6 @@ function main() {
   }
 }
 
-main();
+if (process.argv[1] != null && resolve(process.argv[1]).replaceAll("\\", "/") === scriptPath.replaceAll("\\", "/")) {
+  main();
+}

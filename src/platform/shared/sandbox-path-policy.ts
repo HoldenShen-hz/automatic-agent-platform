@@ -1,5 +1,5 @@
-import { realpathSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { existsSync, realpathSync } from "node:fs";
 
 export type SandboxMode =
   | "workspace_write"
@@ -48,6 +48,24 @@ function isWithinRoot(candidate: string, root: string): boolean {
   return candidate === root || candidate.startsWith(`${root}/`);
 }
 
+function canonicalizeWithExistingParent(inputPath: string): string {
+  const resolved = resolve(inputPath);
+  try {
+    return realpathSync.native(resolved);
+  } catch {
+    let parent = dirname(resolved);
+    while (parent !== dirname(parent) && !existsSync(parent)) {
+      parent = dirname(parent);
+    }
+    if (!existsSync(parent)) {
+      return resolved;
+    }
+    const canonicalParent = realpathSync.native(parent);
+    const relativeTail = resolved.slice(parent.length).replace(/^\/+/, "");
+    return relativeTail.length === 0 ? canonicalParent : resolve(canonicalParent, relativeTail);
+  }
+}
+
 export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): SandboxPathCheckResult {
   const normalizedInput = resolve(inputPath);
   const rawAllowedRoots = policy.allowedRoots.map((root) => normalizeRoot(root, false));
@@ -62,11 +80,7 @@ export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): Sand
 
   let normalizedPath = normalizedInput;
   if (policy.realpathEnforced) {
-    try {
-      normalizedPath = realpathSync.native(normalizedInput);
-    } catch {
-      normalizedPath = normalizedInput;
-    }
+    normalizedPath = canonicalizeWithExistingParent(normalizedInput);
   }
 
   const effectiveAllowedRoots = policy.realpathEnforced

@@ -124,10 +124,16 @@ function isStringArray(value: unknown): value is string[] {
 }
 
 function decodeCommandArgPath(pathArg: string): string {
+  const normalizeUnicodePath = (value: string): string =>
+    value
+      .normalize("NFKC")
+      .replace(/[\u2215\u2044\u29F8\uFF0F]/gu, "/")
+      .replace(/[\u2216\u29F5\uFF3C]/gu, "\\")
+      .replace(/[\u2024\uFF0E]/gu, ".");
   try {
-    return decodeURIComponent(pathArg);
+    return normalizeUnicodePath(decodeURIComponent(pathArg));
   } catch {
-    return pathArg;
+    return normalizeUnicodePath(pathArg);
   }
 }
 

@@ -1463,6 +1463,9 @@ npm run evidence:bundle:verify
 其中，`assurance:full` 负责聚合低层 audit：
 
 ```text
+assurance:review-import:check
+audit:docs-sync
+audit:leadership-claims
 audit:contracts-sync
 audit:release-claims
 audit:secret-sinks
@@ -1829,18 +1832,37 @@ console.log(env[k]);
 
 ### 24.2 种子漏洞目录
 
+当前仓库已经把 seeded defect 落到可执行 manifest 目录；目录名允许按审计器语义做规范化，但必须覆盖同一批 P0 问题族。
+
 ```text
 tests/fixtures/seeded-defects/
-  tenant-isolation/
-  secret-sinks/
-  lease-fencing/
-  idempotency/
-  eval-oracle/
-  plugin-signature/
-  release-claims/
-  contract-drift/
-  side-effect-receipt/
-  ci-supply-chain/
+  tenant-query-missing/        -> tenant-isolation
+  secret-logged/               -> secret-sinks
+  idempotency-missing-key/     -> idempotency
+  eval-oracle/                 -> eval oracle anti-fake
+  plugin-security/             -> plugin signature / SBOM / fail-closed
+  release-claims/              -> release claim evidence
+  contracts-sync/              -> contract drift
+  execution-invariants/        -> lease / side-effect / receipt / truth invariants
+  path-safety/                 -> path / sandbox / script safety
+  architecture-boundary/       -> architecture boundary drift
+  auth-role-mapping/           -> auth / service principal escalation
+  docs-sot/                    -> docs source-of-truth drift
+  fire-and-forget/             -> async reliability invariant
+  ui-token-storage/            -> UI operator safety
+  redteam/                     -> redteam anti-fake
+  golden/                      -> golden anti-fake
+  dataset/                     -> dataset / eval asset integrity
+  test-disabled/               -> disabled/skip governance
+  test-coverage/               -> issue/test binding coverage
+```
+
+要求不是“目录名逐字一致”，而是：
+
+```text
+每个 P0 audit family 都必须有 manifest + positive/negative/evasion seed；
+seeded-defect runner 必须能输出 machine-readable report；
+若某类 gate 因为是全局扫描无法按单文件复放，必须在 manifest / report 中显式标明 skip 原因，并由 dedicated auditor test 补足。
 ```
 
 ### 24.3 每次 CI 验证
@@ -2995,10 +3017,13 @@ artifacts/release/evidence-bundle.sig
     "assurance:full": "node scripts/assurance/run-full-assurance.mjs",
     "assurance:delta": "node scripts/assurance/run-delta-assurance.mjs",
     "assurance:inventory": "node scripts/assurance/collect-source-inventory.mjs",
+    "assurance:review-import": "node scripts/assurance/review-import.mjs",
     "assurance:historical-promises": "node scripts/assurance/collect-historical-promises.mjs",
     "assurance:issue-ledger": "node scripts/assurance/build-issue-ledger.mjs",
     "assurance:coverage-scorecard": "node scripts/assurance/build-coverage-scorecard.mjs",
 
+    "audit:docs-sync": "node scripts/ci/audit-docs-sync.mjs",
+    "audit:leadership-claims": "node scripts/ci/audit-leadership-claims.mjs",
     "audit:contracts-sync": "node scripts/ci/audit-contracts-sync.mjs",
     "audit:release-claims": "node scripts/ci/audit-release-claims.mjs",
     "audit:secret-sinks": "node scripts/ci/audit-secret-sinks.mjs",
@@ -3009,7 +3034,7 @@ artifacts/release/evidence-bundle.sig
     "audit:architecture-boundary": "node scripts/ci/audit-architecture-boundary.mjs",
 
     "test:invariant": "npm run test:invariants",
-    "test:p0": "npm run test:invariant && npm run test:regression:p0",
+    "test:p0": "npm run test:invariants && npm run test:regression:p0",
     "test:chaos:p0": "AA_RUNNING_TESTS=1 node scripts/assurance/run-test-suite-with-report.mjs --suite-id chaos-p0 --report artifacts/assurance/chaos-test-report.json -- node scripts/run-node-tests.mjs tests/chaos/p0/determinism-injection.test.ts",
     "test:redteam:p0": "AA_RUNNING_TESTS=1 node scripts/redteam/run-p0-redteam.mjs",
     "test:audit-tools": "AA_RUNNING_TESTS=1 node scripts/assurance/run-test-suite-with-report.mjs --suite-id audit-tools --report artifacts/assurance/audit-tool-test-report.json -- node scripts/run-node-tests.mjs tests/audit-tools/...",
@@ -3661,7 +3686,7 @@ assurance 汇总二者，证明“能否 release”。
     "test:e2e": "node --test tests/e2e/**/*.test.ts",
 
     "test:invariant": "npm run test:invariants",
-    "test:p0": "npm run test:invariant && npm run test:regression:p0",
+    "test:p0": "npm run test:invariants && npm run test:regression:p0",
     "test:chaos:p0": "AA_RUNNING_TESTS=1 node scripts/assurance/run-test-suite-with-report.mjs --suite-id chaos-p0 --report artifacts/assurance/chaos-test-report.json -- node scripts/run-node-tests.mjs tests/chaos/p0/determinism-injection.test.ts",
     "test:regression:p0": "AA_RUNNING_TESTS=1 node scripts/run-node-tests.mjs tests/regression/p0/audit-tools-secret-sinks.test.ts",
     "test:audit-tools": "AA_RUNNING_TESTS=1 node scripts/assurance/run-test-suite-with-report.mjs --suite-id audit-tools --report artifacts/assurance/audit-tool-test-report.json -- node scripts/run-node-tests.mjs tests/audit-tools/...",
@@ -3776,12 +3801,19 @@ npm run rc:check
 
 ```text
 test:p0
-test:invariant
+test:invariants
 test:chaos:p0
 test:redteam:p0
 test:golden:strict
 assurance:full
 evidence:bundle:verify
+```
+
+说明：
+
+```text
+test:invariants 是当前主脚本名
+test:invariant 仅保留为兼容别名
 ```
 
 目的：

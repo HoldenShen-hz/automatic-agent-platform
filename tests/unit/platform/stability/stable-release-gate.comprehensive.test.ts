@@ -74,6 +74,9 @@ function createMockEvidenceReport(overrides: Partial<StableEvidenceBundleReport[
       dbQueueDisconnectPassed: true,
       dbWritabilityPassed: true,
       queueDeliveryPassed: true,
+      dispatchPassed: true,
+      workerHandshakePassed: true,
+      workerWritebackPassed: true,
       migrationCompatibilityPassed: true,
       validationPassed: true,
       soakPassed: true,
@@ -307,19 +310,18 @@ describe("stable-release-gate comprehensive", () => {
       }
     });
 
-    test("returns canary when smoke passes but missing required profiles for production", () => {
+    test("returns tenant_gray when smoke and gray evidence pass but long-run production profiles are still missing", () => {
       const dir = createTempEvidenceDir();
       try {
         const smokeDir = createProfileDir(dir, "smoke");
-        // Set grayReleasePassed: false so the gray criterion fails
-        const report = createMockEvidenceReport({ passed: true, grayReleasePassed: false });
+        const report = createMockEvidenceReport({ passed: true, grayReleasePassed: true });
         writeFileSync(join(smokeDir, "stable-evidence-report.json"), JSON.stringify(report));
 
         const gateReport = buildStableReleaseGateReport({
           evidenceRootDir: dir,
           targetStatus: "production_ready",
         });
-        assert.equal(gateReport.currentStatus, "canary");
+        assert.equal(gateReport.currentStatus, "tenant_gray");
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
@@ -364,7 +366,7 @@ describe("stable-release-gate comprehensive", () => {
       const dir = createTempEvidenceDir();
       try {
         const smokeDir = createProfileDir(dir, "smoke");
-        const report = createMockEvidenceReport({ passed: false });
+        const report = createMockEvidenceReport({ rollbackPassed: false });
         writeFileSync(join(smokeDir, "stable-evidence-report.json"), JSON.stringify(report));
 
         const gateReport = buildStableReleaseGateReport({
@@ -430,7 +432,7 @@ describe("stable-release-gate comprehensive", () => {
       const dir = createTempEvidenceDir();
       try {
         const smokeDir = createProfileDir(dir, "smoke");
-        const report = createMockEvidenceReport({ passed: false });
+        const report = createMockEvidenceReport({ rollbackPassed: false });
         writeFileSync(join(smokeDir, "stable-evidence-report.json"), JSON.stringify(report));
 
         const gateReport = buildStableReleaseGateReport({

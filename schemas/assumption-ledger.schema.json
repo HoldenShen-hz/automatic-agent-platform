@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/assumption-ledger.schema.json",
+  "title": "Assumption Ledger Record",
+  "type": "object",
+  "required": ["assumptionId", "statement", "evidence", "riskIfFalse", "owner", "expiry", "status", "sourceRef"],
+  "properties": {
+    "assumptionId": { "type": "string", "pattern": "^AAS-ASSUMPTION-" },
+    "statement": { "type": "string", "minLength": 1 },
+    "evidence": { "type": "array", "items": { "type": "string" } },
+    "riskIfFalse": { "type": "string", "minLength": 1 },
+    "owner": { "type": "string", "minLength": 1 },
+    "expiry": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["unverified", "verified", "expired", "promoted_to_issue"] },
+    "sourceRef": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

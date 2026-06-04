@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/test-coverage-report.schema.json",
+  "title": "Test Coverage Report",
+  "type": "object",
+  "required": ["generatedAt", "status", "releaseBlocked", "summary", "findings"],
+  "properties": {
+    "generatedAt": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["pass", "warn", "fail"] },
+    "releaseBlocked": { "type": "boolean" },
+    "summary": {
+      "type": "object",
+      "required": [
+        "issuesTotal",
+        "coverageRequiredIssueCount",
+        "p0IssueCount",
+        "p0BoundCount",
+        "p1IssueCount",
+        "testsWithMetadata",
+        "p0TestCount",
+        "p0UnboundIssues",
+        "p1UnboundIssues",
+        "unboundPromiseLinkedIssues",
+        "unboundInvariantIssues",
+        "unboundTests",
+        "orphanTests",
+        "unknownIssueRefs",
+        "bidirectionalInconsistencies"
+      ],
+      "properties": {
+        "issuesTotal": { "type": "integer", "minimum": 0 },
+        "coverageRequiredIssueCount": { "type": "integer", "minimum": 0 },
+        "p0IssueCount": { "type": "integer", "minimum": 0 },
+        "p0BoundCount": { "type": "integer", "minimum": 0 },
+        "p1IssueCount": { "type": "integer", "minimum": 0 },
+        "testsWithMetadata": { "type": "integer", "minimum": 0 },
+        "p0TestCount": { "type": "integer", "minimum": 0 },
+        "p0UnboundIssues": { "type": "integer", "minimum": 0 },
+        "p1UnboundIssues": { "type": "integer", "minimum": 0 },
+        "unboundPromiseLinkedIssues": { "type": "integer", "minimum": 0 },
+        "unboundInvariantIssues": { "type": "integer", "minimum": 0 },
+        "unboundTests": { "type": "integer", "minimum": 0 },
+        "orphanTests": { "type": "integer", "minimum": 0 },
+        "unknownIssueRefs": { "type": "integer", "minimum": 0 },
+        "bidirectionalInconsistencies": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "findings": {
+      "type": "object",
+      "required": [
+        "unboundP0Issues",
+        "unboundP1Issues",
+        "unboundPromiseLinkedIssues",
+        "unboundInvariantIssues",
+        "unboundTests",
+        "orphanTests",
+        "unknownIssueRefs",
+        "bidirectionalInconsistencies"
+      ],
+      "properties": {
+        "unboundP0Issues": { "type": "array", "items": {} },
+        "unboundP1Issues": { "type": "array", "items": {} },
+        "unboundPromiseLinkedIssues": { "type": "array", "items": {} },
+        "unboundInvariantIssues": { "type": "array", "items": {} },
+        "unboundTests": { "type": "array", "items": {} },
+        "orphanTests": { "type": "array", "items": {} },
+        "unknownIssueRefs": { "type": "array", "items": {} },
+        "bidirectionalInconsistencies": { "type": "array", "items": {} }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

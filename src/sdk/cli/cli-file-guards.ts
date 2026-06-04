@@ -56,6 +56,12 @@ export function readGuardedTextFile(path: string, label: string, maxBytes = DEFA
 }
 
 export function summarizeCliError(error: unknown, fallbackCode: string): string {
+  if (typeof error === "object" && error != null && "code" in error) {
+    const code = (error as { code?: unknown }).code;
+    if (typeof code === "string" && code.trim().length > 0) {
+      return code;
+    }
+  }
   if (error instanceof ValidationError) {
     return error.code;
   }

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/rc-check-report.schema.json",
+  "title": "RC Check Report",
+  "type": "object",
+  "required": ["generatedAt", "repoRoot", "mode", "reportPhase", "status", "failedSteps", "executedSteps", "evidenceBundleRef"],
+  "properties": {
+    "generatedAt": { "type": "string", "minLength": 1 },
+    "repoRoot": { "type": "string", "minLength": 1 },
+    "mode": { "type": "string", "const": "rc" },
+    "gateMode": { "type": "string", "enum": ["observe", "enforce"] },
+    "reportPhase": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["pass", "fail"] },
+    "failedSteps": { "type": "array", "items": { "type": "string" } },
+    "failedReleaseBlockers": { "type": "array", "items": { "type": "string" } },
+    "failedReleaseOverrideIds": { "type": "array", "items": { "type": "string" } },
+    "executedSteps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "required", "command", "startedAt", "endedAt", "exitCode", "ok"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "required": { "type": "boolean" },
+          "command": { "type": "string", "minLength": 1 },
+          "startedAt": { "type": ["string", "null"] },
+          "endedAt": { "type": ["string", "null"] },
+          "exitCode": { "type": ["integer", "null"] },
+          "ok": { "type": ["boolean", "null"] },
+          "pending": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "releaseBlockers": {
+      "type": "object",
+      "required": ["gateMode", "blockerCount", "blockers", "enforcedBlockers", "status"],
+      "properties": {
+        "gateMode": { "type": "string", "enum": ["observe", "enforce"] },
+        "blockerCount": { "type": "integer", "minimum": 0 },
+        "blockers": { "type": "array", "items": { "type": "object" } },
+        "observeOnlyBlockers": { "type": "array", "items": { "type": "string" } },
+        "overriddenBlockers": { "type": "array", "items": { "type": "string" } },
+        "overriddenBy": { "type": "array", "items": { "type": "string" } },
+        "expiredOverrideIds": { "type": "array", "items": { "type": "string" } },
+        "invalidOverrideIds": { "type": "array", "items": { "type": "string" } },
+        "enforcedBlockers": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["pass", "fail"] }
+      },
+      "additionalProperties": false
+    },
+    "evidenceBundleRef": { "type": ["string", "null"] },
+    "finalSealResults": { "type": "array", "items": { "type": "object" } }
+  },
+  "additionalProperties": false
+}

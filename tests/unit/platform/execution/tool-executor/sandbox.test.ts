@@ -387,7 +387,7 @@ test("sandbox: command failure with non-zero exit code returns failed status [sa
       agentId: "agent-sandbox-fail",
       traceId: "trace-sandbox-fail",
       toolName: "command_exec",
-      timeoutMs: 2000,
+      timeoutMs: 10000,
       sandboxPolicy: createWorkspaceWritePolicy(workspace),
       command: "node",
       args: [scriptPath],

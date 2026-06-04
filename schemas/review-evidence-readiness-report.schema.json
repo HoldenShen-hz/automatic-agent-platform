@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/review-evidence-readiness-report.schema.json",
+  "title": "Review Evidence Readiness Report",
+  "type": "object",
+  "required": ["generatedAt", "reviewSources", "summary"],
+  "properties": {
+    "generatedAt": { "type": "string", "minLength": 1 },
+    "reviewSources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "sourceFile",
+          "findingCount",
+          "p0FindingCount",
+          "reviewers",
+          "reviewerCount",
+          "confidenceScore",
+          "checklist",
+          "blindSpotDeclaration",
+          "dualPersonReview",
+          "releaseEvidenceEligible"
+        ],
+        "properties": {
+          "sourceFile": { "type": "string", "minLength": 1 },
+          "findingCount": { "type": "integer", "minimum": 0 },
+          "p0FindingCount": { "type": "integer", "minimum": 0 },
+          "reviewers": { "type": "array", "items": { "type": "string" } },
+          "reviewerCount": { "type": "integer", "minimum": 0 },
+          "confidenceScore": { "type": ["number", "null"] },
+          "checklist": { "type": "object" },
+          "blindSpotDeclaration": { "type": "object" },
+          "dualPersonReview": { "type": "object" },
+          "releaseEvidenceEligible": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "totalSources",
+        "eligibleSources",
+        "blindSpotDeclarationPresentCount",
+        "checklistCompleteCount",
+        "dualPersonRequiredCount",
+        "dualPersonSatisfiedCount"
+      ],
+      "properties": {
+        "totalSources": { "type": "integer", "minimum": 0 },
+        "eligibleSources": { "type": "integer", "minimum": 0 },
+        "blindSpotDeclarationPresentCount": { "type": "integer", "minimum": 0 },
+        "checklistCompleteCount": { "type": "integer", "minimum": 0 },
+        "dualPersonRequiredCount": { "type": "integer", "minimum": 0 },
+        "dualPersonSatisfiedCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

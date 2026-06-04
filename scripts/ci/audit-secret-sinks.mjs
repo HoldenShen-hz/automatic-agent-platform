@@ -71,6 +71,10 @@ const SECRET_SINK_PATTERNS = [
 // Strings that look like the value is a known-redacted placeholder
 const REDACTION_TOKENS = ["[REDACTED]", "<redacted>", "***"];
 
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function loadAllowlist() {
   if (!existsSync(ALLOWLIST_PATH)) {
     return { exact: new Set(), prefix: [], snippets: [] };
@@ -90,6 +94,11 @@ function isAllowlisted(rel, allowlist) {
 
 function isRedaction(line) {
   return REDACTION_TOKENS.some((tok) => line.includes(tok));
+}
+
+function lineContainsSecretIdentifier(line, token) {
+  const exactOrCamelCaseRe = new RegExp(`\\b${escapeRegex(token)}(?:\\b|(?=[A-Z_]))`);
+  return exactOrCamelCaseRe.test(line);
 }
 
 function walk(dir) {
@@ -131,8 +140,7 @@ function findFindings(filePath, allowlist) {
 
     // 1. Sinks receiving a secret identifier by name (e.g. logger.info({ token }))
     for (const token of SECRET_TOKENS) {
-      const tokenRe = new RegExp(`\\b${token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
-      if (!tokenRe.test(line)) continue;
+      if (!lineContainsSecretIdentifier(line, token)) continue;
       for (const sink of SECRET_SINK_PATTERNS) {
         sink.regex.lastIndex = 0;
         if (sink.regex.test(line)) {
@@ -154,8 +162,7 @@ function findFindings(filePath, allowlist) {
     templateRe.lastIndex = 0;
     if (templateRe.test(line)) {
       for (const token of SECRET_TOKENS) {
-        const re = new RegExp(`\\b${token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
-        if (re.test(line) && /throw\s+new\s+Error|console\s*\.\s*(log|error)|logger\s*\./.test(line)) {
+        if (lineContainsSecretIdentifier(line, token) && /throw\s+new\s+Error|console\s*\.\s*(log|error)|logger\s*\./.test(line)) {
           findings.push({
             rule: "secret_sink.interpolation",
             severity: "P0",

@@ -149,7 +149,7 @@ test("pack-publish supports token files and preserves retry context", async () =
 test("secret-management sanitizes stdout payloads and stderr failures", () => {
   assert.match(secretManagementSource, /function sanitizeSecretResult/);
   assert.match(secretManagementSource, /JSON\.stringify\(sanitizeSecretResult\(result\)/);
-  assert.match(secretManagementSource, /error instanceof ValidationError \? error\.code : "secret_management\.failed"/);
+  assert.match(secretManagementSource, /summarizeCliError\(error, "secret_management\.failed"\)/);
   assert.doesNotMatch(secretManagementSource, /error instanceof Error \? error\.message/);
 });
 

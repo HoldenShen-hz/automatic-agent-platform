@@ -88,19 +88,9 @@ describe("audit-tool: secret-sinks self-test", () => {
 
   it("evasion seed (string-concatenated key) is still reported", () => {
     const report = runAudit("tests/fixtures/seeded-defects/secret-logged/evasion.ts");
-    // Evasion seed may use `apiKey` differently; allow 0 if the seed only relies on token which
-    // is not the canonical evasion pattern. The fixture must be a real evasion pattern.
-    const tokenFinding = report.findings.find((f) => f.path.includes("evasion.ts"));
-    // The test is about making the audit robust; we expect at least 1 finding
-    // OR the seed file is correctly identified as not containing a real evasion.
-    // To keep the test honest, we always require at least 1 finding on the
-    // positive and evasion fixtures together.
-    const combined = runAudit("tests/fixtures/seeded-defects/secret-logged");
     assert.ok(
-      combined.findingCount >= 2,
-      `expected at least 2 findings across positive+evasion seeds, got ${combined.findingCount}`,
+      report.findingCount >= 1,
+      `expected at least 1 finding for evasion seed, got ${report.findingCount}`,
     );
-    // The token finding variable is consulted to keep the variable live.
-    void tokenFinding;
   });
 });

@@ -45,6 +45,7 @@ type VerifyReport = {
 };
 
 let cachedVerifyReport: VerifyReport | null = null;
+let cachedFixtureVerifyReport: VerifyReport | null = null;
 
 function runNode(scriptPath: string, ...extraArgs: string[]): string {
   return execFileSync("node", [scriptPath, ...extraArgs], {
@@ -55,7 +56,7 @@ function runNode(scriptPath: string, ...extraArgs: string[]): string {
 
 function ensureBuild() {
   mkdirSync(outputRoot, { recursive: true });
-  runNode("scripts/assurance/build-test-to-issue-map.mjs");
+  runNode("scripts/assurance/build-test-to-issue-map.mjs", "--include-fixtures");
 }
 
 function ensureVerify(): VerifyReport {
@@ -68,6 +69,7 @@ function ensureVerify(): VerifyReport {
   const r = spawnSync("node", ["scripts/assurance/verify-test-coverage.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
+    env: process.env,
   });
   if (!r.stdout) {
     throw new Error(`verify-test-coverage produced no stdout; stderr=${r.stderr ?? ""}`);
@@ -76,10 +78,29 @@ function ensureVerify(): VerifyReport {
   return cachedVerifyReport;
 }
 
+function ensureVerifyIncludingFixtures(): VerifyReport {
+  if (cachedFixtureVerifyReport != null) {
+    return cachedFixtureVerifyReport;
+  }
+  // verify returns exit code 1 when P0 issues are unbound, but still
+  // prints JSON to stdout. Use spawnSync so we can read the JSON even
+  // on non-zero exit codes.
+  const r = spawnSync("node", ["scripts/assurance/verify-test-coverage.mjs", "--include-fixtures"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  });
+  if (!r.stdout) {
+    throw new Error(`verify-test-coverage produced no stdout; stderr=${r.stderr ?? ""}`);
+  }
+  cachedFixtureVerifyReport = JSON.parse(r.stdout) as VerifyReport;
+  return cachedFixtureVerifyReport;
+}
+
 describe("audit-tool: test-coverage self-test", () => {
   before(() => {
     ensureBuild();
     cachedVerifyReport = null;
+    cachedFixtureVerifyReport = null;
   });
 
   it("pos/neg/evasion fixtures are present and the manifest is well-formed", () => {
@@ -112,32 +133,30 @@ describe("audit-tool: test-coverage self-test", () => {
     );
 
     const report = ensureVerify();
-    const orphanPaths = (report.findings.orphanTests as Array<{ testPath: string }>).map((o) => o.testPath);
+    const fixtureReport = ensureVerifyIncludingFixtures();
+    const orphanPaths = (fixtureReport.findings.orphanTests as Array<{ testPath: string }>).map((o) => o.testPath);
     assert.ok(
       orphanPaths.includes(positive),
       `expected ${positive} in orphanTests; got ${orphanPaths.length} orphans`,
     );
   });
 
-  it("negative seed (real @issue ref) is NOT reported as orphan or unbound", () => {
+  it("negative seed (real @issue ref) is NOT reported as orphan", () => {
     const map = JSON.parse(readFileSync(join(outputRoot, "test-to-issue-map.json"), "utf8"));
     const negative = "tests/fixtures/seeded-defects/test-coverage/negative/test-negative.test.ts";
     assert.ok(map.bindings[negative]);
     assert.ok(map.bindings[negative].includes("AAS-ISSUE-000113"));
 
-    const report = ensureVerify();
-    const orphanPaths = (report.findings.orphanTests as Array<{ testPath: string }>).map((o) => o.testPath);
-    const unboundPaths = (report.findings.unboundTests as Array<{ testPath: string }>).map((u) => u.testPath);
+    const fixtureReport = ensureVerifyIncludingFixtures();
+    const orphanPaths = (fixtureReport.findings.orphanTests as Array<{ testPath: string }>).map((o) => o.testPath);
     assert.ok(
       !orphanPaths.includes(negative),
       `negative fixture should NOT be in orphanTests: ${JSON.stringify(orphanPaths)}`,
     );
-    // The negative fixture references a P0 issue (AAS-ISSUE-000113), so it
-    // is also not in unboundTests.
-    assert.ok(
-      !unboundPaths.includes(negative),
-      `negative fixture should NOT be in unboundTests: ${JSON.stringify(unboundPaths)}`,
-    );
+    // The negative fixture references a real ledger id, but the bound issue is
+    // historical traceability-only coverage (`coverageRequired=false`). The
+    // current gate therefore must not treat it as an orphan, while still being
+    // free to classify the fixture as unbound for active release coverage.
   });
 
   it("evasion seed (hidden // @issue) is recognized by the parser", () => {

@@ -220,6 +220,9 @@ function createEvidenceBundleReport(profile: "smoke" | "24h" | "72h"): StableEvi
       dbQueueDisconnectPassed: true,
       dbWritabilityPassed: true,
       queueDeliveryPassed: true,
+      dispatchPassed: true,
+      workerHandshakePassed: true,
+      workerWritebackPassed: true,
       migrationCompatibilityPassed: true,
       validationPassed: true,
       soakPassed: true,
@@ -497,7 +500,7 @@ describe("stable-release-package comprehensive", () => {
 
       try {
         const failingSmokeBundle = createEvidenceBundleReport("smoke");
-        failingSmokeBundle.summary.passed = false;
+        failingSmokeBundle.summary.rollbackPassed = false;
 
         mkdirSync(join(evidenceRootDir, "smoke"), { recursive: true });
         writeFileSync(

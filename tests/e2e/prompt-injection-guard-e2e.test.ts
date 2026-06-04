@@ -222,14 +222,16 @@ test("E2E Prompt Injection Guard: canary token embedded in prompt", () => {
   assert.ok(result.prompt.includes(result.token), "Prompt should include the canary token");
 });
 
-test("E2E Prompt Injection Guard: canary token is deterministic for same input", () => {
+test("E2E Prompt Injection Guard: canary token stays unique even for same input", () => {
   const systemPrompt = "You are a helpful assistant";
   const scope = "session-456";
 
   const result1 = embedCanaryToken(systemPrompt, scope);
   const result2 = embedCanaryToken(systemPrompt, scope);
 
-  assert.equal(result1.token, result2.token, "Same input should produce same token");
+  assert.notEqual(result1.token, result2.token, "Same input should produce different nonce-backed tokens");
+  assert.ok(result1.prompt.includes(result1.token), "First prompt should embed its own token");
+  assert.ok(result2.prompt.includes(result2.token), "Second prompt should embed its own token");
 });
 
 test("E2E Prompt Injection Guard: different scopes produce different tokens", () => {

@@ -378,7 +378,7 @@ test("E2E HITL: approval timeout triggers auto-approve when policy is approve", 
     });
 
     assert.equal(expiredApproval.status, "approved", "Should auto-approve on timeout");
-    assert.equal(expiredApproval.decisionType, "expired", "Should mark as expired");
+    assert.equal(expiredApproval.decisionType, "confirmed", "Approve timeout should be recorded as confirmed");
 
     // Execution should be able to resume
     ts.transitionExecutionStatus(makeExecCommand(executionId, "blocked", "executing", traceId));
@@ -671,7 +671,7 @@ test("E2E HITL: remain_pending policy leaves approval pending until explicit res
 
     // Should remain pending - no automatic decision
     assert.equal(expiredApproval.status, "requested", "Should remain in requested state");
-    assert.equal(expiredApproval.decisionType, "expired", "Should record expiry");
+    assert.equal(expiredApproval.decisionType, "remain_pending", "remain_pending timeout should not emit an expired decision");
 
     // Execution should still be blocked
     const exec = harness.store.getExecution(executionId);

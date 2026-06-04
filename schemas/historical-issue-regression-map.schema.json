@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/historical-issue-regression-map.schema.json",
+  "title": "Historical Issue Regression Map Report",
+  "type": "object",
+  "required": ["generatedAt", "issueCount", "summary", "mappings"],
+  "properties": {
+    "generatedAt": { "type": "string", "minLength": 1 },
+    "issueCount": { "type": "integer", "minimum": 0 },
+    "summary": {
+      "type": "object",
+      "required": [
+        "fixedWithGateCount",
+        "fixedWithoutGateCount",
+        "acceptedRiskCount",
+        "notFixedCount",
+        "missingAutomationCount"
+      ],
+      "properties": {
+        "fixedWithGateCount": { "type": "integer", "minimum": 0 },
+        "fixedWithoutGateCount": { "type": "integer", "minimum": 0 },
+        "acceptedRiskCount": { "type": "integer", "minimum": 0 },
+        "notFixedCount": { "type": "integer", "minimum": 0 },
+        "missingAutomationCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "historicalIssueId",
+          "originalFinding",
+          "category",
+          "severity",
+          "requiredAuditRules",
+          "requiredInvariant",
+          "regressionTests",
+          "regressionSeeds",
+          "releaseGate",
+          "classification",
+          "currentStatus",
+          "owner",
+          "linkedReviewStatuses",
+          "linkedPromiseIds",
+          "missingControls"
+        ],
+        "properties": {
+          "historicalIssueId": { "type": "string", "minLength": 1 },
+          "originalFinding": { "type": "string", "minLength": 1 },
+          "category": { "type": "string", "minLength": 1 },
+          "severity": { "type": ["string", "null"] },
+          "requiredAuditRules": { "type": "array", "items": { "type": "string" } },
+          "requiredInvariant": { "type": ["string", "null"] },
+          "regressionTests": { "type": "array", "items": { "type": "string" } },
+          "regressionSeeds": { "type": "array", "items": { "type": "string" } },
+          "releaseGate": { "type": "string", "minLength": 1 },
+          "classification": { "type": "string", "minLength": 1 },
+          "currentStatus": { "type": "string", "minLength": 1 },
+          "owner": { "type": ["string", "null"] },
+          "linkedReviewStatuses": { "type": "array", "items": { "type": "string" } },
+          "linkedPromiseIds": { "type": "array", "items": { "type": "string" } },
+          "missingControls": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

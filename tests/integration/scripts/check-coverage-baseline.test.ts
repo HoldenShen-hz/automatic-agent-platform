@@ -94,3 +94,66 @@ test("check-coverage-baseline fails when baseline is missing", async () => {
     rmSync(workspace, { recursive: true, force: true });
   }
 });
+
+test("check-coverage-baseline fails when coverage introduces an untracked src directory", async () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-coverage-baseline-untracked-"));
+
+  try {
+    mkdirSync(join(workspace, "coverage"), { recursive: true });
+    mkdirSync(join(workspace, "src", "platform", "new-module"), { recursive: true });
+
+    const coverageSummary = {
+      total: {
+        lines: { covered: 85, total: 100, pct: 85 },
+        statements: { covered: 85, total: 100, pct: 85 },
+        functions: { covered: 8, total: 10, pct: 80 },
+        branches: { covered: 18, total: 20, pct: 90 },
+      },
+      [join(workspace, "src", "platform", "index.ts")]: {
+        lines: { covered: 40, total: 50, pct: 80 },
+        statements: { covered: 40, total: 50, pct: 80 },
+        functions: { covered: 4, total: 5, pct: 80 },
+        branches: { covered: 9, total: 10, pct: 90 },
+      },
+      [join(workspace, "src", "platform", "new-module", "feature.ts")]: {
+        lines: { covered: 45, total: 50, pct: 90 },
+        statements: { covered: 45, total: 50, pct: 90 },
+        functions: { covered: 4, total: 5, pct: 80 },
+        branches: { covered: 9, total: 10, pct: 90 },
+      },
+    };
+    writeFileSync(join(workspace, "coverage", "coverage-summary.json"), JSON.stringify(coverageSummary, null, 2));
+
+    const baseline = {
+      version: 1,
+      generatedAt: new Date().toISOString(),
+      minimums: { lines: 80, statements: 80, functions: 75, branches: 85 },
+      global: { lines: 80, statements: 80, functions: 75, branches: 85 },
+      directories: {
+        "src/platform": {
+          fileCount: 1,
+          metrics: { lines: 80, statements: 80, functions: 80, branches: 90 },
+        },
+      },
+    };
+    writeFileSync(join(workspace, ".coverage-baseline.json"), JSON.stringify(baseline, null, 2));
+
+    const result = spawnSync("node", [SCRIPT_PATH], {
+      cwd: workspace,
+      env: {
+        ...process.env,
+        AA_COVERAGE_DIR: join(workspace, "coverage"),
+        AA_COVERAGE_BASELINE_PATH: join(workspace, ".coverage-baseline.json"),
+        AA_COVERAGE_REPO_ROOT: workspace,
+      },
+      stdio: "pipe",
+      encoding: "utf8",
+    });
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Coverage baseline is missing these directories:/);
+    assert.match(result.stderr, /src\/platform\/new-module/);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});

@@ -6,8 +6,9 @@ import { spawnSync } from "node:child_process";
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(currentDir, "..", "..");
 const outputPath = join(repoRoot, "artifacts", "assurance", "assurance-full-report.json");
+const scriptPath = fileURLToPath(import.meta.url);
 
-const steps = [
+export const steps = [
   {
     id: "inventory",
     command: "npm",
@@ -63,6 +64,13 @@ const steps = [
     args: ["run", "assurance:static-audit"],
     required: true,
     rationale: "执行 Layer 3 静态审计并统一产出 static-audit-report.{json,md} 与 static-audit-findings.jsonl。",
+  },
+  {
+    id: "eval_oracle_pipeline",
+    command: "npm",
+    args: ["run", "assurance:eval-oracle"],
+    required: true,
+    rationale: "显式刷新 eval-oracle / redteam / golden anti-fake 产物，避免 evidence bundle 依赖陈旧报告。",
   },
   {
     id: "issue_ledger",
@@ -136,7 +144,7 @@ const steps = [
   },
 ];
 
-const notYetIntegratedAudits = [];
+export const notYetIntegratedAudits = [];
 
 function runStep(step) {
   const startedAt = new Date().toISOString();
@@ -171,27 +179,36 @@ function runStep(step) {
   };
 }
 
-const results = steps.map(runStep);
-const failedRequiredSteps = results.filter((result) => result.required && !result.ok).map((result) => result.id);
-const report = {
-  generatedAt: new Date().toISOString(),
-  repoRoot,
-  mode: "full",
-  status: failedRequiredSteps.length === 0 ? "pass" : "fail",
-  executedSteps: results,
-  notYetIntegratedAudits,
-  notes: [
-    "assurance:full 会生成 inventory、review ledger、historical promises、assumptions、static audit、issue ledger、historical regression map、completeness matrix、coverage scorecard 等核心 assurance 产物。",
-    "Layer 3 static audit 会统一产出 static-audit-report.{json,md} 与 static-audit-findings.jsonl；issue-ledger 默认复用这些产物而不重复重跑扫描器。",
-    "review-import 现在同时产出 review-evidence-readiness-report.json，用于声明 blind spot / checklist / dual-person readiness。",
-    "observe-mode 审计结果进入 ledger 与 scorecard；是否阻断 release 由 rc:check 汇总判定。",
-  ],
-};
+export function buildAssuranceFullReport(results) {
+  const failedRequiredSteps = results.filter((result) => result.required && !result.ok).map((result) => result.id);
+  return {
+    generatedAt: new Date().toISOString(),
+    repoRoot,
+    mode: "full",
+    status: failedRequiredSteps.length === 0 ? "pass" : "fail",
+    executedSteps: results,
+    notYetIntegratedAudits,
+    notes: [
+      "assurance:full 会生成 inventory、review ledger、historical promises、assumptions、static audit、issue ledger、historical regression map、completeness matrix、coverage scorecard 等核心 assurance 产物。",
+      "Layer 3 static audit 会统一产出 static-audit-report.{json,md} 与 static-audit-findings.jsonl；issue-ledger 默认复用这些产物而不重复重跑扫描器。",
+      "review-import 现在同时产出 review-evidence-readiness-report.json，用于声明 blind spot / checklist / dual-person readiness。",
+      "observe-mode 审计结果进入 ledger 与 scorecard；是否阻断 release 由 rc:check 汇总判定。",
+    ],
+  };
+}
 
-mkdirSync(dirname(outputPath), { recursive: true });
-writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
-process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+function main() {
+  const results = steps.map(runStep);
+  const report = buildAssuranceFullReport(results);
+  mkdirSync(dirname(outputPath), { recursive: true });
+  writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 
-if (failedRequiredSteps.length > 0) {
-  process.exitCode = 1;
+  if (report.status === "fail") {
+    process.exitCode = 1;
+  }
+}
+
+if (process.argv[1] != null && resolve(process.argv[1]).replaceAll("\\", "/") === scriptPath.replaceAll("\\", "/")) {
+  main();
 }

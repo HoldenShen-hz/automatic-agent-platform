@@ -28,12 +28,20 @@ const STATUS_PRECEDENCE = {
   done: 10,
 };
 
+const SEVERITY_PRECEDENCE = {
+  P0: 40,
+  P1: 30,
+  P2: 20,
+  P3: 10,
+};
+
 const ID_HEADERS = new Set(["编号", "id", "gap", "问题id", "issue id", "#"]);
 const TITLE_HEADERS = new Set(["问题", "title", "标题", "gap", "内容"]);
 const STATUS_HEADERS = new Set(["状态", "问题状态", "结论", "当前结论", "review结论", "review 结论", "当前状态"]);
 const SEVERITY_HEADERS = new Set(["严重级别", "severity"]);
 const EVIDENCE_HEADERS = new Set(["证据", "evidence", "当前证据", "定向测试", "测试", "回归命令", "依据"]);
 const NO_FINDING_WARNING_EXEMPT_FILES = new Set([
+  "docs_zh/reviews/audit-pipeline-round6-issues.md",
   "docs_zh/reviews/architecture-code-cross-review.md",
   "docs_zh/reviews/architecture-design-vs-implementation-review.md",
   "docs_zh/reviews/architecture-remaining-plan.md",
@@ -279,7 +287,7 @@ function toFindingFromTableRow(headers, row, context) {
   return finding;
 }
 
-function parseMarkdownTables(content, relativePath) {
+export function parseMarkdownTables(content, relativePath) {
   const lines = content.split(/\r?\n/);
   const findings = [];
   const reviewDate = extractReviewDate(content);
@@ -315,7 +323,7 @@ function parseMarkdownTables(content, relativePath) {
   return findings;
 }
 
-function parseHeadingBlocks(content, relativePath) {
+export function parseHeadingBlocks(content, relativePath) {
   const lines = content.split(/\r?\n/);
   const findings = [];
   const reviewDate = extractReviewDate(content);
@@ -366,6 +374,59 @@ function computeCanonicalKey(finding) {
   return slugify(finding.title);
 }
 
+function isResolvedStatus(status) {
+  return status === "fixed" || status === "done" || status === "accepted_risk";
+}
+
+function isOpenStatus(status) {
+  return status === "todo" || status === "partial" || status === "stale" || status === "needs_revalidation";
+}
+
+function isTestEvidenceRef(ref) {
+  return /^tests\//.test(ref) || /\.(?:test|spec)\.[cm]?[jt]sx?$/i.test(ref) || /\bnpm run test:/i.test(ref);
+}
+
+function isDocEvidenceRef(ref) {
+  return /^(docs_(?:zh|en)\/|README\.md|AGENTS\.md|MEMORY\.md|CONTRIBUTING\.md)/.test(ref);
+}
+
+function isReleaseClaimCategory(category) {
+  return category === "doc_state.release_claim_overreach" || /^release\./.test(category);
+}
+
+function deriveObjectFingerprint(finding) {
+  const ref =
+    [...(finding.evidenceRefs ?? []), ...(finding.sourceRefs ?? [])].find((entry) => typeof entry === "string" && entry.length > 0) ??
+    `${finding.sourceFile}#${finding.rowId}`;
+  return String(ref)
+    .replace(/:\d+$/, "")
+    .split("#")[0]
+    .split("/")
+    .slice(0, 4)
+    .join("/");
+}
+
+function inferFreshness(finding, nowIso) {
+  if (finding.status === "needs_revalidation") {
+    return "needs_revalidation";
+  }
+  if (finding.status === "stale") {
+    return "stale";
+  }
+  if (isResolvedStatus(finding.status)) {
+    return (finding.evidenceRefs?.length ?? 0) > 0 ? "revalidated" : "needs_revalidation";
+  }
+  const reviewDate = finding.latestReviewDate != null ? Date.parse(finding.latestReviewDate) : Number.NaN;
+  const now = Date.parse(nowIso);
+  if (Number.isFinite(reviewDate) && Number.isFinite(now)) {
+    const ageDays = (now - reviewDate) / (24 * 60 * 60 * 1000);
+    if (ageDays > 30) {
+      return "stale";
+    }
+  }
+  return "fresh";
+}
+
 function chooseDecisionStatus(group) {
   return [...group]
     .sort((left, right) => (STATUS_PRECEDENCE[right.status] ?? 0) - (STATUS_PRECEDENCE[left.status] ?? 0))[0]
@@ -408,24 +469,86 @@ function computeSourcePriority(sourceFile) {
 
 function computeFindingScore(finding) {
   const evidenceScore = (finding.evidenceRefs?.length ?? 0) > 0 ? 1000 : 0;
+  const severityScore = SEVERITY_PRECEDENCE[finding.severity] ?? 0;
   const sourceScore = computeSourcePriority(finding.sourceFile) * 10;
   const dateScore = finding.latestReviewDate != null ? Date.parse(finding.latestReviewDate) / 1_000_000_000_000 : 0;
   const statusScore = STATUS_PRECEDENCE[finding.status] ?? 0;
-  return evidenceScore + sourceScore + dateScore + statusScore;
+  return evidenceScore + severityScore + sourceScore + dateScore + statusScore;
 }
 
-function resolveConflict(group) {
+export function resolveConflict(group) {
   const ranked = [...group].sort((left, right) => computeFindingScore(right) - computeFindingScore(left));
   const winner = ranked[0];
   const winnerScore = computeFindingScore(winner);
   const runnerUpScore = ranked[1] ? computeFindingScore(ranked[1]) : Number.NEGATIVE_INFINITY;
   const uniqueStatuses = [...new Set(group.map((item) => item.status))];
-  const autoResolved = uniqueStatuses.length > 1 && winnerScore > runnerUpScore;
+  const uniqueSeverities = [...new Set(group.map((item) => item.severity).filter((value) => value != null))];
+  const hasResolvedReview = group.some((item) => isResolvedStatus(item.status));
+  const hasOpenReview = group.some((item) => isOpenStatus(item.status));
+  const hasTestEvidence = group.some((item) => (item.evidenceRefs ?? []).some(isTestEvidenceRef));
+  const hasRuntimeEvidence = group.some((item) =>
+    (item.evidenceRefs ?? []).some((ref) => !isDocEvidenceRef(ref) && !isTestEvidenceRef(ref)),
+  );
+  const hasReleaseClaim = group.some((item) => isReleaseClaimCategory(item.category));
+  const resolvedWithoutEvidence = group.some((item) => isResolvedStatus(item.status) && (item.evidenceRefs?.length ?? 0) === 0);
+  const distinctObjects = new Set(group.map(deriveObjectFingerprint));
+  const severityCounts = new Map();
+  for (const item of group) {
+    const severity = item.severity ?? "unknown";
+    severityCounts.set(severity, (severityCounts.get(severity) ?? 0) + 1);
+  }
+  const rankedSeverityCounts = [...severityCounts.entries()].sort((left, right) => {
+    const precedenceDelta = (SEVERITY_PRECEDENCE[right[0]] ?? 0) - (SEVERITY_PRECEDENCE[left[0]] ?? 0);
+    if (precedenceDelta !== 0) {
+      return precedenceDelta;
+    }
+    return right[1] - left[1];
+  });
+  const dominantSeverityCount = rankedSeverityCounts[0]?.[1] ?? 0;
+  const runnerUpSeverityCount = rankedSeverityCounts[1]?.[1] ?? 0;
+  const severityAutoResolved =
+    uniqueStatuses.length === 1 &&
+    uniqueSeverities.length > 1 &&
+    dominantSeverityCount > runnerUpSeverityCount;
+  const autoResolved = group.length > 1 && (winnerScore > runnerUpScore || severityAutoResolved);
+  let conflictType = "status_mismatch";
+  if (hasReleaseClaim && resolvedWithoutEvidence) {
+    conflictType = "release_claim_vs_evidence_missing";
+  } else if (hasResolvedReview && hasOpenReview && hasTestEvidence) {
+    conflictType = "review_fixed_vs_test_failed";
+  } else if (hasResolvedReview && hasOpenReview && hasRuntimeEvidence) {
+    conflictType = "doc_claim_vs_runtime";
+  } else if (uniqueSeverities.length > 1) {
+    conflictType = "severity_mismatch";
+  } else if (distinctObjects.size > 1) {
+    conflictType = "duplicate_but_not_same_object";
+  }
+  let decisionBasis = autoResolved
+    ? "stronger_evidence_or_newer_review_precedes_weaker_or_older_review"
+    : "manual_revalidation_required_due_to_ambiguous_review_conflict";
+  if (conflictType === "review_fixed_vs_test_failed" && hasTestEvidence) {
+    decisionBasis = autoResolved
+      ? "executable_test_evidence_precedes_review_note"
+      : "manual_revalidation_required_due_to_review_fixed_vs_test_failed";
+  } else if (conflictType === "doc_claim_vs_runtime" && hasRuntimeEvidence) {
+    decisionBasis = autoResolved
+      ? "runtime_or_code_evidence_precedes_doc_claim"
+      : "manual_revalidation_required_due_to_doc_claim_vs_runtime";
+  } else if (conflictType === "release_claim_vs_evidence_missing" && resolvedWithoutEvidence) {
+    decisionBasis = "missing_release_evidence_precludes_auto_close";
+  } else if (conflictType === "severity_mismatch") {
+    decisionBasis = autoResolved
+      ? "higher_severity_or_stronger_evidence_precedes_lower_severity_review_note"
+      : "manual_revalidation_required_due_to_severity_mismatch";
+  } else if (conflictType === "duplicate_but_not_same_object") {
+    decisionBasis = autoResolved
+      ? "newer_or_better_evidenced_review_precedes_duplicate_title_collision"
+      : "manual_revalidation_required_due_to_duplicate_title_but_distinct_object";
+  }
   return {
     decision: winner.status,
-    decisionBasis: autoResolved
-      ? "stronger_evidence_or_newer_review_precedes_weaker_or_older_review"
-      : "manual_revalidation_required_due_to_ambiguous_review_conflict",
+    decisionBasis,
+    conflictType,
     autoResolved,
   };
 }
@@ -579,6 +702,7 @@ export function buildReviewImportArtifacts(options = {}) {
   const repoRoot = resolve(options.repoRoot ?? process.cwd());
   const reviewsRoot = resolve(repoRoot, options.reviewsRoot ?? "docs_zh/reviews");
   const outputDir = resolve(repoRoot, options.outputDir ?? "artifacts/assurance");
+  const generatedAt = options.generatedAt ?? new Date().toISOString();
 
   const reviewFiles = collectReviewFiles(reviewsRoot);
   const rawFindings = [];
@@ -610,6 +734,7 @@ export function buildReviewImportArtifacts(options = {}) {
         reviewSourceId: `AAS-REVIEW-SRC-${String(rawFindings.length + imported.length + 1).padStart(6, "0")}`,
       };
       try {
+        finding.freshness = inferFreshness(finding, generatedAt);
         validateFinding(finding);
         imported.push(finding);
       } catch (error) {
@@ -649,33 +774,45 @@ export function buildReviewImportArtifacts(options = {}) {
         canonicalIssueId,
         status: decision,
         latestStatus: decision,
+      freshness: inferFreshness({ ...latest, status: decision, evidenceRefs }, generatedAt),
       sourceRefs,
       evidenceRefs,
     });
 
     const uniqueStatuses = [...new Set(group.map((item) => item.status))];
-    if (group.length > 1 && uniqueStatuses.length > 1) {
+    const uniqueSeverities = [...new Set(group.map((item) => item.severity).filter((value) => value != null))];
+    const distinctObjects = new Set(group.map(deriveObjectFingerprint));
+    const shouldEmitConflict =
+      group.length > 1 &&
+      (
+        uniqueStatuses.length > 1 ||
+        uniqueSeverities.length > 1 ||
+        distinctObjects.size > 1 ||
+        resolution.conflictType !== "status_mismatch"
+      );
+    if (shouldEmitConflict) {
       conflictRecords.push({
         conflictId: `AAS-REVIEW-CONFLICT-${String(conflictRecords.length + 1).padStart(6, "0")}`,
         canonicalIssueId,
         sourceRefs,
-        conflictType: "status_mismatch",
+        conflictType: resolution.conflictType,
         candidates: group.map((item) => ({
           status: item.status,
+          severity: item.severity ?? null,
           basis: "review_row",
           evidenceRefs: item.evidenceRefs,
         })),
         decision,
         decisionBasis: resolution.decisionBasis,
-        blocking: !resolution.autoResolved,
-        decidedAt: options.generatedAt ?? new Date().toISOString(),
+        blocking: !resolution.autoResolved && resolution.conflictType !== "duplicate_but_not_same_object",
+        decidedAt: generatedAt,
         decidedBy: "assurance:review-import",
       });
     }
   }
 
   const coverageReport = {
-    generatedAt: options.generatedAt ?? new Date().toISOString(),
+    generatedAt,
     reviewSources: coverageEntries,
     unscannedReviewFiles,
     filesWithParseWarnings,
@@ -687,7 +824,7 @@ export function buildReviewImportArtifacts(options = {}) {
         : "partial",
   };
   const reviewEvidenceReadinessReport = {
-    generatedAt: options.generatedAt ?? new Date().toISOString(),
+    generatedAt,
     reviewSources: reviewEvidenceEntries,
     summary: {
       totalSources: reviewEvidenceEntries.length,

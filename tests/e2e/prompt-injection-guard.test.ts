@@ -67,7 +67,7 @@ test("E2E: classifyPromptInjectionRisk allows benign input", () => {
   assert.equal(result.matchedSignals.length, 0, "Should have no matched signals");
 });
 
-test("E2E: embedCanaryToken creates unique token per scope and prompt", () => {
+test("E2E: embedCanaryToken creates nonce-backed unique token per invocation", () => {
   const prompt = "You are a helpful assistant.";
 
   const result1 = embedCanaryToken(prompt, "scope-1");
@@ -75,8 +75,9 @@ test("E2E: embedCanaryToken creates unique token per scope and prompt", () => {
   const result3 = embedCanaryToken(prompt, "scope-1");
 
   assert.notEqual(result1.token, result2.token, "Different scopes should produce different tokens");
-  assert.equal(result1.token, result3.token, "Same scope and prompt should produce same token");
+  assert.notEqual(result1.token, result3.token, "Same scope and prompt should still produce different nonce-backed tokens");
   assert.ok(result1.prompt.includes(result1.token), "Token should be embedded in prompt");
+  assert.ok(result3.prompt.includes(result3.token), "Each prompt should embed its own token");
 });
 
 test("E2E: detectCanaryTokenLeakage identifies leaked tokens", () => {

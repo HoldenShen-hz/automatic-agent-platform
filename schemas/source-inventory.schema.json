@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/source-inventory.schema.json",
+  "title": "Source Inventory Report",
+  "type": "object",
+  "required": ["generatedAt", "totalFiles", "moduleCount", "byKind", "files", "modules"],
+  "properties": {
+    "generatedAt": { "type": "string", "minLength": 1 },
+    "totalFiles": { "type": "integer", "minimum": 0 },
+    "moduleCount": { "type": "integer", "minimum": 0 },
+    "byKind": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "kind",
+          "plane",
+          "module",
+          "tags",
+          "owner",
+          "riskTags",
+          "hasTests",
+          "hasContract",
+          "ciGates"
+        ],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "minLength": 1 },
+          "plane": { "type": "string" },
+          "module": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "owner": { "type": "string", "minLength": 1 },
+          "riskTags": { "type": "array", "items": { "type": "string" } },
+          "hasTests": { "type": "boolean" },
+          "hasContract": { "type": "boolean" },
+          "ciGates": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "moduleId",
+          "kind",
+          "plane",
+          "module",
+          "owner",
+          "fileCount",
+          "files",
+          "riskTags",
+          "hasTests",
+          "supportingTests",
+          "hasContract",
+          "supportingContracts",
+          "ciGates"
+        ],
+        "properties": {
+          "moduleId": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "minLength": 1 },
+          "plane": { "type": "string" },
+          "module": { "type": "string" },
+          "owner": { "type": "string", "minLength": 1 },
+          "fileCount": { "type": "integer", "minimum": 0 },
+          "files": { "type": "array", "items": { "type": "string" } },
+          "riskTags": { "type": "array", "items": { "type": "string" } },
+          "hasTests": { "type": "boolean" },
+          "supportingTests": { "type": "array", "items": { "type": "string" } },
+          "hasContract": { "type": "boolean" },
+          "supportingContracts": { "type": "array", "items": { "type": "string" } },
+          "ciGates": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

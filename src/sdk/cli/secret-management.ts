@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 
 import { withCliStorageAsync } from "./authoritative-storage.js";
 import { CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
+import { summarizeCliError } from "./cli-file-guards.js";
 import { loadSecretManagementCliEnv } from "../../platform/five-plane-control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import type {
@@ -38,12 +39,115 @@ function buildSecretAuthorizationContext(envConfig: ReturnType<typeof loadSecret
   };
 }
 
-function sanitizeSecretMetadata(value: unknown): unknown {
+const SECRET_VALUE_KEY_PATTERN = /^(plaintext|value|secretValue|resolvedValue|leaseToken|token|privateKey|material)$/u;
+const METADATA_SAFE_KEYS = new Set([
+  "secretRef",
+  "envName",
+  "scope",
+  "source",
+  "resolved",
+  "maskedValue",
+  "providerKind",
+  "registryStatus",
+  "lastRotatedAt",
+  "nextRotationDueAt",
+  "auditId",
+  "resolvedVersion",
+  "leaseId",
+  "leaseStatus",
+  "leaseSource",
+  "providerLeaseId",
+  "issuedAt",
+  "expiresAt",
+  "revokedAt",
+  "renewable",
+  "issuedBy",
+]);
+const REGISTRY_SAFE_KEYS = new Set([
+  "secretRef",
+  "displayName",
+  "category",
+  "providerKind",
+  "scopeType",
+  "scopeRef",
+  "status",
+  "currentVersion",
+  "lastRotatedAt",
+  "nextRotationDueAt",
+  "createdAt",
+  "updatedAt",
+]);
+const LEASE_SAFE_KEYS = new Set([
+  "leaseId",
+  "secretRef",
+  "providerKind",
+  "taskId",
+  "executionId",
+  "requestedBy",
+  "grantedTo",
+  "usagePurpose",
+  "issuedAt",
+  "expiresAt",
+  "status",
+  "revokedAt",
+  "revokedBy",
+  "revocationReasonCode",
+  "sourceVersion",
+  "maskedValue",
+]);
+const USAGE_AUDIT_SAFE_KEYS = new Set([
+  "auditId",
+  "secretRef",
+  "providerKind",
+  "taskId",
+  "executionId",
+  "requestedBy",
+  "grantedTo",
+  "usagePurpose",
+  "resolvedAt",
+  "expiresAt",
+  "maskedValue",
+]);
+const ROTATION_EVENT_SAFE_KEYS = new Set([
+  "eventId",
+  "secretRef",
+  "rotationMode",
+  "status",
+  "reasonCode",
+  "requestedBy",
+  "previousVersion",
+  "nextVersion",
+  "occurredAt",
+]);
+
+function sanitizeSecretPrimitive(key: string, value: unknown): unknown {
+  if (SECRET_VALUE_KEY_PATTERN.test(key)) {
+    return "[REDACTED]";
+  }
+  return value;
+}
+
+function sanitizeSecretSection(
+  value: unknown,
+  safeKeys: ReadonlySet<string>,
+): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeSecretSection(entry, safeKeys));
+  }
   if (value == null || typeof value !== "object") {
     return value;
   }
-  const keys = Object.keys(value as Record<string, unknown>).sort();
-  return { redacted: true, keys };
+  const record = value as Record<string, unknown>;
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(record)) {
+    if (!safeKeys.has(key)) {
+      continue;
+    }
+    sanitized[key] = sanitizeSecretResult(sanitizeSecretPrimitive(key, entry));
+  }
+  sanitized.redacted = true;
+  sanitized.keys = Object.keys(record).sort();
+  return sanitized;
 }
 
 function sanitizeSecretResult(value: unknown): unknown {
@@ -57,14 +161,26 @@ function sanitizeSecretResult(value: unknown): unknown {
   const sanitized: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(record)) {
     if (key === "metadata") {
-      sanitized[key] = sanitizeSecretMetadata(entry);
+      sanitized[key] = sanitizeSecretSection(entry, METADATA_SAFE_KEYS);
       continue;
     }
-    if (key === "registry" || key === "lease") {
-      sanitized[key] = sanitizeSecretMetadata(entry);
+    if (key === "registry") {
+      sanitized[key] = sanitizeSecretSection(entry, REGISTRY_SAFE_KEYS);
       continue;
     }
-    if (/^(plaintext|value|secretValue|resolvedValue|leaseToken|token|privateKey|material)$/u.test(key)) {
+    if (key === "lease") {
+      sanitized[key] = sanitizeSecretSection(entry, LEASE_SAFE_KEYS);
+      continue;
+    }
+    if (key === "usageAudit" || key === "usageAudits") {
+      sanitized[key] = sanitizeSecretSection(entry, USAGE_AUDIT_SAFE_KEYS);
+      continue;
+    }
+    if (key === "rotationEvents") {
+      sanitized[key] = sanitizeSecretSection(entry, ROTATION_EVENT_SAFE_KEYS);
+      continue;
+    }
+    if (SECRET_VALUE_KEY_PATTERN.test(key)) {
       sanitized[key] = "[REDACTED]";
       continue;
     }
@@ -192,7 +308,9 @@ export async function main(): Promise<number> {
 if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
   void runCliMain(main, {
     onError: (error) => {
-      const code = error instanceof ValidationError ? error.code : "secret_management.failed";
+      const code = error instanceof ValidationError
+        ? error.code
+        : summarizeCliError(error, "secret_management.failed");
       process.stderr.write(`${code}\n`);
     },
   });

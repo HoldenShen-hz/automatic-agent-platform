@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
@@ -74,6 +75,10 @@ function createCommandHarness(prefix: string): {
   });
 
   return { workspace, db, store, executor };
+}
+
+function artifactRefToFsPath(ref: string): string {
+  return ref.startsWith("file://") ? fileURLToPath(ref) : ref;
 }
 
 test("command executor blocks inline code execution [command-executor]", async () => {
@@ -617,8 +622,9 @@ test("command executor externalizes oversized sanitized output into an artifact 
     if (result.artifacts.length > 0) {
       assert.equal(result.output.rawRef, result.artifacts[0]);
       assert.ok(result.output.warnings.includes("output_externalized"));
-      assert.ok(existsSync(result.artifacts[0] ?? ""));
-      const persistedOutput = readFileSync(result.artifacts[0]!, "utf8");
+      const artifactPath = artifactRefToFsPath(result.artifacts[0]!);
+      assert.ok(existsSync(artifactPath));
+      const persistedOutput = readFileSync(artifactPath, "utf8");
       assert.equal(persistedOutput.length, 7000);
       assert.equal(persistedOutput, "L".repeat(7000));
     } else {
@@ -662,7 +668,8 @@ test("command executor externalizes redacted oversized output without persisting
     assert.ok(result.output.warnings.includes("secret_redacted"));
     if (result.artifacts.length > 0) {
       assert.ok(result.output.warnings.includes("output_externalized"));
-      const persistedOutput = readFileSync(result.artifacts[0]!, "utf8");
+      const artifactPath = artifactRefToFsPath(result.artifacts[0]!);
+      const persistedOutput = readFileSync(artifactPath, "utf8");
       assert.doesNotMatch(persistedOutput, new RegExp(secret.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
       assert.match(persistedOutput, /\[REDACTED\]/);
     } else {

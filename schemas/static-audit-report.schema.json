@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/static-audit-report.schema.json",
+  "title": "Static Audit Report",
+  "type": "object",
+  "required": ["generatedAt", "repoRoot", "status", "auditCount", "findingCount", "bySeverity", "audits", "findings"],
+  "properties": {
+    "generatedAt": { "type": "string", "minLength": 1 },
+    "repoRoot": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["pass", "fail"] },
+    "auditCount": { "type": "integer", "minimum": 0 },
+    "findingCount": { "type": "integer", "minimum": 0 },
+    "bySeverity": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "audits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "command",
+          "startedAt",
+          "endedAt",
+          "exitCode",
+          "ok",
+          "parseError",
+          "scannedPath",
+          "scannedFileCount",
+          "findingCount",
+          "bySeverity"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "command": { "type": "string", "minLength": 1 },
+          "startedAt": { "type": "string", "minLength": 1 },
+          "endedAt": { "type": "string", "minLength": 1 },
+          "exitCode": { "type": "integer" },
+          "ok": { "type": "boolean" },
+          "parseError": { "type": ["string", "null"] },
+          "scannedPath": { "type": ["string", "null"] },
+          "scannedFileCount": { "type": ["integer", "null"] },
+          "findingCount": { "type": "integer", "minimum": 0 },
+          "bySeverity": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } }
+        },
+        "additionalProperties": false
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule", "severity", "path", "line", "message", "auditId", "auditCommand", "scannedPath", "generatedAt"],
+        "properties": {
+          "rule": { "type": "string", "minLength": 1 },
+          "severity": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "line": { "type": ["integer", "null"] },
+          "message": { "type": "string", "minLength": 1 },
+          "auditId": { "type": "string", "minLength": 1 },
+          "auditCommand": { "type": "string", "minLength": 1 },
+          "scannedPath": { "type": ["string", "null"] },
+          "generatedAt": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}

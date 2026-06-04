@@ -13,7 +13,10 @@ if [ ! -f "${MANIFEST_PATH}" ]; then
   exit 1
 fi
 
-mapfile -t TEST_FILES < <(
+TEST_FILES=()
+while IFS= read -r file; do
+  TEST_FILES+=("${file}")
+done < <(
   node -e '
     const fs = require("node:fs");
     const manifest = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));

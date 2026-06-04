@@ -58,7 +58,8 @@ test("web runtime and mobile shell keep current startup capabilities wired", () 
   assert.match(webRuntime, /VITE_WS_URL/);
   assert.match(webRuntime, /export function createWebRuntimeClients/);
   assert.match(webRuntime, /createPersistentOfflineQueue/);
-  assert.match(webRuntime, /BrowserWSClient/);
+  assert.match(webRuntime, /createRuntimeWSClient/);
+  assert.match(webRuntime, /InMemoryWSClient/);
 
   assert.match(mobileIndex, /export const mobileShellManifest/);
   assert.match(mobileIndex, /platforms:\s*\["android", "ios"\]/);
@@ -77,7 +78,7 @@ test("html and package assets preserve the expected security and packaging contr
 
   assert.ok(electronHtml.toLowerCase().includes("<!doctype html>"));
   assert.ok(electronHtml.includes('http-equiv="Content-Security-Policy"'));
-  assert.ok(!webHtml.includes('http-equiv="Content-Security-Policy"'));
+  assert.ok(webHtml.includes('http-equiv="Content-Security-Policy"'));
   assert.ok(!webHtml.includes('name="aa-csrf-token"'));
   assert.match(webViteConfig, /defineConfig/);
   assert.ok(

@@ -239,7 +239,7 @@ test("2007: definePlugin accepts signing information when provided", async () =>
   const { privateKey, publicKey } = generateKeyPairSync("ed25519");
   registry.registerKey("test-key", publicKey.export({ type: "spki", format: "pem" }).toString(), "ed25519");
 
-  const canonicalPayload = {
+  const unsignedPlugin = definePlugin({
     pluginId: "test.signed-plugin",
     name: "Signed Plugin",
     version: "1.0.0",
@@ -252,13 +252,30 @@ test("2007: definePlugin accepts signing information when provided", async () =>
         outputSchema: { type: "object" },
       },
     ],
-    spiTypes: ["tool"] as Array<"tool">,
+    spiTypes: ["tool"],
     domainIds: [],
+  });
+  const canonicalPayload = {
+    pluginId: unsignedPlugin.pluginId,
+    name: unsignedPlugin.name,
+    version: unsignedPlugin.version,
+    type: unsignedPlugin.type,
+    capabilities: unsignedPlugin.capabilities,
+    resourceLimits: unsignedPlugin.resourceLimits,
+    dependencies: unsignedPlugin.dependencies,
+    spiTypes: unsignedPlugin.spiTypes,
+    domainIds: unsignedPlugin.domainIds,
   };
   const signature = sign(null, Buffer.from(JSON.stringify(canonicalPayload)), privateKey).toString("base64url");
 
   const plugin = await definePlugin({
-    ...canonicalPayload,
+    pluginId: unsignedPlugin.pluginId,
+    name: unsignedPlugin.name,
+    version: unsignedPlugin.version,
+    type: unsignedPlugin.type,
+    capabilities: unsignedPlugin.capabilities,
+    spiTypes: unsignedPlugin.spiTypes,
+    domainIds: unsignedPlugin.domainIds,
     signing: {
       keyId: "test-key",
       signature,

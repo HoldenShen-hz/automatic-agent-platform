@@ -89,6 +89,14 @@
       "type": "string",
       "enum": ["open", "in_progress", "fixed", "verified", "accepted_risk", "needs_revalidation", "closed"]
     },
+    "coverageRequired": {
+      "type": "boolean",
+      "description": "Whether this issue must participate in active test-to-issue coverage gating."
+    },
+    "coverageReason": {
+      "type": ["string", "null"],
+      "description": "Why the issue is or is not expected to bind to active tests."
+    },
     "linkedPromiseIds": {
       "type": "array",
       "items": { "type": "string" }

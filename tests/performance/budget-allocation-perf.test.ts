@@ -61,7 +61,6 @@ function createDefaultContext(tenantId: string, harnessRunId: string): BudgetAll
 
 test("budget: reservation throughput >1000 ops/sec", (t) => {
   const db = createTempDb();
-  const store = new AuthoritativeTaskStore(db);
   const allocator = createBudgetAllocator();
 
   try {
@@ -84,26 +83,28 @@ test("budget: reservation throughput >1000 ops/sec", (t) => {
 
     const context = createDefaultContext(tenantId, harnessRunId);
 
-    // Warmup
+    // Warmup on the same evolving ledger state so the in-memory CAS mirror stays aligned.
+    let currentLedger = ledger;
+    let version = ledger.version;
     for (let i = 0; i < 50; i++) {
-      allocator.reserve({
-        ledger: { ...ledger, version: ledger.version + i },
+      const warmupResult = allocator.reserve({
+        ledger: currentLedger,
         amount: 100,
         resourceKind: "compute",
         expiresAt: nowIso(),
-        expectedVersion: ledger.version + i,
+        expectedVersion: version,
         context,
       });
+      currentLedger = warmupResult.ledger;
+      version = warmupResult.ledger.version;
     }
 
     // Benchmark
     const start = performance.now();
-    let currentLedger = ledger;
-    let version = ledger.version;
 
     for (let i = 0; i < iterations; i++) {
       const result = allocator.reserve({
-        ledger: { ...currentLedger, version },
+        ledger: currentLedger,
         amount: 100,
         resourceKind: "compute",
         expiresAt: nowIso(),
@@ -138,7 +139,6 @@ test("budget: reservation throughput >1000 ops/sec", (t) => {
 
 test("budget: high-load reservation throughput >500 ops/sec with 10 concurrent allocators", async (t) => {
   const db = createTempDb();
-  const store = new AuthoritativeTaskStore(db);
   const numAllocators = 10;
   const reservationsPerAllocator = 50;
   const totalReservations = numAllocators * reservationsPerAllocator;
@@ -213,7 +213,6 @@ test("budget: high-load reservation throughput >500 ops/sec with 10 concurrent a
 
 test("budget: settlement throughput >2000 ops/sec", (t) => {
   const db = createTempDb();
-  const store = new AuthoritativeTaskStore(db);
   const allocator = createBudgetAllocator();
 
   try {
@@ -236,33 +235,35 @@ test("budget: settlement throughput >2000 ops/sec", (t) => {
 
     const context = createDefaultContext(tenantId, harnessRunId);
 
-    // Warmup - create reservations and settle them
+    // Warmup on the same evolving ledger state so reserve/settle pairs respect current CAS state.
+    let currentLedger = ledger;
+    let version = ledger.version;
     for (let i = 0; i < 20; i++) {
       const reserveResult = allocator.reserve({
-        ledger: { ...ledger, version: ledger.version + i },
+        ledger: currentLedger,
         amount: 100,
         resourceKind: "compute",
         expiresAt: nowIso(),
-        expectedVersion: ledger.version + i,
+        expectedVersion: version,
         context,
       });
-      allocator.settle({
+      const settleResult = allocator.settle({
         ledger: reserveResult.ledger,
         reservation: reserveResult.reservation,
         actualAmount: 100,
         context,
       });
+      currentLedger = settleResult.ledger;
+      version = settleResult.ledger.version;
     }
 
     // Benchmark
     const start = performance.now();
-    let currentLedger = ledger;
-    let version = ledger.version;
 
     for (let i = 0; i < iterations; i++) {
       // First reserve
       const reserveResult = allocator.reserve({
-        ledger: { ...currentLedger, version },
+        ledger: currentLedger,
         amount: 100,
         resourceKind: "compute",
         expiresAt: nowIso(),

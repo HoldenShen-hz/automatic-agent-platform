@@ -14,16 +14,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
-import { join } from "node:path";
-import { mkdirSync } from "node:fs";
 
 import { ArtifactStore } from "../../../src/platform/five-plane-state-evidence/artifacts/artifact-store.js";
 import { newId } from "../../../src/platform/contracts/types/ids.js";
-import { cleanupPath } from "../../helpers/fs.js";
+import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 
 function createTempArtifactStore(): { store: ArtifactStore; cleanup: () => void } {
-  const tempDir = join(".tmp", `artifact-perf-${process.pid}-${Date.now()}`);
-  mkdirSync(tempDir, { recursive: true });
+  const tempDir = createTempWorkspace("artifact-perf-");
   const store = new ArtifactStore({ rootDir: tempDir });
   return {
     store,

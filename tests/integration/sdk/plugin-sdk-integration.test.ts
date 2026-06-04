@@ -222,7 +222,7 @@ test("plugin SDK: PluginContext initializes with pluginId and provides accessors
   assert.equal(ctx.taskId, "task-123");
   assert.equal(ctx.tenantId, "tenant-acme");
   assert.equal(ctx.userId, "user-456");
-  assert.equal(ctx.sandboxTier, "workspace_write");
+  assert.equal(ctx.sandboxTier, "restricted_exec");
 });
 
 test("plugin SDK: PluginContext defaults values when not provided", () => {

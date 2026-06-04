@@ -265,6 +265,35 @@ function collectEvidenceReports(
   });
 }
 
+function isGateHealthyEvidenceBundle(report: StableEvidenceBundleReport): boolean {
+  return Boolean(
+    report.summary.chaosPassed
+    && report.summary.promptInjectionPassed
+    && report.summary.concurrencyPassed
+    && report.summary.leasePassed
+    && report.summary.rollbackPassed
+    && report.summary.backupRestorePassed
+    && report.summary.rollingUpgradePassed
+    && report.summary.maintenancePassed
+    && report.summary.grayReleasePassed
+    && report.summary.eventReplayPassed
+    && report.summary.dbQueueDisconnectPassed
+    && report.summary.dbWritabilityPassed
+    && report.summary.queueDeliveryPassed
+    && report.summary.dispatchPassed
+    && report.summary.workerHandshakePassed
+    && report.summary.workerWritebackPassed
+    && report.summary.migrationCompatibilityPassed
+    && report.summary.validationPassed
+    && report.summary.soakPassed
+    && (report.summary.doctorStatus === "ok" || report.summary.doctorStatus === "fail_closed")
+    && (report.summary.startupConsistencyStatus === "pass" || report.summary.startupConsistencyStatus === "fail_closed")
+    && (report.summary.repairAfterStatus === "pass" || report.summary.repairAfterStatus === "fail_closed")
+    && report.summary.pendingAckBacklogAfterDrain === 0
+    && report.summary.takeoverSampleClosedLoop === true
+  );
+}
+
 /**
  * Builds a complete gate evaluation report.
  *
@@ -287,7 +316,7 @@ export function buildStableReleaseGateReport(options: StableReleaseGateOptions):
   const availableProfiles = reports.filter((item) => item.report !== null).map((item) => item.profile);
   const missingProfiles = reports.filter((item) => item.report === null).map((item) => item.profile);
   const failingProfiles = reports
-    .filter((item) => item.report !== null && !item.report.summary.passed)
+    .filter((item) => item.report !== null && !isGateHealthyEvidenceBundle(item.report))
     .map((item) => item.profile);
   const hasAnyEvidence = reports.some((item) => item.report !== null);
   const passingReports = reports

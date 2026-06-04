@@ -92,6 +92,13 @@ function buildEvidenceReport(root: string) {
       dispatchPassed: true,
       workerHandshakePassed: true,
       workerWritebackPassed: true,
+      validationPassed: true,
+      soakPassed: true,
+      doctorStatus: "ok",
+      startupConsistencyStatus: "pass",
+      repairAfterStatus: "pass",
+      pendingAckBacklogAfterDrain: 0,
+      takeoverSampleClosedLoop: true,
     },
   };
 }
@@ -117,8 +124,8 @@ test("integration: stable release gate approves production promotion from real e
       targetStatus: "production_ready",
     });
 
-    assert.equal(report.overallVerdict, "conditional");
-    assert.equal(report.currentStatus, "tenant_gray");
+    assert.equal(report.overallVerdict, "promote_approved");
+    assert.equal(report.currentStatus, "production_ready");
     assert.deepEqual(report.availableProfiles, ["smoke", "24h", "72h"]);
     assert.ok(report.requiredCriteria.length > 0);
   } finally {

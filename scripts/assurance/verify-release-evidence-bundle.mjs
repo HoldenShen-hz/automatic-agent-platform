@@ -10,10 +10,12 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(process.cwd());
 const bundlePath = join(repoRoot, "artifacts", "release", "evidence-bundle.json");
 const sigPath = join(repoRoot, "artifacts", "release", "evidence-bundle.sig");
+const scriptPath = fileURLToPath(import.meta.url);
 
 function hmacSha256(key, data) {
   return createHmac("sha256", key).update(data).digest("hex");
@@ -78,4 +80,6 @@ function main() {
   }
 }
 
-main();
+if (process.argv[1] != null && resolve(process.argv[1]).replaceAll("\\", "/") === scriptPath.replaceAll("\\", "/")) {
+  main();
+}

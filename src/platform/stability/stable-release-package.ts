@@ -152,6 +152,35 @@ function safeReadJson<T>(path: string): T | null {
   return JSON.parse(readFileSync(path, "utf8")) as T;
 }
 
+function isPackagePassingEvidenceBundle(report: StableEvidenceBundleReport): boolean {
+  return Boolean(
+    report.summary.chaosPassed
+    && report.summary.promptInjectionPassed
+    && report.summary.concurrencyPassed
+    && report.summary.leasePassed
+    && report.summary.rollbackPassed
+    && report.summary.backupRestorePassed
+    && report.summary.rollingUpgradePassed
+    && report.summary.maintenancePassed
+    && report.summary.grayReleasePassed
+    && report.summary.eventReplayPassed
+    && report.summary.dbQueueDisconnectPassed
+    && report.summary.dbWritabilityPassed
+    && report.summary.queueDeliveryPassed
+    && report.summary.dispatchPassed
+    && report.summary.workerHandshakePassed
+    && report.summary.workerWritebackPassed
+    && report.summary.migrationCompatibilityPassed
+    && report.summary.validationPassed
+    && report.summary.soakPassed
+    && (report.summary.doctorStatus === "ok" || report.summary.doctorStatus === "fail_closed")
+    && (report.summary.startupConsistencyStatus === "pass" || report.summary.startupConsistencyStatus === "fail_closed")
+    && (report.summary.repairAfterStatus === "pass" || report.summary.repairAfterStatus === "fail_closed")
+    && report.summary.pendingAckBacklogAfterDrain === 0
+    && report.summary.takeoverSampleClosedLoop === true
+  );
+}
+
 /** Collects profile summaries from evidence directories */
 function collectProfiles(evidenceRootDir: string): StableReleasePackageProfileSummary[] {
   return SUPPORTED_PROFILES.map((profile) => {
@@ -162,7 +191,7 @@ function collectProfiles(evidenceRootDir: string): StableReleasePackageProfileSu
       profile,
       reportPath,
       present: report !== null,
-      passed: report?.summary.passed ?? null,
+      passed: report == null ? null : isPackagePassingEvidenceBundle(report),
       chaosPassed: report?.summary.chaosPassed ?? null,
       leasePassed: report?.summary.leasePassed ?? null,
       rollbackPassed: report?.summary.rollbackPassed ?? null,

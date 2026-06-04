@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { createWorkspaceWritePolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
@@ -281,10 +283,19 @@ test("command executor externalizes oversized output into an artifact that stays
     });
 
     assert.equal(result.status, "succeeded");
-    assert.equal(result.output.truncated, false);
-    assert.equal(result.artifacts.length, 0);
-    assert.equal(result.output.rawRef, null);
-    assert.ok(result.output.warnings.includes("output_externalize_failed"));
+    assert.equal(result.output.truncated, true);
+    assert.equal(result.artifacts.length, 1);
+    assert.equal(result.output.rawRef, result.artifacts[0]);
+    assert.ok(result.output.warnings.includes("output_externalized"));
+    const artifactPath = fileURLToPath(result.artifacts[0]!);
+    assert.equal(
+      realpathSync.native(artifactPath).startsWith(realpathSync.native(workspace)),
+      true,
+    );
+    assert.equal(existsSync(artifactPath), true);
+    const persisted = readFileSync(artifactPath, "utf8");
+    assert.equal(persisted.includes("S".repeat(7000)), true);
+    assert.equal(persisted.includes("E".repeat(7000)), true);
   } finally {
     cleanupPath(workspace);
   }

@@ -6,6 +6,15 @@ import test from "node:test";
 
 import { buildReviewImportArtifacts } from "../../../../scripts/assurance/review-import-lib.mjs";
 
+type ConflictCandidate = {
+  severity: string | null;
+};
+
+type NormalizedFinding = {
+  title: string;
+  freshness: string | null;
+};
+
 function writeFile(path: string, content: string) {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, content, "utf8");
@@ -58,6 +67,8 @@ test("buildReviewImportArtifacts parses table reviews and produces coverage/conf
   assert.equal(conflictPayload.length, 1);
   assert.equal(reviewEvidencePayload.reviewSources.length, 2);
   assert.equal(normalizedPayload.find((entry) => entry.title === "electron bridge mismatch")?.status, "todo");
+  assert.equal(conflictPayload[0].conflictType, "doc_claim_vs_runtime");
+  assert.equal(conflictPayload[0].decisionBasis, "runtime_or_code_evidence_precedes_doc_claim");
 });
 
 test("buildReviewImportArtifacts marks unstructured review files as parse warnings", () => {
@@ -158,4 +169,72 @@ test("buildReviewImportArtifacts auto-resolves newer evidenced review rows", () 
   assert.equal(result.conflictRecords.length, 1);
   assert.equal(result.conflictRecords[0].decision, "fixed");
   assert.equal(result.conflictRecords[0].blocking, false);
+  assert.equal(result.conflictRecords[0].conflictType, "review_fixed_vs_test_failed");
+});
+
+test("buildReviewImportArtifacts records severity mismatch conflicts even when statuses match", () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), "aa-review-import-severity-"));
+  const reviewsRoot = join(repoRoot, "docs_zh", "reviews");
+  writeFile(
+    join(reviewsRoot, "platforme-full-review-e.md"),
+    [
+      "| 编号 | 严重级别 | 问题 | 状态 | 证据 |",
+      "| --- | --- | --- | --- | --- |",
+      "| 1 | P2 | shared severity title | `todo` | docs_zh/contracts/foo.md |",
+      "",
+    ].join("\n"),
+  );
+  writeFile(
+    join(reviewsRoot, "system-review-2026-05-26.md"),
+    [
+      "| ID | 严重级别 | 问题 | Review结论 | 根因归类 | 证据 |",
+      "|---|---|---|---|---|---|",
+      "| SYS-009 | P0 | shared severity title | 未解决。当前桥接失效。 | contract drift | docs_zh/contracts/foo.md |",
+      "",
+    ].join("\n"),
+  );
+
+  const result = buildReviewImportArtifacts({
+    repoRoot,
+    reviewsRoot: "docs_zh/reviews",
+    outputDir: "artifacts/assurance",
+    generatedAt: "2026-06-02T12:00:00Z",
+  });
+
+  assert.equal(result.conflictRecords.length, 1);
+  assert.equal(result.conflictRecords[0].conflictType, "severity_mismatch");
+  assert.equal(result.conflictRecords[0].blocking, false);
+  assert.deepEqual(
+    result.conflictRecords[0].candidates.map((candidate: ConflictCandidate) => candidate.severity),
+    ["P2", "P0"],
+  );
+});
+
+test("buildReviewImportArtifacts infers freshness for current and resolved review rows", () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), "aa-review-import-freshness-"));
+  const reviewsRoot = join(repoRoot, "docs_zh", "reviews");
+  writeFile(
+    join(reviewsRoot, "platforme-full-review-e.md"),
+    [
+      "**Review Date**: 2026/04/01",
+      "",
+      "| 编号 | 问题 | 状态 | 证据 |",
+      "| --- | --- | --- | --- |",
+      "| 1 | stale row | `todo` |  |",
+      "| 2 | resolved row | `fixed` | tests/unit/example.test.ts |",
+      "",
+    ].join("\n"),
+  );
+
+  const result = buildReviewImportArtifacts({
+    repoRoot,
+    reviewsRoot: "docs_zh/reviews",
+    outputDir: "artifacts/assurance",
+    generatedAt: "2026-06-02T12:00:00Z",
+  });
+
+  const stale = result.normalizedFindings.find((entry: NormalizedFinding) => entry.title === "stale row");
+  const resolved = result.normalizedFindings.find((entry: NormalizedFinding) => entry.title === "resolved row");
+  assert.equal(stale?.freshness, "stale");
+  assert.equal(resolved?.freshness, "revalidated");
 });

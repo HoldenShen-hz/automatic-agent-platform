@@ -35,6 +35,42 @@ Issue Ledger 是 P0/P1 issue 的唯一机器可读载体。任何 audit script�
 | `requiredTest` | ✅ | 至少包含 1 个测试类型（unit/integration/…） |
 | `requiredGate` | ✅ | 至少包含 1 个 audit:* 或 test:* gate |
 | `owner` | ❌ | 缺失时填 `TBD`；release 前必须收敛 |
+| `coverageRequired` | ❌ | `true/false`。`false` 表示该 issue 仅保留追溯，不再参与当前 release coverage gate |
+| `coverageReason` | ❌ | 当 `coverageRequired=false` 时必填，解释为何仅保留追溯 |
+
+## 3.1 Active Coverage 与 Traceability-only 的分层
+
+Issue Ledger 不再默认把所有历史 finding 都当作当前 release blocker。实现时必须区分两类记录：
+
+```text
+coverageRequired=true
+  参与 assurance:verify-test-coverage
+  参与 coverage-scorecard 的 active issue coverage 计算
+  必须通过 gate / invariant / test 绑定
+
+coverageRequired=false
+  仅用于历史追溯、review 证据链和 promise lineage
+  不作为当前 release gate 的 active blocker
+  但仍必须保留 issueId / sourceRef / linkedReviewIds / linkedPromiseIds
+```
+
+允许进入 `coverageRequired=false` 的典型场景：
+
+```text
+review 已明确 fixed / verified / closed
+review 被标记为 accepted_risk 且 owner/expiry 完整
+历史问题需要保留 lineage，但当前代码/测试链已换代
+旧 finding 仅作为审计样本存在，当前需要的是重新验证而不是继续阻断 release
+```
+
+常见 `coverageReason` 示例：
+
+```text
+historical_or_resolved_issue_kept_for_traceability_only
+accepted_risk_with_compensating_control
+superseded_by_newer_runtime_or_contract
+manual_sample_for_audit_lineage_only
+```
 
 ## 4. status 合法值与转换
 
@@ -61,6 +97,21 @@ closed                 // 仅在 verified 后才能进入
 | Audit finding | `audit:<scanner>:<rule>` | `sourceRef` + `requiredGate[0]` |
 
 `build-issue-ledger.mjs` 必须把 `review-ledger.normalized.jsonl` 与 `historical-promises.jsonl` 合并生成 normalized issues；任何一条都没有反向映射的 review / promise 记录都必须报错。
+
+此外，`build-issue-ledger.mjs` 必须负责把 review/historical/audit finding 归类成：
+
+```text
+active coverage issue      -> coverageRequired=true
+traceability-only issue    -> coverageRequired=false
+```
+
+并保证 `coverageReason` 与 `status` 一致，不允许出现：
+
+```text
+status=open 但 coverageRequired=false 且无依据
+status=verified/closed 但 coverageRequired=true 且没有 active regression 需要
+accepted_risk 但 coverageReason 缺失
+```
 
 ## 6. 禁止关闭条件
 

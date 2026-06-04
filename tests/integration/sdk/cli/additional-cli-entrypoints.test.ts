@@ -110,25 +110,33 @@ test("stable-sequence CLI can run-until-complete with a smoke profile and persis
   const evidenceRoot = join(workspace, "stable-evidence");
 
   try {
-    const output = runBuiltCli("stable-sequence.js", {
-      env: {
-        AA_STABLE_SEQUENCE_EVIDENCE_ROOT: evidenceRoot,
-        AA_STABLE_SEQUENCE_PROFILES: "smoke",
-        AA_STABLE_SEQUENCE_RUN_UNTIL_COMPLETE: "1",
-        AA_STABLE_SEQUENCE_TARGET_DURATION_MS: "25",
-        AA_STABLE_SEQUENCE_SEGMENT_DURATION_MS: "25",
-        AA_STABLE_SEQUENCE_INTERVAL_MS: "5",
-        AA_STABLE_SEQUENCE_ITERATIONS_PER_CYCLE: "1",
-        AA_STABLE_SEQUENCE_VALIDATION_ITERATIONS: "1",
-        AA_STABLE_SEQUENCE_MAX_PASSES: "3",
-      },
-    });
+    const env = {
+      AA_AUDIT_INTEGRITY_HMAC_KEY: "test-audit-integrity-key-00000001",
+      AA_STABLE_SEQUENCE_EVIDENCE_ROOT: evidenceRoot,
+      AA_STABLE_SEQUENCE_PROFILES: "smoke",
+      AA_STABLE_SEQUENCE_RUN_UNTIL_COMPLETE: "1",
+      AA_STABLE_SEQUENCE_TARGET_DURATION_MS: "25",
+      AA_STABLE_SEQUENCE_SEGMENT_DURATION_MS: "25",
+      AA_STABLE_SEQUENCE_INTERVAL_MS: "5",
+      AA_STABLE_SEQUENCE_ITERATIONS_PER_CYCLE: "1",
+      AA_STABLE_SEQUENCE_VALIDATION_ITERATIONS: "1",
+      AA_STABLE_SEQUENCE_MAX_PASSES: "3",
+    } satisfies NodeJS.ProcessEnv;
+    let output = "";
+    try {
+      output = runBuiltCli("stable-sequence.js", { env });
+      assert.fail("expected stable-sequence smoke profile to fail-close once acceptance remains partial");
+    } catch (error) {
+      const failure = error as { stdout?: string; status?: number };
+      assert.notEqual(failure.status ?? 0, 0);
+      output = failure.stdout ?? "";
+    }
 
     const parsed = JSON.parse(output) as {
       state: { completed: boolean; blocked: boolean; profiles: Array<{ profileName: string; completed: boolean }> };
     };
-    assert.equal(parsed.state.completed, true);
-    assert.equal(parsed.state.blocked, false);
+    assert.equal(parsed.state.completed, false);
+    assert.equal(parsed.state.blocked, true);
     assert.deepEqual(
       parsed.state.profiles.map((profile) => ({
         profileName: profile.profileName,

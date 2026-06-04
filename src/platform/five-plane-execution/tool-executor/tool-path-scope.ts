@@ -9,8 +9,8 @@
  * path scope determines if it falls within the execution's declared boundaries.
  */
 
-import { lstatSync, realpathSync } from "node:fs";
-import { resolve, sep } from "node:path";
+import { existsSync, lstatSync, realpathSync } from "node:fs";
+import { dirname, resolve, sep } from "node:path";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const toolPathScopeLogger = new StructuredLogger({ retentionLimit: 100 });
@@ -38,10 +38,9 @@ function normalizePath(path: string): string {
   try {
     return realpathSync.native(resolvedPath);
   } catch (err) {
+    let isSymlink = false;
     try {
-      if (lstatSync(resolvedPath).isSymbolicLink()) {
-        throw err;
-      }
+      isSymlink = lstatSync(resolvedPath).isSymbolicLink();
     } catch (statErr) {
       const code = typeof statErr === "object" && statErr != null && "code" in statErr
         ? (statErr as { code?: unknown }).code
@@ -50,7 +49,19 @@ function normalizePath(path: string): string {
         throw err;
       }
     }
-    return resolvedPath;
+    if (isSymlink) {
+      throw err;
+    }
+    let existingParent = dirname(resolvedPath);
+    while (existingParent !== dirname(existingParent) && !existsSync(existingParent)) {
+      existingParent = dirname(existingParent);
+    }
+    if (!existsSync(existingParent)) {
+      return resolvedPath;
+    }
+    const canonicalParent = realpathSync.native(existingParent);
+    const relativeTail = resolvedPath.slice(existingParent.length).replace(/^\/+/, "");
+    return relativeTail.length === 0 ? canonicalParent : resolve(canonicalParent, relativeTail);
   }
 }
 

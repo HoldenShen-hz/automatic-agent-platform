@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/test-issue-map.schema.json",
+  "title": "Test Issue Binding Map",
+  "type": "object",
+  "required": ["generatedAt", "bindings"],
+  "properties": {
+    "generatedAt": { "type": "string", "minLength": 1 },
+    "totalTests": { "type": "integer", "minimum": 0 },
+    "totalIssueRefs": { "type": "integer", "minimum": 0 },
+    "totalIssues": { "type": "integer", "minimum": 0 },
+    "totalTestRefs": { "type": "integer", "minimum": 0 },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

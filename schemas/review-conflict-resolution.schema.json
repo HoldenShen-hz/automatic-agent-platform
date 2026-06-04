@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/review-conflict-resolution.schema.json",
+  "title": "Review Conflict Resolution Record",
+  "type": "object",
+  "required": [
+    "conflictId",
+    "canonicalIssueId",
+    "sourceRefs",
+    "conflictType",
+    "candidates",
+    "decision",
+    "decisionBasis",
+    "blocking",
+    "decidedAt",
+    "decidedBy"
+  ],
+  "properties": {
+    "conflictId": { "type": "string", "pattern": "^AAS-REVIEW-CONFLICT-" },
+    "canonicalIssueId": { "type": "string", "minLength": 1 },
+    "sourceRefs": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "conflictType": { "type": "string", "minLength": 1 },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["status", "severity", "basis", "evidenceRefs"],
+        "properties": {
+          "status": { "type": "string", "minLength": 1 },
+          "severity": { "type": ["string", "null"] },
+          "basis": { "type": "string", "minLength": 1 },
+          "evidenceRefs": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    },
+    "decision": { "type": "string", "minLength": 1 },
+    "decisionBasis": { "type": "string", "minLength": 1 },
+    "blocking": { "type": "boolean" },
+    "decidedAt": { "type": "string", "minLength": 1 },
+    "decidedBy": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

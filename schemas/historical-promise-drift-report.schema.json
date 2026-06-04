@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/historical-promise-drift-report.schema.json",
+  "title": "Historical Promise Drift Report",
+  "type": "object",
+  "required": [
+    "generatedAt",
+    "scannedRoots",
+    "scannedFiles",
+    "totalPromises",
+    "releaseClaimCount",
+    "strongClaimWithoutArtifacts",
+    "files"
+  ],
+  "properties": {
+    "generatedAt": { "type": "string", "minLength": 1 },
+    "scannedRoots": { "type": "array", "items": { "type": "string" } },
+    "scannedFiles": { "type": "integer", "minimum": 0 },
+    "totalPromises": { "type": "integer", "minimum": 0 },
+    "releaseClaimCount": { "type": "integer", "minimum": 0 },
+    "strongClaimWithoutArtifacts": { "type": "integer", "minimum": 0 },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sourceFile", "scanned", "matchedRows"],
+        "properties": {
+          "sourceFile": { "type": "string", "minLength": 1 },
+          "scanned": { "type": "boolean" },
+          "matchedRows": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

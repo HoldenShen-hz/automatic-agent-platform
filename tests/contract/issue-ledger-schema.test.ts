@@ -23,13 +23,25 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..", "..");
 
 const SCHEMAS = [
+  "schemas/assumption-ledger.schema.json",
   "schemas/issue-ledger.schema.json",
   "schemas/coverage-scorecard.schema.json",
+  "schemas/completeness-coverage-matrix.schema.json",
   "schemas/assurance-report.schema.json",
+  "schemas/historical-issue-regression-map.schema.json",
   "schemas/historical-promise-ledger.schema.json",
+  "schemas/historical-promise-drift-report.schema.json",
+  "schemas/rc-check-report.schema.json",
   "schemas/release-evidence-bundle.schema.json",
+  "schemas/review-conflict-resolution.schema.json",
+  "schemas/review-evidence-readiness-report.schema.json",
   "schemas/seeded-defect.schema.json",
   "schemas/review-ledger.schema.json",
+  "schemas/review-source-coverage-report.schema.json",
+  "schemas/source-inventory.schema.json",
+  "schemas/static-audit-report.schema.json",
+  "schemas/test-coverage-report.schema.json",
+  "schemas/test-issue-map.schema.json",
 ];
 
 describe("contract: schemas/ JSON validity and minimum required fields", () => {
@@ -46,29 +58,97 @@ describe("contract: schemas/ JSON validity and minimum required fields", () => {
     });
   }
 
-  it("review-ledger.normalized.jsonl conforms to review-ledger.schema.json (light check)", () => {
-    const sample = "artifacts/assurance/review-ledger.normalized.jsonl";
-    const abs = join(repoRoot, sample);
-    if (!existsSync(abs)) {
-      // Skip: artifact not generated yet. Coverage scorecard will catch this.
-      return;
-    }
-    const lines = readFileSync(abs, "utf8")
-      .split(/\r?\n/)
-      .filter((l) => l.trim().length > 0)
-      .slice(0, 50);
-    const schema = JSON.parse(readFileSync(join(repoRoot, "schemas/review-ledger.schema.json"), "utf8"));
-    const required = schema.required as string[];
-    for (const line of lines) {
-      const obj = JSON.parse(line) as Record<string, unknown>;
-      for (const field of required) {
-        assert.ok(
-          Object.prototype.hasOwnProperty.call(obj, field),
-          `review-ledger line missing required field '${field}': ${line.slice(0, 80)}`,
-        );
+  for (const sample of [
+    "artifacts/assurance/review-ledger.raw.jsonl",
+    "artifacts/assurance/review-ledger.normalized.jsonl",
+  ]) {
+    it(`${sample} conforms to review-ledger.schema.json (light check)`, () => {
+      const abs = join(repoRoot, sample);
+      if (!existsSync(abs)) {
+        // Skip: artifact not generated yet. Coverage scorecard will catch this.
+        return;
       }
-    }
-  });
+      const lines = readFileSync(abs, "utf8")
+        .split(/\r?\n/)
+        .filter((l) => l.trim().length > 0)
+        .slice(0, 50);
+      const schema = JSON.parse(readFileSync(join(repoRoot, "schemas/review-ledger.schema.json"), "utf8"));
+      const required = schema.required as string[];
+      for (const line of lines) {
+        const obj = JSON.parse(line) as Record<string, unknown>;
+        for (const field of required) {
+          assert.ok(
+            Object.prototype.hasOwnProperty.call(obj, field),
+            `review-ledger line missing required field '${field}': ${line.slice(0, 80)}`,
+          );
+        }
+      }
+    });
+  }
+
+  const topLevelArtifactChecks = [
+    ["schemas/source-inventory.schema.json", "artifacts/assurance/source-inventory.json"],
+    ["schemas/review-source-coverage-report.schema.json", "artifacts/assurance/review-source-coverage-report.json"],
+    ["schemas/review-evidence-readiness-report.schema.json", "artifacts/assurance/review-evidence-readiness-report.json"],
+    ["schemas/static-audit-report.schema.json", "artifacts/assurance/static-audit-report.json"],
+    ["schemas/historical-promise-drift-report.schema.json", "artifacts/assurance/historical-promise-drift-report.json"],
+    ["schemas/test-coverage-report.schema.json", "artifacts/assurance/test-coverage-report.json"],
+    ["schemas/completeness-coverage-matrix.schema.json", "artifacts/assurance/completeness-coverage-matrix.json"],
+    ["schemas/historical-issue-regression-map.schema.json", "artifacts/assurance/historical-issue-regression-map.json"],
+    ["schemas/test-issue-map.schema.json", "artifacts/assurance/test-to-issue-map.json"],
+    ["schemas/test-issue-map.schema.json", "artifacts/assurance/issue-to-test-map.json"],
+  ] as const;
+
+  for (const [schemaRel, artifactRel] of topLevelArtifactChecks) {
+    it(`${artifactRel} matches ${schemaRel} required fields and top-level keys (light check)`, () => {
+      const artifactAbs = join(repoRoot, artifactRel);
+      if (!existsSync(artifactAbs)) {
+        return;
+      }
+      const schema = JSON.parse(readFileSync(join(repoRoot, schemaRel), "utf8")) as {
+        required: string[];
+        properties: Record<string, unknown>;
+      };
+      const payload = JSON.parse(readFileSync(artifactAbs, "utf8")) as Record<string, unknown>;
+      for (const field of schema.required) {
+        assert.ok(Object.prototype.hasOwnProperty.call(payload, field), `${artifactRel} missing required field ${field}`);
+      }
+      const allowedKeys = new Set(Object.keys(schema.properties));
+      for (const key of Object.keys(payload)) {
+        assert.ok(allowedKeys.has(key), `${artifactRel} contains unexpected top-level key ${key}`);
+      }
+    });
+  }
+
+  for (const [schemaRel, artifactRel] of [
+    ["schemas/assumption-ledger.schema.json", "artifacts/assurance/assumptions.jsonl"],
+    ["schemas/review-conflict-resolution.schema.json", "artifacts/assurance/review-conflict-resolution-report.jsonl"],
+  ] as const) {
+    it(`${artifactRel} conforms to ${schemaRel} required fields (light check)`, () => {
+      const artifactAbs = join(repoRoot, artifactRel);
+      if (!existsSync(artifactAbs)) {
+        return;
+      }
+      const lines = readFileSync(artifactAbs, "utf8")
+        .split(/\r?\n/)
+        .filter((line) => line.trim().length > 0)
+        .slice(0, 50);
+      const schema = JSON.parse(readFileSync(join(repoRoot, schemaRel), "utf8")) as {
+        required: string[];
+        properties: Record<string, unknown>;
+      };
+      const allowedKeys = new Set(Object.keys(schema.properties));
+      for (const line of lines) {
+        const payload = JSON.parse(line) as Record<string, unknown>;
+        for (const field of schema.required) {
+          assert.ok(Object.prototype.hasOwnProperty.call(payload, field), `${artifactRel} line missing ${field}`);
+        }
+        for (const key of Object.keys(payload)) {
+          assert.ok(allowedKeys.has(key), `${artifactRel} contains unexpected key ${key}`);
+        }
+      }
+    });
+  }
 
   it("issue-ledger.schema.json requires gating fields and accepts review-backed issues", () => {
     const schema = JSON.parse(readFileSync(join(repoRoot, "schemas/issue-ledger.schema.json"), "utf8"));

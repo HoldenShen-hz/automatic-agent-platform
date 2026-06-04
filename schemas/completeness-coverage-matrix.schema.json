@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatic-agent.local/schemas/completeness-coverage-matrix.schema.json",
+  "title": "Completeness Coverage Matrix Report",
+  "type": "object",
+  "required": ["generatedAt", "domainCount", "summary", "domains"],
+  "properties": {
+    "generatedAt": { "type": "string", "minLength": 1 },
+    "domainCount": { "type": "integer", "minimum": 0 },
+    "summary": {
+      "type": "object",
+      "required": ["passCount", "partialCount", "failCount"],
+      "properties": {
+        "passCount": { "type": "integer", "minimum": 0 },
+        "partialCount": { "type": "integer", "minimum": 0 },
+        "failCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["domainId", "label", "status", "missingRequirements", "coverage"],
+        "properties": {
+          "domainId": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "enum": ["pass", "partial", "fail"] },
+          "missingRequirements": { "type": "array", "items": { "type": "string" } },
+          "coverage": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["present", "evidenceRefs"],
+              "properties": {
+                "present": { "type": "boolean" },
+                "evidenceRefs": { "type": "array", "items": { "type": "string" } }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
