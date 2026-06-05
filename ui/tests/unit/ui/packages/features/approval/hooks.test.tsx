@@ -82,7 +82,7 @@ describe("useApprovalCenterVm", () => {
     });
   });
 
-  it("removes the delegated approval from the actionable queue and selects the next item", async () => {
+  it("keeps the delegated approval in the queue and records the operator action", async () => {
     const { result } = renderHook(() => useApprovalCenterVm());
 
     await act(async () => {
@@ -91,8 +91,9 @@ describe("useApprovalCenterVm", () => {
 
     expect(mocks.mockDelegateApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-1", "domain-admin");
     await waitFor(() => {
-      expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-2"]);
-      expect(result.current.selectedId).toBe("approval-2");
+      expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-1", "approval-2"]);
+      expect(result.current.selectedId).toBe("approval-1");
+      expect(result.current.actionHistory[0]?.title).toContain("已委派");
     });
   });
 

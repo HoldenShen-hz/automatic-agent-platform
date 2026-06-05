@@ -296,13 +296,23 @@ test("StructuredLogger.log bridges active telemetry context when ids are omitted
   });
 });
 
-test("StructuredLogger.configureGlobalFileSink rejects absolute paths", () => {
+test("StructuredLogger.configureGlobalFileSink rejects absolute paths outside workspace", () => {
   // Reset global sink
   StructuredLogger.configureGlobalFileSink(null);
 
   StructuredLogger.configureGlobalFileSink("/etc/passwd");
 
   assert.equal(StructuredLogger.getGlobalFileSinkPath(), null);
+});
+
+test("StructuredLogger.configureGlobalFileSink accepts absolute paths within workspace", () => {
+  StructuredLogger.configureGlobalFileSink(null);
+
+  StructuredLogger.configureGlobalFileSink(join(process.cwd(), "logs", "absolute-test.log"));
+
+  const sinkPath = StructuredLogger.getGlobalFileSinkPath();
+  assert.ok(sinkPath !== null);
+  assert.ok(sinkPath.endsWith(join("logs", "absolute-test.log")));
 });
 
 test("StructuredLogger.configureGlobalFileSink rejects path traversal sequences", () => {

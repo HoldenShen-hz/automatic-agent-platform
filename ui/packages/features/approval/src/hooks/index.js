@@ -54,14 +54,17 @@ export function useApprovalCenterVm() {
             setPendingOperations((current) => Math.max(0, current - 1));
         }
     }, []);
+    const appendActionHistory = useCallback((title, description) => {
+        setActionHistory((history) => [{ title, description }, ...history]);
+    }, []);
     const applyOptimisticRemoval = useCallback((approvalId, title, description) => {
         setApprovals((current) => {
             const nextApprovals = removeApproval(current, approvalId);
             setSelectedId(nextApprovals[0]?.approvalId ?? null);
             return nextApprovals;
         });
-        setActionHistory((history) => [{ title, description }, ...history]);
-    }, []);
+        appendActionHistory(title, description);
+    }, [appendActionHistory]);
     const restoreApprovals = useCallback((snapshot, restoredSelectedId) => {
         setApprovals(snapshot);
         setSelectedId(restoredSelectedId);
@@ -104,34 +107,20 @@ export function useApprovalCenterVm() {
         if (selectedApproval == null) {
             return;
         }
-        const snapshot = approvals;
-        const snapshotSelectedId = selectedApproval.approvalId;
-        applyOptimisticRemoval(selectedApproval.approvalId, `Delegated · ${selectedApproval.taskId}`, `Approval was delegated to ${target} for supervised decision.`);
         await withPending(async () => {
-            try {
-                await delegateApproval(client, selectedApproval.approvalId, target);
-            }
-            catch (error) {
-                restoreApprovals(snapshot, snapshotSelectedId);
-                throw error;
-            }
+            await delegateApproval(client, selectedApproval.approvalId, target);
+            appendActionHistory(`Delegated · ${selectedApproval.taskId}`, `Approval was delegated to ${target} for supervised decision.`);
         });
-    }, [approvals, applyOptimisticRemoval, client, restoreApprovals, selectedApproval, withPending]);
+    }, [appendActionHistory, client, selectedApproval, withPending]);
     const requestMoreContext = useCallback(async () => {
         if (selectedApproval == null) {
             return;
         }
         await withPending(async () => {
             await requestMoreContextApproval(client, selectedApproval.approvalId);
-            setActionHistory((history) => [
-                {
-                    title: `Requested Context · ${selectedApproval.taskId}`,
-                    description: "Reviewer requested more supporting evidence before decision.",
-                },
-                ...history,
-            ]);
+            appendActionHistory(`Requested Context · ${selectedApproval.taskId}`, "Reviewer requested more supporting evidence before decision.");
         });
-    }, [client, selectedApproval, withPending]);
+    }, [appendActionHistory, client, selectedApproval, withPending]);
     const approveBatch = useCallback(async (approvalIds) => {
         await withPending(async () => {
             const results = await Promise.allSettled(approvalIds.map((approvalId) => approveApproval(client, approvalId)));

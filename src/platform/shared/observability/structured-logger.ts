@@ -110,8 +110,13 @@ type StructuredLogInput = Omit<StructuredLogEntry, "createdAt" | "timestamp" | "
  * @throws Error if the path is absolute, contains traversal sequences, or escapes baseDir
  */
 function safePath(userPath: string, baseDir: string): string {
-  // Block absolute paths - they cannot be within a relative base directory
+  const resolvedBaseDir = resolve(baseDir);
   if (isAbsolute(userPath)) {
+    const resolvedAbsolutePath = resolve(userPath);
+    const relativePath = relative(resolvedBaseDir, resolvedAbsolutePath);
+    if (relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath))) {
+      return resolvedAbsolutePath;
+    }
     throw new Error("path_traversal.blocked_absolute_path");
   }
 
@@ -126,8 +131,6 @@ function safePath(userPath: string, baseDir: string): string {
   // Reject paths that normalize to escape the base directory
   const fullPath = join(baseDir, normalized);
   const resolvedFullPath = resolve(fullPath);
-  const resolvedBaseDir = resolve(baseDir);
-
   // Ensure the resolved path is still within the base directory
   const relativePath = relative(resolvedBaseDir, resolvedFullPath);
   if (relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath))) {

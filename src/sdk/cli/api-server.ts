@@ -70,6 +70,7 @@ import { bootstrapConfiguredRegistries } from "../../domains/registry/registry-b
 import { KnowledgeSnapshotStore } from "../../platform/five-plane-state-evidence/knowledge/archive/knowledge-snapshot-store.js";
 import { KnowledgePlaneService } from "../../platform/five-plane-state-evidence/knowledge/knowledge-plane-service.js";
 import { createSemanticVectorStoreFromEnvironment } from "../../platform/five-plane-state-evidence/knowledge/semantic-vector-store.js";
+import { SqliteMissionRepository } from "../../platform/five-plane-state-evidence/truth/mission-repository.js";
 import type { IncidentCaseService as RuntimeIncidentCaseService, IncidentCase as RuntimeIncidentCase } from "../../platform/five-plane-state-evidence/incident/index.js";
 
 function toFacadeIncident(incident: RuntimeIncidentCase): FacadeIncidentCase {
@@ -279,6 +280,7 @@ async function main(): Promise<void> {
 
     // Initialize coordinator load balancing for multi-coordinator setups
     const coordinatorLoadBalancing = new CoordinatorLoadBalancingService(db, store);
+    const missionRepository = new SqliteMissionRepository(db);
 
     // Initialize mission control for operational oversight
     const missionControl = new MissionControlService(store, health, metrics, inspect, {
@@ -311,6 +313,7 @@ async function main(): Promise<void> {
       domainRegistryService: domainRegistry,
       pluginRegistry,
       taskStore: store,
+      missionRepository,
       realTaskExecutionService,
       enableWebSocket: envConfig.enableWebSocket,
       env,

@@ -16,10 +16,37 @@ function createMockApprovalService(): ApprovalService {
 function createMockInspectService(): InspectService {
   return {
     queryDecisionInspectSummaries: () => [
-      { decisionId: "appr-1", decisionType: "approval", status: "requested", taskId: "task-1", requestedAt: "2026-04-16T00:00:00.000Z", completedAt: null },
+      {
+        decisionId: "appr-1",
+        decisionType: "approval",
+        status: "requested",
+        taskId: "task-1",
+        requestedAt: "2026-04-16T00:00:00.000Z",
+        completedAt: null,
+      },
     ],
     getApprovalInspectView: () => ({
-      approval: { id: "appr-1", taskId: "task-1", decisionType: "approval", status: "completed", requestedAt: "2026-04-16T00:00:00.000Z", completedAt: "2026-04-16T01:00:00.000Z" },
+      approval: {
+        id: "appr-1",
+        taskId: "task-1",
+        decisionType: "approval",
+        status: "completed",
+        requestedAt: "2026-04-16T00:00:00.000Z",
+        completedAt: "2026-04-16T01:00:00.000Z",
+        requestJson: JSON.stringify({
+          taskId: "task-1",
+          riskLevel: "high",
+          reason: "Production rollout",
+          context: {
+            deadlineAt: "2026-04-16T02:00:00.000Z",
+            policySource: "approval.policy.production",
+            recommendedOptionId: "approve",
+            currentLevel: 1,
+            totalLevels: 2,
+            escalationTarget: "domain-admin",
+          },
+        }),
+      },
       timeline: { entries: [] },
     }),
   } as unknown as InspectService;
@@ -144,6 +171,36 @@ test("GET /v1/approvals returns approval list", async () => {
   const response = await callRoute(routes, ctx);
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
+  const payload = JSON.parse(response.body) as {
+    data: {
+      approvals: Array<{
+        approvalId: string;
+        taskId: string;
+        riskLevel: string;
+        reasonSummary: string;
+        deadline?: string;
+        policySource?: string;
+        recommendedOption?: string;
+        currentLevel?: number;
+        totalLevels?: number;
+        escalationTarget?: string;
+      }>;
+    };
+  };
+  assert.deepEqual(payload.data.approvals, [
+    {
+      approvalId: "appr-1",
+      taskId: "task-1",
+      riskLevel: "high",
+      reasonSummary: "Production rollout",
+      deadline: "2026-04-16T02:00:00.000Z",
+      policySource: "approval.policy.production",
+      recommendedOption: "approve",
+      currentLevel: 1,
+      totalLevels: 2,
+      escalationTarget: "domain-admin",
+    },
+  ]);
 });
 
 test("POST /v1/approvals/:id/decision applies decision with correct actor", async () => {

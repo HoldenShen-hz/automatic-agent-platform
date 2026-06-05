@@ -10,7 +10,7 @@
  * Part of http-api-server.ts split (see src/core/api/http-server/).
  */
 
-import type { RouteDefinition } from "./types.js";
+import type { ApiRequestLike, RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseApprovalDecisionPayload } from "./schemas.js";
 import { buildJsonResponse, readStoredJsonRecord, requirePrincipal, readLimit, readStatusFilter } from "./utils.js";
@@ -51,6 +51,121 @@ type ApprovalActionAlias =
 const MAX_APPROVAL_ID_LENGTH = 128;
 const APPROVAL_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 const MAX_APPROVAL_REQUEST_JSON_BYTES = 64 * 1024;
+const FALLBACK_APPROVAL_REASON = "Approval requested";
+
+interface ApprovalListItemDto {
+  approvalId: string;
+  taskId: string;
+  riskLevel: "low" | "medium" | "high" | "critical";
+  reasonSummary: string;
+  deadline?: string;
+  policySource?: string;
+  recommendedOption?: "approve" | "reject" | "delegate" | "request_context";
+  currentLevel?: number;
+  totalLevels?: number;
+  escalationTarget?: string;
+}
+
+function readOptionalString(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function readOptionalNumber(record: Record<string, unknown>, key: string): number | undefined {
+  const value = record[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function normalizeRecommendedOption(value: unknown): ApprovalListItemDto["recommendedOption"] | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const normalized = value.trim().toLowerCase().replaceAll("-", "_");
+  switch (normalized) {
+    case "approve":
+    case "reject":
+    case "delegate":
+    case "request_context":
+      return normalized;
+    default:
+      return undefined;
+  }
+}
+
+function toApprovalListItem(record: unknown): ApprovalListItemDto | null {
+  const approval = record as { id?: unknown; taskId?: unknown; requestJson?: unknown };
+  if (typeof approval.id !== "string" || typeof approval.taskId !== "string" || typeof approval.requestJson !== "string") {
+    return null;
+  }
+  const request = readStoredJsonRecord(approval.requestJson, {
+    maxBytes: MAX_APPROVAL_REQUEST_JSON_BYTES,
+    fallback: {},
+  });
+  const contextCandidate = request["context"];
+  const context =
+    contextCandidate != null && typeof contextCandidate === "object" && !Array.isArray(contextCandidate)
+      ? contextCandidate as Record<string, unknown>
+      : {};
+  const escalationChain = Array.isArray(request["escalationChain"])
+    ? request["escalationChain"]
+    : Array.isArray(request["escalation_chain"])
+      ? request["escalation_chain"]
+      : [];
+  const fallbackEscalationTarget = escalationChain.find((hop): hop is Record<string, unknown> => hop != null && typeof hop === "object" && !Array.isArray(hop));
+  const riskLevel = request["riskLevel"];
+  const deadline = readOptionalString(context, "deadlineAt");
+  const policySource = readOptionalString(context, "policySource");
+  const recommendedOption = normalizeRecommendedOption(context["recommendedOptionId"]);
+  const currentLevel = readOptionalNumber(context, "currentLevel");
+  const totalLevels = readOptionalNumber(context, "totalLevels");
+  const escalationTarget =
+    readOptionalString(context, "escalationTarget")
+    ?? readOptionalString(fallbackEscalationTarget ?? {}, "reviewerRef");
+  const item: ApprovalListItemDto = {
+    approvalId: approval.id,
+    taskId: approval.taskId,
+    riskLevel: riskLevel === "low" || riskLevel === "medium" || riskLevel === "high" || riskLevel === "critical" ? riskLevel : "medium",
+    reasonSummary: readOptionalString(request, "reason") ?? FALLBACK_APPROVAL_REASON,
+  };
+  if (deadline !== undefined) {
+    item.deadline = deadline;
+  }
+  if (policySource !== undefined) {
+    item.policySource = policySource;
+  }
+  if (recommendedOption !== undefined) {
+    item.recommendedOption = recommendedOption;
+  }
+  if (currentLevel !== undefined) {
+    item.currentLevel = currentLevel;
+  }
+  if (totalLevels !== undefined) {
+    item.totalLevels = totalLevels;
+  }
+  if (escalationTarget !== undefined) {
+    item.escalationTarget = escalationTarget;
+  }
+  return item;
+}
+
+function listApprovalDtos(
+  deps: ApprovalRouteDeps,
+  request: ApiRequestLike,
+  principal: ApiPrincipal,
+): ApprovalListItemDto[] {
+  const limit = readLimit(request, 25);
+  const status = readStatusFilter(request) ?? "requested";
+  return deps.inspectService
+    .queryDecisionInspectSummaries({
+      decisionType: "approval",
+      limit,
+      ...(principal.tenantId != null ? { tenantId: principal.tenantId } : {}),
+      ...(status ? { status } : {}),
+    })
+    .map((summary) => deps.inspectService.getApprovalInspectView(summary.decisionId))
+    .map((view) => toApprovalListItem((view as { approval?: unknown }).approval))
+    .filter((item): item is ApprovalListItemDto => item != null);
+}
 
 function validateApprovalId(approvalId: string | undefined): string {
   if (!approvalId || typeof approvalId !== "string") {
@@ -227,14 +342,7 @@ export function createApprovalRoutes(deps: ApprovalRouteDeps): RouteDefinition[]
       pathname: "/v1/approvals",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const limit = readLimit(ctx.request, 25);
-        const status = readStatusFilter(ctx.request);
-        const approvals = deps.inspectService.queryDecisionInspectSummaries({
-          decisionType: "approval",
-          limit,
-          ...(principal.tenantId != null ? { tenantId: principal.tenantId } : {}),
-          ...(status ? { status } : {}),
-        });
+        const approvals = listApprovalDtos(deps, ctx.request, principal);
         return buildJsonResponse(ctx.requestId, 200, { approvals });
       },
     },

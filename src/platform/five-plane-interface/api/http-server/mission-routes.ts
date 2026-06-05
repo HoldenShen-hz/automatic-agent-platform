@@ -8,7 +8,6 @@ import {
   type MissionRole,
 } from "../../../contracts/mission/index.js";
 import {
-  InMemoryMissionRepository,
   type MissionRepository,
 } from "../../../five-plane-state-evidence/truth/mission-repository.js";
 import {
@@ -17,6 +16,7 @@ import {
   MissionResolver,
 } from "../../../five-plane-control-plane/mission/index.js";
 import type { ApiAuthService } from "../api-auth-service.js";
+import { ApiError } from "./api-error.js";
 import { readJsonBody, requirePrincipal, buildJsonResponse, buildJsonErrorResponse } from "./utils.js";
 import type { RouteDefinition } from "./types.js";
 
@@ -25,19 +25,14 @@ export interface MissionRouteDeps {
   readonly missionRepository?: MissionRepository | null;
 }
 
-const defaultRepository = new InMemoryMissionRepository();
-
 export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
-  const repository = deps.missionRepository ?? defaultRepository;
-  const lifecycle = new MissionLifecycleService(repository);
-  const governance = new MissionGovernanceService(repository);
-  const resolver = new MissionResolver(repository, governance);
-
   return [
     {
       method: "POST",
       pathname: "/v1/missions",
       handler: (ctx) => {
+        const repository = requireMissionRepository(ctx.requestId, deps.missionRepository);
+        const lifecycle = new MissionLifecycleService(repository);
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const body = readJsonBody(ctx.request.body) as Record<string, unknown>;
         const tenantId = typeof body["tenantId"] === "string"
@@ -81,6 +76,7 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
       method: "GET",
       pathname: "/v1/missions",
       handler: (ctx) => {
+        const repository = requireMissionRepository(ctx.requestId, deps.missionRepository);
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const tenantId = ctx.request.headers["x-tenant-id"] ?? principal.tenantId ?? `tenant:${principal.actorId}`;
         return buildJsonResponse(ctx.requestId, 200, { missions: repository.listMissions(tenantId) });
@@ -91,6 +87,8 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
       pathname: null,
       segments: true,
       handler: (ctx) => {
+        const repository = requireMissionRepository(ctx.requestId, deps.missionRepository);
+        const lifecycle = new MissionLifecycleService(repository);
         const segments = ctx.route.segments;
         const missionSegment = segments[2];
         if (segments[0] !== "v1" || segments[1] !== "missions" || segments.length !== 3 || missionSegment == null || missionSegment.includes(":")) {
@@ -109,6 +107,7 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
       pathname: null,
       segments: true,
       handler: (ctx) => {
+        const repository = requireMissionRepository(ctx.requestId, deps.missionRepository);
         const segments = ctx.route.segments;
         const missionSegment = segments[2];
         if (segments[0] !== "v1" || segments[1] !== "missions" || segments.length !== 3 || missionSegment == null || missionSegment.includes(":")) {
@@ -154,6 +153,7 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
       pathname: null,
       segments: true,
       handler: (ctx) => {
+        const repository = requireMissionRepository(ctx.requestId, deps.missionRepository);
         const segments = ctx.route.segments;
         if (segments[0] !== "v1" || segments[1] !== "missions" || segments.length !== 4) {
           return null;
@@ -194,6 +194,7 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
       pathname: null,
       segments: true,
       handler: (ctx) => {
+        const repository = requireMissionRepository(ctx.requestId, deps.missionRepository);
         const segments = ctx.route.segments;
         if (segments[0] !== "v1" || segments[1] !== "missions" || segments.length !== 4 || segments[3] !== "members") {
           return null;
@@ -230,6 +231,7 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
       pathname: null,
       segments: true,
       handler: (ctx) => {
+        const repository = requireMissionRepository(ctx.requestId, deps.missionRepository);
         const segments = ctx.route.segments;
         if (
           segments[0] !== "v1"
@@ -258,6 +260,8 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
       pathname: null,
       segments: true,
       handler: (ctx) => {
+        const repository = requireMissionRepository(ctx.requestId, deps.missionRepository);
+        const lifecycle = new MissionLifecycleService(repository);
         const segments = ctx.route.segments;
         const actionSegment = segments[2];
         if (segments[0] !== "v1" || segments[1] !== "missions" || segments.length !== 3 || actionSegment == null || !actionSegment.includes(":")) {
@@ -289,6 +293,9 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
       method: "POST",
       pathname: "/v1/mission-resolutions:dry-run",
       handler: (ctx) => {
+        const repository = requireMissionRepository(ctx.requestId, deps.missionRepository);
+        const governance = new MissionGovernanceService(repository);
+        const resolver = new MissionResolver(repository, governance);
         requirePrincipal(ctx.request, deps.authService, "operator");
         const request = MissionResolutionRequestSchema.parse(readJsonBody(ctx.request.body));
         return buildJsonResponse(ctx.requestId, 200, resolver.resolve(request));
@@ -296,6 +303,15 @@ export function createMissionRoutes(deps: MissionRouteDeps): RouteDefinition[] {
     },
   ];
 }
+
+function requireMissionRepository(requestId: string, repository: MissionRepository | null | undefined): MissionRepository {
+  if (repository != null) {
+    return repository;
+  }
+  void requestId;
+  throw new ApiError(503, "mission.repository_unavailable", "Mission repository is not configured.");
+}
+
 
 function pickMissionPatch(current: MissionRecord, body: Record<string, unknown>): Partial<MissionRecord> {
   const patch: Partial<MissionRecord> = {};

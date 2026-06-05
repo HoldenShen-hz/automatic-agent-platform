@@ -313,8 +313,17 @@ test("http api server serves mission control snapshot, task inspect, approval qu
       },
     });
     assert.equal(approvals.statusCode, 200);
-    const approvalsPayload = readJson<{ approvals: Array<{ decisionId: string }> }>(approvals);
-    assert.ok(approvalsPayload.data.approvals.some((item) => item.decisionId === context.approvalId));
+    const approvalsPayload = readJson<{
+      approvals: Array<{
+        approvalId: string;
+        taskId: string;
+        riskLevel: string;
+        reasonSummary: string;
+      }>;
+    }>(approvals);
+    assert.ok(approvalsPayload.data.approvals.some((item) => item.approvalId === context.approvalId));
+    assert.ok(approvalsPayload.data.approvals.some((item) => item.taskId === context.seededTaskId));
+    assert.ok(approvalsPayload.data.approvals.some((item) => item.reasonSummary.length > 0));
 
     const decision = await server.inject({
       method: "POST",

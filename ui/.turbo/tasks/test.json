@@ -3,8 +3,8 @@
   "command": [
     "vitest",
     "run",
-    "tests/unit/ui/packages/features/conversation/web.test.tsx"
+    "tests/unit/ui/packages/features/approval/hooks.test.tsx"
   ],
-  "startedAt": "2026-06-05T01:50:27.121Z",
-  "completedAt": "2026-06-05T01:50:28.122Z"
+  "startedAt": "2026-06-05T02:38:28.341Z",
+  "completedAt": "2026-06-05T02:38:28.916Z"
 }

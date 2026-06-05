@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createMissionRoutes } from "../../../../../src/platform/five-plane-interface/api/http-server/mission-routes.js";
+import { ApiError } from "../../../../../src/platform/five-plane-interface/api/http-server/api-error.js";
 import type { MissionRepository } from "../../../../../src/platform/five-plane-state-evidence/truth/mission-repository.js";
 import type { ApiAuthService } from "../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 
@@ -87,4 +88,25 @@ test("createMissionRoutes with authService provided", () => {
   const routes = createMissionRoutes(deps);
   assert.ok(Array.isArray(routes));
   assert.ok(routes.length > 0);
+});
+
+test("createMissionRoutes fails closed when mission repository is missing", () => {
+  const routes = createMissionRoutes({ authService: null, missionRepository: null });
+  const route = routes.find((candidate) => candidate.method === "GET" && candidate.pathname === "/v1/missions");
+  assert.ok(route);
+
+  assert.throws(
+    () => route!.handler({
+      requestId: "req_missing_repo",
+      principal: null,
+      route: { pathname: "/v1/missions", segments: ["v1", "missions"] },
+      request: {
+        method: "GET",
+        url: "/v1/missions",
+        headers: {},
+        body: null,
+      },
+    }),
+    (error: unknown) => error instanceof ApiError && error.code === "mission.repository_unavailable" && error.statusCode === 503,
+  );
 });

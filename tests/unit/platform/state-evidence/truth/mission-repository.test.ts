@@ -1,11 +1,15 @@
-import { describe, it, beforeEach } from "node:test";
+import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert";
+import { join } from "node:path";
 import {
   InMemoryMissionRepository,
+  SqliteMissionRepository,
   missionPrincipalFromApi,
   type CreateMissionRecordInput,
   type AppendMissionEventInput,
 } from "../../../../../src/platform/five-plane-state-evidence/truth/mission-repository.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 describe("InMemoryMissionRepository", () => {
   let repository: InMemoryMissionRepository;
@@ -505,5 +509,170 @@ describe("InMemoryMissionRepository", () => {
 
       assert.strictEqual(result, "user-123");
     });
+  });
+});
+
+describe("SqliteMissionRepository", () => {
+  let workspace: string;
+  let db: SqliteDatabase;
+  let repository: SqliteMissionRepository;
+
+  const baseInput: CreateMissionRecordInput = {
+    tenantId: "tenant-1",
+    title: "Persistent Mission",
+    objective: "Verify sqlite mission persistence",
+    successCriteria: ["mission persisted"],
+    ownerPrincipalId: "user-1",
+    createdBy: "creator-1",
+    traceId: "trace-1",
+    correlationId: "corr-1",
+    metadata: { tier: "gold" },
+  };
+
+  beforeEach(() => {
+    workspace = createTempWorkspace("mission-repository-");
+    db = new SqliteDatabase(join(workspace, "mission.db"));
+    db.migrate();
+    repository = new SqliteMissionRepository(db);
+  });
+
+  afterEach(() => {
+    db.close();
+    cleanupPath(workspace);
+  });
+
+  function seedConfirmedTaskSpec(confirmedTaskSpecId: string, tenantId = "tenant-1", traceId = "trace-1"): void {
+    db.connection.prepare(
+      `INSERT INTO confirmed_task_specs (
+        confirmed_task_spec_id, task_draft_id, tenant_id, goal, inputs_json,
+        constraint_pack_ref, risk_class, idempotency_key, trace_id, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      confirmedTaskSpecId,
+      "task-draft-mission-test",
+      tenantId,
+      "Mission repository sqlite fixture",
+      "{}",
+      "constraint-pack-mission-test",
+      "medium",
+      `idem:${confirmedTaskSpecId}`,
+      traceId,
+      "2026-06-05T00:00:00.000Z",
+    );
+  }
+
+  it("persists missions, memberships, and events", () => {
+    const mission = repository.createMission(baseInput);
+
+    const persisted = repository.getMission(mission.missionId);
+    const memberships = repository.listMemberships(mission.missionId);
+    const events = repository.listEvents(mission.missionId);
+
+    assert.notStrictEqual(persisted, null);
+    assert.deepStrictEqual(persisted?.metadata, { tier: "gold" });
+    assert.strictEqual(memberships.length, 1);
+    assert.strictEqual(memberships[0].principalId, "user-1");
+    assert.strictEqual(events.length, 2);
+    assert.strictEqual(events[0].eventType, "platform.mission.created");
+    assert.strictEqual(events[1].eventType, "platform.mission.membership_granted");
+  });
+
+  it("persists updates and preserves playbook binding metadata envelope", () => {
+    const mission = repository.createMission({
+      ...baseInput,
+      playbookBinding: {
+        playbookId: "playbook-1",
+        playbookVersion: "v1",
+        resolutionAuditRef: "audit://playbook-1",
+        lockedAt: "2026-06-05T00:00:00.000Z",
+        lockedBy: "owner-1",
+        migrationPlanRefs: ["migration://001"],
+      },
+    });
+
+    repository.updateMission(
+      {
+        ...mission,
+        status: "active",
+        version: 1,
+        etag: `etag:${mission.missionId}:1`,
+        updatedAt: "2026-06-05T00:10:00.000Z",
+        updatedBy: "owner-1",
+      },
+      {
+        eventType: "platform.mission.status_changed",
+        missionId: mission.missionId,
+        tenantId: mission.tenantId,
+        traceId: "trace-2",
+        correlationId: "corr-2",
+        payload: { status: "active" },
+      },
+    );
+
+    const persisted = repository.getMission(mission.missionId);
+    assert.strictEqual(persisted?.status, "active");
+    assert.strictEqual(persisted?.playbookBinding?.playbookId, "playbook-1");
+  });
+
+  it("persists linked resources and snapshots under real sqlite constraints", () => {
+    const mission = repository.createMission(baseInput);
+    seedConfirmedTaskSpec("ctspec-1");
+
+    const snapshot = repository.createSnapshot({
+      missionId: mission.missionId,
+      taskId: "task-1",
+      confirmedTaskSpecId: "ctspec-1",
+      traceId: "trace-1",
+      correlationId: "corr-1",
+      createdBy: "user-1",
+    });
+
+    repository.linkResource({
+      id: "know_001",
+      missionId: mission.missionId,
+      tenantId: mission.tenantId,
+      type: "knowledge",
+      status: "published",
+      title: "Mission runbook",
+      ref: "kb://mission/runbook",
+      updatedAt: "2026-06-05T00:02:00.000Z",
+      metadata: { source: "operator" },
+    });
+
+    assert.strictEqual(repository.getSnapshot(snapshot.missionSnapshotId)?.taskId, "task-1");
+    assert.deepStrictEqual(repository.listMissionTasks(mission.missionId).map((item) => item.id), ["task-1"]);
+    assert.deepStrictEqual(repository.listMissionEvidence(mission.missionId).map((item) => item.id), [snapshot.missionSnapshotId]);
+    assert.deepStrictEqual(repository.listMissionKnowledge(mission.missionId).map((item) => item.id), ["know_001"]);
+  });
+
+  it("revokes membership by id without losing persistent state", () => {
+    const mission = repository.createMission(baseInput);
+    const member = repository.addMembership({
+      membershipId: "mship-operator",
+      missionId: mission.missionId,
+      tenantId: mission.tenantId,
+      principalType: "user",
+      principalId: "user-2",
+      role: "operator",
+      permissions: ["mission:read", "mission:execute"],
+      deniedPermissions: [],
+      status: "active",
+      grantedBy: "user-1",
+      grantedAt: "2026-06-05T00:01:00.000Z",
+      expiresAt: null,
+      metadata: {},
+    });
+
+    const revoked = repository.revokeMembershipById(
+      mission.missionId,
+      member.membershipId,
+      "admin-1",
+      "trace-9",
+      "corr-9",
+    );
+
+    assert.strictEqual(revoked?.status, "revoked");
+    assert.strictEqual(repository.listMemberships(mission.missionId).find((item) => item.membershipId === member.membershipId)?.status, "revoked");
+    assert.ok(repository.listEvents(mission.missionId).some((event) => event.eventType === "platform.mission.membership_revoked"));
   });
 });

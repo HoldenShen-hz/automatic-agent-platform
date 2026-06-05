@@ -87,14 +87,18 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
     }
   }, []);
 
+  const appendActionHistory = useCallback((title: string, description: string) => {
+    setActionHistory((history) => [{ title, description }, ...history]);
+  }, []);
+
   const applyOptimisticRemoval = useCallback((approvalId: string, title: string, description: string) => {
     setApprovals((current) => {
       const nextApprovals = removeApproval(current, approvalId);
       setSelectedId(nextApprovals[0]?.approvalId ?? null);
       return nextApprovals;
     });
-    setActionHistory((history) => [{ title, description }, ...history]);
-  }, []);
+    appendActionHistory(title, description);
+  }, [appendActionHistory]);
 
   const restoreApprovals = useCallback((snapshot: readonly ApprovalDTO[], restoredSelectedId: string | null) => {
     setApprovals(snapshot);
@@ -147,22 +151,14 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
     if (selectedApproval == null) {
       return;
     }
-    const snapshot = approvals;
-    const snapshotSelectedId = selectedApproval.approvalId;
-    applyOptimisticRemoval(
-      selectedApproval.approvalId,
-      translateMessage("ui.approval.history.delegated.title", { taskId: selectedApproval.taskId }),
-      translateMessage("ui.approval.history.delegated.description", { target }),
-    );
     await withPending(async () => {
-      try {
-        await delegateApproval(client, selectedApproval.approvalId, target);
-      } catch (error) {
-        restoreApprovals(snapshot, snapshotSelectedId);
-        throw error;
-      }
+      await delegateApproval(client, selectedApproval.approvalId, target);
+      appendActionHistory(
+        translateMessage("ui.approval.history.delegated.title", { taskId: selectedApproval.taskId }),
+        translateMessage("ui.approval.history.delegated.description", { target }),
+      );
     });
-  }, [approvals, applyOptimisticRemoval, client, restoreApprovals, selectedApproval, withPending]);
+  }, [appendActionHistory, client, selectedApproval, withPending]);
 
   const requestMoreContext = useCallback(async () => {
     if (selectedApproval == null) {
@@ -170,15 +166,12 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
     }
     await withPending(async () => {
       await requestMoreContextApproval(client, selectedApproval.approvalId);
-      setActionHistory((history) => [
-        {
-          title: translateMessage("ui.approval.history.requestedContext.title", { taskId: selectedApproval.taskId }),
-          description: translateMessage("ui.approval.history.requestedContext.description"),
-        },
-        ...history,
-      ]);
+      appendActionHistory(
+        translateMessage("ui.approval.history.requestedContext.title", { taskId: selectedApproval.taskId }),
+        translateMessage("ui.approval.history.requestedContext.description"),
+      );
     });
-  }, [client, selectedApproval, withPending]);
+  }, [appendActionHistory, client, selectedApproval, withPending]);
 
   const approveBatch = useCallback(async (approvalIds: readonly string[]) => {
     await withPending(async () => {
