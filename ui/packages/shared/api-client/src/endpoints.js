@@ -13,6 +13,7 @@ function mapTaskStatus(status) {
             return "running";
         case "awaiting_decision":
         case "paused":
+            return "paused";
         case "blocked":
             return "blocked";
         case "failed":

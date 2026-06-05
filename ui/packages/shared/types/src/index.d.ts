@@ -490,7 +490,7 @@ export interface SystemConfigDTO {
 export interface TaskDTO {
     readonly id: string;
     readonly title: string;
-    readonly status: "queued" | "running" | "blocked" | "completed" | "failed";
+    readonly status: "queued" | "running" | "paused" | "blocked" | "completed" | "failed";
     readonly domainId: string;
     readonly currentStep: string;
     readonly owner?: string;

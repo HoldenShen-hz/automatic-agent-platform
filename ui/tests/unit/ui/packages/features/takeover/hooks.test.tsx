@@ -16,7 +16,7 @@ const taskData = [
   {
     id: "task-1",
     title: "Critical release",
-    status: "blocked",
+    status: "paused",
     domainId: "platform",
     currentStep: "workflow-run-1",
     owner: "primary-sre",
@@ -123,6 +123,29 @@ describe("useTakeoverVm", () => {
     expect(result.current.currentSnapshot?.owner).toBe("platform-sre");
     expect(result.current.currentSnapshot?.steps).toHaveLength(1);
     expect(result.current.ownershipHistory[0]?.action).toBe("take_over_task");
+  });
+
+  it("normalizes awaiting-decision takeover snapshots into paused UI status", async () => {
+    mocks.mockFetchAdminTakeoverConsole.mockResolvedValue(buildConsoleSnapshot({
+      inspect: {
+        ...buildConsoleSnapshot().inspect,
+        task: {
+          ...buildConsoleSnapshot().inspect.task,
+          status: "awaiting_decision",
+        },
+        stepOutputs: [],
+      },
+    }));
+
+    const { result } = renderHook(() => useTakeoverVm());
+
+    await waitFor(() => {
+      expect(result.current.currentSnapshot?.status).toBe("paused");
+    });
+
+    expect(result.current.currentSnapshot?.steps[0]).toMatchObject({
+      status: "pending",
+    });
   });
 
   it("opens a real takeover session and reloads the backend console", async () => {

@@ -84,6 +84,36 @@ describe("shared api-client", () => {
     await expect(fetchWorkers(client)).resolves.toHaveLength(1);
   });
 
+  it("maps awaiting-decision task records to paused task DTOs", async () => {
+    const client = new DefaultRESTClient(async <T,>(request: RestClientRequest) => {
+      if (request.path.includes("/tasks")) {
+        return {
+          status: 200,
+          data: {
+            tasks: [{
+              taskId: "task-approval-1",
+              title: "Approval wait",
+              taskStatus: "awaiting_decision",
+              workflowStatus: "paused",
+              divisionId: "platform",
+              currentStepIndex: 2,
+            }],
+          } as T,
+        };
+      }
+      return { status: 200, data: { tasks: [] } as T };
+    });
+
+    await expect(fetchTasks(client)).resolves.toEqual([
+      expect.objectContaining({
+        id: "task-approval-1",
+        status: "paused",
+        currentStep: "step-2",
+        domainId: "platform",
+      }),
+    ]);
+  });
+
   it("adds request ids through the trace interceptor", async () => {
     let requestId = "";
     const client = new DefaultRESTClient(

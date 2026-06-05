@@ -120,6 +120,8 @@ function mapTaskStatusToWorkflowStepStatus(status: TaskDTO["status"] | string | 
       return "failed";
     case "queued":
       return "pending";
+    case "paused":
+      return "pending";
     default:
       return "running";
   }

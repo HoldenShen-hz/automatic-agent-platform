@@ -222,7 +222,7 @@ function applyMockTaskProgress(task: StoredMockTask, now = Date.now()): StoredMo
       outputUri: task.outputUri ?? null,
     };
   }
-  if (task.status === "blocked" || task.status === "failed" || task.status === "completed") {
+  if (task.status === "paused" || task.status === "blocked" || task.status === "failed" || task.status === "completed") {
     return task;
   }
   const createdAtMs = task.mockCreatedAt == null ? Number.NaN : Date.parse(task.mockCreatedAt);

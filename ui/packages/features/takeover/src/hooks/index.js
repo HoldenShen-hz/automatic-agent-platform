@@ -2,8 +2,21 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { annotateAdminTakeoverSession, fetchAdminTakeoverConsole, openAdminTakeoverSession, resumeAdminTakeoverSession, } from "@aa/shared-api-client";
 import { translateMessage } from "@aa/shared-i18n";
 import { useRestClient, useTasksQuery, useWsClient } from "@aa/shared-state";
+function mapTakeoverTaskStatus(status) {
+    switch (status) {
+        case "awaiting_decision":
+        case "paused":
+            return "paused";
+        case "in_progress":
+            return "running";
+        case "done":
+            return "completed";
+        default:
+            return status;
+    }
+}
 function selectTakeoverCandidate(tasks) {
-    const active = tasks.find((task) => task.status === "running" || task.status === "blocked");
+    const active = tasks.find((task) => task.status === "running" || task.status === "paused" || task.status === "blocked");
     if (active != null) {
         return active;
     }
@@ -57,15 +70,18 @@ function resolveSnapshotOwner(consoleSnapshot) {
 function buildSnapshotSteps(consoleSnapshot, owner) {
     const stepOutputs = consoleSnapshot.inspect.stepOutputs ?? [];
     if (stepOutputs.length === 0) {
+        const taskStatus = mapTakeoverTaskStatus(consoleSnapshot.inspect.task.status);
         return [
             {
                 id: consoleSnapshot.inspect.execution?.id ?? consoleSnapshot.inspect.task.id,
                 title: consoleSnapshot.inspect.execution?.id ?? "task",
-                status: consoleSnapshot.inspect.task.status === "failed"
+                status: taskStatus === "failed"
                     ? "failed"
-                    : consoleSnapshot.inspect.task.status === "done"
+                    : taskStatus === "completed"
                         ? "completed"
-                        : "running",
+                        : taskStatus === "paused"
+                            ? "pending"
+                            : "running",
                 executor: owner,
             },
         ];
@@ -83,7 +99,7 @@ function buildSnapshot(consoleSnapshot) {
     return {
         taskId: consoleSnapshot.scope.taskId,
         owner,
-        status: consoleSnapshot.inspect.task.status,
+        status: mapTakeoverTaskStatus(consoleSnapshot.inspect.task.status),
         steps: buildSnapshotSteps(consoleSnapshot, owner),
         capturedAt: consoleSnapshot.generatedAt,
     };

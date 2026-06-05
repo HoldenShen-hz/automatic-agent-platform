@@ -18,16 +18,18 @@ function sanitizeTaskTitle(value) {
   return value.replace(/\s+/g, " ").trim().slice(0, 160);
 }
 function mapTaskStatusToWorkflowStepStatus(status) {
-  switch (status) {
-    case "completed":
-      return "completed";
-    case "failed":
-      return "failed";
-    case "queued":
-      return "pending";
-    default:
-      return "running";
-  }
+    switch (status) {
+        case "completed":
+            return "completed";
+        case "failed":
+            return "failed";
+        case "queued":
+            return "pending";
+        case "paused":
+            return "pending";
+        default:
+            return "running";
+    }
 }
 function mapStepOutputStatus(status) {
   switch (status) {

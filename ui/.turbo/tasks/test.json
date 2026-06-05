@@ -3,10 +3,8 @@
   "command": [
     "vitest",
     "run",
-    "tests/unit/ui/packages/ui-core/layout-and-component-baseline.test.tsx",
-    "tests/unit/ui/packages/features/workflow-debugger/hooks.test.tsx",
-    "tests/unit/ui/packages/features/release-console/web.test.tsx"
+    "tests/unit/ui/packages/features/takeover/hooks.test.tsx"
   ],
-  "startedAt": "2026-06-05T13:35:59.020Z",
-  "completedAt": "2026-06-05T13:36:00.082Z"
+  "startedAt": "2026-06-05T14:26:11.259Z",
+  "completedAt": "2026-06-05T14:26:12.043Z"
 }

@@ -43,8 +43,22 @@ export interface TakeoverVm {
 
 type AdminTakeoverConsole = Awaited<ReturnType<typeof fetchAdminTakeoverConsole>>;
 
+function mapTakeoverTaskStatus(status: string): string {
+  switch (status) {
+    case "awaiting_decision":
+    case "paused":
+      return "paused";
+    case "in_progress":
+      return "running";
+    case "done":
+      return "completed";
+    default:
+      return status;
+  }
+}
+
 function selectTakeoverCandidate(tasks: readonly TaskDTO[]): TaskDTO | null {
-  const active = tasks.find((task) => task.status === "running" || task.status === "blocked");
+  const active = tasks.find((task) => task.status === "running" || task.status === "paused" || task.status === "blocked");
   if (active != null) {
     return active;
   }
@@ -103,15 +117,18 @@ function resolveSnapshotOwner(consoleSnapshot: AdminTakeoverConsole): string {
 function buildSnapshotSteps(consoleSnapshot: AdminTakeoverConsole, owner: string): readonly WorkflowRunStepDTO[] {
   const stepOutputs = consoleSnapshot.inspect.stepOutputs ?? [];
   if (stepOutputs.length === 0) {
+    const taskStatus = mapTakeoverTaskStatus(consoleSnapshot.inspect.task.status);
     return [
       {
         id: consoleSnapshot.inspect.execution?.id ?? consoleSnapshot.inspect.task.id,
         title: consoleSnapshot.inspect.execution?.id ?? "task",
-        status: consoleSnapshot.inspect.task.status === "failed"
+        status: taskStatus === "failed"
           ? "failed"
-          : consoleSnapshot.inspect.task.status === "done"
+          : taskStatus === "completed"
             ? "completed"
-            : "running",
+            : taskStatus === "paused"
+              ? "pending"
+              : "running",
         executor: owner,
       },
     ];
@@ -130,7 +147,7 @@ function buildSnapshot(consoleSnapshot: AdminTakeoverConsole): TakeoverSnapshot 
   return {
     taskId: consoleSnapshot.scope.taskId,
     owner,
-    status: consoleSnapshot.inspect.task.status,
+    status: mapTakeoverTaskStatus(consoleSnapshot.inspect.task.status),
     steps: buildSnapshotSteps(consoleSnapshot, owner),
     capturedAt: consoleSnapshot.generatedAt,
   };
