@@ -146,7 +146,7 @@ test("createAdminRoutes returns all registered admin routes", () => {
     coordinatorLoadBalancingService: createMockLoadBalancingService(),
   };
   const routes = createAdminRoutes(deps);
-  assert.equal(routes.length, 46);
+  assert.equal(routes.length, 47);
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/queues"));
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/workers/drain" && route.method === "POST"));
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/queues/retry-cleanup" && route.method === "POST"));
@@ -156,6 +156,7 @@ test("createAdminRoutes returns all registered admin routes", () => {
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/compliance/exceptions" && route.method === "POST"));
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/roles" && route.method === "GET"));
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/feature-flags" && route.method === "GET"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/admin/system-config" && route.method === "GET"));
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/models" && route.method === "GET"));
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/domains" && route.method === "GET"));
   assert.ok(routes.some((route) => route.pathname === "/v1/preferences" && route.method === "GET"));
@@ -468,6 +469,47 @@ test("GET /v1/admin/feature-flags reflects AA_FEATURE_FLAGS runtime env", async 
       delete process.env.AA_FEATURE_FLAGS;
     } else {
       process.env.AA_FEATURE_FLAGS = originalFeatureFlags;
+    }
+  }
+});
+
+test("GET /v1/admin/system-config reflects runtime environment defaults", async () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalOtelEndpoint = process.env.AA_OTEL_ENDPOINT;
+  process.env.NODE_ENV = "staging";
+  process.env.AA_OTEL_ENDPOINT = "https://otel.example.internal/v1/traces";
+  try {
+    const routes = createAdminRoutes({
+      authService: createMockAuthService(["viewer"]),
+      missionControlService: createMockMissionControlService(),
+      coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    });
+
+    const response = await callRoute(routes, createMockContext("/v1/admin/system-config", ["v1", "admin", "system-config"]));
+    if (!response) throw new Error("Handler returned null");
+    const body = JSON.parse(response.body) as {
+      data: {
+        environment: string;
+        cspMode: string;
+        csrfEnabled: boolean;
+        telemetryEndpoint: string;
+      };
+    };
+    assert.equal(response.statusCode, 200);
+    assert.equal(body.data.environment, "staging");
+    assert.equal(body.data.cspMode, "report-only");
+    assert.equal(body.data.csrfEnabled, true);
+    assert.equal(body.data.telemetryEndpoint, "https://otel.example.internal/v1/traces");
+  } finally {
+    if (originalNodeEnv == null) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+    if (originalOtelEndpoint == null) {
+      delete process.env.AA_OTEL_ENDPOINT;
+    } else {
+      process.env.AA_OTEL_ENDPOINT = originalOtelEndpoint;
     }
   }
 });
@@ -1063,8 +1105,10 @@ test("GET /v1/admin/governance/division-inventory returns generated snapshot", a
 
 test("POST /v1/admin/governance/leadership-claims/review-requests persists a review request", async () => {
   const originalDataRoot = process.env.AA_DATA_ROOT;
+  const originalPlatformRoot = process.env.AA_PLATFORM_ROOT;
   const workspace = mkdtempSync(join(tmpdir(), "aa-admin-leadership-review-"));
   process.env.AA_DATA_ROOT = workspace;
+  process.env.AA_PLATFORM_ROOT = workspace;
 
   try {
     const routes = createAdminRoutes({
@@ -1103,11 +1147,26 @@ test("POST /v1/admin/governance/leadership-claims/review-requests persists a rev
     assert.equal(body.data.reviewRequest.familyId, "engineering");
     assert.equal(body.data.reviewRequest.requestedBy, "actor-1");
     assert.equal(body.data.reviewRequest.status, "pending");
+
+    const auditResponse = await callRoute(routes, createMockContext("/v1/admin/audit-logs", ["v1", "admin", "audit-logs"]));
+    if (!auditResponse) throw new Error("Handler returned null");
+    const auditBody = JSON.parse(auditResponse.body) as { data: Array<{ action: string; resource: string; outcome: string }> };
+    assert.equal(auditResponse.statusCode, 200);
+    assert.ok(auditBody.data.some((entry) => {
+      return entry.action === "leadership_claim.review_requested"
+        && entry.resource.startsWith("leadership-claim-review-request:")
+        && entry.outcome === "pending";
+    }));
   } finally {
     if (originalDataRoot == null) {
       delete process.env.AA_DATA_ROOT;
     } else {
       process.env.AA_DATA_ROOT = originalDataRoot;
+    }
+    if (originalPlatformRoot == null) {
+      delete process.env.AA_PLATFORM_ROOT;
+    } else {
+      process.env.AA_PLATFORM_ROOT = originalPlatformRoot;
     }
     rmSync(workspace, { recursive: true, force: true });
   }
@@ -1115,8 +1174,10 @@ test("POST /v1/admin/governance/leadership-claims/review-requests persists a rev
 
 test("POST /v1/admin/governance/leadership-claims/review-requests/:requestId/approve updates review status", async () => {
   const originalDataRoot = process.env.AA_DATA_ROOT;
+  const originalPlatformRoot = process.env.AA_PLATFORM_ROOT;
   const workspace = mkdtempSync(join(tmpdir(), "aa-admin-leadership-review-approve-"));
   process.env.AA_DATA_ROOT = workspace;
+  process.env.AA_PLATFORM_ROOT = workspace;
   writeFile(join(workspace, "governance", "leadership-claim-review-requests.json"), JSON.stringify([
     {
       requestId: "req-1",
@@ -1154,11 +1215,94 @@ test("POST /v1/admin/governance/leadership-claims/review-requests/:requestId/app
     assert.equal(body.data.reviewRequest.requestId, "req-1");
     assert.equal(body.data.reviewRequest.status, "approved");
     assert.equal(body.data.reviewRequest.reviewedBy, "actor-1");
+
+    const auditResponse = await callRoute(routes, createMockContext("/v1/admin/audit-logs", ["v1", "admin", "audit-logs"]));
+    if (!auditResponse) throw new Error("Handler returned null");
+    const auditBody = JSON.parse(auditResponse.body) as { data: Array<{ action: string; resource: string; outcome: string }> };
+    assert.equal(auditResponse.statusCode, 200);
+    assert.ok(auditBody.data.some((entry) => {
+      return entry.action === "leadership_claim.review_approved"
+        && entry.resource === "leadership-claim-review-request:req-1"
+        && entry.outcome === "approved";
+    }));
   } finally {
     if (originalDataRoot == null) {
       delete process.env.AA_DATA_ROOT;
     } else {
       process.env.AA_DATA_ROOT = originalDataRoot;
+    }
+    if (originalPlatformRoot == null) {
+      delete process.env.AA_PLATFORM_ROOT;
+    } else {
+      process.env.AA_PLATFORM_ROOT = originalPlatformRoot;
+    }
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("POST /v1/admin/governance/leadership-claims/review-requests/:requestId/reject appends governance audit log", async () => {
+  const originalDataRoot = process.env.AA_DATA_ROOT;
+  const originalPlatformRoot = process.env.AA_PLATFORM_ROOT;
+  const workspace = mkdtempSync(join(tmpdir(), "aa-admin-leadership-review-reject-"));
+  process.env.AA_DATA_ROOT = workspace;
+  process.env.AA_PLATFORM_ROOT = workspace;
+  writeFile(join(workspace, "governance", "leadership-claim-review-requests.json"), JSON.stringify([
+    {
+      requestId: "req-2",
+      familyId: "regulated",
+      requestedClaimLevel: "pilot_ready",
+      requestedSurfaces: ["ui"],
+      evidenceRefs: ["eval://divisions/regulated/report-2026-05-01"],
+      requestedBy: "release-owner",
+      rationale: "needs more evidence",
+      requestedAt: "2026-05-31T00:00:00.000Z",
+      status: "pending",
+    },
+  ], null, 2));
+
+  try {
+    const routes = createAdminRoutes({
+      authService: createMockAuthService(["admin"]),
+      missionControlService: createMockMissionControlService(),
+      coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    });
+    const response = await callRoute(
+      routes,
+      createMockContext(
+        "/v1/admin/governance/leadership-claims/review-requests/req-2/reject",
+        ["v1", "admin", "governance", "leadership-claims", "review-requests", "req-2", "reject"],
+        { "content-type": "application/json" },
+        JSON.stringify({ reasonCode: "operator.rejected", comment: "missing benchmark evidence" }),
+      ),
+    );
+    if (!response) throw new Error("Handler returned null");
+    const body = JSON.parse(response.body) as {
+      data: { reviewRequest: { requestId: string; status: string; decisionReasonCode: string | null } };
+    };
+    assert.equal(response.statusCode, 200);
+    assert.equal(body.data.reviewRequest.requestId, "req-2");
+    assert.equal(body.data.reviewRequest.status, "rejected");
+    assert.equal(body.data.reviewRequest.decisionReasonCode, "operator.rejected");
+
+    const auditResponse = await callRoute(routes, createMockContext("/v1/admin/audit-logs", ["v1", "admin", "audit-logs"]));
+    if (!auditResponse) throw new Error("Handler returned null");
+    const auditBody = JSON.parse(auditResponse.body) as { data: Array<{ action: string; resource: string; outcome: string }> };
+    assert.equal(auditResponse.statusCode, 200);
+    assert.ok(auditBody.data.some((entry) => {
+      return entry.action === "leadership_claim.review_rejected"
+        && entry.resource === "leadership-claim-review-request:req-2"
+        && entry.outcome === "rejected";
+    }));
+  } finally {
+    if (originalDataRoot == null) {
+      delete process.env.AA_DATA_ROOT;
+    } else {
+      process.env.AA_DATA_ROOT = originalDataRoot;
+    }
+    if (originalPlatformRoot == null) {
+      delete process.env.AA_PLATFORM_ROOT;
+    } else {
+      process.env.AA_PLATFORM_ROOT = originalPlatformRoot;
     }
     rmSync(workspace, { recursive: true, force: true });
   }
@@ -1211,6 +1355,16 @@ test("POST /v1/admin/governance/leadership-claims/:claimId/revoke persists a run
     assert.equal(body.data.statusOverride.claimId, "claim-1");
     assert.equal(body.data.statusOverride.status, "revoked");
     assert.equal(body.data.statusOverride.replacementRequired, true);
+
+    const auditResponse = await callRoute(routes, createMockContext("/v1/admin/audit-logs", ["v1", "admin", "audit-logs"]));
+    if (!auditResponse) throw new Error("Handler returned null");
+    const auditBody = JSON.parse(auditResponse.body) as { data: Array<{ action: string; resource: string; outcome: string }> };
+    assert.equal(auditResponse.statusCode, 200);
+    assert.ok(auditBody.data.some((entry) => {
+      return entry.action === "leadership_claim.revoked"
+        && entry.resource === "leadership-claim:claim-1"
+        && entry.outcome === "revoked";
+    }));
   } finally {
     if (originalDataRoot == null) {
       delete process.env.AA_DATA_ROOT;

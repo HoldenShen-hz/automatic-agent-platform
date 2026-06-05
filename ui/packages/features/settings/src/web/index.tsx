@@ -9,6 +9,22 @@ export function SettingsWebView(): ReactElement {
   const vm = useSettingsVm();
   const [activeSection, setActiveSection] = useState("general");
   const featureCopy = translateFeatureCopy("settings");
+  const isGeneralSection = activeSection === "general";
+  const rightPaneItems = isGeneralSection
+    ? vm.activityItems.length > 0
+      ? vm.activityItems
+      : vm.rightItems
+    : [
+      activeSection === "api-keys"
+        ? {
+          title: translateMessage("ui.settings.apiKeys.boundary.title"),
+          description: translateMessage("ui.settings.apiKeys.boundary.description"),
+        }
+        : {
+          title: translateMessage("ui.settings.notifications.boundary.title"),
+          description: translateMessage("ui.settings.notifications.boundary.description"),
+        },
+    ];
   return (
     <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
       <MetricGrid metrics={vm.metrics} />
@@ -24,37 +40,41 @@ export function SettingsWebView(): ReactElement {
           left={<ListCard items={activeSection === "general" ? vm.leftItems : vm.sectionItems.map((item) => ({ title: item.title, description: item.description }))} />}
           center={vm.loading ? <p>{translateMessage("ui.settings.loading")}</p> : (
             <Stack gap={16}>
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  vm.save();
-                }}
-              >
-                <Inline gap={8}>
-                <select onChange={(event) => vm.setDraftTheme(event.target.value as "light" | "dark" | "high-contrast")} value={vm.draftTheme}>
-                  <option value="light">{translateMessage("ui.settings.theme.light")}</option>
-                  <option value="dark">{translateMessage("ui.settings.theme.dark")}</option>
-                  <option value="high-contrast">{translateMessage("ui.settings.theme.highContrast")}</option>
-                </select>
-                <select onChange={(event) => vm.setDraftLocale(event.target.value)} value={vm.draftLocale}>
-                  {vm.localeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                  <button type="submit">{translateMessage("ui.settings.save")}</button>
-                </Inline>
-              </form>
-              {activeSection === "general" ? <KeyValueTable rows={vm.centerRows} /> : null}
+              {isGeneralSection ? (
+                <>
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      vm.save();
+                    }}
+                  >
+                    <Inline gap={8}>
+                      <select onChange={(event) => vm.setDraftTheme(event.target.value as "light" | "dark" | "high-contrast")} value={vm.draftTheme}>
+                        <option value="light">{translateMessage("ui.settings.theme.light")}</option>
+                        <option value="dark">{translateMessage("ui.settings.theme.dark")}</option>
+                        <option value="high-contrast">{translateMessage("ui.settings.theme.highContrast")}</option>
+                      </select>
+                      <select onChange={(event) => vm.setDraftLocale(event.target.value)} value={vm.draftLocale}>
+                        {vm.localeOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <button type="submit">{translateMessage("ui.settings.save")}</button>
+                    </Inline>
+                  </form>
+                  <KeyValueTable rows={vm.centerRows} />
+                </>
+              ) : null}
               {activeSection === "api-keys" ? <SettingsApiKeys /> : null}
               {activeSection === "notifications" ? <SettingsNotifications /> : null}
             </Stack>
           )}
-          right={<ListCard items={vm.activityItems.length > 0 ? vm.activityItems : vm.rightItems} />}
+          right={<ListCard items={rightPaneItems} />}
         />
       </div>
-      <p style={{ marginTop: 16 }}>{translateMessage("ui.settings.saveState")}: {vm.saveState}</p>
+      {isGeneralSection ? <p style={{ marginTop: 16 }}>{translateMessage("ui.settings.saveState")}: {vm.saveState}</p> : null}
     </FeatureScaffold>
   );
 }

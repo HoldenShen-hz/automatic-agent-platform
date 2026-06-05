@@ -54,7 +54,7 @@ vi.mock("../../../../../../packages/features/analytics/src/hooks", () => ({
     exportData: mockExportData,
     breakdowns: [
       { dimension: "time", groups: [{ label: "2026-05-08", value: 12 }] },
-      { dimension: "domain", groups: [{ label: "marketing", value: 7 }, { label: "finance", value: 5 }] },
+      { dimension: "layer", groups: [{ label: "tasks", value: 7 }, { label: "agents", value: 5 }] },
     ],
   }),
 }));
@@ -69,20 +69,21 @@ describe("AnalyticsWebView", () => {
   it("renders export controls and drill-down charts", () => {
     render(<AnalyticsWebView />);
 
-    expect(screen.queryByText("Analytics Trend")).not.toBeNull();
+    expect(screen.queryByText("分析趋势")).not.toBeNull();
     expect(screen.queryAllByText("2026-05-08:12").length).toBeGreaterThan(0);
+    expect(screen.getByText("契约边界")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "domain" }));
-    expect(screen.queryAllByText("marketing:7").length).toBeGreaterThan(0);
-    expect(screen.queryAllByText("finance:5").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "层级" }));
+    expect(screen.queryAllByText("tasks:7").length).toBeGreaterThan(0);
+    expect(screen.queryAllByText("agents:5").length).toBeGreaterThan(0);
   });
 
   it("wires date-range and export actions", () => {
     render(<AnalyticsWebView />);
 
     fireEvent.change(screen.getByDisplayValue("2026-05-01"), { target: { value: "2026-05-02" } });
-    fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
-    fireEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+    fireEvent.click(screen.getByRole("button", { name: "导出 CSV" }));
+    fireEvent.click(screen.getByRole("button", { name: "导出 JSON" }));
 
     expect(mockSetDateRange).toHaveBeenCalledWith("2026-05-02", "2026-05-08");
     expect(mockExportData).toHaveBeenCalledWith("csv");

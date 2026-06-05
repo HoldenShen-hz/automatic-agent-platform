@@ -154,7 +154,7 @@ describe("useWorkflowCockpitVm", () => {
     expect(mocks.mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ["workflows"] });
 
     await waitFor(() => {
-      expect(result.current.activityItems[0]?.title).toContain("Released");
+      expect(result.current.activityItems[0]?.title).toContain("Campaign Launch");
     });
   });
 
@@ -212,6 +212,73 @@ describe("useWorkflowCockpitVm", () => {
         uri: "artifact://report.md",
         description: "report.md",
       });
+    });
+  });
+
+  it("preserves failed workflow state from real workflow responses", async () => {
+    workflowData = [
+      {
+        id: "ui-task-retry-1",
+        title: "UI retry cleanup seed",
+        status: "failed",
+        currentStage: "step-0",
+        owner: "default",
+        steps: [],
+      },
+    ] as const;
+    taskData = [
+      {
+        id: "ui-task-retry-1",
+        title: "UI retry cleanup seed",
+        status: "failed",
+        domainId: "default",
+        currentStep: "step-0",
+      },
+    ] as const;
+    mocks.mockUseTasksQuery.mockReturnValue({ data: taskData });
+    mocks.mockClient.get.mockResolvedValueOnce({
+      summary: {
+        taskId: "ui-task-retry-1",
+        workflowId: "ui-workflow-retry-1",
+        workflowStatus: "failed",
+        currentStepIndex: 0,
+        divisionId: "default",
+        taskStatus: "failed",
+      },
+      inspect: {
+        task: {
+          id: "ui-task-retry-1",
+          title: "UI retry cleanup seed",
+          divisionId: "default",
+          status: "failed",
+        },
+        workflowState: {
+          workflowId: "ui-workflow-retry-1",
+          status: "failed",
+          currentStepIndex: 0,
+          resumableFromStep: "step-0",
+        },
+      },
+    });
+
+    const { result } = renderHook(() => useWorkflowCockpitVm());
+
+    expect(result.current.listItems[0]).toEqual({
+      id: "ui-task-retry-1",
+      title: "UI retry cleanup seed",
+      subtitle: "failed · step-0",
+    });
+
+    act(() => {
+      result.current.selectWorkflow("ui-task-retry-1");
+    });
+
+    await waitFor(() => {
+      expect(result.current.selectedWorkflow).toEqual(expect.objectContaining({
+        id: "ui-task-retry-1",
+        status: "failed",
+        currentStage: "step-0",
+      }));
     });
   });
 });

@@ -20,6 +20,7 @@ let mockVm = {
   draft: "ship it",
   planReady: true,
   executionReady: true,
+  isExecuting: false,
   isStreaming: true,
   attachFiles: mockAttachFiles,
   setDraft: mockSetDraft,
@@ -67,6 +68,7 @@ afterEach(() => {
     draft: "ship it",
     planReady: true,
     executionReady: true,
+    isExecuting: false,
     isStreaming: true,
     attachFiles: mockAttachFiles,
     setDraft: mockSetDraft,
@@ -120,6 +122,7 @@ describe("ConversationWebView", () => {
       draft: "Research ways to improve coding with LLMs",
       planReady: false,
       executionReady: false,
+      isExecuting: false,
     };
 
     render(<ConversationWebView />);
@@ -136,6 +139,7 @@ describe("ConversationWebView", () => {
       messages: [],
       planReady: false,
       executionReady: false,
+      isExecuting: false,
     };
 
     render(<ConversationWebView />);
@@ -143,5 +147,16 @@ describe("ConversationWebView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Use Suggested Prompt" }));
 
     expect(mockSetDraft).toHaveBeenCalled();
+  });
+
+  it("disables Execute while a real task submission is already running", () => {
+    mockVm = {
+      ...mockVm,
+      isExecuting: true,
+    };
+
+    render(<ConversationWebView />);
+
+    expect(screen.getByRole("button", { name: "Execute" }).hasAttribute("disabled")).toBe(true);
   });
 });

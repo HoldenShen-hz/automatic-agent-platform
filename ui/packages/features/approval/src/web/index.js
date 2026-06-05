@@ -1,5 +1,5 @@
 import { jsxs as _jsxs, jsx as _jsx } from "react/jsx-runtime";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { FeatureScaffold, Inline, KeyValueTable, ListCard, Stack, ThreePaneLayout, designTokens } from "@aa/ui-core";
 import { translateMessage } from "@aa/shared-i18n";
 import { useApprovalCenterVm } from "../hooks";
@@ -10,6 +10,9 @@ export function ApprovalWebView() {
     const delegateInputId = useId();
     const approvalActionDescriptionId = useId();
     const delegateActionDescriptionId = useId();
+    useEffect(() => {
+        setDelegateTarget(selectedApproval?.escalationTarget ?? "domain-admin");
+    }, [selectedApproval?.approvalId, selectedApproval?.escalationTarget]);
     return (_jsx(FeatureScaffold, { title: "Approval Center", summary: "\u5BA1\u6279\u961F\u5217\u3001\u59D4\u6D3E\u4E0E\u6062\u590D\u52A8\u4F5C\u95ED\u73AF", status: "Implemented/Contracted", children: _jsx(ThreePaneLayout, { left: (_jsxs("div", { children: [_jsxs("h3", { children: [translateMessage("ui.approval.queueTitle"), " \u00B7 ", vm.queueDepth] }), _jsx(Stack, { gap: 10, children: vm.queueItems.map((approval) => (_jsxs("button", { onClick: () => {
                                 vm.selectApproval(approval.id);
                             }, style: {
@@ -25,6 +28,7 @@ export function ApprovalWebView() {
                             { key: "Reason", value: selectedApproval.reasonSummary },
                             { key: "Deadline", value: selectedApproval.deadline ?? translateMessage("ui.approval.notAvailable") },
                             { key: "Policy Source", value: selectedApproval.policySource ?? translateMessage("ui.approval.notAvailable") },
+                            { key: translateMessage("ui.approval.delegateTarget"), value: selectedApproval.escalationTarget ?? translateMessage("ui.approval.notAvailable") },
                             { key: "Recommended Option", value: selectedApproval.recommendedOption ?? translateMessage("ui.approval.notAvailable") },
                             { key: "Approval Level", value: selectedApproval.currentLevel != null && selectedApproval.totalLevels != null ? `${selectedApproval.currentLevel}/${selectedApproval.totalLevels}` : translateMessage("ui.approval.singleLevel") },
                         ] }), _jsxs(Inline, { children: [_jsx("button", { "aria-describedby": approvalActionDescriptionId, onClick: vm.approve, type: "button", children: translateMessage("ui.approval.approve") }), _jsx("button", { "aria-describedby": approvalActionDescriptionId, onClick: vm.reject, type: "button", children: translateMessage("ui.approval.reject") }), _jsx("button", { onClick: () => { void vm.requestMoreContext(); }, type: "button", children: translateMessage("ui.approval.requestContext") })] }), _jsx("form", { onSubmit: (event) => {

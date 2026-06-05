@@ -18,7 +18,7 @@ vi.mock("../../../../../../packages/features/domain-wizard/src/hooks", () => ({
       { id: "domain-select", label: "选择域", description: "选择要配置的领域" },
       { id: "risk-profile", label: "风险配置", description: "设置风险等级和数据分类" },
       { id: "capability-config", label: "能力配置", description: "配置并发任务和钻取深度" },
-      { id: "review", label: "审核确认", description: "审核并提交配置" },
+      { id: "review", label: "审核确认", description: "在本地交接前审核配置" },
     ],
     currentStep: "domain-select",
     setCurrentStep: vi.fn(),
@@ -42,6 +42,10 @@ vi.mock("../../../../../../packages/features/domain-wizard/src/hooks", () => ({
     },
     submissionMessage: null,
     submitConfig: vi.fn(),
+    canGoBack: false,
+    canGoNext: false,
+    goBack: vi.fn(),
+    goNext: vi.fn(),
   }),
 }));
 

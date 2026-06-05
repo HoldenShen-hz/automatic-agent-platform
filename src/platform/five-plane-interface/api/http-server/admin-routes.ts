@@ -548,6 +548,20 @@ function listFeatureFlags() {
   }));
 }
 
+function readSystemConfig() {
+  const environment = process.env.NODE_ENV === "production"
+    ? "prod"
+    : process.env.NODE_ENV === "staging"
+      ? "staging"
+      : "dev";
+  return {
+    environment,
+    cspMode: environment === "prod" ? "enforced" as const : "report-only" as const,
+    csrfEnabled: true,
+    telemetryEndpoint: process.env.AA_OTEL_ENDPOINT?.trim() ?? "",
+  };
+}
+
 async function readModelConfigs(deps: AdminRouteDeps) {
   const path = join(resolvePlatformRoot(deps), "config", "providers", "models.json");
   let raw: string;
@@ -1082,6 +1096,14 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     },
     {
       method: "GET",
+      pathname: "/v1/admin/system-config",
+      handler: (ctx) => {
+        requirePrincipal(ctx.request, deps.authService, "viewer");
+        return buildJsonResponse(ctx.requestId, 200, readSystemConfig());
+      },
+    },
+    {
+      method: "GET",
       pathname: "/v1/admin/models",
       handler: async (ctx) => {
         requirePrincipal(ctx.request, deps.authService, "viewer");
@@ -1486,7 +1508,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     {
       method: "POST",
       pathname: "/v1/admin/governance/leadership-claims/review-requests",
-      handler: (ctx) => {
+      handler: async (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "leadership claims governance");
         const payload = readValidatedJsonBody(ctx.request.body, leadershipClaimReviewRequestSchema.parse);
@@ -1500,6 +1522,20 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
           evidenceRefs: payload.evidenceRefs,
           requestedBy: principal.actorId,
           rationale: payload.rationale,
+        });
+        await appendAuditTrailRecord(deps, {
+          actorId: principal.actorId,
+          action: "leadership_claim.review_requested",
+          resourceRef: `leadership-claim-review-request:${reviewRequest.requestId}`,
+          outcome: "pending",
+          metadata: {
+            familyId: reviewRequest.familyId,
+            ...(reviewRequest.divisionId == null ? {} : { divisionId: reviewRequest.divisionId }),
+            ...(reviewRequest.scenarioId == null ? {} : { scenarioId: reviewRequest.scenarioId }),
+            requestedClaimLevel: reviewRequest.requestedClaimLevel,
+            requestedSurfaces: [...reviewRequest.requestedSurfaces],
+            evidenceRefs: [...reviewRequest.evidenceRefs],
+          },
         });
         return buildJsonResponse(ctx.requestId, 201, { reviewRequest });
       },
@@ -1525,31 +1561,45 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
         assertGlobalTenantScopeSupported(principal, "leadership claims governance");
         const payload = readValidatedJsonBody(ctx.request.body, leadershipClaimReviewDecisionSchema.parse);
         const service = new LeadershipClaimsGovernanceService();
-        try {
-          const reviewRequest = segments[6] === "approve"
-            ? service.approveReviewRequest({
-              requestId: segments[5] ?? "",
-              reviewedBy: principal.actorId,
-              reasonCode: payload.reasonCode,
-              ...(payload.comment != null ? { comment: payload.comment } : {}),
-            })
-            : service.rejectReviewRequest({
-              requestId: segments[5] ?? "",
-              reviewedBy: principal.actorId,
-              reasonCode: payload.reasonCode,
-              ...(payload.comment != null ? { comment: payload.comment } : {}),
+        return (async () => {
+          try {
+            const reviewRequest = segments[6] === "approve"
+              ? service.approveReviewRequest({
+                requestId: segments[5] ?? "",
+                reviewedBy: principal.actorId,
+                reasonCode: payload.reasonCode,
+                ...(payload.comment != null ? { comment: payload.comment } : {}),
+              })
+              : service.rejectReviewRequest({
+                requestId: segments[5] ?? "",
+                reviewedBy: principal.actorId,
+                reasonCode: payload.reasonCode,
+                ...(payload.comment != null ? { comment: payload.comment } : {}),
+              });
+            await appendAuditTrailRecord(deps, {
+              actorId: principal.actorId,
+              action: `leadership_claim.review_${reviewRequest.status}`,
+              resourceRef: `leadership-claim-review-request:${reviewRequest.requestId}`,
+              outcome: reviewRequest.status,
+              metadata: {
+                familyId: reviewRequest.familyId,
+                requestedClaimLevel: reviewRequest.requestedClaimLevel,
+                reasonCode: reviewRequest.decisionReasonCode,
+                ...(reviewRequest.decisionComment == null ? {} : { comment: reviewRequest.decisionComment }),
+              },
             });
-          return buildJsonResponse(ctx.requestId, 200, { reviewRequest });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "leadership_claim.review_request_failed";
-          if (message.includes("review_request_not_found")) {
-            throw new ApiError(404, "api.leadership_claim_review_not_found", "Leadership claim review request was not found.");
+            return buildJsonResponse(ctx.requestId, 200, { reviewRequest });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "leadership_claim.review_request_failed";
+            if (message.includes("review_request_not_found")) {
+              throw new ApiError(404, "api.leadership_claim_review_not_found", "Leadership claim review request was not found.");
+            }
+            if (message.includes("review_request_not_pending")) {
+              throw new ApiError(409, "api.leadership_claim_review_not_pending", "Leadership claim review request is no longer pending.");
+            }
+            throw error;
           }
-          if (message.includes("review_request_not_pending")) {
-            throw new ApiError(409, "api.leadership_claim_review_not_pending", "Leadership claim review request is no longer pending.");
-          }
-          throw error;
-        }
+        })();
       },
     },
     {
@@ -1572,22 +1622,35 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
         assertGlobalTenantScopeSupported(principal, "leadership claims governance");
         const payload = readValidatedJsonBody(ctx.request.body, leadershipClaimRevokeSchema.parse);
         const service = new LeadershipClaimsGovernanceService();
-        try {
-          const statusOverride = service.revokeClaim({
-            claimId: segments[4] ?? "",
-            reasonCode: payload.reasonCode,
-            replacementRequired: payload.replacementRequired,
-            revokedBy: principal.actorId,
-            ...(payload.comment != null ? { comment: payload.comment } : {}),
-          });
-          return buildJsonResponse(ctx.requestId, 200, { statusOverride });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "leadership_claim.revoke_failed";
-          if (message.includes("claim_not_found")) {
-            throw new ApiError(404, "api.leadership_claim_not_found", "Leadership claim was not found.");
+        return (async () => {
+          try {
+            const statusOverride = service.revokeClaim({
+              claimId: segments[4] ?? "",
+              reasonCode: payload.reasonCode,
+              replacementRequired: payload.replacementRequired,
+              revokedBy: principal.actorId,
+              ...(payload.comment != null ? { comment: payload.comment } : {}),
+            });
+            await appendAuditTrailRecord(deps, {
+              actorId: principal.actorId,
+              action: "leadership_claim.revoked",
+              resourceRef: `leadership-claim:${statusOverride.claimId}`,
+              outcome: statusOverride.status,
+              metadata: {
+                reasonCode: statusOverride.reasonCode,
+                replacementRequired: statusOverride.replacementRequired,
+                ...(statusOverride.comment == null ? {} : { comment: statusOverride.comment }),
+              },
+            });
+            return buildJsonResponse(ctx.requestId, 200, { statusOverride });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "leadership_claim.revoke_failed";
+            if (message.includes("claim_not_found")) {
+              throw new ApiError(404, "api.leadership_claim_not_found", "Leadership claim was not found.");
+            }
+            throw error;
           }
-          throw error;
-        }
+        })();
       },
     },
   ];

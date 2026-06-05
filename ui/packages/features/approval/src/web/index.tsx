@@ -1,4 +1,4 @@
-import { useId, useState, type ReactElement } from "react";
+import { useEffect, useId, useState, type ReactElement } from "react";
 import { FeatureScaffold, Inline, KeyValueTable, ListCard, Stack, ThreePaneLayout, designTokens } from "@aa/ui-core";
 import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
 import { useApprovalCenterVm } from "../hooks";
@@ -11,6 +11,10 @@ export function ApprovalWebView(): ReactElement {
   const delegateInputId = useId();
   const approvalActionDescriptionId = useId();
   const delegateActionDescriptionId = useId();
+
+  useEffect(() => {
+    setDelegateTarget(selectedApproval?.escalationTarget ?? "domain-admin");
+  }, [selectedApproval?.approvalId, selectedApproval?.escalationTarget]);
 
   return (
     <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Contracted">
@@ -54,6 +58,7 @@ export function ApprovalWebView(): ReactElement {
                 { key: translateMessage("ui.approval.field.reason"), value: selectedApproval.reasonSummary },
                 { key: translateMessage("ui.approval.field.deadline"), value: selectedApproval.deadline ?? translateMessage("ui.approval.notAvailable") },
                 { key: translateMessage("ui.approval.field.policySource"), value: selectedApproval.policySource ?? translateMessage("ui.approval.notAvailable") },
+                { key: translateMessage("ui.approval.delegateTarget"), value: selectedApproval.escalationTarget ?? translateMessage("ui.approval.notAvailable") },
                 { key: translateMessage("ui.approval.field.recommendedOption"), value: selectedApproval.recommendedOption ?? translateMessage("ui.approval.notAvailable") },
                 { key: translateMessage("ui.approval.field.approvalLevel"), value: selectedApproval.currentLevel != null && selectedApproval.totalLevels != null ? `${selectedApproval.currentLevel}/${selectedApproval.totalLevels}` : translateMessage("ui.approval.singleLevel") },
               ]}

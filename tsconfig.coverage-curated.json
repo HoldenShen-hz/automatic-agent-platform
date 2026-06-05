@@ -2826,6 +2826,7 @@
     "tests/unit/ui/features/conversation/conversation-entrypoint-contract.test.ts",
     "tests/unit/ui/features/conversation/conversation-vm-offline-execution.test.ts",
     "tests/unit/ui/features/settings/settings-vm-save-contract.test.ts",
+    "tests/unit/ui/features/workbench-deep-links-contract.test.ts",
     "tests/unit/ui/shared-package-regressions.test.ts",
     "tests/unit/ui/shared/platform/platform-adapter-security.test.ts",
     "tests/unit/ui/shared/sync/conflict-resolver.test.ts",

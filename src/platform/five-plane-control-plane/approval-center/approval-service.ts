@@ -148,6 +148,15 @@ interface CascadeDecisionPayload extends ApprovalDecision {
   cascadeSessionId?: string;
 }
 
+interface PendingApprovalMutationInput {
+  approvalId: string;
+  actorId: string;
+  occurredAt: string;
+  eventType: string;
+  payload: Record<string, unknown>;
+  mutate(request: ApprovalRequest): ApprovalRequest;
+}
+
 /**
  * Validates that an approval decision has the correct payload for its type.
  *
@@ -434,6 +443,194 @@ export class ApprovalService {
     return record == null ? null : toLegacyApprovalView(record);
   }
 
+  public delegatePendingApproval(input: {
+    approvalId: string;
+    delegateTo: string;
+    respondedBy: string;
+    respondedAt: string;
+  }): ApprovalRequest {
+    return this.updatePendingApprovalRequest({
+      approvalId: input.approvalId,
+      actorId: input.respondedBy,
+      occurredAt: input.respondedAt,
+      eventType: "approval:delegated",
+      payload: {
+        approvalId: input.approvalId,
+        delegateTo: input.delegateTo,
+        respondedBy: input.respondedBy,
+      },
+      mutate: (request) => {
+        const context = request.context ?? {};
+        const escalationChain = Array.isArray(request.escalationChain)
+          ? [...request.escalationChain]
+          : Array.isArray(request.escalation_chain)
+            ? [...request.escalation_chain]
+            : [];
+        const normalizedEscalationChain = escalationChain.reduce<ApprovalEscalationHop[]>((chain, hop) => {
+          const lastHop = chain.at(-1);
+          if (lastHop != null && lastHop.reviewerType === hop.reviewerType && lastHop.reviewerRef === hop.reviewerRef) {
+            return chain;
+          }
+          chain.push({
+            ...hop,
+            level: chain.length + 1,
+          });
+          return chain;
+        }, []);
+        const timeoutAutoAction = request.timeoutAutoAction ?? request.timeout_auto_action ?? "remain_pending";
+        const lastHop = normalizedEscalationChain.at(-1);
+        const nextEscalationChain = lastHop?.reviewerType === "operator" && lastHop.reviewerRef === input.delegateTo
+          ? normalizedEscalationChain
+          : [
+              ...normalizedEscalationChain,
+              {
+                level: normalizedEscalationChain.length + 1,
+                reviewerType: "operator",
+                reviewerRef: input.delegateTo,
+                timeoutMs: 0,
+                onTimeout: timeoutAutoAction,
+              } satisfies ApprovalEscalationHop,
+            ];
+        return {
+          ...request,
+          context: {
+            ...context,
+            escalationTarget: input.delegateTo,
+            delegatedTo: input.delegateTo,
+            delegatedBy: input.respondedBy,
+            delegatedAt: input.respondedAt,
+            lastOperatorAction: "delegate",
+            lastOperatorActionAt: input.respondedAt,
+          },
+          escalationChain: nextEscalationChain,
+          escalation_chain: nextEscalationChain,
+        };
+      },
+    });
+  }
+
+  public requestAdditionalContext(input: {
+    approvalId: string;
+    respondedBy: string;
+    respondedAt: string;
+    comment?: string;
+  }): ApprovalRequest {
+    return this.updatePendingApprovalRequest({
+      approvalId: input.approvalId,
+      actorId: input.respondedBy,
+      occurredAt: input.respondedAt,
+      eventType: "approval:context_requested",
+      payload: {
+        approvalId: input.approvalId,
+        respondedBy: input.respondedBy,
+        ...(input.comment == null ? {} : { comment: input.comment }),
+      },
+      mutate: (request) => ({
+        ...request,
+        context: {
+          ...(request.context ?? {}),
+          additionalContextRequested: true,
+          additionalContextRequestedBy: input.respondedBy,
+          additionalContextRequestedAt: input.respondedAt,
+          ...(input.comment == null ? {} : { additionalContextComment: input.comment }),
+          lastOperatorAction: "request_context",
+          lastOperatorActionAt: input.respondedAt,
+        },
+      }),
+    });
+  }
+
+  public editPendingApproval(input: {
+    approvalId: string;
+    patch: Record<string, unknown>;
+    respondedBy: string;
+    respondedAt: string;
+  }): ApprovalRequest {
+    return this.updatePendingApprovalRequest({
+      approvalId: input.approvalId,
+      actorId: input.respondedBy,
+      occurredAt: input.respondedAt,
+      eventType: "approval:edited",
+      payload: {
+        approvalId: input.approvalId,
+        patch: input.patch,
+        respondedBy: input.respondedBy,
+      },
+      mutate: (request) => ({
+        ...request,
+        context: {
+          ...(request.context ?? {}),
+          latestEditPatch: input.patch,
+          latestEditedBy: input.respondedBy,
+          latestEditedAt: input.respondedAt,
+          lastOperatorAction: "edit",
+          lastOperatorActionAt: input.respondedAt,
+        },
+      }),
+    });
+  }
+
+  public escalatePendingApproval(input: {
+    approvalId: string;
+    reason: string;
+    respondedBy: string;
+    respondedAt: string;
+  }): ApprovalRequest {
+    return this.updatePendingApprovalRequest({
+      approvalId: input.approvalId,
+      actorId: input.respondedBy,
+      occurredAt: input.respondedAt,
+      eventType: "approval:escalated",
+      payload: {
+        approvalId: input.approvalId,
+        reason: input.reason,
+        respondedBy: input.respondedBy,
+      },
+      mutate: (request) => ({
+        ...request,
+        context: {
+          ...(request.context ?? {}),
+          escalationReason: input.reason,
+          escalatedBy: input.respondedBy,
+          escalatedAt: input.respondedAt,
+          lastOperatorAction: "escalate",
+          lastOperatorActionAt: input.respondedAt,
+        },
+      }),
+    });
+  }
+
+  public deferPendingApproval(input: {
+    approvalId: string;
+    until: string;
+    respondedBy: string;
+    respondedAt: string;
+  }): ApprovalRequest {
+    return this.updatePendingApprovalRequest({
+      approvalId: input.approvalId,
+      actorId: input.respondedBy,
+      occurredAt: input.respondedAt,
+      eventType: "approval:deferred",
+      payload: {
+        approvalId: input.approvalId,
+        until: input.until,
+        respondedBy: input.respondedBy,
+      },
+      mutate: (request) => ({
+        ...request,
+        context: {
+          ...(request.context ?? {}),
+          deadlineAt: input.until,
+          deferredUntil: input.until,
+          deferredBy: input.respondedBy,
+          deferredAt: input.respondedAt,
+          lastOperatorAction: "defer",
+          lastOperatorActionAt: input.respondedAt,
+        },
+      }),
+    });
+  }
+
   public resolve(input: LegacyApprovalResolutionInput): LegacyApprovalView {
     const decision: ApprovalDecision = input.decision === "approve" || input.decision === "approved"
       ? {
@@ -609,6 +806,61 @@ export class ApprovalService {
       this.directiveSink.emitDecisionDirective(decisionDirective);
     });
     return decision;
+  }
+
+  private updatePendingApprovalRequest(input: PendingApprovalMutationInput): ApprovalRequest {
+    let updatedRequest: ApprovalRequest | null = null;
+    this.db.transaction(() => {
+      const existing = this.repository.getApproval(input.approvalId);
+      if (!existing) {
+        throw new ValidationError("approval.not_found", `Approval not found: ${input.approvalId}`, {
+          details: { approvalId: input.approvalId },
+        });
+      }
+
+      const currentRequest = parseApprovalRequest(existing.requestJson);
+      if (existing.status !== "requested") {
+        this.repository.insertEvent({
+          id: newId("evt"),
+          taskId: existing.taskId,
+          executionId: existing.executionId,
+          eventType: "approval:update_ignored",
+          eventTier: "tier_2",
+          payloadJson: JSON.stringify({
+            approvalId: existing.id,
+            currentStatus: existing.status,
+            attemptedUpdate: input.payload,
+          }),
+          traceId: null,
+          createdAt: input.occurredAt,
+        });
+        updatedRequest = currentRequest;
+        return;
+      }
+
+      updatedRequest = input.mutate(currentRequest);
+      this.repository.updateApprovalRequest({
+        id: existing.id,
+        requestJson: JSON.stringify(updatedRequest),
+      });
+      this.repository.insertEvent({
+        id: newId("evt"),
+        taskId: existing.taskId,
+        executionId: existing.executionId,
+        eventType: input.eventType,
+        eventTier: "tier_2",
+        payloadJson: JSON.stringify(input.payload),
+        traceId: null,
+        createdAt: input.occurredAt,
+      });
+    });
+
+    if (updatedRequest == null) {
+      throw new ValidationError("approval.update_failed", `Approval update failed: ${input.approvalId}`, {
+        details: { approvalId: input.approvalId, eventType: input.eventType },
+      });
+    }
+    return updatedRequest;
   }
 
   private applyExecutionEffect(

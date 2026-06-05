@@ -46,6 +46,8 @@ describe("useApprovalCenterVm", () => {
   it("calls approveApproval and removes the approved item from local state", async () => {
     const { result } = renderHook(() => useApprovalCenterVm());
 
+    expect(result.current.queueItems[0]?.subtitle).toBe("high · Production rollout");
+
     await act(async () => {
       await result.current.approve();
     });

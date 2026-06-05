@@ -228,7 +228,7 @@ export interface WorkflowEvidenceRefDTO {
 export interface WorkflowDTO {
     readonly id: string;
     readonly title: string;
-    readonly status: "draft" | "running" | "paused" | "completed";
+    readonly status: "draft" | "running" | "paused" | "completed" | "failed" | "cancelled";
     readonly currentStage: string;
     readonly owner: string;
     readonly steps: readonly WorkflowStepDTO[];
@@ -258,7 +258,7 @@ export interface IncidentDTO {
 }
 export interface WorkerDTO {
     readonly id: string;
-    readonly status: "idle" | "busy" | "draining";
+    readonly status: "idle" | "busy" | "draining" | "offline";
     readonly queue: string;
     readonly heartbeatLagMs: number;
 }

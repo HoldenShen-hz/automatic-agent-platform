@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { updateTask, fetchWorkflowRunSteps } from "@aa/shared-api-client";
+import { updateTask } from "@aa/shared-api-client";
 import { translateMessage } from "@aa/shared-i18n";
 import { useRestClient, useTasksQuery, useWsClient } from "@aa/shared-state";
 const STORAGE_KEY = "aa-takeover-snapshots";
+const HISTORY_STORAGE_KEY = "aa-takeover-history";
 const MAX_SNAPSHOTS = 20;
 const MAX_HISTORY_ENTRIES = 32;
 function readSnapshots() {
@@ -28,6 +29,31 @@ function writeSnapshots(snapshots) {
     }
     catch {
         // Ignore storage write failures and preserve the in-memory snapshot state.
+    }
+}
+function readHistory() {
+    if (typeof window === "undefined") {
+        return [];
+    }
+    try {
+        const parsed = JSON.parse(window.localStorage.getItem(HISTORY_STORAGE_KEY) ?? "[]");
+        return Array.isArray(parsed)
+            ? parsed.filter(isTakeoverHistoryEntry).slice(0, MAX_HISTORY_ENTRIES)
+            : [];
+    }
+    catch {
+        return [];
+    }
+}
+function writeHistory(entries) {
+    if (typeof window === "undefined") {
+        return;
+    }
+    try {
+        window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(entries));
+    }
+    catch {
+        // Ignore storage write failures and preserve the in-memory history state.
     }
 }
 function commitSnapshots(updater) {
@@ -56,12 +82,38 @@ function buildFallbackSnapshotSteps(task, owner) {
         },
     ];
 }
+function mapWorkflowOutputStatus(status) {
+    switch (status) {
+        case "failed":
+            return "failed";
+        case "running":
+            return "running";
+        case "succeeded":
+        case "partial_success":
+        case "skipped":
+        case "completed":
+            return "completed";
+        default:
+            return "pending";
+    }
+}
 async function resolveSnapshotSteps(client, task, owner) {
     if (task == null) {
         return [];
     }
     try {
-        return await fetchWorkflowRunSteps(client, task.currentStep);
+        const workflow = await client.get(`/v1/workflows/${encodeURIComponent(task.id)}`);
+        const stepOutputs = workflow.inspect?.stepOutputs ?? [];
+        if (stepOutputs.length === 0) {
+            return buildFallbackSnapshotSteps(task, owner);
+        }
+        return stepOutputs.map((step, index) => ({
+            id: step.id ?? step.stepId ?? `${task.id}-step-${index + 1}`,
+            title: step.summary ?? step.stepId ?? `step-${index + 1}`,
+            status: mapWorkflowOutputStatus(step.status),
+            executor: step.roleId ?? owner,
+            ...(step.producedAt == null ? {} : { completedAt: step.producedAt }),
+        }));
     }
     catch {
         return buildFallbackSnapshotSteps(task, owner);
@@ -72,9 +124,13 @@ export function useTakeoverVm() {
     const wsClient = useWsClient();
     const tasks = useTasksQuery().data ?? [];
     const [currentSnapshot, setCurrentSnapshot] = useState(() => readSnapshots()[0] ?? null);
-    const [ownershipHistory, setOwnershipHistory] = useState([]);
+    const [ownershipHistory, setOwnershipHistory] = useState(() => readHistory());
     const appendHistory = useCallback((entry) => {
-        setOwnershipHistory((entries) => [entry, ...entries].slice(0, MAX_HISTORY_ENTRIES));
+        setOwnershipHistory((entries) => {
+            const nextEntries = [entry, ...entries].slice(0, MAX_HISTORY_ENTRIES);
+            writeHistory(nextEntries);
+            return nextEntries;
+        });
     }, []);
     const claimOwnership = useCallback(async (taskId, owner) => {
         const task = tasks.find((candidate) => candidate.id === taskId);
@@ -191,4 +247,14 @@ function isTakeoverSnapshot(value) {
         && typeof snapshot.status === "string"
         && Array.isArray(snapshot.steps)
         && typeof snapshot.capturedAt === "string";
+}
+function isTakeoverHistoryEntry(value) {
+    if (value == null || typeof value !== "object") {
+        return false;
+    }
+    const entry = value;
+    return typeof entry.taskId === "string"
+        && typeof entry.owner === "string"
+        && typeof entry.action === "string"
+        && typeof entry.recordedAt === "string";
 }

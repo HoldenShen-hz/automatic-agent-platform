@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { createTask, fetchTasks, updateTask, type CreateTaskResponse } from "@aa/shared-api-client";
+import {
+  cancelWorkflow,
+  createTask,
+  fetchTasks,
+  pauseWorkflow as pauseWorkflowApi,
+  recoverWorkflow as recoverWorkflowApi,
+  resumeWorkflow as resumeWorkflowApi,
+  updateTask,
+  type CreateTaskResponse,
+} from "@aa/shared-api-client";
 import { taskQueryKeys, useRestClient, useTasksQuery } from "@aa/shared-state";
 import type { TaskDTO, WorkflowRunStepDTO } from "@aa/shared-types";
 
@@ -28,6 +37,13 @@ type TaskCockpitTimelineEntry = {
   readonly occurredAt: string;
 };
 type TaskCockpitResponse = {
+  readonly snapshot?: {
+    readonly workflow?: {
+      readonly status?: string | null;
+      readonly currentStepIndex?: number | null;
+      readonly resumableFromStep?: string | null;
+    } | null;
+  };
   readonly inspect?: {
     readonly workflowState?: {
       readonly currentStepIndex?: number;
@@ -52,8 +68,11 @@ export interface TaskCockpitVm {
   readonly listItems: readonly { id: string; title: string; subtitle: string }[];
   readonly loading: boolean;
   readonly loadError: string | null;
+  readonly operationError: string | null;
   readonly selectedId: string | null;
   readonly selectedTask: (TaskDTO & { resourceUsage?: { cpuPercent?: number; memoryMb?: number; runtimeMinutes?: number } }) | null;
+  readonly workflowControlsAvailable: boolean;
+  readonly workflowControlReason: string | null;
   readonly timelineItems: readonly TimelineItem[];
   readonly drillDownSteps: readonly WorkflowRunStepDTO[];
   readonly pendingOperations: number;
@@ -189,6 +208,10 @@ function readCreatedTaskId(response: CreateTaskResponse | null | undefined): str
   return typeof taskId === "string" && taskId.length > 0 ? taskId : null;
 }
 
+function describeOperationError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 function areTasksEquivalent(left: readonly TaskDTO[], right: readonly TaskDTO[]): boolean {
   if (left.length !== right.length) {
     return false;
@@ -228,6 +251,7 @@ export function useTaskCockpitVm(): TaskCockpitVm {
   const tasks = taskQuery.data ?? [];
   const [loadedTasks, setLoadedTasks] = useState<readonly TaskDTO[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drillDownSteps, setDrillDownSteps] = useState<readonly WorkflowRunStepDTO[]>([]);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
@@ -237,6 +261,8 @@ export function useTaskCockpitVm(): TaskCockpitVm {
   const [loadingEvidence] = useState(false);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [serverEvidenceChain, setServerEvidenceChain] = useState<readonly EvidenceItem[]>([]);
+  const [workflowControlsAvailable, setWorkflowControlsAvailable] = useState(true);
+  const [workflowControlReason, setWorkflowControlReason] = useState<string | null>(null);
 
   const [optimisticTasks, setOptimisticTasks] = useState<readonly TaskDTO[] | null>(null);
   const refreshTasks = useCallback(async () => {
@@ -348,6 +374,7 @@ export function useTaskCockpitVm(): TaskCockpitVm {
     if (rollback == null) {
       return;
     }
+    setOperationError(null);
     setTimelineItems((current) => [{ title, description }, ...current]);
     setPendingOperations((current) => current + 1);
 
@@ -355,6 +382,7 @@ export function useTaskCockpitVm(): TaskCockpitVm {
       await updateTask(client, selectedTask.id, body);
     } catch (error) {
       rollback?.();
+      setOperationError(describeOperationError(error));
       setTimelineItems((current) => current.filter((item, index) => index !== 0));
       throw error;
     } finally {
@@ -366,19 +394,25 @@ export function useTaskCockpitVm(): TaskCockpitVm {
     const cockpit = await client.get<TaskCockpitResponse>(`/v1/tasks/${encodeURIComponent(taskId)}`);
     const task = visibleTasks.find((candidate) => candidate.id === taskId) ?? null;
     const steps = buildDrillDownSteps(task, cockpit);
+    const hasWorkflowControl = cockpit.inspect?.workflowState != null || cockpit.snapshot?.workflow != null;
     setServerEvidenceChain(buildEvidenceItemsFromCockpit(taskId, cockpit));
     setServerTimelineItems(buildTimelineItemsFromCockpit(cockpit));
     setDrillDownSteps(steps);
     setSelectedStepId(steps[0]?.id ?? null);
+    setWorkflowControlsAvailable(hasWorkflowControl);
+    setWorkflowControlReason(hasWorkflowControl ? null : "This task does not have a live workflow control record, so pause/retry/resume controls are unavailable.");
   }, [client, visibleTasks]);
 
   const selectTask = useCallback((id: string) => {
     setSelectedId(id);
+    setOperationError(null);
     void fetchTaskDrillDown(id).catch(() => {
       setDrillDownSteps([]);
       setSelectedStepId(null);
       setServerEvidenceChain([]);
       setServerTimelineItems([]);
+      setWorkflowControlsAvailable(false);
+      setWorkflowControlReason("Task drill-down is unavailable.");
     });
   }, [fetchTaskDrillDown]);
 
@@ -400,6 +434,31 @@ export function useTaskCockpitVm(): TaskCockpitVm {
     selectedTask?.outputSummary,
     selectedTask?.status,
   ]);
+
+  const runWorkflowMutation = useCallback(async (
+    action: () => Promise<unknown>,
+    title: string,
+    description: string,
+  ) => {
+    if (selectedTask == null) {
+      return;
+    }
+    setOperationError(null);
+    setTimelineItems((current) => [{ title, description }, ...current]);
+    setPendingOperations((current) => current + 1);
+
+    try {
+      await action();
+      await refreshTasks();
+      await fetchTaskDrillDown(selectedTask.id);
+    } catch (error) {
+      setOperationError(describeOperationError(error));
+      setTimelineItems((current) => current.filter((item, index) => index !== 0));
+      throw error;
+    } finally {
+      setPendingOperations((current) => Math.max(0, current - 1));
+    }
+  }, [fetchTaskDrillDown, refreshTasks, selectedTask]);
 
   const createTaskFromPrompt = useCallback(async (
     input: { readonly title: string; readonly domainId?: string; readonly owner?: string },
@@ -478,8 +537,11 @@ export function useTaskCockpitVm(): TaskCockpitVm {
     listItems: mapTasksToVm(visibleTasks),
     loading: taskQuery.isLoading && visibleTasks.length === 0,
     loadError: loadError ?? (taskQuery.error instanceof Error ? taskQuery.error.message : null),
+    operationError,
     selectedId,
     selectedTask,
+    workflowControlsAvailable,
+    workflowControlReason,
     timelineItems,
     drillDownSteps,
     pendingOperations,
@@ -512,30 +574,29 @@ export function useTaskCockpitVm(): TaskCockpitVm {
       );
     },
     async pauseTask() {
-      await runTaskMutation(
-        { status: "paused" as TaskDTO["status"], currentStep: "paused_by_operator" },
+      await runWorkflowMutation(
+        () => pauseWorkflowApi(client, selectedTask.id),
         `Paused · ${selectedTask?.title ?? "task"}`,
         "Paused by operator.",
       );
     },
     async cancelTask() {
-      await runTaskMutation(
-        { status: "cancelled" as TaskDTO["status"], currentStep: "cancelled_by_operator" },
+      await runWorkflowMutation(
+        () => cancelWorkflow(client, selectedTask.id),
         `Cancelled · ${selectedTask?.title ?? "task"}`,
         "Cancelled by operator.",
       );
     },
     async retryTask() {
-      await runTaskMutation(
-        { status: "queued", currentStep: "retry_requested" },
+      await runWorkflowMutation(
+        () => recoverWorkflowApi(client, selectedTask.id),
         `Retry · ${selectedTask?.title ?? "task"}`,
         "Retry requested.",
       );
     },
     async resumeTask(mode: "normal" | "supervised") {
-      const currentStep = mode === "supervised" ? "supervised-resume" : "resume";
-      await runTaskMutation(
-        { status: "running", currentStep },
+      await runWorkflowMutation(
+        () => resumeWorkflowApi(client, selectedTask.id, mode === "supervised" ? "supervised" : "normal"),
         `Resume · ${selectedTask?.title ?? "task"}`,
         `${mode} resume requested.`,
       );
@@ -543,7 +604,7 @@ export function useTaskCockpitVm(): TaskCockpitVm {
     async escalateTask(target = "domain-admin") {
       const sanitizedTarget = sanitizeInput(target, "domain-admin");
       await runTaskMutation(
-        { status: "blocked", currentStep: `escalated:${sanitizedTarget}` },
+        { status: "blocked" },
         `Escalated · ${selectedTask?.title ?? "task"}`,
         `Escalated to ${sanitizedTarget}.`,
       );

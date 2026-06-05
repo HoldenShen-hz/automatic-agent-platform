@@ -10,6 +10,61 @@ import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../..
 function createMockApprovalService(): ApprovalService {
   return {
     applyDecision: () => {},
+    delegatePendingApproval: () => ({
+      approvalId: "appr-1",
+      taskId: "task-1",
+      sourceAgentId: "agent-1",
+      reason: "Production rollout",
+      riskLevel: "high",
+      options: ["approve", "reject"],
+      context: {},
+      timeoutPolicy: "reject",
+      createdAt: "2026-04-16T00:00:00.000Z",
+    }),
+    requestAdditionalContext: () => ({
+      approvalId: "appr-1",
+      taskId: "task-1",
+      sourceAgentId: "agent-1",
+      reason: "Production rollout",
+      riskLevel: "high",
+      options: ["approve", "reject"],
+      context: {},
+      timeoutPolicy: "reject",
+      createdAt: "2026-04-16T00:00:00.000Z",
+    }),
+    editPendingApproval: () => ({
+      approvalId: "appr-1",
+      taskId: "task-1",
+      sourceAgentId: "agent-1",
+      reason: "Production rollout",
+      riskLevel: "high",
+      options: ["approve", "reject"],
+      context: {},
+      timeoutPolicy: "reject",
+      createdAt: "2026-04-16T00:00:00.000Z",
+    }),
+    escalatePendingApproval: () => ({
+      approvalId: "appr-1",
+      taskId: "task-1",
+      sourceAgentId: "agent-1",
+      reason: "Production rollout",
+      riskLevel: "high",
+      options: ["approve", "reject"],
+      context: {},
+      timeoutPolicy: "reject",
+      createdAt: "2026-04-16T00:00:00.000Z",
+    }),
+    deferPendingApproval: () => ({
+      approvalId: "appr-1",
+      taskId: "task-1",
+      sourceAgentId: "agent-1",
+      reason: "Production rollout",
+      riskLevel: "high",
+      options: ["approve", "reject"],
+      context: {},
+      timeoutPolicy: "reject",
+      createdAt: "2026-04-16T00:00:00.000Z",
+    }),
   } as unknown as ApprovalService;
 }
 
@@ -233,6 +288,80 @@ test("POST /v1/approvals/:id/approve maps alias action to approval decision", as
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
   assert.equal(appliedDecisionType, "confirmed");
+});
+
+test("POST /v1/approvals/:id/delegate persists delegate target through approval service", async () => {
+  let delegatedTo: string | null = null;
+  const deps = {
+    authService: createMockAuthService(),
+    approvalService: {
+      ...createMockApprovalService(),
+      delegatePendingApproval: (input: { delegateTo: string }) => {
+        delegatedTo = input.delegateTo;
+        return {
+          approvalId: "appr-2",
+          taskId: "task-1",
+          sourceAgentId: "agent-1",
+          reason: "Production rollout",
+          riskLevel: "high",
+          options: ["approve", "reject"],
+          context: { escalationTarget: input.delegateTo },
+          timeoutPolicy: "reject",
+          createdAt: "2026-04-16T00:00:00.000Z",
+        };
+      },
+    } as unknown as ApprovalService,
+    inspectService: createMockInspectService(),
+  };
+  const routes = createApprovalRoutes(deps);
+  const ctx = createMockContext(
+    "/v1/approvals/appr-2/delegate",
+    ["v1", "approvals", "appr-2", "delegate"],
+    {},
+    JSON.stringify({ delegateTo: "domain-admin" }),
+    "POST",
+  );
+  const response = await callRoute(routes, ctx);
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.equal(delegatedTo, "domain-admin");
+});
+
+test("POST /v1/approvals/:id/request-context persists a real operator request", async () => {
+  let requestContextCalled = false;
+  const deps = {
+    authService: createMockAuthService(),
+    approvalService: {
+      ...createMockApprovalService(),
+      requestAdditionalContext: () => {
+        requestContextCalled = true;
+        return {
+          approvalId: "appr-2",
+          taskId: "task-1",
+          sourceAgentId: "agent-1",
+          reason: "Production rollout",
+          riskLevel: "high",
+          options: ["approve", "reject"],
+          context: { additionalContextRequested: true },
+          timeoutPolicy: "reject",
+          createdAt: "2026-04-16T00:00:00.000Z",
+        };
+      },
+    } as unknown as ApprovalService,
+    inspectService: createMockInspectService(),
+  };
+  const routes = createApprovalRoutes(deps);
+  const ctx = createMockContext(
+    "/v1/approvals/appr-2/request-context",
+    ["v1", "approvals", "appr-2", "request-context"],
+    {},
+    JSON.stringify({ comment: "Need more rollout evidence" }),
+    "POST",
+  );
+  const response = await callRoute(routes, ctx);
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.equal(requestContextCalled, true);
 });
 
 test("POST /v1/approvals/:id/decision validates decision payload", async () => {

@@ -19,7 +19,7 @@ export function DomainWizardWebView(): ReactElement {
   const currentStepLabel = vm.steps.find((step) => step.id === vm.currentStep)?.label ?? stepHeadings[vm.currentStep];
 
   return (
-    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Partial">
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -31,6 +31,9 @@ export function DomainWizardWebView(): ReactElement {
         }}
       >
       <Stack gap={16}>
+        <p style={{ marginTop: 0 }}>
+          {translateMessage("ui.domainWizard.boundary")}
+        </p>
         <ol>
           {vm.steps.map((step) => (
             <li key={step.id}>

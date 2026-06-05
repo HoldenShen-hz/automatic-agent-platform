@@ -5,11 +5,15 @@ export { Inline, LayoutFrame, Stack, ThreePaneLayout } from "../layouts";
 export declare function StatusPill({ status }: {
     status: ImplementationStatus;
 }): ReactElement;
+export interface ListCardItem {
+    readonly title: string;
+    readonly description: string;
+    readonly actionLabel?: string;
+    readonly actionDisabled?: boolean;
+    readonly onAction?: () => void | Promise<void>;
+}
 export declare function ListCard({ items }: {
-    items: readonly {
-        title: string;
-        description: string;
-    }[];
+    items: readonly ListCardItem[];
 }): ReactElement;
 export declare function KeyValueTable({ rows }: {
     rows: readonly {

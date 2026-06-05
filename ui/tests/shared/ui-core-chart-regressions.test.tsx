@@ -37,6 +37,20 @@ vi.mock("echarts/core", () => ({
   use: vi.fn(),
 }));
 
+const echartsComponents = vi.hoisted(() => ({
+  DataZoomComponent: Symbol("DataZoomComponent"),
+  GridComponent: Symbol("GridComponent"),
+  TooltipComponent: Symbol("TooltipComponent"),
+}));
+
+vi.mock("echarts/components", () => echartsComponents);
+vi.mock("echarts/charts", () => ({
+  LineChart: Symbol("LineChart"),
+}));
+vi.mock("echarts/renderers", () => ({
+  CanvasRenderer: Symbol("CanvasRenderer"),
+}));
+
 describe("ui-core chart regressions", () => {
   beforeEach(() => {
     chartApi.setOption.mockClear();
@@ -121,6 +135,13 @@ describe("ui-core chart regressions", () => {
       configurable: true,
       value: originalUserAgent,
     });
+  });
+
+  it("registers the data zoom component required by runtime chart options", async () => {
+    const { use } = await import("echarts/core");
+    const components = (use as typeof vi.fn).mock.calls[0]?.[0] as readonly unknown[];
+
+    expect(components).toContain(echartsComponents.DataZoomComponent);
   });
 
   it("reuses the same chart instance and appends series data for append-only updates", () => {

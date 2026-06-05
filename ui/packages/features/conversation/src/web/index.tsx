@@ -54,7 +54,7 @@ export function ConversationWebView(): ReactElement {
           <button aria-label="Send Prompt" disabled={!hasDraft} type="submit">Send Prompt</button>
           <button aria-label="Build Plan" disabled={!hasPromptContext} onClick={() => { void vm.buildPlan(); }} type="button">Build Plan</button>
           <button aria-label="Confirm" disabled={!vm.planReady} onClick={vm.confirmPlan} type="button">Confirm</button>
-          <button aria-label="Execute" disabled={!vm.executionReady} onClick={() => { void vm.executePlan(); }} type="button">Execute</button>
+          <button aria-label="Execute" disabled={!vm.executionReady || vm.isExecuting} onClick={() => { void vm.executePlan(); }} type="button">Execute</button>
           <button aria-label="Trigger Clarification" onClick={() => vm.requestClarification()} type="button">Trigger Clarification</button>
           </Inline>
         </form>

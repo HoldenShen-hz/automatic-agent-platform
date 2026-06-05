@@ -76,6 +76,19 @@ function readOptionalNumber(record: Record<string, unknown>, key: string): numbe
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
+function readRequiredBodyString(
+  body: Record<string, unknown>,
+  key: string,
+  errorCode: string,
+  message: string,
+): string {
+  const value = readOptionalString(body, key);
+  if (value == null) {
+    throw new ApiError(400, errorCode, message);
+  }
+  return value;
+}
+
 function normalizeRecommendedOption(value: unknown): ApprovalListItemDto["recommendedOption"] | undefined {
   if (typeof value !== "string") {
     return undefined;
@@ -277,6 +290,78 @@ function handleApprovalActionAlias(
       inputText: input,
       respondedBy: actorId,
       respondedAt: new Date().toISOString(),
+    });
+    return buildJsonResponse(requestId, 200, deps.inspectService.getApprovalInspectView(approvalId));
+  }
+
+  const respondedAt = new Date().toISOString();
+
+  if (action === "delegate") {
+    deps.approvalService.delegatePendingApproval({
+      approvalId,
+      delegateTo: readRequiredBodyString(
+        body,
+        "delegateTo",
+        "api.invalid_delegate_target",
+        "delegateTo is required for approval delegation.",
+      ),
+      respondedBy: actorId,
+      respondedAt,
+    });
+    return buildJsonResponse(requestId, 200, deps.inspectService.getApprovalInspectView(approvalId));
+  }
+
+  if (action === "request-context") {
+    const comment = readOptionalString(body, "comment");
+    deps.approvalService.requestAdditionalContext({
+      approvalId,
+      respondedBy: actorId,
+      respondedAt,
+      ...(comment == null ? {} : { comment }),
+    });
+    return buildJsonResponse(requestId, 200, deps.inspectService.getApprovalInspectView(approvalId));
+  }
+
+  if (action === "edit") {
+    deps.approvalService.editPendingApproval({
+      approvalId,
+      patch: body,
+      respondedBy: actorId,
+      respondedAt,
+    });
+    return buildJsonResponse(requestId, 200, deps.inspectService.getApprovalInspectView(approvalId));
+  }
+
+  if (action === "escalate") {
+    deps.approvalService.escalatePendingApproval({
+      approvalId,
+      reason: readRequiredBodyString(
+        body,
+        "reason",
+        "api.invalid_escalation_reason",
+        "reason is required for approval escalation.",
+      ),
+      respondedBy: actorId,
+      respondedAt,
+    });
+    return buildJsonResponse(requestId, 200, deps.inspectService.getApprovalInspectView(approvalId));
+  }
+
+  if (action === "defer") {
+    const until = readRequiredBodyString(
+      body,
+      "until",
+      "api.invalid_defer_until",
+      "until is required for approval deferral.",
+    );
+    if (!Number.isFinite(Date.parse(until))) {
+      throw new ApiError(400, "api.invalid_defer_until", "until must be a valid ISO-8601 timestamp.");
+    }
+    deps.approvalService.deferPendingApproval({
+      approvalId,
+      until,
+      respondedBy: actorId,
+      respondedAt,
     });
     return buildJsonResponse(requestId, 200, deps.inspectService.getApprovalInspectView(approvalId));
   }

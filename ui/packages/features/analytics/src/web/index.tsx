@@ -127,6 +127,10 @@ export function AnalyticsWebView(): ReactElement {
               : <PieChart slices={activeBreakdown.groups.map((group) => ({ label: group.label, value: group.value }))} />}
           </div>
         </article>
+        <article style={createPanelStyle(designTokens.color.info)}>
+          <div style={{ color: designTokens.color.subtle, fontSize: 12 }}>{translateMessage("ui.analytics.contractBoundary.title")}</div>
+          <p style={{ margin: "12px 0 0" }}>{translateMessage("ui.analytics.contractBoundary.description")}</p>
+        </article>
       </div>
     </FeatureScaffold>
   );

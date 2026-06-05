@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { updateTask, fetchWorkflowRunSteps } from "@aa/shared-api-client";
+import { updateTask } from "@aa/shared-api-client";
 import { translateMessage } from "@aa/shared-i18n";
 import type { TaskDTO, WorkflowRunStepDTO } from "@aa/shared-types";
 import { useRestClient, useTasksQuery, useWsClient } from "@aa/shared-state";
 
 const STORAGE_KEY = "aa-takeover-snapshots";
+const HISTORY_STORAGE_KEY = "aa-takeover-history";
 const MAX_SNAPSHOTS = 20;
 const MAX_HISTORY_ENTRIES = 32;
 
@@ -63,6 +64,31 @@ function writeSnapshots(snapshots: readonly TakeoverSnapshot[]): void {
   }
 }
 
+function readHistory(): TakeoverHistoryEntry[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(HISTORY_STORAGE_KEY) ?? "[]");
+    return Array.isArray(parsed)
+      ? parsed.filter(isTakeoverHistoryEntry).slice(0, MAX_HISTORY_ENTRIES)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeHistory(entries: readonly TakeoverHistoryEntry[]): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(entries));
+  } catch {
+    // Ignore storage write failures and preserve the in-memory history state.
+  }
+}
+
 function commitSnapshots(updater: (current: readonly TakeoverSnapshot[]) => readonly TakeoverSnapshot[]): readonly TakeoverSnapshot[] {
   const nextSnapshots = updater(readSnapshots()).slice(0, MAX_SNAPSHOTS);
   writeSnapshots(nextSnapshots);
@@ -92,6 +118,35 @@ function buildFallbackSnapshotSteps(task: TaskDTO, owner: string): readonly Work
   ];
 }
 
+type WorkflowInspectResponse = {
+  readonly inspect?: {
+    readonly stepOutputs?: ReadonlyArray<{
+      readonly id?: string;
+      readonly stepId?: string | null;
+      readonly summary?: string | null;
+      readonly status?: string | null;
+      readonly roleId?: string | null;
+      readonly producedAt?: string;
+    }>;
+  };
+};
+
+function mapWorkflowOutputStatus(status: string | null | undefined): WorkflowRunStepDTO["status"] {
+  switch (status) {
+    case "failed":
+      return "failed";
+    case "running":
+      return "running";
+    case "succeeded":
+    case "partial_success":
+    case "skipped":
+    case "completed":
+      return "completed";
+    default:
+      return "pending";
+  }
+}
+
 async function resolveSnapshotSteps(
   client: ReturnType<typeof useRestClient>,
   task: TaskDTO | undefined,
@@ -101,7 +156,18 @@ async function resolveSnapshotSteps(
     return [];
   }
   try {
-    return await fetchWorkflowRunSteps(client, task.currentStep);
+    const workflow = await client.get<WorkflowInspectResponse>(`/v1/workflows/${encodeURIComponent(task.id)}`);
+    const stepOutputs = workflow.inspect?.stepOutputs ?? [];
+    if (stepOutputs.length === 0) {
+      return buildFallbackSnapshotSteps(task, owner);
+    }
+    return stepOutputs.map((step, index) => ({
+      id: step.id ?? step.stepId ?? `${task.id}-step-${index + 1}`,
+      title: step.summary ?? step.stepId ?? `step-${index + 1}`,
+      status: mapWorkflowOutputStatus(step.status),
+      executor: step.roleId ?? owner,
+      ...(step.producedAt == null ? {} : { completedAt: step.producedAt }),
+    }));
   } catch {
     return buildFallbackSnapshotSteps(task, owner);
   }
@@ -112,10 +178,14 @@ export function useTakeoverVm(): TakeoverVm {
   const wsClient = useWsClient();
   const tasks = useTasksQuery().data ?? [];
   const [currentSnapshot, setCurrentSnapshot] = useState<TakeoverSnapshot | null>(() => readSnapshots()[0] ?? null);
-  const [ownershipHistory, setOwnershipHistory] = useState<readonly TakeoverHistoryEntry[]>([]);
+  const [ownershipHistory, setOwnershipHistory] = useState<readonly TakeoverHistoryEntry[]>(() => readHistory());
 
   const appendHistory = useCallback((entry: TakeoverHistoryEntry) => {
-    setOwnershipHistory((entries) => [entry, ...entries].slice(0, MAX_HISTORY_ENTRIES));
+    setOwnershipHistory((entries) => {
+      const nextEntries = [entry, ...entries].slice(0, MAX_HISTORY_ENTRIES);
+      writeHistory(nextEntries);
+      return nextEntries;
+    });
   }, []);
 
   const claimOwnership = useCallback(async (taskId: string, owner: string): Promise<void> => {
@@ -242,4 +312,15 @@ function isTakeoverSnapshot(value: unknown): value is TakeoverSnapshot {
     && typeof snapshot.status === "string"
     && Array.isArray(snapshot.steps)
     && typeof snapshot.capturedAt === "string";
+}
+
+function isTakeoverHistoryEntry(value: unknown): value is TakeoverHistoryEntry {
+  if (value == null || typeof value !== "object") {
+    return false;
+  }
+  const entry = value as Record<string, unknown>;
+  return typeof entry.taskId === "string"
+    && typeof entry.owner === "string"
+    && typeof entry.action === "string"
+    && typeof entry.recordedAt === "string";
 }

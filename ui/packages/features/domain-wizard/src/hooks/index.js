@@ -6,7 +6,7 @@ const stepDescriptors = [
     { id: "domain-select", label: "选择域", description: "选择要配置的领域" },
     { id: "risk-profile", label: "风险配置", description: "设置风险等级和数据分类" },
     { id: "capability-config", label: "能力配置", description: "配置并发任务和钻取深度" },
-    { id: "review", label: "审核确认", description: "审核并提交配置" },
+    { id: "review", label: "审核确认", description: "在本地交接前审核配置" },
 ];
 function createDefaultDraft() {
     return {
@@ -198,7 +198,7 @@ export function useDomainWizardVm() {
         validationErrors,
         submissionMessage,
         canGoBack: currentIndex > 0,
-        canGoNext: currentIndex < orderedSteps.length - 1 && validationErrors.length === 0,
+        canGoNext: validationErrors.length === 0,
         setCurrentStep(step) {
             setCurrentStep(step);
             persist({ currentStep: step });
@@ -225,7 +225,7 @@ export function useDomainWizardVm() {
             if (typeof window !== "undefined") {
                 window.localStorage.removeItem(STORAGE_KEY);
             }
-            setSubmissionMessage("Domain configuration submitted");
+            setSubmissionMessage("Local draft cleared. Domain submission API is not available yet, so nothing was written to the backend.");
         },
     };
 }

@@ -7,7 +7,7 @@ export function mapApprovalsToVm(approvals) {
         queueItems: approvals.map((approval) => ({
             id: approval.approvalId,
             title: approval.taskId,
-            subtitle: approval.riskLevel,
+            subtitle: `${approval.riskLevel} · ${approval.reasonSummary}`,
         })),
         queueDepth: approvals.length,
     };
@@ -109,6 +109,9 @@ export function useApprovalCenterVm() {
         }
         await withPending(async () => {
             await delegateApproval(client, selectedApproval.approvalId, target);
+            setApprovals((current) => current.map((approval) => (approval.approvalId === selectedApproval.approvalId
+                ? { ...approval, escalationTarget: target }
+                : approval)));
             appendActionHistory(`Delegated · ${selectedApproval.taskId}`, `Approval was delegated to ${target} for supervised decision.`);
         });
     }, [appendActionHistory, client, selectedApproval, withPending]);

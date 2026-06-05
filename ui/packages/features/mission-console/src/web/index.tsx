@@ -84,7 +84,21 @@ export function MissionConsoleWebView(): ReactElement {
               </section>
               <section>
                 <h3>{translateMessage("ui.missionConsole.section.actions")}</h3>
-                <ListCard items={vm.recommendedActions} />
+                {vm.actionErrorMessage == null ? null : <p style={{ color: "#9f1239", margin: "0 0 12px 0" }}>{vm.actionErrorMessage}</p>}
+                <ListCard items={vm.recommendedActions.map((item) => {
+                  const actionId = item.actionId;
+                  return {
+                    title: item.title,
+                    description: item.description,
+                    ...(actionId == null
+                      ? {}
+                      : {
+                        actionLabel: vm.pendingActionId === actionId ? `${item.actionLabel ?? item.title}...` : (item.actionLabel ?? item.title),
+                        actionDisabled: vm.pendingActionId != null,
+                        onAction: () => vm.performAction(actionId),
+                      }),
+                  };
+                })} />
               </section>
             </div>
           )}

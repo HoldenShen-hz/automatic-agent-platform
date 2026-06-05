@@ -1,7 +1,8 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Accordion, Drawer, PieChart, SegmentedControl, Stepper, Tabs, Toast, Tooltip } from "../../../../../packages/ui-core/src/components/extended.tsx";
+import { ListCard } from "../../../../../packages/ui-core/src/components/index.ts";
 import { ThreePaneLayout } from "../../../../../packages/ui-core/src/layouts/index.ts";
 
 describe("ui-core component and layout baselines", () => {
@@ -105,5 +106,24 @@ describe("ui-core component and layout baselines", () => {
     expect(screen.getByRole("list", { name: "Progress steps" })).toBeInTheDocument();
     expect(screen.getAllByRole("listitem")).toHaveLength(3);
     expect(screen.getByRole("img", { name: "Pie chart" })).toHaveAccessibleDescription(/Success: 2/);
+  });
+
+  it("renders actionable list cards as real buttons instead of static copy", () => {
+    const onAction = vi.fn();
+    render(
+      <ListCard
+        items={[
+          {
+            title: "Activate mission",
+            description: "Move from draft into executable state after final review.",
+            actionLabel: "Activate mission",
+            onAction,
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Activate mission" }));
+    expect(onAction).toHaveBeenCalledTimes(1);
   });
 });

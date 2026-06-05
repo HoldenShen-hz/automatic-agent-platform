@@ -283,7 +283,7 @@ export function useDomainWizardVm(): DomainWizardVm {
     validationErrors,
     submissionMessage,
     canGoBack: currentIndex > 0,
-    canGoNext: currentIndex < orderedSteps.length - 1 && validationErrors.length === 0,
+    canGoNext: validationErrors.length === 0,
     setCurrentStep(step) {
       setCurrentStep(step);
       persist({ currentStep: step });

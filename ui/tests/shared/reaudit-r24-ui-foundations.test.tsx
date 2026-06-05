@@ -100,4 +100,18 @@ describe("R24 UI foundations", () => {
     fireEvent.click(screen.getByText("Open incident"));
     expect(screen.getByRole("button", { name: "Acknowledge" }).hasAttribute("disabled")).toBe(false);
   });
+
+  it("hides the activity log when a workbench is read-only", () => {
+    render(
+      <FeatureWorkbenchPanel
+        items={[
+          { id: "flag", title: "Feature inventory", description: "Read-only backend inventory" },
+        ]}
+        actions={[]}
+      />,
+    );
+
+    expect(screen.queryByRole("log")).toBeNull();
+    expect(screen.queryByText("Activity log")).toBeNull();
+  });
 });

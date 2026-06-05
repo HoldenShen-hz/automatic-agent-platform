@@ -1,4 +1,11 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-export default function SettingsApiKeys() {
-    return _jsxs("section", { children: [_jsx("h3", { children: "API Keys" }), _jsx("p", { children: "Manage API keys and access tokens." })] });
+import { jsx, jsxs } from "react/jsx-runtime";
+import { translateMessage } from "@aa/shared-i18n";
+function SettingsApiKeys() {
+  return /* @__PURE__ */ jsxs("section", { children: [
+    /* @__PURE__ */ jsx("h3", { children: translateMessage("ui.settings.section.apiKeys") }),
+    /* @__PURE__ */ jsx("p", { children: translateMessage("ui.settings.apiKeys.body") })
+  ] });
 }
+export {
+  SettingsApiKeys as default
+};

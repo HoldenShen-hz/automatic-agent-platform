@@ -2,10 +2,10 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useMemo, useRef } from "react";
 import { init, use } from "echarts/core";
 import { LineChart } from "echarts/charts";
-import { GridComponent, TooltipComponent } from "echarts/components";
+import { DataZoomComponent, GridComponent, TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import { designTokens } from "../design-tokens";
-use([LineChart, GridComponent, TooltipComponent, CanvasRenderer]);
+use([LineChart, GridComponent, TooltipComponent, DataZoomComponent, CanvasRenderer]);
 function withAlpha(hexColor, alpha) {
     const normalized = hexColor.replace("#", "");
     const shorthand = normalized.length === 3

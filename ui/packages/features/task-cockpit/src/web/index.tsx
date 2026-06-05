@@ -124,6 +124,22 @@ export function TaskCockpitWebView(): ReactElement {
           </Inline>
         </div>
       )}
+      {vm.operationError == null ? null : (
+        <div
+          role="alert"
+          style={{
+            border: "1px solid rgba(239, 68, 68, 0.45)",
+            borderRadius: 12,
+            display: "grid",
+            gap: 8,
+            marginBottom: 16,
+            padding: 12,
+          }}
+        >
+          <strong>Task action failed</strong>
+          <span>{vm.operationError}</span>
+        </div>
+      )}
       <ThreePaneLayout
         left={(
           <div>
@@ -148,6 +164,11 @@ export function TaskCockpitWebView(): ReactElement {
           <Stack gap={16}>
             <h3>{translateMessage("ui.taskCockpit.detailTitle")}</h3>
             <KeyValueTable rows={detailRows} />
+            {vm.workflowControlsAvailable || vm.workflowControlReason == null ? null : (
+              <p role="note" style={{ margin: 0 }}>
+                {vm.workflowControlReason}
+              </p>
+            )}
             <form
               onSubmit={(event) => {
                 event.preventDefault();
@@ -163,11 +184,11 @@ export function TaskCockpitWebView(): ReactElement {
                 value={operator}
               />
               <button type="submit">{translateMessage("ui.taskCockpit.takeOver")}</button>
-              <button onClick={() => { void vm.pauseTask(); }} type="button">{translateMessage("ui.taskCockpit.pause")}</button>
-              <button onClick={() => { void vm.cancelTask(); }} type="button">{translateMessage("ui.taskCockpit.cancel")}</button>
-              <button onClick={() => { void vm.retryTask(); }} type="button">{translateMessage("ui.taskCockpit.retry")}</button>
-              <button onClick={() => { void vm.resumeTask("normal"); }} type="button">{translateMessage("ui.taskCockpit.resume")}</button>
-              <button onClick={() => { void vm.resumeTask("supervised"); }} type="button">{translateMessage("ui.taskCockpit.supervisedResume")}</button>
+              <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} onClick={() => { void vm.pauseTask(); }} type="button">{translateMessage("ui.taskCockpit.pause")}</button>
+              <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} onClick={() => { void vm.cancelTask(); }} type="button">{translateMessage("ui.taskCockpit.cancel")}</button>
+              <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} onClick={() => { void vm.retryTask(); }} type="button">{translateMessage("ui.taskCockpit.retry")}</button>
+              <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} onClick={() => { void vm.resumeTask("normal"); }} type="button">{translateMessage("ui.taskCockpit.resume")}</button>
+              <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} onClick={() => { void vm.resumeTask("supervised"); }} type="button">{translateMessage("ui.taskCockpit.supervisedResume")}</button>
               </Inline>
             </form>
             <form

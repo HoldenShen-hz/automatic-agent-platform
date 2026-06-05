@@ -2,33 +2,43 @@ import { useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { drainWorkers } from "@aa/shared-api-client";
 import { missionControlQueryKeys, useRestClient, useWorkersQuery } from "@aa/shared-state";
-export function mapWorkersToVm(workers) {
-    const busyWorkerCount = workers.filter((worker) => worker.status === "busy").length;
-    return {
-        metrics: [
-            { label: "Active Workers", value: workers.length },
-            { label: "Busy", value: busyWorkerCount },
-            { label: "Draining", value: workers.filter((worker) => worker.status === "draining").length },
-            { label: "Heartbeat Lag", value: workers.length === 0 ? "0ms" : `${Math.max(...workers.map((worker) => worker.heartbeatLagMs))}ms` },
-        ],
-        busyWorkerCount,
-    };
+import { translateMessage } from "@aa/shared-i18n";
+function mapWorkersToVm(workers) {
+  const liveWorkers = workers.filter((worker) => worker.status !== "offline");
+  const busyWorkerCount = workers.filter((worker) => worker.status === "busy").length;
+  return {
+    metrics: [
+      { label: translateMessage("ui.workers.metric.active"), value: liveWorkers.length },
+      { label: translateMessage("ui.workers.metric.busy"), value: busyWorkerCount },
+      { label: translateMessage("ui.workers.metric.draining"), value: workers.filter((worker) => worker.status === "draining").length },
+      { label: translateMessage("ui.workers.metric.offline"), value: workers.filter((worker) => worker.status === "offline").length },
+      {
+        label: translateMessage("ui.workers.metric.heartbeatLag"),
+        value: liveWorkers.length === 0 ? "n/a" : `${Math.max(...liveWorkers.map((worker) => worker.heartbeatLagMs))}ms`
+      }
+    ],
+    busyWorkerCount
+  };
 }
-export function useWorkersVm() {
-    const client = useRestClient();
-    const queryClient = useQueryClient();
-    const workers = useWorkersQuery().data ?? [];
-    const refresh = useCallback(async () => {
-        await queryClient.invalidateQueries({ queryKey: missionControlQueryKeys.workers });
-        await queryClient.refetchQueries({ queryKey: missionControlQueryKeys.workers, type: "active" });
-    }, [queryClient]);
-    const drainBusyWorkers = useCallback(async () => {
-        await drainWorkers(client);
-        await refresh();
-    }, [client, refresh]);
-    return useMemo(() => ({
-        ...mapWorkersToVm(workers),
-        refresh,
-        drainBusyWorkers,
-    }), [drainBusyWorkers, refresh, workers]);
+function useWorkersVm() {
+  const client = useRestClient();
+  const queryClient = useQueryClient();
+  const workers = useWorkersQuery().data ?? [];
+  const refresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: missionControlQueryKeys.workers });
+    await queryClient.refetchQueries({ queryKey: missionControlQueryKeys.workers, type: "active" });
+  }, [queryClient]);
+  const drainBusyWorkers = useCallback(async () => {
+    await drainWorkers(client);
+    await refresh();
+  }, [client, refresh]);
+  return useMemo(() => ({
+    ...mapWorkersToVm(workers),
+    refresh,
+    drainBusyWorkers
+  }), [drainBusyWorkers, refresh, workers]);
 }
+export {
+  mapWorkersToVm,
+  useWorkersVm
+};

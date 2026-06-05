@@ -108,6 +108,10 @@ function mapWorkflowDetailStatus(status: string | null | undefined): WorkflowDTO
   switch (status) {
     case "completed":
       return "completed";
+    case "failed":
+      return "failed";
+    case "cancelled":
+      return "cancelled";
     case "paused":
     case "blocked":
     case "awaiting_decision":

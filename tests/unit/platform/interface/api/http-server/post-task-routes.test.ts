@@ -7,6 +7,7 @@ import type { InspectService } from "../../../../../../src/platform/shared/obser
 import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 import type { AuthoritativeTaskStore } from "../../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { IntakeAdmissionService } from "../../../../../../src/platform/five-plane-orchestration/harness/runtime/intake-admission-service.js";
+import { InMemoryMissionRepository } from "../../../../../../src/platform/five-plane-state-evidence/truth/mission-repository.js";
 import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
 function createMockMissionControlService(): MissionControlService {
@@ -330,6 +331,69 @@ test("POST /api/v1/tasks with intakeAdmissionService persists task record before
   assert.equal(admitted, true);
   assert.deepEqual(writeOrder, ["task", "event"]);
   assert.equal(insertedEvents, 1);
+});
+
+test("POST /api/v1/tasks keeps task creation and real execution alive when mission snapshot FK write fails", async () => {
+  const missionRepository = new InMemoryMissionRepository();
+  const mission = missionRepository.createMission({
+    missionId: "mis_snapshot_fk",
+    tenantId: "tenant:actor-1",
+    title: "Mission snapshot fallback",
+    objective: "Keep task creation alive",
+    successCriteria: ["task created"],
+    ownerPrincipalId: "actor-1",
+    createdBy: "actor-1",
+    traceId: "trace-mis",
+    correlationId: "corr-mis",
+  });
+  const realExecutionCalls: Array<{ taskId: string; title: string; divisionId?: string | null; requestedBy?: string }> = [];
+  const repositoryWithFailingSnapshot = {
+    createMission: missionRepository.createMission.bind(missionRepository),
+    getMission: missionRepository.getMission.bind(missionRepository),
+    listMissions: missionRepository.listMissions.bind(missionRepository),
+    updateMission: missionRepository.updateMission.bind(missionRepository),
+    addMembership: missionRepository.addMembership.bind(missionRepository),
+    revokeMembership: missionRepository.revokeMembership.bind(missionRepository),
+    revokeMembershipById: missionRepository.revokeMembershipById.bind(missionRepository),
+    listMemberships: missionRepository.listMemberships.bind(missionRepository),
+    listMissionTasks: missionRepository.listMissionTasks.bind(missionRepository),
+    listMissionRuns: missionRepository.listMissionRuns.bind(missionRepository),
+    listMissionEvidence: missionRepository.listMissionEvidence.bind(missionRepository),
+    listMissionKnowledge: missionRepository.listMissionKnowledge.bind(missionRepository),
+    listMissionLearning: missionRepository.listMissionLearning.bind(missionRepository),
+    linkResource: missionRepository.linkResource.bind(missionRepository),
+    createSnapshot() {
+      throw new Error("FOREIGN KEY constraint failed: confirmed_task_spec_id");
+    },
+    getSnapshot: missionRepository.getSnapshot.bind(missionRepository),
+    appendEvent: missionRepository.appendEvent.bind(missionRepository),
+    listEvents: missionRepository.listEvents.bind(missionRepository),
+  };
+  const deps = {
+    authService: createMockAuthService(),
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+    missionRepository: repositoryWithFailingSnapshot,
+    realTaskExecutionService: {
+      executeTask(input: { taskId: string; title: string; divisionId?: string | null; requestedBy?: string }) {
+        realExecutionCalls.push(input);
+      },
+    },
+    taskStore: createMockTaskStore(),
+  };
+  const routes = createTaskRoutes(deps);
+  const ctx = createMockContext("/api/v1/tasks", ["api", "v1", "tasks"], {}, "POST", {
+    title: "Mission-bound task with snapshot fallback",
+    divisionId: "platform",
+    missionRef: { mode: "use_existing", missionId: mission.missionId },
+  });
+
+  const response = await callRoute(routes, ctx);
+
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 201);
+  assert.equal(realExecutionCalls.length, 1);
+  assert.equal(realExecutionCalls[0]?.title, "Mission-bound task with snapshot fallback");
 });
 
 test("POST /api/v1/tasks accepts protected-route principals without relying on direct api-key auth", async () => {

@@ -11,6 +11,8 @@ const mockRetryTask = vi.fn();
 const mockResumeTask = vi.fn();
 const mockEscalateTask = vi.fn();
 const mockCreateTaskFromPrompt = vi.fn(async () => undefined);
+let workflowControlsAvailable = true;
+let workflowControlReason: string | null = null;
 
 vi.mock("@aa/ui-core", async () => {
   const actual = await vi.importActual<typeof import("@aa/ui-core")>("@aa/ui-core");
@@ -35,6 +37,9 @@ vi.mock("@aa/ui-core", async () => {
 
 vi.mock("../../../../../../packages/features/task-cockpit/src/hooks", () => ({
   useTaskCockpitVm: () => ({
+    loading: false,
+    loadError: null,
+    operationError: null,
     listItems: [{ id: "task-1", title: "Spring campaign", subtitle: "blocked · marketing" }],
     selectedTask: {
       id: "task-1",
@@ -57,6 +62,8 @@ vi.mock("../../../../../../packages/features/task-cockpit/src/hooks", () => ({
         runtimeMinutes: 18,
       },
     },
+    workflowControlsAvailable,
+    workflowControlReason,
     selectTask: mockSelectTask,
     claimTask: mockClaimTask,
     pauseTask: mockPauseTask,
@@ -82,6 +89,7 @@ vi.mock("../../../../../../packages/features/task-cockpit/src/hooks", () => ({
       expandEvent: vi.fn(),
     },
     timelineItems: [],
+    refreshTasks: vi.fn(async () => undefined),
   }),
 }));
 
@@ -89,6 +97,8 @@ import { TaskCockpitWebView } from "../../../../../../packages/features/task-coc
 
 afterEach(() => {
   vi.clearAllMocks();
+  workflowControlsAvailable = true;
+  workflowControlReason = null;
   cleanup();
 });
 
@@ -171,5 +181,19 @@ describe("TaskCockpitWebView", () => {
     expect(mockClaimTask).toHaveBeenCalledWith("opsscript");
     expect(mockEscalateTask).toHaveBeenCalledWith("domain-admin");
     alertSpy.mockRestore();
+  });
+
+  it("disables workflow control buttons when the task lacks a live workflow control record", () => {
+    workflowControlsAvailable = false;
+    workflowControlReason = "This task does not have a live workflow control record, so pause/retry/resume controls are unavailable.";
+
+    render(<TaskCockpitWebView />);
+
+    expect(screen.getByRole("note")).toHaveTextContent(/live workflow control record/);
+    expect(screen.getByRole("button", { name: "暂停" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "取消" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "重试" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "恢复" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "受监督恢复" })).toBeDisabled();
   });
 });

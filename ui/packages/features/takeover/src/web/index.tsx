@@ -6,19 +6,26 @@ import { useTakeoverVm } from "../hooks";
 export function TakeoverWebView(): ReactElement {
   const vm = useTakeoverVm();
   const featureCopy = translateFeatureCopy("takeover");
+  const snapshot = vm.currentSnapshot;
   return (
-    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Partial">
+      <p style={{ marginTop: 0 }}>
+        人工批注当前只保存在浏览器本地历史中；后端 takeover annotation / audit 接口尚未提供。
+      </p>
+      <p style={{ marginTop: 0 }}>
+        “恢复任务运行” 当前只会把任务重新写回 `running` 状态，不会把 owner 从人工接管切回自动执行；后端 restore-automation 接口尚未提供。
+      </p>
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[
           { id: "takeover-start", label: "接管当前任务", tone: "danger", disabled: !vm.canTakeover, onTrigger: () => vm.takeoverCurrentTask("web-operator") },
           { id: "takeover-annotate", label: "添加人工批注", tone: "neutral", disabled: !vm.canAnnotate, onTrigger: () => vm.annotateCurrentSnapshot("manual-note", "web-operator") },
-          { id: "takeover-resume", label: "恢复自动执行", tone: "accent", disabled: !vm.canResume, onTrigger: () => vm.resumeAutomaticExecution("web-operator") },
+          { id: "takeover-resume", label: "恢复任务运行", tone: "accent", disabled: !vm.canResume, onTrigger: () => vm.resumeAutomaticExecution("web-operator") },
         ]}
       />
       <section aria-label="Current takeover snapshot" style={{ display: "grid", gap: 12, marginTop: 16 }}>
         <h3 style={{ margin: 0 }}>Current snapshot</h3>
-        {vm.currentSnapshot == null ? (
+        {snapshot == null ? (
           <p style={{ margin: 0 }}>No takeover snapshot captured yet.</p>
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
@@ -31,19 +38,19 @@ export function TakeoverWebView(): ReactElement {
               }}
             >
               <dt>Task</dt>
-              <dd style={{ margin: 0 }}>{vm.currentSnapshot.taskId}</dd>
+              <dd style={{ margin: 0 }}>{snapshot.taskId}</dd>
               <dt>Owner</dt>
-              <dd style={{ margin: 0 }}>{vm.currentSnapshot.owner}</dd>
+              <dd style={{ margin: 0 }}>{snapshot.owner}</dd>
               <dt>Status</dt>
-              <dd style={{ margin: 0 }}>{vm.currentSnapshot.status}</dd>
+              <dd style={{ margin: 0 }}>{snapshot.status}</dd>
               <dt>Captured at</dt>
-              <dd style={{ margin: 0 }}>{vm.currentSnapshot.capturedAt}</dd>
+              <dd style={{ margin: 0 }}>{snapshot.capturedAt}</dd>
             </dl>
             <div>
               <h4 style={{ marginBottom: 8 }}>Captured steps</h4>
               <ul style={{ margin: 0, paddingLeft: 20 }}>
-                {vm.currentSnapshot.steps.map((step, index) => (
-                  <li key={typeof step === "object" && step != null && "id" in step ? String(step.id) : `${vm.currentSnapshot.taskId}-${index}`}>
+                {snapshot.steps.map((step, index) => (
+                  <li key={typeof step === "object" && step != null && "id" in step ? String(step.id) : `${snapshot.taskId}-${index}`}>
                     {typeof step === "object" && step != null && "title" in step
                       ? `${String(step.title)}`
                       : `Step ${index + 1}`}

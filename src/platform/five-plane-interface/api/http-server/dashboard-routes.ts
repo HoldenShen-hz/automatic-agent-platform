@@ -311,9 +311,12 @@ function toAnalyticsDtos(snapshot: ReturnType<MissionControlService["getSnapshot
   ];
 }
 
-function normalizeWorkerStatus(status: string): "idle" | "busy" | "draining" {
-  if (status === "idle" || status === "busy") {
+function normalizeWorkerStatus(status: string): "idle" | "busy" | "draining" | "offline" {
+  if (status === "idle" || status === "busy" || status === "draining") {
     return status;
+  }
+  if (status === "offline" || status === "unavailable") {
+    return "offline";
   }
   return "draining";
 }

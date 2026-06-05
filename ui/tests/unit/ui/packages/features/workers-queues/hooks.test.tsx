@@ -41,7 +41,7 @@ vi.mock("@aa/shared-state", () => ({
   useQueuesQuery: () => ({ data: mocks.queues }),
 }));
 
-import { useWorkersVm } from "../../../../../../packages/features/workers/src/hooks";
+import { mapWorkersToVm, useWorkersVm } from "../../../../../../packages/features/workers/src/hooks";
 import { useQueuesVm } from "../../../../../../packages/features/queues/src/hooks";
 
 describe("workers and queues hooks", () => {
@@ -54,7 +54,7 @@ describe("workers and queues hooks", () => {
       await result.current.refresh();
     });
 
-    expect(result.current.metrics.map((metric) => metric.value)).toEqual([2, 1, 1, "120ms"]);
+    expect(result.current.metrics.map((metric) => metric.value)).toEqual([2, 1, 1, 0, "120ms"]);
     expect(result.current.busyWorkerCount).toBe(1);
     expect(mocks.mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ["workers"] });
     expect(mocks.mockRefetchQueries).toHaveBeenCalledWith({ queryKey: ["workers"], type: "active" });
@@ -88,6 +88,12 @@ describe("workers and queues hooks", () => {
     expect(mocks.mockDrainWorkers).toHaveBeenCalledWith(mocks.restClient);
     expect(mocks.mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ["workers"] });
     expect(mocks.mockRefetchQueries).toHaveBeenCalledWith({ queryKey: ["workers"], type: "active" });
+  });
+
+  it("excludes offline workers from active and heartbeat lag metrics", () => {
+    expect(mapWorkersToVm([
+      { id: "worker-offline", status: "offline", queue: "default", heartbeatLagMs: 42000 },
+    ]).metrics.map((metric) => metric.value)).toEqual([0, 0, 0, 1, "n/a"]);
   });
 
   it("cleans the retry queue through the real mutation hook and refreshes queries", async () => {

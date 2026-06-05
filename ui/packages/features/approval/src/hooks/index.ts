@@ -32,7 +32,7 @@ export function mapApprovalsToVm(approvals: readonly ApprovalDTO[]): Pick<Approv
     queueItems: approvals.map((approval) => ({
       id: approval.approvalId,
       title: approval.taskId,
-      subtitle: approval.riskLevel,
+      subtitle: `${approval.riskLevel} · ${approval.reasonSummary}`,
     })),
     queueDepth: approvals.length,
   };
@@ -153,6 +153,11 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
     }
     await withPending(async () => {
       await delegateApproval(client, selectedApproval.approvalId, target);
+      setApprovals((current) => current.map((approval) => (
+        approval.approvalId === selectedApproval.approvalId
+          ? { ...approval, escalationTarget: target }
+          : approval
+      )));
       appendActionHistory(
         translateMessage("ui.approval.history.delegated.title", { taskId: selectedApproval.taskId }),
         translateMessage("ui.approval.history.delegated.description", { target }),

@@ -13,15 +13,17 @@ export interface WorkersVm {
 }
 
 export function mapWorkersToVm(workers: readonly WorkerDTO[]): Pick<WorkersVm, "metrics" | "busyWorkerCount"> {
+  const liveWorkers = workers.filter((worker) => worker.status !== "offline");
   const busyWorkerCount = workers.filter((worker) => worker.status === "busy").length;
   return {
     metrics: [
-      { label: translateMessage("ui.workers.metric.active"), value: workers.length },
+      { label: translateMessage("ui.workers.metric.active"), value: liveWorkers.length },
       { label: translateMessage("ui.workers.metric.busy"), value: busyWorkerCount },
       { label: translateMessage("ui.workers.metric.draining"), value: workers.filter((worker) => worker.status === "draining").length },
+      { label: translateMessage("ui.workers.metric.offline"), value: workers.filter((worker) => worker.status === "offline").length },
       {
         label: translateMessage("ui.workers.metric.heartbeatLag"),
-        value: workers.length === 0 ? "0ms" : `${Math.max(...workers.map((worker) => worker.heartbeatLagMs))}ms`,
+        value: liveWorkers.length === 0 ? "n/a" : `${Math.max(...liveWorkers.map((worker) => worker.heartbeatLagMs))}ms`,
       },
     ],
     busyWorkerCount,

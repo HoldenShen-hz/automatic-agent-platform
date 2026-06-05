@@ -24,15 +24,47 @@ export function StatusPill({ status }: { status: ImplementationStatus }): ReactE
   );
 }
 
-export function ListCard({ items }: { items: readonly { title: string; description: string }[] }): ReactElement {
+export interface ListCardItem {
+  readonly title: string;
+  readonly description: string;
+  readonly actionLabel?: string;
+  readonly actionDisabled?: boolean;
+  readonly onAction?: () => void | Promise<void>;
+}
+
+export function ListCard({ items }: { items: readonly ListCardItem[] }): ReactElement {
   return createElement(
     "div",
     { role: "list", style: { display: "grid", gap: 10 } },
-    ...items.map((item) => createElement(
+    ...items.map((item, index) => createElement(
       "article",
-      { key: item.title, role: "listitem", style: createPanelStyle() },
+      { key: `${item.title}-${index}`, role: "listitem", style: createPanelStyle() },
       createElement("div", { style: { color: designTokens.color.text, fontWeight: 600 } }, item.title),
       createElement("div", { style: { color: designTokens.color.subtle, marginTop: 6 } }, item.description),
+      item.actionLabel == null || item.onAction == null
+        ? null
+        : createElement(
+          "button",
+          {
+            type: "button",
+            disabled: item.actionDisabled === true,
+            onClick: () => {
+              void item.onAction?.();
+            },
+            style: {
+              marginTop: 10,
+              justifySelf: "start",
+              borderRadius: 10,
+              border: `1px solid ${designTokens.color.border}`,
+              background: item.actionDisabled === true ? "#f5f5f4" : "#ffffff",
+              color: designTokens.color.text,
+              cursor: item.actionDisabled === true ? "not-allowed" : "pointer",
+              padding: "8px 12px",
+              fontWeight: 600,
+            },
+          },
+          item.actionLabel,
+        ),
     )),
   );
 }
@@ -212,6 +244,7 @@ export function FeatureWorkbench(
   }, [filteredItems, selectedId]);
 
   const selectedItem = filteredItems.find((item) => item.id === selectedId) ?? null;
+  const showActivityLog = actions.length > 0;
 
   async function triggerAction(action: FeatureWorkbenchAction): Promise<void> {
     if (resolveActionDisabled(action, selectedItem)) {
@@ -365,16 +398,18 @@ export function FeatureWorkbench(
             ? createElement(KeyValueTable, { rows: selectedItem.detailRows })
             : null,
         ),
-      right: createElement(
-        "div",
-        { style: { display: "grid", gap: 12 } },
-        createElement("div", { role: "log", "aria-live": "polite", "aria-relevant": "additions removals text", style: createPanelStyle(designTokens.color.border) },
-          createElement("h3", { style: { marginTop: 0, color: designTokens.color.text } }, resolvedLabels.activityLogTitle),
-          activities.length === 0
-            ? createElement("p", { style: { color: designTokens.color.subtle, marginBottom: 0 } }, resolvedLabels.activityLogEmpty)
-            : createElement(ListCard, { items: activities }),
-        ),
-      ),
+      right: showActivityLog
+        ? createElement(
+          "div",
+          { style: { display: "grid", gap: 12 } },
+          createElement("div", { role: "log", "aria-live": "polite", "aria-relevant": "additions removals text", style: createPanelStyle(designTokens.color.border) },
+            createElement("h3", { style: { marginTop: 0, color: designTokens.color.text } }, resolvedLabels.activityLogTitle),
+            activities.length === 0
+              ? createElement("p", { style: { color: designTokens.color.subtle, marginBottom: 0 } }, resolvedLabels.activityLogEmpty)
+              : createElement(ListCard, { items: activities }),
+          ),
+        )
+        : null,
     }),
   );
 }

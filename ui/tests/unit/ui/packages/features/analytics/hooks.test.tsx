@@ -43,6 +43,7 @@ describe("useAnalyticsVm", () => {
     expect(result.current.timeSeriesData.length).toBeGreaterThan(0);
     expect(result.current.timeSeriesData[0]?.timestamp).toContain("T");
     expect(result.current.trendSummary).toEqual([12, 6]);
+    expect(result.current.breakdowns.map((item) => item.dimension)).toEqual(["time", "layer"]);
 
     act(() => {
       result.current.exportData("json");

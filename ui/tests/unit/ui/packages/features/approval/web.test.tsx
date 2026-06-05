@@ -51,6 +51,7 @@ vi.mock("../../../../../../packages/features/approval/src/hooks", () => ({
       deadline: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
       policySource: "domain-policy",
       recommendedOption: "approve",
+      escalationTarget: "risk-lead",
     },
     actionHistory: [],
     queueDepth: 1,
@@ -83,6 +84,7 @@ describe("ApprovalWebView", () => {
     expect(screen.getByText(/截止时间:/)).toBeInTheDocument();
     expect(screen.getByText(/策略来源: domain-policy/)).toBeInTheDocument();
     expect(screen.getByText(/推荐选项: approve/)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "委派目标" })).toHaveValue("risk-lead");
   });
 
   it("supports request-context and decision actions", () => {

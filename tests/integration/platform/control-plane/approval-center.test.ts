@@ -335,6 +335,183 @@ test("ApprovalService: text_input decision requires inputText", () => {
   }
 });
 
+test("ApprovalService: delegatePendingApproval updates escalation target without resolving the approval", () => {
+  const ctx = createApprovalContext("aa-approval-delegate-", "task-delegate-001", "exec-delegate-001");
+  try {
+    const service = new ApprovalService(ctx.db, ctx.store);
+
+    const approval = service.createRequest({
+      taskId: "task-delegate-001",
+      executionId: "exec-delegate-001",
+      sourceAgentId: "test-agent",
+      reason: "Delegate test",
+      riskLevel: "high",
+      options: ["approve", "reject"],
+      context: {
+        escalationTarget: "ops-director",
+      },
+      timeoutPolicy: "remain_pending",
+    });
+
+    service.delegatePendingApproval({
+      approvalId: approval.approvalId,
+      delegateTo: "domain-admin",
+      respondedBy: "test-operator",
+      respondedAt: nowIso(),
+    });
+
+    const stored = ctx.store.approval.getApproval(approval.approvalId);
+    assert.ok(stored, "Stored approval should exist");
+    assert.strictEqual(stored.status, "requested");
+    const request = JSON.parse(stored.requestJson) as {
+      context: Record<string, unknown>;
+      escalationChain?: Array<{ reviewerRef?: string }>;
+    };
+    assert.strictEqual(request.context.escalationTarget, "domain-admin");
+    assert.strictEqual(request.context.delegatedBy, "test-operator");
+    assert.ok(Array.isArray(request.escalationChain));
+    assert.strictEqual(request.escalationChain?.at(-1)?.reviewerRef, "domain-admin");
+
+    const delegateEvent = ctx.store
+      .listEventsForTask("task-delegate-001")
+      .find((event) => event.eventType === "approval:delegated");
+    assert.ok(delegateEvent, "Should record approval:delegated event");
+  } finally {
+    ctx.cleanup();
+  }
+});
+
+test("ApprovalService: delegatePendingApproval does not duplicate the same operator hop", () => {
+  const ctx = createApprovalContext("aa-approval-delegate-dedupe-", "task-delegate-dedupe-001", "exec-delegate-dedupe-001");
+  try {
+    const service = new ApprovalService(ctx.db, ctx.store);
+
+    const approval = service.createRequest({
+      taskId: "task-delegate-dedupe-001",
+      executionId: "exec-delegate-dedupe-001",
+      sourceAgentId: "test-agent",
+      reason: "Delegate dedupe test",
+      riskLevel: "high",
+      options: ["approve", "reject"],
+      context: {
+        escalationTarget: "ops-director",
+      },
+      timeoutPolicy: "remain_pending",
+    });
+
+    service.delegatePendingApproval({
+      approvalId: approval.approvalId,
+      delegateTo: "risk-lead",
+      respondedBy: "test-operator",
+      respondedAt: nowIso(),
+    });
+
+    service.delegatePendingApproval({
+      approvalId: approval.approvalId,
+      delegateTo: "risk-lead",
+      respondedBy: "test-operator",
+      respondedAt: nowIso(),
+    });
+
+    const stored = ctx.store.approval.getApproval(approval.approvalId);
+    assert.ok(stored, "Stored approval should exist");
+    const request = JSON.parse(stored.requestJson) as {
+      escalationChain?: Array<{ reviewerRef?: string }>;
+    };
+    assert.ok(Array.isArray(request.escalationChain));
+    assert.strictEqual(request.escalationChain?.length, 1);
+    assert.strictEqual(request.escalationChain?.[0]?.reviewerRef, "risk-lead");
+  } finally {
+    ctx.cleanup();
+  }
+});
+
+test("ApprovalService: delegatePendingApproval collapses pre-existing duplicate operator hops", () => {
+  const ctx = createApprovalContext("aa-approval-delegate-repair-", "task-delegate-repair-001", "exec-delegate-repair-001");
+  try {
+    const service = new ApprovalService(ctx.db, ctx.store);
+
+    const approval = service.createRequest({
+      taskId: "task-delegate-repair-001",
+      executionId: "exec-delegate-repair-001",
+      sourceAgentId: "test-agent",
+      reason: "Delegate repair test",
+      riskLevel: "high",
+      options: ["approve", "reject"],
+      context: {
+        escalationTarget: "risk-lead",
+      },
+      escalationChain: [
+        { level: 1, reviewerType: "operator", reviewerRef: "risk-lead", timeoutMs: 0, onTimeout: "reject" },
+        { level: 2, reviewerType: "operator", reviewerRef: "risk-lead", timeoutMs: 0, onTimeout: "reject" },
+      ],
+      timeoutPolicy: "remain_pending",
+    });
+
+    service.delegatePendingApproval({
+      approvalId: approval.approvalId,
+      delegateTo: "risk-lead",
+      respondedBy: "test-operator",
+      respondedAt: nowIso(),
+    });
+
+    const stored = ctx.store.approval.getApproval(approval.approvalId);
+    assert.ok(stored, "Stored approval should exist");
+    const request = JSON.parse(stored.requestJson) as {
+      escalationChain?: Array<{ reviewerRef?: string; level?: number }>;
+    };
+    assert.ok(Array.isArray(request.escalationChain));
+    assert.strictEqual(request.escalationChain?.length, 1);
+    assert.strictEqual(request.escalationChain?.[0]?.reviewerRef, "risk-lead");
+    assert.strictEqual(request.escalationChain?.[0]?.level, 1);
+  } finally {
+    ctx.cleanup();
+  }
+});
+
+test("ApprovalService: deferPendingApproval updates deadline and keeps approval pending", () => {
+  const ctx = createApprovalContext("aa-approval-defer-", "task-defer-001", "exec-defer-001");
+  try {
+    const service = new ApprovalService(ctx.db, ctx.store);
+
+    const approval = service.createRequest({
+      taskId: "task-defer-001",
+      executionId: "exec-defer-001",
+      sourceAgentId: "test-agent",
+      reason: "Defer test",
+      riskLevel: "medium",
+      options: ["approve", "reject"],
+      context: {
+        deadlineAt: "2026-04-16T02:00:00.000Z",
+      },
+      timeoutPolicy: "remain_pending",
+    });
+
+    service.deferPendingApproval({
+      approvalId: approval.approvalId,
+      until: "2026-04-16T04:30:00.000Z",
+      respondedBy: "test-operator",
+      respondedAt: nowIso(),
+    });
+
+    const stored = ctx.store.approval.getApproval(approval.approvalId);
+    assert.ok(stored, "Stored approval should exist");
+    assert.strictEqual(stored.status, "requested");
+    const request = JSON.parse(stored.requestJson) as {
+      context: Record<string, unknown>;
+    };
+    assert.strictEqual(request.context.deadlineAt, "2026-04-16T04:30:00.000Z");
+    assert.strictEqual(request.context.deferredBy, "test-operator");
+
+    const deferredEvent = ctx.store
+      .listEventsForTask("task-defer-001")
+      .find((event) => event.eventType === "approval:deferred");
+    assert.ok(deferredEvent, "Should record approval:deferred event");
+  } finally {
+    ctx.cleanup();
+  }
+});
+
 test("MultiPartyApprovalService: createMultiPartyRequest with 2-of-3 required approvals", () => {
   const ctx = createApprovalContext("aa-multiparty-2of3-", "task-mp-001", "exec-mp-001");
   try {

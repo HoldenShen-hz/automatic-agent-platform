@@ -1,4 +1,11 @@
 import type { MissionBudgetSummaryDTO, MissionDTO, MissionMemberDTO, MissionResourceDTO } from "@aa/shared-types";
+export type MissionConsoleActionId = "activate" | "pause" | "resume" | "freeze" | "unfreeze" | "complete" | "archive";
+export interface MissionConsoleAction {
+    readonly actionId: MissionConsoleActionId | null;
+    readonly title: string;
+    readonly description: string;
+    readonly actionLabel?: string;
+}
 export interface MissionConsoleVm {
     readonly loading: boolean;
     readonly missions: readonly MissionDTO[];
@@ -19,15 +26,15 @@ export interface MissionConsoleVm {
         key: string;
         value: string;
     }[];
-    readonly recommendedActions: readonly {
-        title: string;
-        description: string;
-    }[];
+    readonly recommendedActions: readonly MissionConsoleAction[];
     readonly operatorNotices: readonly {
         title: string;
         description: string;
     }[];
+    readonly pendingActionId: MissionConsoleActionId | null;
+    readonly actionErrorMessage: string | null;
     selectMission(missionId: string): void;
+    performAction(actionId: MissionConsoleActionId): Promise<void>;
 }
 export declare function mapMissionsToConsoleVm(missions: readonly MissionDTO[], selectedMissionId: string | null): {
     missions: readonly MissionDTO[];

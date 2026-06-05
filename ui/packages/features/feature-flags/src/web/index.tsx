@@ -12,12 +12,18 @@ export function FeatureFlagsWebView(): ReactElement {
       {vm.isLoading ? (
         <p>{translateMessage("ui.featureFlags.loading")}</p>
       ) : (
-        <FeatureWorkbenchPanel
-          emptyState={translateMessage("ui.featureFlags.empty")}
-          items={vm.items}
-          metrics={vm.metrics}
-          actions={[]}
-        />
+        <>
+          <FeatureWorkbenchPanel
+            emptyState={translateMessage("ui.featureFlags.empty")}
+            items={vm.items}
+            metrics={vm.metrics}
+            actions={[]}
+          />
+          <section>
+            <h3>{translateMessage("ui.featureFlags.contractBoundary.title")}</h3>
+            <p>{translateMessage("ui.featureFlags.contractBoundary.description")}</p>
+          </section>
+        </>
       )}
     </FeatureScaffold>
   );

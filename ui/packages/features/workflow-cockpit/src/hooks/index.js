@@ -36,6 +36,10 @@ function mapWorkflowDetailStatus(status) {
     switch (status) {
         case "completed":
             return "completed";
+        case "failed":
+            return "failed";
+        case "cancelled":
+            return "cancelled";
         case "paused":
         case "blocked":
         case "awaiting_decision":

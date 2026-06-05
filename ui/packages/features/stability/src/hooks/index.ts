@@ -60,7 +60,9 @@ export function mapStabilityToVm(
     })).concat(
       workers.slice(0, 2).map((worker) => ({
         title: `Worker ${worker.id}`,
-        description: `${worker.status} · ${worker.queue} · lag ${worker.heartbeatLagMs}ms`,
+        description: worker.status === "offline"
+          ? `${worker.status} · ${worker.queue} · heartbeat unavailable`
+          : `${worker.status} · ${worker.queue} · lag ${worker.heartbeatLagMs}ms`,
       })),
       queues.slice(0, 2).map((queue) => ({
         title: `Queue ${queue.id}`,

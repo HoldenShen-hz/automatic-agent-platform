@@ -70,9 +70,12 @@ describe("Mission Console VM seams", () => {
       budget: null,
       missionSettings: [],
       knowledgeLearningSummary: [],
-      recommendedActions: [{ title: "Freeze mission", description: "Hard-stop runtime writes." }],
+      recommendedActions: [{ actionId: "freeze", title: "Freeze mission", actionLabel: "Freeze mission", description: "Hard-stop runtime writes." }],
       operatorNotices: [],
+      pendingActionId: null,
+      actionErrorMessage: null,
       selectMission() {},
+      async performAction() {},
     });
 
     expect(cards[0]?.evidenceCount).toBe(1);

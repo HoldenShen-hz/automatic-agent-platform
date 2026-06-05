@@ -277,6 +277,8 @@ test("GET /v1/workers returns Layer C worker summaries", async () => {
   assert.equal(body.data[0]?.id, "worker-1");
   assert.equal(body.data[0]?.queue, "finance");
   assert.equal(body.data[0]?.status, "busy");
+  assert.equal(body.data[1]?.id, "worker-2");
+  assert.equal(body.data[1]?.status, "offline");
 });
 
 test("GET /v1/queues returns public queue summaries", async () => {

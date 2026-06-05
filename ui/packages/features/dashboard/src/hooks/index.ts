@@ -121,7 +121,7 @@ function buildPanelGroups(
     (worker) => worker.status === "draining",
   ).length;
   const maxWorkerLag = workers.reduce(
-    (maxLag, worker) => Math.max(maxLag, worker.heartbeatLagMs),
+    (maxLag, worker) => worker.status === "offline" ? maxLag : Math.max(maxLag, worker.heartbeatLagMs),
     0,
   );
   const averageAgentLoad =

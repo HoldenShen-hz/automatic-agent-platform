@@ -1,6 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { translateMessage } from "@aa/shared-i18n";
 import {
+  activateMission,
+  archiveMission,
+  completeMission,
   fetchMissionBudget,
   fetchMissionEvidence,
   fetchMissionKnowledge,
@@ -8,9 +12,32 @@ import {
   fetchMissionMembers,
   fetchMissionRuns,
   fetchMissionTasks,
+  freezeMission,
+  pauseMission,
+  resumeMission,
+  unfreezeMission,
 } from "@aa/shared-api-client";
-import { useMissionsQuery, useRestClient } from "@aa/shared-state";
+import { missionControlQueryKeys, useMissionsQuery, useRestClient } from "@aa/shared-state";
 import type { MissionBudgetSummaryDTO, MissionDTO, MissionMemberDTO, MissionResourceDTO } from "@aa/shared-types";
+
+const missionActionExecutors = {
+  activate: activateMission,
+  pause: pauseMission,
+  resume: resumeMission,
+  freeze: freezeMission,
+  unfreeze: unfreezeMission,
+  complete: completeMission,
+  archive: archiveMission,
+};
+
+export type MissionConsoleActionId = keyof typeof missionActionExecutors;
+
+export interface MissionConsoleAction {
+  readonly actionId: MissionConsoleActionId | null;
+  readonly title: string;
+  readonly description: string;
+  readonly actionLabel?: string;
+}
 
 export interface MissionConsoleVm {
   readonly loading: boolean;
@@ -26,9 +53,12 @@ export interface MissionConsoleVm {
   readonly budget: MissionBudgetSummaryDTO | null;
   readonly missionSettings: readonly { key: string; value: string }[];
   readonly knowledgeLearningSummary: readonly { key: string; value: string }[];
-  readonly recommendedActions: readonly { title: string; description: string }[];
+  readonly recommendedActions: readonly MissionConsoleAction[];
   readonly operatorNotices: readonly { title: string; description: string }[];
+  readonly pendingActionId: MissionConsoleActionId | null;
+  readonly actionErrorMessage: string | null;
   selectMission(missionId: string): void;
+  performAction(actionId: MissionConsoleActionId): Promise<void>;
 }
 
 export function mapMissionsToConsoleVm(missions: readonly MissionDTO[], selectedMissionId: string | null) {
@@ -42,6 +72,7 @@ export function mapMissionsToConsoleVm(missions: readonly MissionDTO[], selected
 
 export function useMissionConsoleVm(): MissionConsoleVm {
   const client = useRestClient();
+  const queryClient = useQueryClient();
   const query = useMissionsQuery();
   const missions = query.data ?? [];
   const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
@@ -52,7 +83,14 @@ export function useMissionConsoleVm(): MissionConsoleVm {
   const [knowledge, setKnowledge] = useState<readonly MissionResourceDTO[]>([]);
   const [learning, setLearning] = useState<readonly MissionResourceDTO[]>([]);
   const [budget, setBudget] = useState<MissionBudgetSummaryDTO | null>(null);
+  const [pendingActionId, setPendingActionId] = useState<MissionConsoleActionId | null>(null);
+  const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
   const mapped = mapMissionsToConsoleVm(missions, selectedMissionId);
+
+  const refreshMissions = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: missionControlQueryKeys.missions });
+    await queryClient.refetchQueries({ queryKey: missionControlQueryKeys.missions, type: "active" });
+  }, [queryClient]);
 
   useEffect(() => {
     if (mapped.selectedMissionId == null) {
@@ -119,6 +157,22 @@ export function useMissionConsoleVm(): MissionConsoleVm {
   const recommendedActions = mapped.selectedMission == null
     ? []
     : buildRecommendedActions(mapped.selectedMission);
+  const performAction = useCallback(async (actionId: MissionConsoleActionId) => {
+    if (mapped.selectedMissionId == null) {
+      return;
+    }
+    setPendingActionId(actionId);
+    setActionErrorMessage(null);
+    try {
+      await missionActionExecutors[actionId](client, mapped.selectedMissionId);
+      await refreshMissions();
+    } catch (error) {
+      setActionErrorMessage(error instanceof Error ? error.message : String(error));
+      throw error;
+    } finally {
+      setPendingActionId(null);
+    }
+  }, [client, mapped.selectedMissionId, refreshMissions]);
 
   return {
     loading: query.isLoading,
@@ -134,7 +188,10 @@ export function useMissionConsoleVm(): MissionConsoleVm {
     knowledgeLearningSummary,
     recommendedActions,
     operatorNotices,
+    pendingActionId,
+    actionErrorMessage,
     selectMission: setSelectedMissionId,
+    performAction,
   };
 }
 
@@ -220,37 +277,96 @@ function buildKnowledgeLearningSummary(
   ];
 }
 
-function buildRecommendedActions(mission: MissionDTO): readonly { title: string; description: string }[] {
+function buildRecommendedActions(mission: MissionDTO): readonly MissionConsoleAction[] {
   switch (mission.status) {
     case "draft":
       return [
-        { title: translateMessage("ui.missionConsole.action.activate.title"), description: translateMessage("ui.missionConsole.action.activate.description") },
-        { title: translateMessage("ui.missionConsole.action.archive.title"), description: translateMessage("ui.missionConsole.action.archive.draftDescription") },
+        {
+          actionId: "activate",
+          title: translateMessage("ui.missionConsole.action.activate.title"),
+          actionLabel: translateMessage("ui.missionConsole.action.activate.title"),
+          description: translateMessage("ui.missionConsole.action.activate.description"),
+        },
+        {
+          actionId: "archive",
+          title: translateMessage("ui.missionConsole.action.archive.title"),
+          actionLabel: translateMessage("ui.missionConsole.action.archive.title"),
+          description: translateMessage("ui.missionConsole.action.archive.draftDescription"),
+        },
       ];
     case "active":
       return [
-        { title: translateMessage("ui.missionConsole.action.pause.title"), description: translateMessage("ui.missionConsole.action.pause.description") },
-        { title: translateMessage("ui.missionConsole.action.freeze.title"), description: translateMessage("ui.missionConsole.action.freeze.description") },
-        { title: translateMessage("ui.missionConsole.action.complete.title"), description: translateMessage("ui.missionConsole.action.complete.description") },
+        {
+          actionId: "pause",
+          title: translateMessage("ui.missionConsole.action.pause.title"),
+          actionLabel: translateMessage("ui.missionConsole.action.pause.title"),
+          description: translateMessage("ui.missionConsole.action.pause.description"),
+        },
+        {
+          actionId: "freeze",
+          title: translateMessage("ui.missionConsole.action.freeze.title"),
+          actionLabel: translateMessage("ui.missionConsole.action.freeze.title"),
+          description: translateMessage("ui.missionConsole.action.freeze.description"),
+        },
+        {
+          actionId: "complete",
+          title: translateMessage("ui.missionConsole.action.complete.title"),
+          actionLabel: translateMessage("ui.missionConsole.action.complete.title"),
+          description: translateMessage("ui.missionConsole.action.complete.description"),
+        },
       ];
     case "paused":
       return [
-        { title: translateMessage("ui.missionConsole.action.resume.title"), description: translateMessage("ui.missionConsole.action.resume.description") },
-        { title: translateMessage("ui.missionConsole.action.freeze.title"), description: translateMessage("ui.missionConsole.action.freeze.pausedDescription") },
-        { title: translateMessage("ui.missionConsole.action.archive.title"), description: translateMessage("ui.missionConsole.action.archive.pausedDescription") },
+        {
+          actionId: "resume",
+          title: translateMessage("ui.missionConsole.action.resume.title"),
+          actionLabel: translateMessage("ui.missionConsole.action.resume.title"),
+          description: translateMessage("ui.missionConsole.action.resume.description"),
+        },
+        {
+          actionId: "freeze",
+          title: translateMessage("ui.missionConsole.action.freeze.title"),
+          actionLabel: translateMessage("ui.missionConsole.action.freeze.title"),
+          description: translateMessage("ui.missionConsole.action.freeze.pausedDescription"),
+        },
+        {
+          actionId: "archive",
+          title: translateMessage("ui.missionConsole.action.archive.title"),
+          actionLabel: translateMessage("ui.missionConsole.action.archive.title"),
+          description: translateMessage("ui.missionConsole.action.archive.pausedDescription"),
+        },
       ];
     case "frozen":
       return [
-        { title: translateMessage("ui.missionConsole.action.unfreeze.title"), description: translateMessage("ui.missionConsole.action.unfreeze.description") },
-        { title: translateMessage("ui.missionConsole.action.archive.title"), description: translateMessage("ui.missionConsole.action.archive.frozenDescription") },
+        {
+          actionId: "unfreeze",
+          title: translateMessage("ui.missionConsole.action.unfreeze.title"),
+          actionLabel: translateMessage("ui.missionConsole.action.unfreeze.title"),
+          description: translateMessage("ui.missionConsole.action.unfreeze.description"),
+        },
+        {
+          actionId: "archive",
+          title: translateMessage("ui.missionConsole.action.archive.title"),
+          actionLabel: translateMessage("ui.missionConsole.action.archive.title"),
+          description: translateMessage("ui.missionConsole.action.archive.frozenDescription"),
+        },
       ];
     case "completed":
       return [
-        { title: translateMessage("ui.missionConsole.action.archive.title"), description: translateMessage("ui.missionConsole.action.archive.completedDescription") },
+        {
+          actionId: "archive",
+          title: translateMessage("ui.missionConsole.action.archive.title"),
+          actionLabel: translateMessage("ui.missionConsole.action.archive.title"),
+          description: translateMessage("ui.missionConsole.action.archive.completedDescription"),
+        },
       ];
     case "archived":
       return [
-        { title: translateMessage("ui.missionConsole.action.terminal.title"), description: translateMessage("ui.missionConsole.action.terminal.description") },
+        {
+          actionId: null,
+          title: translateMessage("ui.missionConsole.action.terminal.title"),
+          description: translateMessage("ui.missionConsole.action.terminal.description"),
+        },
       ];
     default:
       return [];

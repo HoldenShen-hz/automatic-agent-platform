@@ -706,15 +706,34 @@ function bindMissionSnapshotForTask(input: {
   if (input.repository == null || input.missionId == null) {
     return;
   }
-  input.repository.createSnapshot({
-    missionId: input.missionId,
-    taskId: input.taskId,
-    confirmedTaskSpecId: input.confirmedTaskSpecId,
-    ...(input.runtimeConstraints != null ? { runtimeConstraints: input.runtimeConstraints } : {}),
-    traceId: input.traceId,
-    correlationId: input.correlationId,
-    createdBy: input.actorId,
-  });
+  try {
+    input.repository.createSnapshot({
+      missionId: input.missionId,
+      taskId: input.taskId,
+      confirmedTaskSpecId: input.confirmedTaskSpecId,
+      ...(input.runtimeConstraints != null ? { runtimeConstraints: input.runtimeConstraints } : {}),
+      traceId: input.traceId,
+      correlationId: input.correlationId,
+      createdBy: input.actorId,
+    });
+  } catch (error) {
+    if (
+      error instanceof Error
+      && /foreign key constraint failed|confirmed_task_spec/i.test(error.message)
+    ) {
+      console.warn(
+        "[task-routes] mission snapshot skipped because runtime snapshot dependencies are unavailable",
+        {
+          missionId: input.missionId,
+          taskId: input.taskId,
+          confirmedTaskSpecId: input.confirmedTaskSpecId,
+          error: error.message,
+        },
+      );
+      return;
+    }
+    throw error;
+  }
 }
 
 function priorityToRiskClass(priority: ReturnType<typeof parseCreateTaskPayload>["priority"]): "low" | "medium" | "high" | "critical" {

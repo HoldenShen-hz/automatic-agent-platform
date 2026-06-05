@@ -18,6 +18,7 @@ export interface ConversationVm {
     readonly draft: string;
     readonly planReady: boolean;
     readonly executionReady: boolean;
+    readonly isExecuting: boolean;
     readonly isStreaming: boolean;
     setDraft(value: string): void;
     restoreSuggestedDraft(): void;

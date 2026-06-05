@@ -44,7 +44,7 @@ describe("useDomainWizardVm", () => {
       result.current.submitConfig();
     });
 
-    expect(result.current.submissionMessage).toBe("领域配置已提交");
+    expect(result.current.submissionMessage).toBe("已清除本地草稿。当前还没有领域提交 API，因此这一步不会写入后端。");
     expect(localStorage.getItem("aa-domain-wizard-draft")).toBeNull();
   });
 
@@ -67,5 +67,18 @@ describe("useDomainWizardVm", () => {
     expect(result.current.currentStep).toBe("risk-profile");
     expect(result.current.riskProfile.riskLevel).toBe("critical");
     expect(result.current.capabilityConfig.allowedDrillDepth).toBe(5);
+  });
+
+  it("allows finishing the flow on the review step when validation passes", () => {
+    const { result } = renderHook(() => useDomainWizardVm());
+
+    act(() => {
+      result.current.setSelectedDomainId("Marketing");
+      result.current.setCurrentStep("review");
+    });
+
+    expect(result.current.currentStep).toBe("review");
+    expect(result.current.validationErrors).toEqual([]);
+    expect(result.current.canGoNext).toBe(true);
   });
 });

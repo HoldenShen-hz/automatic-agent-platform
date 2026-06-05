@@ -6,8 +6,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 
 const mocks = vi.hoisted(() => ({
+  mockCancelWorkflow: vi.fn(async () => ({ ok: true })),
   mockClient: { patch: vi.fn(), get: vi.fn() },
   mockCreateTask: vi.fn(async () => ({ snapshot: { task: { id: "task-created-1" } } })),
+  mockFetchTasks: vi.fn(async () => taskData),
+  mockPauseWorkflow: vi.fn(async () => ({ ok: true })),
+  mockRecoverWorkflow: vi.fn(async () => ({ ok: true })),
+  mockResumeWorkflow: vi.fn(async () => ({ ok: true })),
   mockUpdateTask: vi.fn(async () => ({ ok: true })),
   mockUseTasksQuery: vi.fn(),
 }));
@@ -52,7 +57,12 @@ vi.mock("@aa/shared-state", () => ({
 }));
 
 vi.mock("@aa/shared-api-client", () => ({
+  cancelWorkflow: mocks.mockCancelWorkflow,
   createTask: mocks.mockCreateTask,
+  fetchTasks: mocks.mockFetchTasks,
+  pauseWorkflow: mocks.mockPauseWorkflow,
+  recoverWorkflow: mocks.mockRecoverWorkflow,
+  resumeWorkflow: mocks.mockResumeWorkflow,
   updateTask: mocks.mockUpdateTask,
 }));
 
@@ -96,6 +106,7 @@ describe("useTaskCockpitVm", () => {
     mocks.mockUseTasksQuery.mockImplementation(() => ({
       data: taskData,
     }));
+    mocks.mockFetchTasks.mockImplementation(async () => taskData);
     mocks.mockClient.get.mockImplementation(async (path: string) => {
       if (path === "/v1/tasks") {
         return { tasks: taskData };
@@ -157,17 +168,17 @@ describe("useTaskCockpitVm", () => {
       await result.current.claimTask("platform-sre");
       await result.current.pauseTask();
       await result.current.cancelTask();
-      await result.current.retryTask();
-      await result.current.resumeTask("supervised");
-      await result.current.escalateTask("domain-admin");
-    });
+    await result.current.retryTask();
+    await result.current.resumeTask("supervised");
+    await result.current.escalateTask("domain-admin");
+  });
 
     expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-1", { owner: "platform-sre", status: "running" });
-    expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-1", { status: "paused", currentStep: "paused_by_operator" });
-    expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-1", { status: "cancelled", currentStep: "cancelled_by_operator" });
-    expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-1", { status: "queued", currentStep: "retry_requested" });
-    expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-1", { status: "running", currentStep: "supervised-resume" });
-    expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-1", { status: "blocked", currentStep: "escalated:domain-admin" });
+    expect(mocks.mockPauseWorkflow).toHaveBeenCalledWith(mocks.mockClient, "task-1");
+    expect(mocks.mockCancelWorkflow).toHaveBeenCalledWith(mocks.mockClient, "task-1");
+    expect(mocks.mockRecoverWorkflow).toHaveBeenCalledWith(mocks.mockClient, "task-1");
+    expect(mocks.mockResumeWorkflow).toHaveBeenCalledWith(mocks.mockClient, "task-1", "supervised");
+    expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-1", { status: "blocked" });
 
     await waitFor(() => {
       expect(result.current.timelineItems[0]?.title).toContain("Escalated");
@@ -323,5 +334,20 @@ describe("useTaskCockpitVm", () => {
     rerender();
     expect(result.current.selectedTask?.owner).toBe("platform-sre");
     expect(result.current.selectedTask?.status).toBe("running");
+  });
+
+  it("does not fabricate a non-persisted current step during retry", async () => {
+    const { result } = renderTaskCockpitHook();
+
+    act(() => {
+      result.current.selectTask("task-1");
+    });
+
+    await act(async () => {
+      await result.current.retryTask();
+    });
+
+    expect(result.current.selectedTask?.currentStep).toBe("workflow-run-1");
+    expect(mocks.mockRecoverWorkflow).toHaveBeenCalledWith(mocks.mockClient, "task-1");
   });
 });

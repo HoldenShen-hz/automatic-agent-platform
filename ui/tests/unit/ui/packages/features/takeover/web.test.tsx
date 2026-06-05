@@ -64,6 +64,7 @@ describe("TakeoverWebView", () => {
     render(<TakeoverWebView />);
 
     expect(screen.getByText("Current snapshot")).toBeTruthy();
+    expect(screen.getByText(/当前只会把任务重新写回 `running` 状态/)).toBeTruthy();
     expect(screen.getByText("task-1")).toBeTruthy();
     expect(screen.getByText("Collect inputs · completed · agent-1")).toBeTruthy();
     expect(screen.getByText("Ownership history")).toBeTruthy();
@@ -71,7 +72,7 @@ describe("TakeoverWebView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "接管当前任务" }));
     fireEvent.click(screen.getByRole("button", { name: "添加人工批注" }));
-    fireEvent.click(screen.getByRole("button", { name: "恢复自动执行" }));
+    fireEvent.click(screen.getByRole("button", { name: "恢复任务运行" }));
 
     expect(mockTakeoverCurrentTask).toHaveBeenCalledWith("web-operator");
     expect(mockAnnotateCurrentSnapshot).toHaveBeenCalledWith("manual-note", "web-operator");

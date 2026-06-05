@@ -591,6 +591,34 @@ export declare function fetchAnalytics(client: RESTClient, queryParams?: ListQue
 export declare function fetchCosts(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly CostReportDTO[]>;
 export declare function fetchMarketplace(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly MarketplacePackDTO[]>;
 export declare function fetchMissions(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly MissionDTO[]>;
+export declare function activateMission(client: RESTClient, missionId: string): Promise<{
+    ok: true;
+    body?: unknown;
+}>;
+export declare function pauseMission(client: RESTClient, missionId: string): Promise<{
+    ok: true;
+    body?: unknown;
+}>;
+export declare function resumeMission(client: RESTClient, missionId: string): Promise<{
+    ok: true;
+    body?: unknown;
+}>;
+export declare function freezeMission(client: RESTClient, missionId: string): Promise<{
+    ok: true;
+    body?: unknown;
+}>;
+export declare function unfreezeMission(client: RESTClient, missionId: string): Promise<{
+    ok: true;
+    body?: unknown;
+}>;
+export declare function completeMission(client: RESTClient, missionId: string): Promise<{
+    ok: true;
+    body?: unknown;
+}>;
+export declare function archiveMission(client: RESTClient, missionId: string): Promise<{
+    ok: true;
+    body?: unknown;
+}>;
 export declare function fetchMissionMembers(client: RESTClient, missionId: string): Promise<readonly MissionMemberDTO[]>;
 export declare function fetchMissionTasks(client: RESTClient, missionId: string): Promise<readonly MissionResourceDTO[]>;
 export declare function fetchMissionRuns(client: RESTClient, missionId: string): Promise<readonly MissionResourceDTO[]>;

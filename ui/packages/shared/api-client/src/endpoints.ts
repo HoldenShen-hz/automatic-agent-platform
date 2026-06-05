@@ -238,9 +238,11 @@ function mapWorkflowStatus(status: string | null | undefined): WorkflowDTO["stat
   switch (status) {
     case "completed":
     case "done":
-    case "failed":
-    case "cancelled":
       return "completed";
+    case "failed":
+      return "failed";
+    case "cancelled":
+      return "cancelled";
     case "paused":
     case "awaiting_decision":
     case "blocked":
@@ -359,6 +361,13 @@ type EndpointCatalogDefinition = {
   costs: EndpointDefinition<readonly CostReportDTO[], never, never, ListQueryParams>;
   marketplace: EndpointDefinition<readonly MarketplacePackDTO[], never, never, ListQueryParams>;
   missions: EndpointDefinition<readonly MissionDTO[], never, never, ListQueryParams>;
+  missionActivate: EndpointDefinition<MutationAck<Record<string, never>>, Record<string, never>, { missionId: string }>;
+  missionPause: EndpointDefinition<MutationAck<Record<string, never>>, Record<string, never>, { missionId: string }>;
+  missionResume: EndpointDefinition<MutationAck<Record<string, never>>, Record<string, never>, { missionId: string }>;
+  missionFreeze: EndpointDefinition<MutationAck<Record<string, never>>, Record<string, never>, { missionId: string }>;
+  missionUnfreeze: EndpointDefinition<MutationAck<Record<string, never>>, Record<string, never>, { missionId: string }>;
+  missionComplete: EndpointDefinition<MutationAck<Record<string, never>>, Record<string, never>, { missionId: string }>;
+  missionArchive: EndpointDefinition<MutationAck<Record<string, never>>, Record<string, never>, { missionId: string }>;
   missionMembers: EndpointDefinition<readonly MissionMemberDTO[], never, { missionId: string }>;
   missionTasks: EndpointDefinition<readonly MissionResourceDTO[], never, { missionId: string }>;
   missionRuns: EndpointDefinition<readonly MissionResourceDTO[], never, { missionId: string }>;
@@ -467,6 +476,13 @@ export const endpointCatalog = {
   costs: { id: "costs.report", path: "/v1/cost-reports", method: "GET", apiLayer: "C", planned: false },
   marketplace: { id: "marketplace.list", path: "/v1/marketplace", method: "GET", apiLayer: "C", planned: false },
   missions: { id: "missions.list", path: "/v1/missions", method: "GET", apiLayer: "C", planned: false },
+  missionActivate: { id: "missions.activate", path: "/v1/missions/:missionId:activate", method: "POST", apiLayer: "C", planned: false },
+  missionPause: { id: "missions.pause", path: "/v1/missions/:missionId:pause", method: "POST", apiLayer: "C", planned: false },
+  missionResume: { id: "missions.resume", path: "/v1/missions/:missionId:resume", method: "POST", apiLayer: "C", planned: false },
+  missionFreeze: { id: "missions.freeze", path: "/v1/missions/:missionId:freeze", method: "POST", apiLayer: "C", planned: false },
+  missionUnfreeze: { id: "missions.unfreeze", path: "/v1/missions/:missionId:unfreeze", method: "POST", apiLayer: "C", planned: false },
+  missionComplete: { id: "missions.complete", path: "/v1/missions/:missionId:complete", method: "POST", apiLayer: "C", planned: false },
+  missionArchive: { id: "missions.archive", path: "/v1/missions/:missionId:archive", method: "POST", apiLayer: "C", planned: false },
   missionMembers: { id: "missions.members", path: "/v1/missions/:missionId/members", method: "GET", apiLayer: "C", planned: false },
   missionTasks: { id: "missions.tasks", path: "/v1/missions/:missionId/tasks", method: "GET", apiLayer: "C", planned: false },
   missionRuns: { id: "missions.runs", path: "/v1/missions/:missionId/runs", method: "GET", apiLayer: "C", planned: false },
@@ -825,6 +841,34 @@ export async function fetchMissions(client: RESTClient, queryParams?: ListQueryP
   const queryString = buildQueryString(queryParams ?? {});
   const response = await client.get<readonly MissionDTO[] | { missions: readonly MissionDTO[] }>(`${endpointCatalog.missions.path}${queryString}`);
   return unwrapCollectionResponse(response, ["missions"]);
+}
+
+export async function activateMission(client: RESTClient, missionId: string): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.missionActivate.path, { missionId }), {});
+}
+
+export async function pauseMission(client: RESTClient, missionId: string): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.missionPause.path, { missionId }), {});
+}
+
+export async function resumeMission(client: RESTClient, missionId: string): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.missionResume.path, { missionId }), {});
+}
+
+export async function freezeMission(client: RESTClient, missionId: string): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.missionFreeze.path, { missionId }), {});
+}
+
+export async function unfreezeMission(client: RESTClient, missionId: string): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.missionUnfreeze.path, { missionId }), {});
+}
+
+export async function completeMission(client: RESTClient, missionId: string): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.missionComplete.path, { missionId }), {});
+}
+
+export async function archiveMission(client: RESTClient, missionId: string): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.missionArchive.path, { missionId }), {});
 }
 
 export async function fetchMissionMembers(client: RESTClient, missionId: string): Promise<readonly MissionMemberDTO[]> {

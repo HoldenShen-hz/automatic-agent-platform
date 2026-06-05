@@ -4,12 +4,9 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  mockClient: { patch: vi.fn() },
+  mockClient: { patch: vi.fn(), get: vi.fn() },
   mockSubscribe: vi.fn(() => () => undefined),
   mockUpdateTask: vi.fn(async () => ({ ok: true })),
-  mockFetchWorkflowRunSteps: vi.fn(async () => [
-    { id: "step-1", title: "Collect inputs", status: "completed", executor: "agent-1", startedAt: "2026-05-06T00:00:00.000Z", completedAt: "2026-05-06T00:01:00.000Z" },
-  ]),
 }));
 const taskData = [
   {
@@ -30,7 +27,6 @@ vi.mock("@aa/shared-state", () => ({
 
 vi.mock("@aa/shared-api-client", () => ({
   updateTask: mocks.mockUpdateTask,
-  fetchWorkflowRunSteps: mocks.mockFetchWorkflowRunSteps,
 }));
 
 import { useTakeoverVm } from "../../../../../../packages/features/takeover/src/hooks";
@@ -39,6 +35,20 @@ describe("useTakeoverVm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    mocks.mockClient.get.mockResolvedValue({
+      inspect: {
+        stepOutputs: [
+          {
+            id: "step-1",
+            stepId: "collect-inputs",
+            summary: "Collect inputs",
+            status: "succeeded",
+            roleId: "agent-1",
+            producedAt: "2026-05-06T00:01:00.000Z",
+          },
+        ],
+      },
+    });
   });
 
   it("captures and persists takeover snapshots when ownership is claimed", async () => {
@@ -49,7 +59,7 @@ describe("useTakeoverVm", () => {
     });
 
     expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-1", { owner: "platform-sre", status: "running" });
-    expect(mocks.mockFetchWorkflowRunSteps).toHaveBeenCalledWith(mocks.mockClient, "workflow-run-1");
+    expect(mocks.mockClient.get).toHaveBeenCalledWith("/v1/workflows/task-1");
     expect(result.current.currentSnapshot?.taskId).toBe("task-1");
     expect(result.current.currentSnapshot?.steps).toHaveLength(1);
     expect(result.current.ownershipHistory[0]?.action).toBe("claim");
@@ -60,7 +70,7 @@ describe("useTakeoverVm", () => {
   });
 
   it("falls back to the current task step when workflow-run steps are unavailable", async () => {
-    mocks.mockFetchWorkflowRunSteps.mockRejectedValueOnce(new Error("Route not found."));
+    mocks.mockClient.get.mockRejectedValueOnce(new Error("Route not found."));
     const { result } = renderHook(() => useTakeoverVm());
 
     await act(async () => {
@@ -99,5 +109,24 @@ describe("useTakeoverVm", () => {
     await waitFor(() => {
       expect(result.current.currentSnapshot?.taskId).toBe("task-1");
     });
+  });
+
+  it("persists local annotations across remounts", async () => {
+    const { result, unmount } = renderHook(() => useTakeoverVm());
+
+    await act(async () => {
+      await result.current.claimOwnership("task-1", "platform-sre");
+    });
+
+    act(() => {
+      result.current.annotateCurrentSnapshot("manual-note", "platform-sre");
+    });
+
+    expect(result.current.ownershipHistory[0]?.action).toBe("annotate:manual-note");
+
+    unmount();
+
+    const remounted = renderHook(() => useTakeoverVm());
+    expect(remounted.result.current.ownershipHistory[0]?.action).toBe("annotate:manual-note");
   });
 });

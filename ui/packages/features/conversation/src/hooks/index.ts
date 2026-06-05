@@ -1,4 +1,4 @@
-import { createTask, fetchTasks } from "@aa/shared-api-client";
+import { createTask } from "@aa/shared-api-client";
 import { ConversationClient, type ConversationMessage, type ConversationStatus } from "@aa/shared-nl-client";
 import { translateMessage } from "@aa/shared-i18n";
 import { useRestClient } from "@aa/shared-state";
@@ -25,6 +25,7 @@ export interface ConversationVm {
   readonly draft: string;
   readonly planReady: boolean;
   readonly executionReady: boolean;
+  readonly isExecuting: boolean;
   readonly isStreaming: boolean;
   setDraft(value: string): void;
   restoreSuggestedDraft(): void;
@@ -65,6 +66,21 @@ export const conversationVmQueryKey = ["conversation", "vm"] as const;
 const TASK_COMPLETION_POLL_INTERVAL_MS = 2_000;
 const TASK_COMPLETION_TIMEOUT_MS = 120_000;
 const RESTORABLE_CONVERSATION_TTL_MS = 30 * 60 * 1000;
+
+type RawTaskCompletionResponse = {
+  readonly snapshot?: {
+    readonly task?: {
+      readonly status?: string;
+      readonly outputJson?: string | null;
+    };
+  };
+};
+
+type CompletedConversationTask = {
+  readonly status: "completed" | "failed";
+  readonly outputSummary?: string | null;
+  readonly outputUri?: string | null;
+};
 
 class ConversationVmCache {
   private value: PersistedConversationState | null = null;
@@ -260,6 +276,42 @@ function preferTransportStatus(
   return snapshotStatus;
 }
 
+function normalizeTaskCompletionStatus(status: string | undefined): CompletedConversationTask["status"] | null {
+  switch (status) {
+    case "completed":
+    case "done":
+      return "completed";
+    case "failed":
+    case "timed_out":
+    case "superseded":
+    case "cancelled":
+      return "failed";
+    default:
+      return null;
+  }
+}
+
+function parseTaskOutputMetadata(outputJson: string | null | undefined): {
+  readonly outputSummary?: string | null;
+  readonly outputUri?: string | null;
+} {
+  if (typeof outputJson !== "string" || outputJson.trim().length === 0) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(outputJson) as {
+      readonly outputSummary?: string | null;
+      readonly outputUri?: string | null;
+    };
+    return {
+      ...(parsed.outputSummary === undefined ? {} : { outputSummary: parsed.outputSummary }),
+      ...(parsed.outputUri === undefined ? {} : { outputUri: parsed.outputUri }),
+    };
+  } catch {
+    return {};
+  }
+}
+
 export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
   const restClient = useRestClient();
   const defaultDraft = translateMessage("ui.conversation.defaultDraft");
@@ -274,6 +326,7 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
   const [draft, setDraft] = useState(defaultDraft);
   const [planReady, setPlanReady] = useState(initialState.planReady);
   const [executionReady, setExecutionReady] = useState(initialState.executionReady);
+  const [isExecuting, setIsExecuting] = useState(false);
   const [isStreaming, setIsStreaming] = useState(initialState.isStreaming);
   const bootstrapDraftRef = useRef(false);
   const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -283,6 +336,7 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
   const unsubscribeEventRef = useRef<(() => void) | null>(null);
   const unsubscribeStatusRef = useRef<(() => void) | null>(null);
   const activeExecutionTaskIdRef = useRef<string | null>(null);
+  const executionInFlightRef = useRef(false);
 
   const syncPersistedSnapshot = useCallback((updater: (current: PersistedConversationState) => PersistedConversationState) => {
     const nextState = {
@@ -515,15 +569,17 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
     return latestUserMessage?.content.trim() ?? "";
   }, [draft, messages]);
 
-  const waitForRealTaskCompletion = useCallback(async (taskId: string) => {
+  const waitForRealTaskCompletion = useCallback(async (taskId: string): Promise<CompletedConversationTask> => {
     const startedAt = Date.now();
     while (Date.now() - startedAt <= TASK_COMPLETION_TIMEOUT_MS) {
-      const tasks = await fetchTasks(restClient);
-      const matchedTask = tasks.find((task) => task.id === taskId);
-      if (matchedTask != null) {
-        if (matchedTask.status === "completed" || matchedTask.status === "failed") {
-          return matchedTask;
-        }
+      const cockpit = await restClient.get<RawTaskCompletionResponse>(`/v1/tasks/${encodeURIComponent(taskId)}`);
+      const rawTask = cockpit.snapshot?.task;
+      const normalizedStatus = normalizeTaskCompletionStatus(rawTask?.status);
+      if (normalizedStatus != null) {
+        return {
+          status: normalizedStatus,
+          ...parseTaskOutputMetadata(rawTask?.outputJson),
+        };
       }
       await new Promise((resolve) => setTimeout(resolve, TASK_COMPLETION_POLL_INTERVAL_MS));
     }
@@ -589,6 +645,9 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
     if (conversationClient == null) {
       return;
     }
+    if (executionInFlightRef.current) {
+      return;
+    }
     if (wsClient == null) {
       requestClarification(translateMessage("ui.conversation.execute.requiresConnection"));
       return;
@@ -603,17 +662,21 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
       return;
     }
 
+    executionInFlightRef.current = true;
+    setIsExecuting(true);
     setStatus("running");
+    setExecutionReady(false);
     setIsStreaming(true);
     syncPersistedSnapshot((snapshot) => ({
       ...snapshot,
       status: "running",
       isStreaming: true,
       planReady: true,
-      executionReady: true,
+      executionReady: false,
     }));
     appendConversationMessage("system", translateMessage("ui.conversation.execute.started"));
 
+    let submittedTaskId: string | null = null;
     try {
       const created = await createTask(restClient, {
         title: executionPrompt,
@@ -625,6 +688,7 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
       if (taskId == null || taskId.length === 0) {
         throw new Error("conversation.real_task_missing_id");
       }
+      submittedTaskId = taskId;
       activeExecutionTaskIdRef.current = taskId;
       appendConversationMessage("system", `real task submitted: ${taskId}`);
 
@@ -674,6 +738,12 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
         planReady: false,
         executionReady: false,
       }));
+    } finally {
+      if (submittedTaskId == null || activeExecutionTaskIdRef.current === submittedTaskId) {
+        activeExecutionTaskIdRef.current = null;
+      }
+      executionInFlightRef.current = false;
+      setIsExecuting(false);
     }
   }, [appendConversationMessage, executionReady, requestClarification, resolveExecutionPrompt, restClient, syncPersistedSnapshot, waitForRealTaskCompletion, wsClient]);
 
@@ -696,6 +766,7 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
     draft,
     planReady,
     executionReady,
+    isExecuting,
     isStreaming,
     setDraft,
     restoreSuggestedDraft,
@@ -715,6 +786,7 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
     draft,
     executePlan,
     executionReady,
+    isExecuting,
     isStreaming,
     messages,
     planReady,

@@ -12,7 +12,7 @@ export interface AnalyticsTimeSeriesPoint {
 }
 
 export interface AnalyticsBreakdown {
-  readonly dimension: "time" | "domain" | "layer";
+  readonly dimension: "time" | "layer";
   readonly groups: readonly { label: string; value: number }[];
 }
 
@@ -216,7 +216,6 @@ export function useAnalyticsVm(): AnalyticsVm {
 
     return [
       { dimension: "time", groups: timeGroups },
-      { dimension: "domain", groups: groupedByLayer },
       { dimension: "layer", groups: groupedByLayer },
     ];
   }, [availableLayers, metrics, timeSeriesData]);
