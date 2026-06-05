@@ -313,6 +313,7 @@ async function main(): Promise<void> {
       domainRegistryService: domainRegistry,
       pluginRegistry,
       taskStore: store,
+      db,
       missionRepository,
       realTaskExecutionService,
       enableWebSocket: envConfig.enableWebSocket,

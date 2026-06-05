@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { updateTask } from "@aa/shared-api-client";
+import {
+  annotateAdminTakeoverSession,
+  fetchAdminTakeoverConsole,
+  openAdminTakeoverSession,
+  resumeAdminTakeoverSession,
+} from "@aa/shared-api-client";
 import { translateMessage } from "@aa/shared-i18n";
 import type { TaskDTO, WorkflowRunStepDTO } from "@aa/shared-types";
 import { useRestClient, useTasksQuery, useWsClient } from "@aa/shared-state";
-
-const STORAGE_KEY = "aa-takeover-snapshots";
-const HISTORY_STORAGE_KEY = "aa-takeover-history";
-const MAX_SNAPSHOTS = 20;
-const MAX_HISTORY_ENTRIES = 32;
 
 export interface TakeoverSnapshot {
   readonly taskId: string;
   readonly owner: string;
   readonly status: string;
-  readonly steps: readonly unknown[];
+  readonly steps: readonly WorkflowRunStepDTO[];
   readonly capturedAt: string;
 }
 
@@ -26,74 +26,22 @@ export interface TakeoverHistoryEntry {
 
 export interface TakeoverVm {
   readonly items: readonly { title: string; description: string }[];
+  readonly loading: boolean;
+  readonly mutating: boolean;
+  readonly errorMessage: string | null;
   readonly currentSnapshot: TakeoverSnapshot | null;
   readonly ownershipHistory: readonly TakeoverHistoryEntry[];
   readonly canTakeover: boolean;
   readonly canAnnotate: boolean;
   readonly canResume: boolean;
   claimOwnership(taskId: string, owner: string): Promise<void>;
-  transferOwnership(taskId: string, owner: string, reason: string): Promise<void>;
-  restoreFromSnapshot(snapshot: TakeoverSnapshot): void;
   takeoverCurrentTask(owner: string): Promise<void>;
-  annotateCurrentSnapshot(note: string, owner: string): void;
+  annotateCurrentSnapshot(note: string, owner: string): Promise<void>;
   resumeAutomaticExecution(owner: string): Promise<void>;
+  refresh(): Promise<void>;
 }
 
-function readSnapshots(): TakeoverSnapshot[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "[]");
-    return Array.isArray(parsed)
-      ? parsed.filter(isTakeoverSnapshot).slice(0, MAX_SNAPSHOTS)
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeSnapshots(snapshots: readonly TakeoverSnapshot[]): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshots));
-  } catch {
-    // Ignore storage write failures and preserve the in-memory snapshot state.
-  }
-}
-
-function readHistory(): TakeoverHistoryEntry[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(HISTORY_STORAGE_KEY) ?? "[]");
-    return Array.isArray(parsed)
-      ? parsed.filter(isTakeoverHistoryEntry).slice(0, MAX_HISTORY_ENTRIES)
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeHistory(entries: readonly TakeoverHistoryEntry[]): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  try {
-    window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(entries));
-  } catch {
-    // Ignore storage write failures and preserve the in-memory history state.
-  }
-}
-
-function commitSnapshots(updater: (current: readonly TakeoverSnapshot[]) => readonly TakeoverSnapshot[]): readonly TakeoverSnapshot[] {
-  const nextSnapshots = updater(readSnapshots()).slice(0, MAX_SNAPSHOTS);
-  writeSnapshots(nextSnapshots);
-  return nextSnapshots;
-}
+type AdminTakeoverConsole = Awaited<ReturnType<typeof fetchAdminTakeoverConsole>>;
 
 function selectTakeoverCandidate(tasks: readonly TaskDTO[]): TaskDTO | null {
   const active = tasks.find((task) => task.status === "running" || task.status === "blocked");
@@ -107,29 +55,19 @@ function selectTakeoverCandidate(tasks: readonly TaskDTO[]): TaskDTO | null {
   return null;
 }
 
-function buildFallbackSnapshotSteps(task: TaskDTO, owner: string): readonly WorkflowRunStepDTO[] {
-  return [
-    {
-      id: task.currentStep,
-      title: task.currentStep,
-      status: task.status === "failed" ? "failed" : task.status === "completed" ? "completed" : "running",
-      executor: owner,
-    },
-  ];
+function parseOwnerFromInputJson(inputJson: string | null | undefined): string | null {
+  if (inputJson == null || inputJson.trim().length === 0) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(inputJson) as Record<string, unknown>;
+    return typeof parsed.owner === "string" && parsed.owner.trim().length > 0
+      ? parsed.owner.trim()
+      : null;
+  } catch {
+    return null;
+  }
 }
-
-type WorkflowInspectResponse = {
-  readonly inspect?: {
-    readonly stepOutputs?: ReadonlyArray<{
-      readonly id?: string;
-      readonly stepId?: string | null;
-      readonly summary?: string | null;
-      readonly status?: string | null;
-      readonly roleId?: string | null;
-      readonly producedAt?: string;
-    }>;
-  };
-};
 
 function mapWorkflowOutputStatus(status: string | null | undefined): WorkflowRunStepDTO["status"] {
   switch (status) {
@@ -147,140 +85,247 @@ function mapWorkflowOutputStatus(status: string | null | undefined): WorkflowRun
   }
 }
 
-async function resolveSnapshotSteps(
-  client: ReturnType<typeof useRestClient>,
-  task: TaskDTO | undefined,
-  owner: string,
-): Promise<readonly WorkflowRunStepDTO[]> {
-  if (task == null) {
-    return [];
+function resolveSnapshotOwner(consoleSnapshot: AdminTakeoverConsole): string {
+  const openSession = [...consoleSnapshot.inspect.takeoverSessions]
+    .reverse()
+    .find((session) => session.status === "open");
+  if (openSession != null) {
+    return openSession.operatorId;
   }
-  try {
-    const workflow = await client.get<WorkflowInspectResponse>(`/v1/workflows/${encodeURIComponent(task.id)}`);
-    const stepOutputs = workflow.inspect?.stepOutputs ?? [];
-    if (stepOutputs.length === 0) {
-      return buildFallbackSnapshotSteps(task, owner);
-    }
-    return stepOutputs.map((step, index) => ({
-      id: step.id ?? step.stepId ?? `${task.id}-step-${index + 1}`,
-      title: step.summary ?? step.stepId ?? `step-${index + 1}`,
-      status: mapWorkflowOutputStatus(step.status),
-      executor: step.roleId ?? owner,
-      ...(step.producedAt == null ? {} : { completedAt: step.producedAt }),
-    }));
-  } catch {
-    return buildFallbackSnapshotSteps(task, owner);
+  return (
+    parseOwnerFromInputJson(consoleSnapshot.inspect.task.inputJson)
+    ?? consoleSnapshot.executionOwner.workerId
+    ?? consoleSnapshot.executionOwner.agentId
+    ?? "automatic-execution"
+  );
+}
+
+function buildSnapshotSteps(consoleSnapshot: AdminTakeoverConsole, owner: string): readonly WorkflowRunStepDTO[] {
+  const stepOutputs = consoleSnapshot.inspect.stepOutputs ?? [];
+  if (stepOutputs.length === 0) {
+    return [
+      {
+        id: consoleSnapshot.inspect.execution?.id ?? consoleSnapshot.inspect.task.id,
+        title: consoleSnapshot.inspect.execution?.id ?? "task",
+        status: consoleSnapshot.inspect.task.status === "failed"
+          ? "failed"
+          : consoleSnapshot.inspect.task.status === "done"
+            ? "completed"
+            : "running",
+        executor: owner,
+      },
+    ];
   }
+  return stepOutputs.map((step, index) => ({
+    id: step.id ?? step.stepId ?? `${consoleSnapshot.inspect.task.id}-step-${index + 1}`,
+    title: step.summary ?? step.stepId ?? `step-${index + 1}`,
+    status: mapWorkflowOutputStatus(step.status),
+    executor: step.roleId ?? owner,
+    ...(step.producedAt == null ? {} : { completedAt: step.producedAt }),
+  }));
+}
+
+function buildSnapshot(consoleSnapshot: AdminTakeoverConsole): TakeoverSnapshot {
+  const owner = resolveSnapshotOwner(consoleSnapshot);
+  return {
+    taskId: consoleSnapshot.scope.taskId,
+    owner,
+    status: consoleSnapshot.inspect.task.status,
+    steps: buildSnapshotSteps(consoleSnapshot, owner),
+    capturedAt: consoleSnapshot.generatedAt,
+  };
+}
+
+function buildOwnershipHistory(consoleSnapshot: AdminTakeoverConsole): readonly TakeoverHistoryEntry[] {
+  return [...consoleSnapshot.inspect.operatorActions]
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .map((entry) => {
+      let action = entry.actionType;
+      if (entry.actionPayloadJson != null) {
+        try {
+          const payload = JSON.parse(entry.actionPayloadJson) as Record<string, unknown>;
+          if (payload.mode === "resume_automatic_execution") {
+            action = "resume";
+          } else if (typeof payload.note === "string" && payload.note.trim().length > 0) {
+            action = `annotate:${payload.note.trim()}`;
+          }
+        } catch {
+          // Ignore malformed payloads and surface the raw action type.
+        }
+      }
+      return {
+        taskId: entry.taskId,
+        owner: entry.operatorId,
+        action,
+        recordedAt: entry.createdAt,
+      };
+    });
+}
+
+function resolveOpenSessionId(consoleSnapshot: AdminTakeoverConsole | null): string | null {
+  if (consoleSnapshot == null) {
+    return null;
+  }
+  return [...consoleSnapshot.inspect.takeoverSessions]
+    .reverse()
+    .find((session) => session.status === "open")
+    ?.id ?? null;
 }
 
 export function useTakeoverVm(): TakeoverVm {
   const client = useRestClient();
   const wsClient = useWsClient();
   const tasks = useTasksQuery().data ?? [];
-  const [currentSnapshot, setCurrentSnapshot] = useState<TakeoverSnapshot | null>(() => readSnapshots()[0] ?? null);
-  const [ownershipHistory, setOwnershipHistory] = useState<readonly TakeoverHistoryEntry[]>(() => readHistory());
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [mutating, setMutating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [consoleSnapshot, setConsoleSnapshot] = useState<AdminTakeoverConsole | null>(null);
+  const candidateTask = useMemo(() => selectTakeoverCandidate(tasks), [tasks]);
 
-  const appendHistory = useCallback((entry: TakeoverHistoryEntry) => {
-    setOwnershipHistory((entries) => {
-      const nextEntries = [entry, ...entries].slice(0, MAX_HISTORY_ENTRIES);
-      writeHistory(nextEntries);
-      return nextEntries;
+  const loadTaskConsole = useCallback(async (taskId: string): Promise<AdminTakeoverConsole> => {
+    const nextSnapshot = await fetchAdminTakeoverConsole(client, taskId);
+    setConsoleSnapshot(nextSnapshot);
+    setSelectedTaskId(taskId);
+    return nextSnapshot;
+  }, [client]);
+
+  useEffect(() => {
+    if (selectedTaskId != null || candidateTask == null) {
+      if (selectedTaskId == null && candidateTask == null) {
+        setConsoleSnapshot(null);
+        setLoading(false);
+      }
+      return;
+    }
+    let mounted = true;
+    setLoading(true);
+    void loadTaskConsole(candidateTask.id).then(() => {
+      if (mounted) {
+        setErrorMessage(null);
+        setLoading(false);
+      }
+    }).catch(() => {
+      if (mounted) {
+        setConsoleSnapshot(null);
+        setLoading(false);
+        setErrorMessage("takeover.load_failed");
+      }
     });
-  }, []);
-
-  const claimOwnership = useCallback(async (taskId: string, owner: string): Promise<void> => {
-    const task = tasks.find((candidate) => candidate.id === taskId);
-    await updateTask(client, taskId, { owner, status: "running" });
-    const steps = await resolveSnapshotSteps(client, task, owner);
-    const snapshot: TakeoverSnapshot = {
-      taskId,
-      owner,
-      status: "running",
-      steps,
-      capturedAt: new Date().toISOString(),
+    return () => {
+      mounted = false;
     };
-    commitSnapshots((current) => [snapshot, ...current]);
-    setCurrentSnapshot(snapshot);
-    appendHistory({ taskId, owner, action: "claim", recordedAt: snapshot.capturedAt });
-  }, [appendHistory, client, tasks]);
-
-  const transferOwnership = useCallback(async (taskId: string, owner: string, reason: string): Promise<void> => {
-    await updateTask(client, taskId, {
-      owner,
-      status: "running",
-    });
-    const baseSnapshot = currentSnapshot ?? readSnapshots()[0] ?? null;
-    if (baseSnapshot != null) {
-      const transferSnapshot: TakeoverSnapshot = {
-        ...baseSnapshot,
-        owner,
-        capturedAt: new Date().toISOString(),
-      };
-      commitSnapshots((current) => [transferSnapshot, ...current]);
-      setCurrentSnapshot(transferSnapshot);
-    }
-    appendHistory({ taskId, owner, action: `transfer:${reason}`, recordedAt: new Date().toISOString() });
-  }, [appendHistory, client, currentSnapshot]);
-
-  const takeoverCurrentTask = useCallback(async (owner: string): Promise<void> => {
-    const candidate = selectTakeoverCandidate(tasks);
-    if (candidate == null) {
-      throw new Error("takeover.no_active_task_available");
-    }
-    await claimOwnership(candidate.id, owner);
-  }, [claimOwnership, tasks]);
-
-  const annotateCurrentSnapshot = useCallback((note: string, owner: string): void => {
-    if (currentSnapshot == null) {
-      throw new Error("takeover.no_snapshot_available");
-    }
-    appendHistory({ taskId: currentSnapshot.taskId, owner, action: `annotate:${note}`, recordedAt: new Date().toISOString() });
-  }, [appendHistory, currentSnapshot]);
-
-  const resumeAutomaticExecution = useCallback(async (owner: string): Promise<void> => {
-    if (currentSnapshot == null) {
-      throw new Error("takeover.no_snapshot_available");
-    }
-    await updateTask(client, currentSnapshot.taskId, { owner, status: "running" });
-    appendHistory({ taskId: currentSnapshot.taskId, owner, action: "resume", recordedAt: new Date().toISOString() });
-  }, [appendHistory, client, currentSnapshot]);
+  }, [candidateTask, loadTaskConsole, selectedTaskId]);
 
   useEffect(() => {
     return wsClient.subscribe("tasks", (event) => {
-      if (!event.type.startsWith("task.")) {
+      if (!event.type.startsWith("task.") || selectedTaskId == null) {
         return;
       }
-      const payload = event.payload as { taskId?: string; owner?: string; status?: string; steps?: readonly unknown[] };
-      if (payload.taskId == null) {
+      const payload = event.payload as { taskId?: string };
+      if (payload.taskId !== selectedTaskId) {
         return;
       }
-      setCurrentSnapshot((snapshot) => {
-        if (snapshot == null || snapshot.taskId !== payload.taskId) {
-          return snapshot;
-        }
-        const nextSnapshot: TakeoverSnapshot = {
-          ...snapshot,
-          owner: payload.owner ?? snapshot.owner,
-          status: payload.status ?? snapshot.status,
-          steps: payload.steps ?? snapshot.steps,
-          capturedAt: snapshot.capturedAt,
-        };
-        if (
-          nextSnapshot.owner === snapshot.owner
-          && nextSnapshot.status === snapshot.status
-          && nextSnapshot.steps === snapshot.steps
-        ) {
-          return snapshot;
-        }
-        const updatedSnapshot = {
-          ...nextSnapshot,
-          capturedAt: new Date().toISOString(),
-        };
-        commitSnapshots((current) => [updatedSnapshot, ...current]);
-        return updatedSnapshot;
+      void loadTaskConsole(selectedTaskId).catch(() => {
+        setErrorMessage("takeover.refresh_failed");
       });
     });
-  }, [wsClient]);
+  }, [loadTaskConsole, selectedTaskId, wsClient]);
+
+  const claimOwnership = useCallback(async (taskId: string, _owner: string): Promise<void> => {
+    setMutating(true);
+    setErrorMessage(null);
+    try {
+      await openAdminTakeoverSession(client, taskId, {
+        reasonCode: "operator.manual_takeover",
+      });
+      await loadTaskConsole(taskId);
+    } catch {
+      setErrorMessage("takeover.claim_failed");
+      throw new Error("takeover.claim_failed");
+    } finally {
+      setMutating(false);
+      setLoading(false);
+    }
+  }, [client, loadTaskConsole]);
+
+  const takeoverCurrentTask = useCallback(async (owner: string): Promise<void> => {
+    const nextCandidate = selectTakeoverCandidate(tasks);
+    if (nextCandidate == null) {
+      throw new Error("takeover.no_active_task_available");
+    }
+    await claimOwnership(nextCandidate.id, owner);
+  }, [claimOwnership, tasks]);
+
+  const annotateCurrentSnapshot = useCallback(async (note: string, _owner: string): Promise<void> => {
+    const openSessionId = resolveOpenSessionId(consoleSnapshot);
+    if (openSessionId == null) {
+      throw new Error("takeover.no_open_session");
+    }
+    setMutating(true);
+    setErrorMessage(null);
+    try {
+      await annotateAdminTakeoverSession(client, openSessionId, {
+        reasonCode: "operator.takeover_annotation",
+        note,
+      });
+      await loadTaskConsole(consoleSnapshot!.scope.taskId);
+    } catch {
+      setErrorMessage("takeover.annotation_failed");
+      throw new Error("takeover.annotation_failed");
+    } finally {
+      setMutating(false);
+    }
+  }, [client, consoleSnapshot, loadTaskConsole]);
+
+  const resumeAutomaticExecution = useCallback(async (_owner: string): Promise<void> => {
+    const openSessionId = resolveOpenSessionId(consoleSnapshot);
+    if (openSessionId == null) {
+      throw new Error("takeover.no_open_session");
+    }
+    setMutating(true);
+    setErrorMessage(null);
+    try {
+      await resumeAdminTakeoverSession(client, openSessionId, {
+        reasonCode: "operator.resume_automatic_execution",
+      });
+      await loadTaskConsole(consoleSnapshot!.scope.taskId);
+    } catch {
+      setErrorMessage("takeover.resume_failed");
+      throw new Error("takeover.resume_failed");
+    } finally {
+      setMutating(false);
+    }
+  }, [client, consoleSnapshot, loadTaskConsole]);
+
+  const refresh = useCallback(async (): Promise<void> => {
+    const taskId = selectedTaskId ?? candidateTask?.id;
+    if (taskId == null) {
+      setConsoleSnapshot(null);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setErrorMessage(null);
+    try {
+      await loadTaskConsole(taskId);
+    } catch {
+      setErrorMessage("takeover.refresh_failed");
+      throw new Error("takeover.refresh_failed");
+    } finally {
+      setLoading(false);
+    }
+  }, [candidateTask, loadTaskConsole, selectedTaskId]);
+
+  const currentSnapshot = useMemo(
+    () => (consoleSnapshot == null ? null : buildSnapshot(consoleSnapshot)),
+    [consoleSnapshot],
+  );
+  const ownershipHistory = useMemo(
+    () => (consoleSnapshot == null ? [] : buildOwnershipHistory(consoleSnapshot)),
+    [consoleSnapshot],
+  );
+  const openSessionId = resolveOpenSessionId(consoleSnapshot);
 
   return useMemo(() => ({
     items: [
@@ -288,39 +333,31 @@ export function useTakeoverVm(): TakeoverVm {
       { title: translateMessage("ui.takeover.item.override.title"), description: translateMessage("ui.takeover.item.override.description") },
       { title: translateMessage("ui.takeover.item.resume.title"), description: translateMessage("ui.takeover.item.resume.description") },
     ],
+    loading,
+    mutating,
+    errorMessage,
     currentSnapshot,
     ownershipHistory,
-    canTakeover: selectTakeoverCandidate(tasks) != null,
-    canAnnotate: currentSnapshot != null,
-    canResume: currentSnapshot != null,
+    canTakeover: candidateTask != null && !mutating,
+    canAnnotate: openSessionId != null && !mutating,
+    canResume: openSessionId != null && !mutating,
     claimOwnership,
-    transferOwnership,
-    restoreFromSnapshot: setCurrentSnapshot,
     takeoverCurrentTask,
     annotateCurrentSnapshot,
     resumeAutomaticExecution,
-  }), [annotateCurrentSnapshot, claimOwnership, currentSnapshot, ownershipHistory, resumeAutomaticExecution, takeoverCurrentTask, tasks, transferOwnership]);
-}
-
-function isTakeoverSnapshot(value: unknown): value is TakeoverSnapshot {
-  if (value == null || typeof value !== "object") {
-    return false;
-  }
-  const snapshot = value as Record<string, unknown>;
-  return typeof snapshot.taskId === "string"
-    && typeof snapshot.owner === "string"
-    && typeof snapshot.status === "string"
-    && Array.isArray(snapshot.steps)
-    && typeof snapshot.capturedAt === "string";
-}
-
-function isTakeoverHistoryEntry(value: unknown): value is TakeoverHistoryEntry {
-  if (value == null || typeof value !== "object") {
-    return false;
-  }
-  const entry = value as Record<string, unknown>;
-  return typeof entry.taskId === "string"
-    && typeof entry.owner === "string"
-    && typeof entry.action === "string"
-    && typeof entry.recordedAt === "string";
+    refresh,
+  }), [
+    annotateCurrentSnapshot,
+    candidateTask,
+    claimOwnership,
+    currentSnapshot,
+    errorMessage,
+    loading,
+    mutating,
+    openSessionId,
+    ownershipHistory,
+    refresh,
+    resumeAutomaticExecution,
+    takeoverCurrentTask,
+  ]);
 }

@@ -995,6 +995,7 @@ export class HttpApiServer {
         domainRegistryService: this.options.domainRegistryService ?? null,
         webhookIngressService: this.options.webhookIngressService ?? null,
         taskStore: this.options.taskStore ?? null,
+        db: this.options.db ?? null,
         platformRoot: this.options.platformRoot ?? this.env["AA_PLATFORM_ROOT"] ?? process.env.AA_PLATFORM_ROOT ?? process.cwd(),
       }),
       ...createConsoleRoutes({

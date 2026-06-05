@@ -111,6 +111,51 @@ export function mapWorkflowsToVm(workflows) {
         })),
     };
 }
+function buildWorkflowControls(workflow) {
+    if (workflow == null) {
+        return {
+            cancelEnabled: false,
+            pauseEnabled: false,
+            resumeEnabled: false,
+            recoverEnabled: false,
+            releaseEnabled: false,
+        };
+    }
+    switch (workflow.status) {
+        case "running":
+            return {
+                cancelEnabled: true,
+                pauseEnabled: true,
+                resumeEnabled: false,
+                recoverEnabled: false,
+                releaseEnabled: true,
+            };
+        case "paused":
+            return {
+                cancelEnabled: true,
+                pauseEnabled: false,
+                resumeEnabled: true,
+                recoverEnabled: false,
+                releaseEnabled: false,
+            };
+        case "failed":
+            return {
+                cancelEnabled: false,
+                pauseEnabled: false,
+                resumeEnabled: false,
+                recoverEnabled: true,
+                releaseEnabled: false,
+            };
+        default:
+            return {
+                cancelEnabled: false,
+                pauseEnabled: false,
+                resumeEnabled: false,
+                recoverEnabled: false,
+                releaseEnabled: false,
+            };
+    }
+}
 export function useWorkflowCockpitVm() {
     const client = useRestClient();
     const queryClient = useQueryClient();
@@ -140,6 +185,7 @@ export function useWorkflowCockpitVm() {
     const selectedWorkflow = serverWorkflow?.id === selectedId
         ? serverWorkflow
         : selectedSummaryWorkflow;
+    const controls = useMemo(() => buildWorkflowControls(selectedWorkflow), [selectedWorkflow]);
     const fetchWorkflowDetail = useCallback(async (workflowId) => {
         const cockpit = await client.get(`/v1/workflows/${encodeURIComponent(workflowId)}`);
         const fallbackWorkflow = resolvedWorkflows.find((workflow) => workflow.id === workflowId) ?? null;
@@ -172,39 +218,40 @@ export function useWorkflowCockpitVm() {
         });
     }, [fetchWorkflowDetail, selectedId, selectedSummaryWorkflow?.currentStage, selectedSummaryWorkflow?.status]);
     const cancelSelectedWorkflow = useCallback(async () => {
-        if (selectedWorkflow == null) {
+        if (selectedWorkflow == null || !controls.cancelEnabled) {
             return;
         }
         await runAction(() => cancelWorkflow(client, selectedWorkflow.id), `Canceled · ${selectedWorkflow.title}`, "Workflow was canceled from the cockpit.");
-    }, [client, runAction, selectedWorkflow]);
+    }, [client, controls.cancelEnabled, runAction, selectedWorkflow]);
     const pauseSelectedWorkflow = useCallback(async () => {
-        if (selectedWorkflow == null) {
+        if (selectedWorkflow == null || !controls.pauseEnabled) {
             return;
         }
         await runAction(() => pauseWorkflowApi(client, selectedWorkflow.id), `Paused · ${selectedWorkflow.title}`, "Workflow entered HITL waiting state.");
-    }, [client, runAction, selectedWorkflow]);
+    }, [client, controls.pauseEnabled, runAction, selectedWorkflow]);
     const resumeSelectedWorkflow = useCallback(async () => {
-        if (selectedWorkflow == null) {
+        if (selectedWorkflow == null || !controls.resumeEnabled) {
             return;
         }
         await runAction(() => resumeWorkflowApi(client, selectedWorkflow.id), `Resumed · ${selectedWorkflow.title}`, "Workflow resumed execution from the selected checkpoint.");
-    }, [client, runAction, selectedWorkflow]);
+    }, [client, controls.resumeEnabled, runAction, selectedWorkflow]);
     const recoverSelectedWorkflow = useCallback(async () => {
-        if (selectedWorkflow == null) {
+        if (selectedWorkflow == null || !controls.recoverEnabled) {
             return;
         }
         await runAction(() => recoverWorkflowApi(client, selectedWorkflow.id), `Recovered · ${selectedWorkflow.title}`, "Recovery controller rebuilt state and replayed the workflow.");
-    }, [client, runAction, selectedWorkflow]);
+    }, [client, controls.recoverEnabled, runAction, selectedWorkflow]);
     const releaseSelectedWorkflow = useCallback(async () => {
-        if (selectedWorkflow == null) {
+        if (selectedWorkflow == null || !controls.releaseEnabled) {
             return;
         }
         await runAction(() => releaseWorkflowApi(client, selectedWorkflow.id), `Released · ${selectedWorkflow.title}`, "Workflow completed release checks and closed successfully.");
-    }, [client, runAction, selectedWorkflow]);
+    }, [client, controls.releaseEnabled, runAction, selectedWorkflow]);
     return {
         ...baseVm,
         selectedId,
         selectedWorkflow,
+        controls,
         activityItems,
         pendingOperations,
         selectWorkflow,

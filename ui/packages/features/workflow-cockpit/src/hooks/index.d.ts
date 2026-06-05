@@ -8,6 +8,13 @@ export interface WorkflowCockpitVm {
     }[];
     readonly selectedId: string | null;
     readonly selectedWorkflow: WorkflowDTO | null;
+    readonly controls: {
+        readonly cancelEnabled: boolean;
+        readonly pauseEnabled: boolean;
+        readonly resumeEnabled: boolean;
+        readonly recoverEnabled: boolean;
+        readonly releaseEnabled: boolean;
+    };
     readonly activityItems: readonly {
         title: string;
         description: string;

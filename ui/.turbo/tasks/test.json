@@ -3,10 +3,10 @@
   "command": [
     "vitest",
     "run",
-    "tests/unit/ui/packages/features/settings/hooks.test.tsx",
-    "tests/unit/ui/packages/features/settings/web.test.tsx",
-    "tests/features/feature-i18n.test.ts"
+    "tests/unit/ui/packages/ui-core/layout-and-component-baseline.test.tsx",
+    "tests/unit/ui/packages/features/workflow-debugger/hooks.test.tsx",
+    "tests/unit/ui/packages/features/release-console/web.test.tsx"
   ],
-  "startedAt": "2026-06-05T09:07:54.017Z",
-  "completedAt": "2026-06-05T09:07:54.648Z"
+  "startedAt": "2026-06-05T13:35:59.020Z",
+  "completedAt": "2026-06-05T13:36:00.082Z"
 }

@@ -3,6 +3,7 @@ import { ElectronPlatformAdapter, TauriPlatformAdapter } from "./desktop-platfor
 import { MobilePlatformAdapter } from "./mobile-platform-adapter.js";
 import { WebPlatformAdapter } from "./web-platform-adapter.js";
 export { DefaultPlatformAdapter, createPlatformAdapterCapabilityView } from "./base-platform-adapter.js";
+export { copyTextToClipboard } from "./clipboard.js";
 export { ElectronPlatformAdapter, DesktopPlatformAdapter, TauriPlatformAdapter } from "./desktop-platform-adapter.js";
 export { MobilePlatformAdapter } from "./mobile-platform-adapter.js";
 export { PlatformAdapterProvider, usePlatformAdapter } from "./provider.js";

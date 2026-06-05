@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { copyTextToClipboard } from "@aa/shared-platform";
 import { useRestClient, useTasksQuery } from "@aa/shared-state";
 import { translateMessage } from "@aa/shared-i18n";
 import type { TaskDTO } from "@aa/shared-types";
@@ -234,9 +235,7 @@ export function useWorkflowDebuggerVm(): WorkflowDebuggerVm {
     await withPending(async () => {
       const latest = await loadDebugView(selectedTask.id);
       const payload = buildExportSnapshot(selectedTask, latest);
-      if (typeof navigator !== "undefined" && navigator.clipboard != null && typeof navigator.clipboard.writeText === "function") {
-        await navigator.clipboard.writeText(payload).catch(() => undefined);
-      }
+      await copyTextToClipboard(payload);
       setActivePanel("export");
       appendActivity(
         "Debug snapshot exported",

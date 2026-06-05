@@ -69,11 +69,11 @@ export function WorkflowCockpitWebView(): ReactElement {
               </div>
             )}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button onClick={vm.cancelWorkflow} type="button">{translateMessage("ui.workflowCockpit.cancel")}</button>
-              <button onClick={vm.pauseWorkflow} type="button">{translateMessage("ui.workflowCockpit.pause")}</button>
-              <button onClick={vm.resumeWorkflow} type="button">{translateMessage("ui.workflowCockpit.resume")}</button>
-              <button onClick={vm.recoverWorkflow} type="button">{translateMessage("ui.workflowCockpit.recover")}</button>
-              <button onClick={vm.releaseWorkflow} type="button">{translateMessage("ui.workflowCockpit.release")}</button>
+              <button disabled={!vm.controls.cancelEnabled} onClick={vm.cancelWorkflow} type="button">{translateMessage("ui.workflowCockpit.cancel")}</button>
+              <button disabled={!vm.controls.pauseEnabled} onClick={vm.pauseWorkflow} type="button">{translateMessage("ui.workflowCockpit.pause")}</button>
+              <button disabled={!vm.controls.resumeEnabled} onClick={vm.resumeWorkflow} type="button">{translateMessage("ui.workflowCockpit.resume")}</button>
+              <button disabled={!vm.controls.recoverEnabled} onClick={vm.recoverWorkflow} type="button">{translateMessage("ui.workflowCockpit.recover")}</button>
+              <button disabled={!vm.controls.releaseEnabled} onClick={vm.releaseWorkflow} type="button">{translateMessage("ui.workflowCockpit.release")}</button>
             </div>
           </div>
         )}

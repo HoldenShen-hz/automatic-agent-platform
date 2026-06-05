@@ -1,4 +1,5 @@
 import { createElement, useEffect, useMemo, useState } from "react";
+import { copyTextToClipboard } from "@aa/shared-platform";
 import { createPanelStyle, designTokens } from "../design-tokens";
 import { LayoutFrame, ThreePaneLayout } from "../layouts";
 import { CodeBlock, DAGVisualization, FileAttachment, Timeline } from "./extended";
@@ -82,7 +83,7 @@ function buildWorkbenchActionHandler(scope, actionId, options = {}) {
     if (options.copySelection && item != null) {
       const summary = `${item.title}
 ${item.description}`;
-      await globalThis.navigator?.clipboard?.writeText?.(summary);
+      await copyTextToClipboard(summary);
     }
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("aa:feature-workbench-action", {

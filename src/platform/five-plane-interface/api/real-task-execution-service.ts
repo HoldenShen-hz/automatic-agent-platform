@@ -70,10 +70,49 @@ function buildGoal(input: RealTaskExecutionRequest): Goal {
     ],
     constraints: [
       "return concise Chinese markdown",
-      "focus on code productivity improvements with execution guidance",
+      "respect the original task intent and do not substitute a different topic",
     ],
     priority: "normal",
   };
+}
+
+type PromptTaskBuild = {
+  readonly humanSummary: string;
+};
+
+type PromptDecomposition = {
+  readonly tasks: readonly {
+    readonly domainId: string;
+    readonly description: string;
+  }[];
+};
+
+export function buildRealTaskMarkdownPrompt(
+  input: RealTaskExecutionRequest,
+  taskBuild: PromptTaskBuild,
+  decomposition: PromptDecomposition,
+): string {
+  const decompositionLines = decomposition.tasks.length === 0
+    ? ["1. 围绕任务主题直接完成交付。"]
+    : decomposition.tasks.map((task, index) => `${index + 1}. [${task.domainId}] ${task.description}`);
+  return [
+    "请直接完成下面的真实任务，并输出中文 Markdown。",
+    "",
+    "硬性要求：",
+    "1. 严格围绕任务主题本身作答，不要改写成别的课题。",
+    "2. NL 摘要和拆解任务只作为辅助线索；如果它们和任务主题冲突，以任务主题为准。",
+    "3. 不要输出 JSON，不要输出与任务无关的固定模板。",
+    "4. 如果任务是确认、排查、判断类请求，先给出结论，再给简短依据。",
+    "5. 如果任务是方案、报告、计划类请求，再按任务需要组织结构化章节。",
+    "6. 信息不足时，基于现有上下文给出最小可执行结果，并明确假设。",
+    "",
+    `任务主题：${input.title}`,
+    `任务归属：${input.divisionId ?? "platform"}`,
+    `NL 摘要：${taskBuild.humanSummary}`,
+    "",
+    "辅助拆解：",
+    ...decompositionLines,
+  ].join("\n");
 }
 
 function summarizeMarkdown(markdown: string): string {
@@ -295,25 +334,10 @@ export class RealTaskExecutionService {
       }),
     }).decompose(buildGoal(input));
     const markdown = await this.provider.complete(
-      [
-        "请基于以下任务生成中文 Markdown 报告。",
-        "",
-        `任务主题：${input.title}`,
-        `任务归属：${input.divisionId ?? "platform"}`,
-        `NL 摘要：${taskBuild.humanSummary}`,
-        "",
-        "拆解任务：",
-        ...decomposition.tasks.map((task, index) => `${index + 1}. [${task.domainId}] ${task.description}`),
-        "",
-        "报告要求：",
-        "1. 给出 5-8 类能提升代码工作效率/质量的方法。",
-        "2. 每类写清原理、适用场景、收益、落地建议。",
-        "3. 最后输出 30/60/90 天执行计划。",
-        "4. 不要输出 JSON，只输出 Markdown。",
-      ].join("\n"),
+      buildRealTaskMarkdownPrompt(input, taskBuild, decomposition),
       {
         model: this.model,
-        system: "You are a senior engineering effectiveness researcher. Produce concise, executable Chinese markdown.",
+        system: "You are a senior execution copilot. Complete the user's real task faithfully and return concise Chinese markdown.",
         temperature: 0.2,
         maxTokens: 2600,
         traceId: `real-task:${input.taskId}`,

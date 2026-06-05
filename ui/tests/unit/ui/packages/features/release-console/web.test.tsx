@@ -3,6 +3,32 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const baseVm = {
+  items: [{ title: "Manifest Draft Queue", description: "desc" }],
+  loading: false,
+  mutating: false,
+  summaryRows: [
+    { key: "Families", value: "2" },
+    { key: "Approved claims", value: "1" },
+  ],
+  errorMessage: null,
+  approveReviewRequest: vi.fn(async () => undefined),
+  rejectReviewRequest: vi.fn(async () => undefined),
+  revokeClaim: vi.fn(async () => undefined),
+  leadershipClaims: {
+    generatedAt: "2026-05-31T00:00:00.000Z",
+    families: [{ familyId: "engineering", displayName: "Engineering", readinessStatus: "local_leadership_ready", targetClaimLevel: "local_leader", owner: "owner", canonicalFamilies: [], canonicalDivisions: ["coding"], benchmarkRefs: [], minimumEvidenceRef: "engineering-core", notes: "", benchmarks: [], internalMappings: [], mvpThresholds: [], leadershipThresholds: [], familyPolicy: { claimReviewOwner: "owner", claimExpiryDays: 90, revokeOnExpiry: true, noGoBoundaryRef: "config/policy/no-go-actions.yaml#engineering", leadershipTypes: ["capability_leadership"], scoreWeights: { capability: 30, safety: 25, evidence: 20, operation: 15, flywheel: 10 } } }],
+    claims: [{ claimId: "claim-1", familyId: "engineering", divisionId: "coding", scenarioId: "issue", claimLevel: "local_leader", claimText: "claim text", allowedSurfaces: ["docs"], evidenceRefs: [], owner: "owner", requestedBy: "release-owner", submittedAt: "2026-05-30T00:00:00.000Z", reviewedBy: [], expiresAt: null, status: "approved", effectiveStatus: "approved", effectiveStatusReasonCode: null, freshnessStatus: "fresh", revokedBy: null, revokedAt: null, replacementRequired: false }],
+    allowlist: [],
+    scannerHits: [{ filePath: "docs_zh/reference/release.md", matchedText: "claim-term", lineNumber: 9, excerpt: "claim wording", surface: "docs", status: "allowlisted", claimId: null, reason: "governance_rule_definition" }],
+    scannerGeneratedAt: "2026-05-31T00:00:00.000Z",
+    reviewRequests: [{ requestId: "review-1", familyId: "engineering", divisionId: "coding", scenarioId: "issue", requestedClaimLevel: "local_leader", requestedSurfaces: ["docs"], evidenceRefs: ["eval://divisions/coding/swe-style/report-2026-05-01"], requestedBy: "release-owner", rationale: "rationale", requestedAt: "2026-05-31T00:00:00.000Z", status: "pending", reviewedBy: null, reviewedAt: null, decisionReasonCode: null, decisionComment: null }],
+    noGoActions: [{ familyId: null, id: "no-auto-payment", description: "No automated payment", riskClass: "R5", scopes: [], enforcementSurfaces: [], blockModes: ["autonomous_execution"], sources: ["issue"] }],
+    summary: { familyCount: 2, approvedClaimCount: 1, expiringClaimCount: 1, pendingReviewRequestCount: 1, blockedScannerHitCount: 0, expiredAllowlistCount: 0, revokedClaimCount: 0, expiredClaimCount: 0, upcomingExpiryCount: 1 },
+  },
+} as const;
+let mockVm = baseVm;
+
 vi.mock("@aa/ui-core", () => ({
   FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   FeatureWorkbenchPanel: (
@@ -26,43 +52,22 @@ vi.mock("@aa/ui-core", () => ({
 }));
 
 vi.mock("../../../../../../packages/features/release-console/src/hooks", () => ({
-  useReleaseConsoleVm: () => ({
-    items: [{ title: "Manifest Draft Queue", description: "desc" }],
-    loading: false,
-    mutating: false,
-    summaryRows: [
-      { key: "Families", value: "2" },
-      { key: "Approved claims", value: "1" },
-    ],
-    errorMessage: null,
-    approveReviewRequest: vi.fn(async () => undefined),
-    rejectReviewRequest: vi.fn(async () => undefined),
-    revokeClaim: vi.fn(async () => undefined),
-    leadershipClaims: {
-      generatedAt: "2026-05-31T00:00:00.000Z",
-      families: [{ familyId: "engineering", displayName: "Engineering", readinessStatus: "local_leadership_ready", targetClaimLevel: "local_leader", owner: "owner", canonicalFamilies: [], canonicalDivisions: ["coding"], benchmarkRefs: [], minimumEvidenceRef: "engineering-core", notes: "", benchmarks: [], internalMappings: [], mvpThresholds: [], leadershipThresholds: [], familyPolicy: { claimReviewOwner: "owner", claimExpiryDays: 90, revokeOnExpiry: true, noGoBoundaryRef: "config/policy/no-go-actions.yaml#engineering", leadershipTypes: ["capability_leadership"], scoreWeights: { capability: 30, safety: 25, evidence: 20, operation: 15, flywheel: 10 } } }],
-      claims: [{ claimId: "claim-1", familyId: "engineering", divisionId: "coding", scenarioId: "issue", claimLevel: "local_leader", claimText: "claim text", allowedSurfaces: ["docs"], evidenceRefs: [], owner: "owner", requestedBy: "release-owner", submittedAt: "2026-05-30T00:00:00.000Z", reviewedBy: [], expiresAt: null, status: "approved", effectiveStatus: "approved", effectiveStatusReasonCode: null, freshnessStatus: "fresh", revokedBy: null, revokedAt: null, replacementRequired: false }],
-      allowlist: [],
-      scannerHits: [{ filePath: "docs_zh/reference/release.md", matchedText: "claim-term", lineNumber: 9, excerpt: "claim wording", surface: "docs", status: "allowlisted", claimId: null, reason: "governance_rule_definition" }],
-      scannerGeneratedAt: "2026-05-31T00:00:00.000Z",
-      reviewRequests: [{ requestId: "review-1", familyId: "engineering", divisionId: "coding", scenarioId: "issue", requestedClaimLevel: "local_leader", requestedSurfaces: ["docs"], evidenceRefs: ["eval://divisions/coding/swe-style/report-2026-05-01"], requestedBy: "release-owner", rationale: "rationale", requestedAt: "2026-05-31T00:00:00.000Z", status: "pending", reviewedBy: null, reviewedAt: null, decisionReasonCode: null, decisionComment: null }],
-      noGoActions: [{ familyId: null, id: "no-auto-payment", description: "No automated payment", riskClass: "R5", scopes: [], enforcementSurfaces: [], blockModes: ["autonomous_execution"], sources: ["issue"] }],
-      summary: { familyCount: 2, approvedClaimCount: 1, expiringClaimCount: 1, pendingReviewRequestCount: 1, blockedScannerHitCount: 0, expiredAllowlistCount: 0, revokedClaimCount: 0, expiredClaimCount: 0, upcomingExpiryCount: 1 },
-    },
-  }),
+  useReleaseConsoleVm: () => mockVm,
 }));
 
 import { LeadershipClaimsWebView, ReleaseConsoleWebView } from "../../../../../../packages/features/release-console/src/web";
 
 afterEach(() => {
   cleanup();
+  mockVm = baseVm;
+  vi.restoreAllMocks();
 });
 
 describe("ReleaseConsoleWebView", () => {
   it("renders workbench actions and governance summary", () => {
     render(<ReleaseConsoleWebView />);
 
-    expect(screen.queryByText("运行门禁")).not.toBeNull();
+    expect(screen.queryByText("刷新治理快照")).not.toBeNull();
     expect(screen.queryByText("查看声明治理")).not.toBeNull();
     expect(screen.queryByText("Manifest Draft Queue")).not.toBeNull();
     expect(screen.queryByText("Families:2")).not.toBeNull();
@@ -82,5 +87,48 @@ describe("LeadershipClaimsWebView", () => {
     expect(screen.queryByText("no-auto-payment · R5")).not.toBeNull();
     expect(screen.queryByText("Approve review")).not.toBeNull();
     expect(screen.queryByText("Revoke claim")).not.toBeNull();
+  });
+
+  it("avoids duplicate React keys when scanner hits or allowlist entries repeat the same content", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    mockVm = {
+      ...baseVm,
+      leadershipClaims: {
+        ...baseVm.leadershipClaims,
+        scannerHits: [
+          ...baseVm.leadershipClaims.scannerHits,
+          { ...baseVm.leadershipClaims.scannerHits[0] },
+        ],
+        allowlist: [
+          {
+            filePath: "docs_zh/reference/automatic_agent_platform_v3_2_final_release.md",
+            matchedText: "行业领先",
+            claimLevel: "global_leader",
+            surface: "docs",
+            reason: "temporary governance wording",
+            owner: "governance",
+            expiresAt: null,
+            expired: false,
+            replacementSuggestion: null,
+          },
+          {
+            filePath: "docs_zh/reference/automatic_agent_platform_v3_2_final_release.md",
+            matchedText: "行业领先",
+            claimLevel: "global_leader",
+            surface: "docs",
+            reason: "temporary governance wording",
+            owner: "governance",
+            expiresAt: null,
+            expired: false,
+            replacementSuggestion: null,
+          },
+        ],
+      },
+    };
+
+    render(<LeadershipClaimsWebView />);
+
+    expect(consoleError).not.toHaveBeenCalledWith(expect.stringContaining("Encountered two children with the same key"));
+    expect(screen.queryAllByText(/allowlist · 行业领先/)).toHaveLength(2);
   });
 });

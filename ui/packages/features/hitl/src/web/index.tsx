@@ -6,6 +6,9 @@ import { useHitlVm } from "../hooks";
 export function HitlWebView(): ReactElement {
   const featureCopy = translateFeatureCopy("hitl");
   const vm = useHitlVm();
+  const approvalItems = vm.items.filter((item) => item.type === "approval");
+  const hasApprovalItems = approvalItems.length > 0;
+  const actionsDisabled = vm.pendingOperations > 0;
   const [editorMode, setEditorMode] = useState<"patch" | "override" | null>(null);
   const [editorTargetId, setEditorTargetId] = useState<string | null>(null);
   const [editorValue, setEditorValue] = useState("{}");
@@ -48,24 +51,18 @@ export function HitlWebView(): ReactElement {
       <Stack>
         <Inline>
           <button
-            disabled={vm.items.length === 0}
+            disabled={!hasApprovalItems || actionsDisabled}
             onClick={() => {
-              if (!window.confirm(translateMessage("ui.hitl.bulkApprove"))) {
-                return;
-              }
-              void vm.bulkApprove(vm.items.filter((item) => item.type === "approval").map((item) => item.id));
+              void vm.bulkApprove(approvalItems.map((item) => item.id));
             }}
             type="button"
           >
             {translateMessage("ui.hitl.bulkApprove")}
           </button>
           <button
-            disabled={vm.items.length === 0}
+            disabled={!hasApprovalItems || actionsDisabled}
             onClick={() => {
-              if (!window.confirm(translateMessage("ui.hitl.bulkReject"))) {
-                return;
-              }
-              void vm.bulkReject(vm.items.filter((item) => item.type === "approval").map((item) => item.id));
+              void vm.bulkReject(approvalItems.map((item) => item.id));
             }}
             type="button"
           >
@@ -87,9 +84,10 @@ export function HitlWebView(): ReactElement {
             </div>
             {item.type === "approval" ? (
               <Inline>
-                <button onClick={() => { void vm.approve(item.id); }} type="button">{translateMessage("ui.hitl.approve")}</button>
-                <button onClick={() => { void vm.reject(item.id); }} type="button">{translateMessage("ui.hitl.reject")}</button>
+                <button disabled={actionsDisabled} onClick={() => { void vm.approve(item.id); }} type="button">{translateMessage("ui.hitl.approve")}</button>
+                <button disabled={actionsDisabled} onClick={() => { void vm.reject(item.id); }} type="button">{translateMessage("ui.hitl.reject")}</button>
                 <button
+                  disabled={actionsDisabled}
                   onClick={() => {
                     setEditorMode("patch");
                     setEditorTargetId(item.id);
@@ -100,6 +98,7 @@ export function HitlWebView(): ReactElement {
                   {translateMessage("ui.hitl.patch")}
                 </button>
                 <button
+                  disabled={actionsDisabled}
                   onClick={() => {
                     setEditorMode("override");
                     setEditorTargetId(item.id);
@@ -112,10 +111,8 @@ export function HitlWebView(): ReactElement {
               </Inline>
             ) : (
               <button
+                disabled={actionsDisabled}
                 onClick={() => {
-                  if (!window.confirm(translateMessage("ui.hitl.resume"))) {
-                    return;
-                  }
                   void vm.resume(item.id, "normal");
                 }}
                 type="button"
@@ -134,13 +131,14 @@ export function HitlWebView(): ReactElement {
           >
             <Stack gap={8}>
             <textarea
+              disabled={actionsDisabled}
               aria-describedby={editorError != null ? editorErrorId : undefined}
               aria-label={translateMessage("ui.hitl.editor.label")}
               onChange={(event) => setEditorValue(event.target.value)}
               value={editorValue}
             />
             {editorError != null ? <p id={editorErrorId} role="alert">{editorError}</p> : null}
-            <button type="submit">{translateMessage("ui.hitl.apply")}</button>
+            <button disabled={actionsDisabled} type="submit">{translateMessage("ui.hitl.apply")}</button>
             </Stack>
           </form>
         )}

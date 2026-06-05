@@ -20,6 +20,11 @@ import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseCreateTaskPayload, parseUpdateTaskPayload } from "./schemas.js";
 import {
+  InMemoryWorkflowBuilderRepository,
+  WorkflowBuilderService,
+  type VisualWorkflowBuilder,
+} from "../../../../interaction/ux/index.js";
+import {
   assertTaskTenantAccess,
   buildJsonResponse,
   decodeOpaqueCursor,
@@ -42,6 +47,7 @@ import {
   MissionResolver,
 } from "../../../five-plane-control-plane/mission/index.js";
 import { stableStringify } from "../../../shared/cache/utils/stable-stringify.js";
+import { z } from "zod";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -86,6 +92,71 @@ const workflowActionStatusMap = {
   publish: "completed",
 } as const;
 
+const nonEmptyStringSchema = z.string().trim().min(1);
+
+const visualWorkflowBuilderSchema = z.object({
+  canvas: z.object({
+    nodes: z.array(z.object({
+      nodeId: nonEmptyStringSchema,
+      componentId: nonEmptyStringSchema,
+      label: z.string(),
+    })),
+    edges: z.array(z.object({
+      fromNodeId: nonEmptyStringSchema,
+      toNodeId: nonEmptyStringSchema,
+    })),
+  }),
+  componentPalette: z.array(z.object({
+    category: z.enum(["trigger", "action", "condition", "approval", "output"]),
+    components: z.array(z.object({
+      componentId: nonEmptyStringSchema,
+      name: nonEmptyStringSchema,
+      icon: z.string(),
+      domainId: nonEmptyStringSchema,
+      riskLevel: z.enum(["low", "medium", "high", "critical"]),
+      sideEffectProfile: z.object({
+        mayCommitExternalEffect: z.boolean(),
+        reversible: z.boolean(),
+      }).optional(),
+      compensationModel: z.object({
+        strategy: z.enum(["none", "retry_only", "idempotent_replay", "automatic_rollback", "manual_rollback"]),
+      }).optional(),
+      configSchema: z.record(z.string(), z.unknown()),
+      previewDescription: z.string(),
+    })),
+  })),
+  livePreview: z.object({
+    estimatedDuration: z.string(),
+    estimatedCost: z.string(),
+    riskAssessment: z.string(),
+    stepByStepDescription: z.array(z.string()),
+  }),
+  validation: z.object({
+    valid: z.boolean(),
+    messages: z.array(z.string()),
+  }),
+  progressiveDisclosure: z.object({
+    level: z.enum(["minimal", "guided", "governed"]),
+    hiddenCategories: z.array(z.string()),
+    defaultExpandedCategories: z.array(z.string()),
+  }),
+});
+
+const createWorkflowBuilderDraftSchema = z.object({
+  title: nonEmptyStringSchema.optional(),
+  builder: visualWorkflowBuilderSchema,
+}).strict();
+
+const updateWorkflowBuilderDraftSchema = z.object({
+  title: nonEmptyStringSchema.optional(),
+  builder: visualWorkflowBuilderSchema.optional(),
+}).strict().refine((value) => value.title !== undefined || value.builder !== undefined, {
+  message: "workflow builder update requires title or builder",
+});
+
+type CreateWorkflowBuilderDraftPayload = z.infer<typeof createWorkflowBuilderDraftSchema>;
+type UpdateWorkflowBuilderDraftPayload = z.infer<typeof updateWorkflowBuilderDraftSchema>;
+
 function buildStoredTaskInputJson(payload: ReturnType<typeof parseCreateTaskPayload>): string {
   const owner = payload.owner?.trim();
   if (owner == null || owner.length === 0) {
@@ -126,6 +197,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
   // R29-37: Internal default limit - extracted to constant for maintainability
   const DEFAULT_TASK_LIMIT = 25;
   const INTERNAL_TASK_LIMIT = 200;
+  const workflowBuilderService = new WorkflowBuilderService(new InMemoryWorkflowBuilderRepository());
 
   return [
     // ── v1 task read routes (also reached via /api/v1/* through matchRoute normalization) ──
@@ -184,12 +256,92 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       method: "GET",
       pathname: "/v1/workflows/builder",
       handler: (ctx) => {
-        const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const workflows = deps.missionControlService.listWorkflowCockpits(
-          readLimit(ctx.request, 25),
-          principal.tenantId != null ? principal.tenantId : undefined,
-        );
-        return buildJsonResponse(ctx.requestId, 200, workflows.map((summary) => toWorkflowDto(summary)));
+        requirePrincipal(ctx.request, deps.authService, "viewer");
+        const drafts = workflowBuilderService.listWorkflows(readLimit(ctx.request, 25));
+        return buildJsonResponse(ctx.requestId, 200, {
+          drafts: drafts.map((draft) => toWorkflowBuilderDraftDto(workflowBuilderService, draft.draftId)),
+        });
+      },
+    },
+    {
+      method: "GET",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const segments = normalizeRouteSegments(ctx.route.segments);
+        if (segments[0] !== "v1" || segments[1] !== "workflows" || segments[2] !== "builder" || segments.length !== 4) {
+          return null;
+        }
+        requirePrincipal(ctx.request, deps.authService, "viewer");
+        const draft = toWorkflowBuilderDraftDto(workflowBuilderService, segments[3]!);
+        if (draft == null) {
+          throw new ApiError(404, "workflow_builder.not_found", `Workflow builder draft ${segments[3]} not found.`);
+        }
+        return buildJsonResponse(ctx.requestId, 200, draft);
+      },
+    },
+    {
+      method: "POST",
+      pathname: "/v1/workflows/builder",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "operator");
+        const payload = readValidatedJsonBody(ctx.request.body, createWorkflowBuilderDraftSchema.parse) as CreateWorkflowBuilderDraftPayload;
+        const record = workflowBuilderService.saveWorkflow({
+          ...(payload.title == null ? {} : { title: payload.title }),
+          builder: payload.builder as VisualWorkflowBuilder,
+          ownerUserId: principal.actorId,
+        });
+        if (record == null) {
+          throw new ApiError(503, "workflow_builder.unavailable", "Workflow builder storage is not available.");
+        }
+        const draft = toWorkflowBuilderDraftDto(workflowBuilderService, record.draftId);
+        return buildJsonResponse(ctx.requestId, 201, draft);
+      },
+    },
+    {
+      method: "PATCH",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const segments = normalizeRouteSegments(ctx.route.segments);
+        if (segments[0] !== "v1" || segments[1] !== "workflows" || segments[2] !== "builder" || segments.length !== 4) {
+          return null;
+        }
+        requirePrincipal(ctx.request, deps.authService, "operator");
+        const payload = readValidatedJsonBody(ctx.request.body, updateWorkflowBuilderDraftSchema.parse) as UpdateWorkflowBuilderDraftPayload;
+        const existingRecord = workflowBuilderService.listWorkflows().find((draft) => draft.draftId === segments[3]);
+        const existingBuilder = workflowBuilderService.loadWorkflow(segments[3]!);
+        if (existingRecord == null || existingBuilder == null) {
+          throw new ApiError(404, "workflow_builder.not_found", `Workflow builder draft ${segments[3]} not found.`);
+        }
+        workflowBuilderService.saveWorkflow({
+          draftId: existingRecord.draftId,
+          taskId: existingRecord.taskId,
+          ...((payload.title ?? existingRecord.title) == null ? {} : { title: payload.title ?? existingRecord.title }),
+          builder: (payload.builder as VisualWorkflowBuilder | undefined) ?? existingBuilder,
+          createdAt: existingRecord.createdAt,
+        });
+        return buildJsonResponse(ctx.requestId, 200, toWorkflowBuilderDraftDto(workflowBuilderService, existingRecord.draftId));
+      },
+    },
+    {
+      method: "DELETE",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const segments = normalizeRouteSegments(ctx.route.segments);
+        if (segments[0] !== "v1" || segments[1] !== "workflows" || segments[2] !== "builder" || segments.length !== 4) {
+          return null;
+        }
+        requirePrincipal(ctx.request, deps.authService, "operator");
+        const deleted = workflowBuilderService.deleteWorkflow(segments[3]!);
+        if (!deleted) {
+          throw new ApiError(404, "workflow_builder.not_found", `Workflow builder draft ${segments[3]} not found.`);
+        }
+        return buildJsonResponse(ctx.requestId, 200, {
+          ok: true,
+          draftId: segments[3],
+        });
       },
     },
     {
@@ -759,19 +911,29 @@ function mapCreateTaskSourceToInputSource(source: "user" | "perception" | "syste
   }
 }
 
-function toWorkflowDto(summary: ReturnType<MissionControlService["listWorkflowCockpits"]>[number]) {
+function toWorkflowBuilderDraftDto(
+  workflowBuilderService: WorkflowBuilderService,
+  draftId: string,
+): {
+  readonly draftId: string;
+  readonly taskId: string;
+  readonly title: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly builder: VisualWorkflowBuilder;
+} | null {
+  const record = workflowBuilderService.listWorkflows().find((draft) => draft.draftId === draftId);
+  const builder = workflowBuilderService.loadWorkflow(draftId);
+  if (record == null || builder == null) {
+    return null;
+  }
   return {
-    id: summary.workflowId,
-    title: summary.workflowId,
-    status:
-      summary.workflowStatus === "completed"
-        ? "completed"
-        : summary.workflowStatus === "paused"
-          ? "paused"
-          : "running",
-    currentStage: summary.resumableFromStep ?? `step-${summary.currentStepIndex}`,
-    owner: summary.divisionId,
-    steps: [],
+    draftId: record.draftId,
+    taskId: record.taskId,
+    title: record.title ?? record.draftId,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    builder,
   };
 }
 

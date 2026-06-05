@@ -46,6 +46,7 @@ import type { AdminConfigService } from "../admin-config-service.js";
 import type { AdminRuntimeDirectiveService } from "../admin-runtime-directive-service.js";
 import type { DomainRegistryService } from "../../../../domains/registry/domain-registry-service.js";
 import type { AuthoritativeTaskStore } from "../../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { ChargebackService } from "../../../model-gateway/cost-tracker/chargeback-service.js";
 import { BenchmarkInventoryService } from "../../../shared/stability/benchmark-inventory-service.js";
 import { DeploymentInventoryService } from "../../../shared/stability/deployment-inventory-service.js";
@@ -58,6 +59,9 @@ import { DEFAULT_COMPLIANCE_FRAMEWORKS } from "../../../../org-governance/compli
 import type { WebhookIngressService } from "../../webhook/index.js";
 import { AppError, isAppError } from "../../../contracts/errors.js";
 import type { ResumePlan } from "../api-external-support.js";
+import { HumanTakeoverService } from "../../../five-plane-control-plane/incident-control/human-takeover-service.js";
+import { nowIso, newId } from "../../../contracts/types/ids.js";
+import { serializeSnapshot } from "../../../five-plane-control-plane/incident-control/human-takeover-support.js";
 import { z } from "zod";
 
 class ApiError extends AppError {
@@ -149,6 +153,16 @@ const leadershipClaimRevokeSchema = z.object({
   reasonCode: nonEmptyStringSchema,
   comment: z.string().trim().optional(),
   replacementRequired: z.boolean(),
+}).strict();
+const takeoverOpenSessionSchema = z.object({
+  reasonCode: nonEmptyStringSchema,
+}).strict();
+const takeoverAnnotationSchema = z.object({
+  reasonCode: nonEmptyStringSchema,
+  note: nonEmptyStringSchema,
+}).strict();
+const takeoverResumeSchema = z.object({
+  reasonCode: nonEmptyStringSchema,
 }).strict();
 const compliancePolicyPatchSchema = z.record(z.unknown());
 const complianceExceptionCreateSchema = z.object({
@@ -739,7 +753,166 @@ export interface AdminRouteDeps {
   domainRegistryService?: DomainRegistryService | null;
   webhookIngressService?: WebhookIngressService | null;
   taskStore?: AuthoritativeTaskStore | null;
+  db?: AuthoritativeSqlDatabase | null;
   platformRoot?: string;
+}
+
+function requireTakeoverDeps(deps: AdminRouteDeps): { taskStore: AuthoritativeTaskStore; db: AuthoritativeSqlDatabase } {
+  if (deps.taskStore == null || deps.db == null) {
+    throw new ApiError(503, "api.takeover_unavailable", "Takeover actions are not configured.");
+  }
+  return {
+    taskStore: deps.taskStore,
+    db: deps.db,
+  };
+}
+
+function openTakeoverSession(input: {
+  deps: AdminRouteDeps;
+  taskId: string;
+  operatorId: string;
+  reasonCode: string;
+  tenantId?: string | null;
+}) {
+  const { taskStore, db } = requireTakeoverDeps(input.deps);
+  const service = new HumanTakeoverService(db, taskStore);
+  return service.openSession({
+    taskId: input.taskId,
+    operatorId: input.operatorId,
+    reasonCode: input.reasonCode,
+    ...(input.tenantId !== undefined ? { tenantId: input.tenantId } : {}),
+  });
+}
+
+function recordTakeoverAnnotation(input: {
+  deps: AdminRouteDeps;
+  takeoverSessionId: string;
+  operatorId: string;
+  reasonCode: string;
+  note: string;
+  tenantId?: string | null;
+}) {
+  const { taskStore, db } = requireTakeoverDeps(input.deps);
+  const session = taskStore.approval.getTakeoverSession(input.takeoverSessionId, input.tenantId);
+  if (session == null) {
+    throw new ApiError(404, "api.takeover_session_not_found", "Takeover session not found.");
+  }
+  if (session.status !== "open") {
+    throw new ApiError(409, "api.takeover_session_closed", "Takeover session is already closed.");
+  }
+  const snapshot = taskStore.operations.loadTaskSnapshot(session.taskId, input.tenantId);
+  const serialized = JSON.stringify(serializeSnapshot(snapshot));
+  const createdAt = nowIso();
+  const operatorActionId = newId("opact");
+
+  db.transaction(() => {
+    taskStore.approval.insertOperatorAction({
+      id: operatorActionId,
+      takeoverSessionId: session.id,
+      taskId: session.taskId,
+      executionId: snapshot.execution?.id ?? null,
+      operatorId: input.operatorId,
+      actionType: "acknowledge_takeover",
+      reasonCode: input.reasonCode,
+      actionPayloadJson: JSON.stringify({
+        note: input.note,
+        mode: "annotation",
+      }),
+      beforeStateJson: serialized,
+      afterStateJson: serialized,
+      createdAt,
+    });
+    taskStore.event.insertEvent({
+      id: newId("evt"),
+      taskId: session.taskId,
+      executionId: snapshot.execution?.id ?? null,
+      sessionId: session.id,
+      eventType: "takeover:action_applied",
+      eventTier: "tier_2",
+      payloadJson: JSON.stringify({
+        takeoverSessionId: session.id,
+        operatorActionId,
+        actionType: "acknowledge_takeover",
+        reasonCode: input.reasonCode,
+        note: input.note,
+        mode: "annotation",
+      }),
+      traceId: newId("trace"),
+      createdAt,
+    });
+  });
+
+  return {
+    taskId: session.taskId,
+    takeoverSessionId: session.id,
+    operatorActionId,
+    recordedAt: createdAt,
+  };
+}
+
+function resumeTakeoverSession(input: {
+  deps: AdminRouteDeps;
+  takeoverSessionId: string;
+  operatorId: string;
+  reasonCode: string;
+  tenantId?: string | null;
+}) {
+  const { taskStore, db } = requireTakeoverDeps(input.deps);
+  const session = taskStore.approval.getTakeoverSession(input.takeoverSessionId, input.tenantId);
+  if (session == null) {
+    throw new ApiError(404, "api.takeover_session_not_found", "Takeover session not found.");
+  }
+  if (session.status !== "open") {
+    throw new ApiError(409, "api.takeover_session_closed", "Takeover session is already closed.");
+  }
+  const snapshot = taskStore.operations.loadTaskSnapshot(session.taskId, input.tenantId);
+  const serialized = JSON.stringify(serializeSnapshot(snapshot));
+  const closedAt = nowIso();
+  const operatorActionId = newId("opact");
+
+  db.transaction(() => {
+    taskStore.approval.insertOperatorAction({
+      id: operatorActionId,
+      takeoverSessionId: session.id,
+      taskId: session.taskId,
+      executionId: snapshot.execution?.id ?? null,
+      operatorId: input.operatorId,
+      actionType: "acknowledge_takeover",
+      reasonCode: input.reasonCode,
+      actionPayloadJson: JSON.stringify({
+        mode: "resume_automatic_execution",
+      }),
+      beforeStateJson: serialized,
+      afterStateJson: serialized,
+      createdAt: closedAt,
+    });
+    taskStore.approval.closeTakeoverSession(session.id, closedAt);
+    taskStore.event.insertEvent({
+      id: newId("evt"),
+      taskId: session.taskId,
+      executionId: snapshot.execution?.id ?? null,
+      sessionId: session.id,
+      eventType: "takeover:action_applied",
+      eventTier: "tier_2",
+      payloadJson: JSON.stringify({
+        takeoverSessionId: session.id,
+        operatorActionId,
+        actionType: "acknowledge_takeover",
+        reasonCode: input.reasonCode,
+        mode: "resume_automatic_execution",
+        sessionClosed: true,
+      }),
+      traceId: newId("trace"),
+      createdAt: closedAt,
+    });
+  });
+
+  return {
+    taskId: session.taskId,
+    takeoverSessionId: session.id,
+    operatorActionId,
+    closedAt,
+  };
 }
 
 function matchesHarnessRunRoute(segments: string[], expectedTailLength: number): boolean {
@@ -834,6 +1007,97 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
         assertGlobalTenantScopeSupported(principal, "admin takeover consoles");
         const taskId = validateTaskId(segments[3], "Admin route");
         return buildJsonResponse(ctx.requestId, 200, deps.missionControlService.getAdminTakeoverConsole(taskId));
+      },
+    },
+    {
+      method: "POST",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (
+          segments[0] !== "v1"
+          || segments[1] !== "admin"
+          || segments[2] !== "tasks"
+          || segments[4] !== "takeover"
+          || segments[5] !== "open"
+          || segments.length !== 6
+        ) {
+          return null;
+        }
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "admin takeover open");
+        const taskId = validateTaskId(segments[3], "Admin takeover open");
+        const payload = readValidatedJsonBody(ctx.request.body, takeoverOpenSessionSchema.parse);
+        const result = openTakeoverSession({
+          deps,
+          taskId,
+          operatorId: principal.actorId,
+          reasonCode: payload.reasonCode,
+          tenantId: principal.tenantId ?? null,
+        });
+        return buildJsonResponse(ctx.requestId, 200, result);
+      },
+    },
+    {
+      method: "POST",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (
+          segments[0] !== "v1"
+          || segments[1] !== "admin"
+          || segments[2] !== "takeover"
+          || segments[3] !== "sessions"
+          || segments[5] !== "annotations"
+          || segments.length !== 6
+        ) {
+          return null;
+        }
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "admin takeover annotations");
+        const takeoverSessionId = nonEmptyStringSchema.parse(segments[4]);
+        const payload = readValidatedJsonBody(ctx.request.body, takeoverAnnotationSchema.parse);
+        const result = recordTakeoverAnnotation({
+          deps,
+          takeoverSessionId,
+          operatorId: principal.actorId,
+          reasonCode: payload.reasonCode,
+          note: payload.note,
+          tenantId: principal.tenantId ?? null,
+        });
+        return buildJsonResponse(ctx.requestId, 200, result);
+      },
+    },
+    {
+      method: "POST",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (
+          segments[0] !== "v1"
+          || segments[1] !== "admin"
+          || segments[2] !== "takeover"
+          || segments[3] !== "sessions"
+          || segments[5] !== "resume"
+          || segments.length !== 6
+        ) {
+          return null;
+        }
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "admin takeover resume");
+        const takeoverSessionId = nonEmptyStringSchema.parse(segments[4]);
+        const payload = readValidatedJsonBody(ctx.request.body, takeoverResumeSchema.parse);
+        const result = resumeTakeoverSession({
+          deps,
+          takeoverSessionId,
+          operatorId: principal.actorId,
+          reasonCode: payload.reasonCode,
+          tenantId: principal.tenantId ?? null,
+        });
+        return buildJsonResponse(ctx.requestId, 200, result);
       },
     },
     {

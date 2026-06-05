@@ -7,6 +7,7 @@ import { WebPlatformAdapter } from "./web-platform-adapter.js";
 export type { PlatformAdapterFactoryOptions } from "./base-platform-adapter.js";
 export { DefaultPlatformAdapter, createPlatformAdapterCapabilityView } from "./base-platform-adapter.js";
 export type { ElectronBridge, MobileBridge, ShellResult, SpawnedProcessHandle, TauriBridge } from "./bridge-types.js";
+export { copyTextToClipboard } from "./clipboard.js";
 export { ElectronPlatformAdapter, DesktopPlatformAdapter, TauriPlatformAdapter } from "./desktop-platform-adapter.js";
 export { MobilePlatformAdapter } from "./mobile-platform-adapter.js";
 export { PlatformAdapterProvider, usePlatformAdapter } from "./provider.js";

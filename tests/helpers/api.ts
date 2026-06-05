@@ -24,6 +24,7 @@ import type { RetrieverKnowledgeResult } from "../../src/domains/registry/plugin
 import { KnowledgePlaneService } from "../../src/platform/five-plane-state-evidence/knowledge/knowledge-plane-service.js";
 import { seedBillingDataset } from "./billing.js";
 import { seedPerceptionDataset } from "./perception.js";
+import { SqliteMissionRepository } from "../../src/platform/five-plane-state-evidence/truth/mission-repository.js";
 
 export interface SeededApiContext {
   db: SqliteDatabase;
@@ -33,6 +34,7 @@ export interface SeededApiContext {
   authService: ApiAuthService;
   inspectService: InspectService;
   missionControlService: MissionControlService;
+  missionRepository: SqliteMissionRepository;
   gatewayTargetDirectoryService: GatewayTargetDirectoryService;
   knowledgePlaneService: KnowledgePlaneService;
   artifactPlaneService: ArtifactPlaneService;
@@ -160,6 +162,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     pluginRegistry,
   });
   const artifactPlaneService = new ArtifactPlaneService();
+  const missionRepository = new SqliteMissionRepository(db);
   const authService = new ApiAuthService({
     apiKeys: [
       {
@@ -346,6 +349,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     authService,
     inspectService,
     missionControlService,
+    missionRepository,
     gatewayTargetDirectoryService: gatewayTargets,
     knowledgePlaneService,
     artifactPlaneService,
@@ -369,6 +373,8 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
         domainRegistryService,
         pluginRegistry,
         taskStore: store,
+        db,
+        missionRepository,
         cors: {
           allowedOrigins: ["https://console.example.test"],
         },

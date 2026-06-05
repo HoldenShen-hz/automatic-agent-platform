@@ -14,6 +14,7 @@ export interface DomainWizardPersistedDraft {
 }
 export interface DomainWizardVm {
     readonly items: readonly {
+        id: string;
         title: string;
         description: string;
     }[];
@@ -41,6 +42,7 @@ export interface DomainWizardVm {
         setEnableAutoRollback(value: boolean): void;
     };
     readonly catalogItems: readonly {
+        id: string;
         title: string;
         description: string;
     }[];
@@ -50,6 +52,7 @@ export interface DomainWizardVm {
     }[];
     readonly validationErrors: readonly string[];
     readonly submissionMessage: string | null;
+    readonly isSubmitting: boolean;
     readonly canGoBack: boolean;
     readonly canGoNext: boolean;
     setCurrentStep(step: DomainWizardStepId): void;
@@ -57,6 +60,6 @@ export interface DomainWizardVm {
     goBack(): void;
     goNext(): void;
     loadTemplate(domainIdOrName: string): void;
-    submitConfig(): void;
+    submitConfig(): Promise<void>;
 }
 export declare function useDomainWizardVm(): DomainWizardVm;

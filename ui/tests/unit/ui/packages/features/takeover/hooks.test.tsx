@@ -4,10 +4,14 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  mockClient: { patch: vi.fn(), get: vi.fn() },
+  mockClient: {},
   mockSubscribe: vi.fn(() => () => undefined),
-  mockUpdateTask: vi.fn(async () => ({ ok: true })),
+  mockFetchAdminTakeoverConsole: vi.fn(),
+  mockOpenAdminTakeoverSession: vi.fn(async () => ({ taskId: "task-1", takeoverSessionId: "takeover-1", operatorActionId: "opact-open" })),
+  mockAnnotateAdminTakeoverSession: vi.fn(async () => ({ taskId: "task-1", takeoverSessionId: "takeover-1", operatorActionId: "opact-note" })),
+  mockResumeAdminTakeoverSession: vi.fn(async () => ({ taskId: "task-1", takeoverSessionId: "takeover-1", operatorActionId: "opact-resume", closedAt: "2026-06-05T00:03:00.000Z" })),
 }));
+
 const taskData = [
   {
     id: "task-1",
@@ -26,107 +30,194 @@ vi.mock("@aa/shared-state", () => ({
 }));
 
 vi.mock("@aa/shared-api-client", () => ({
-  updateTask: mocks.mockUpdateTask,
+  fetchAdminTakeoverConsole: mocks.mockFetchAdminTakeoverConsole,
+  openAdminTakeoverSession: mocks.mockOpenAdminTakeoverSession,
+  annotateAdminTakeoverSession: mocks.mockAnnotateAdminTakeoverSession,
+  resumeAdminTakeoverSession: mocks.mockResumeAdminTakeoverSession,
 }));
 
 import { useTakeoverVm } from "../../../../../../packages/features/takeover/src/hooks";
 
+function buildConsoleSnapshot(overrides: Partial<Awaited<ReturnType<typeof mocks.mockFetchAdminTakeoverConsole>>> = {}) {
+  return {
+    generatedAt: "2026-06-05T00:00:00.000Z",
+    scope: {
+      taskId: "task-1",
+      divisionId: "platform",
+      workspaceId: null,
+      tenantId: null,
+    },
+    executionOwner: {
+      executionId: "exec-1",
+      agentId: "agent-1",
+      workerId: "worker-1",
+      leaseId: "lease-1",
+      leaseStatus: "active",
+    },
+    activeWorker: null,
+    versions: {
+      modelVersion: null,
+      promptVersion: null,
+      policyVersion: null,
+    },
+    latestPmfVerdict: null,
+    billingAccounts: [],
+    inspect: {
+      task: {
+        id: "task-1",
+        status: "running",
+        inputJson: "{\"owner\":\"platform-sre\"}",
+      },
+      stepOutputs: [
+        {
+          id: "step-1",
+          stepId: "collect-inputs",
+          summary: "Collect inputs",
+          status: "succeeded",
+          roleId: "agent-1",
+          producedAt: "2026-06-05T00:01:00.000Z",
+        },
+      ],
+      takeoverSessions: [
+        {
+          id: "takeover-1",
+          operatorId: "platform-sre",
+          status: "open",
+          reasonCode: "operator.manual_takeover",
+          startedAt: "2026-06-05T00:00:00.000Z",
+          closedAt: null,
+        },
+      ],
+      operatorActions: [
+        {
+          id: "opact-1",
+          takeoverSessionId: "takeover-1",
+          taskId: "task-1",
+          operatorId: "platform-sre",
+          actionType: "take_over_task",
+          reasonCode: "operator.manual_takeover",
+          actionPayloadJson: "{}",
+          createdAt: "2026-06-05T00:00:00.000Z",
+        },
+      ],
+    },
+    timeline: { entries: [] },
+    ...overrides,
+  };
+}
+
 describe("useTakeoverVm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorage.clear();
-    mocks.mockClient.get.mockResolvedValue({
-      inspect: {
-        stepOutputs: [
-          {
-            id: "step-1",
-            stepId: "collect-inputs",
-            summary: "Collect inputs",
-            status: "succeeded",
-            roleId: "agent-1",
-            producedAt: "2026-05-06T00:01:00.000Z",
-          },
-        ],
-      },
-    });
+    mocks.mockFetchAdminTakeoverConsole.mockResolvedValue(buildConsoleSnapshot());
   });
 
-  it("captures and persists takeover snapshots when ownership is claimed", async () => {
+  it("loads the backend takeover console for the current candidate task", async () => {
     const { result } = renderHook(() => useTakeoverVm());
-
-    await act(async () => {
-      await result.current.claimOwnership("task-1", "platform-sre");
-    });
-
-    expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-1", { owner: "platform-sre", status: "running" });
-    expect(mocks.mockClient.get).toHaveBeenCalledWith("/v1/workflows/task-1");
-    expect(result.current.currentSnapshot?.taskId).toBe("task-1");
-    expect(result.current.currentSnapshot?.steps).toHaveLength(1);
-    expect(result.current.ownershipHistory[0]?.action).toBe("claim");
-
-    const persisted = JSON.parse(localStorage.getItem("aa-takeover-snapshots") ?? "[]");
-    expect(persisted).toHaveLength(1);
-    expect(persisted[0]?.taskId).toBe("task-1");
-  });
-
-  it("falls back to the current task step when workflow-run steps are unavailable", async () => {
-    mocks.mockClient.get.mockRejectedValueOnce(new Error("Route not found."));
-    const { result } = renderHook(() => useTakeoverVm());
-
-    await act(async () => {
-      await result.current.claimOwnership("task-1", "platform-sre");
-    });
-
-    expect(result.current.currentSnapshot?.steps).toEqual([
-      {
-        id: "workflow-run-1",
-        title: "workflow-run-1",
-        status: "running",
-        executor: "platform-sre",
-      },
-    ]);
-  });
-
-  it("records transfer history and can restore a previous snapshot", async () => {
-    const { result } = renderHook(() => useTakeoverVm());
-
-    await act(async () => {
-      await result.current.claimOwnership("task-1", "platform-sre");
-      await result.current.transferOwnership("task-1", "backup-sre", "handoff");
-    });
-
-    expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-1", {
-      owner: "backup-sre",
-      status: "running",
-    });
-    expect(result.current.ownershipHistory[0]?.action).toBe("transfer:handoff");
-
-    const initialSnapshot = JSON.parse(localStorage.getItem("aa-takeover-snapshots") ?? "[]")[1];
-    await act(async () => {
-      result.current.restoreFromSnapshot(initialSnapshot);
-    });
 
     await waitFor(() => {
       expect(result.current.currentSnapshot?.taskId).toBe("task-1");
     });
+
+    expect(mocks.mockFetchAdminTakeoverConsole).toHaveBeenCalledWith(mocks.mockClient, "task-1");
+    expect(result.current.currentSnapshot?.owner).toBe("platform-sre");
+    expect(result.current.currentSnapshot?.steps).toHaveLength(1);
+    expect(result.current.ownershipHistory[0]?.action).toBe("take_over_task");
   });
 
-  it("persists local annotations across remounts", async () => {
-    const { result, unmount } = renderHook(() => useTakeoverVm());
+  it("opens a real takeover session and reloads the backend console", async () => {
+    mocks.mockFetchAdminTakeoverConsole
+      .mockResolvedValueOnce(buildConsoleSnapshot({ inspect: { ...buildConsoleSnapshot().inspect, takeoverSessions: [], operatorActions: [] } }))
+      .mockResolvedValueOnce(buildConsoleSnapshot());
+    const { result } = renderHook(() => useTakeoverVm());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
 
     await act(async () => {
       await result.current.claimOwnership("task-1", "platform-sre");
     });
 
-    act(() => {
-      result.current.annotateCurrentSnapshot("manual-note", "platform-sre");
+    expect(mocks.mockOpenAdminTakeoverSession).toHaveBeenCalledWith(mocks.mockClient, "task-1", {
+      reasonCode: "operator.manual_takeover",
+    });
+    expect(mocks.mockFetchAdminTakeoverConsole).toHaveBeenCalledTimes(2);
+  });
+
+  it("writes annotations and resume actions to the backend session audit", async () => {
+    const afterAnnotation = buildConsoleSnapshot({
+      inspect: {
+        ...buildConsoleSnapshot().inspect,
+        operatorActions: [
+          {
+            id: "opact-note",
+            takeoverSessionId: "takeover-1",
+            taskId: "task-1",
+            operatorId: "platform-sre",
+            actionType: "acknowledge_takeover",
+            reasonCode: "operator.takeover_annotation",
+            actionPayloadJson: "{\"note\":\"manual-note\",\"mode\":\"annotation\"}",
+            createdAt: "2026-06-05T00:02:00.000Z",
+          },
+          ...buildConsoleSnapshot().inspect.operatorActions,
+        ],
+      },
+    });
+    const afterResume = buildConsoleSnapshot({
+      inspect: {
+        ...afterAnnotation.inspect,
+        takeoverSessions: [
+          {
+            ...afterAnnotation.inspect.takeoverSessions[0],
+            status: "closed",
+            closedAt: "2026-06-05T00:03:00.000Z",
+          },
+        ],
+        operatorActions: [
+          {
+            id: "opact-resume",
+            takeoverSessionId: "takeover-1",
+            taskId: "task-1",
+            operatorId: "platform-sre",
+            actionType: "acknowledge_takeover",
+            reasonCode: "operator.resume_automatic_execution",
+            actionPayloadJson: "{\"mode\":\"resume_automatic_execution\"}",
+            createdAt: "2026-06-05T00:03:00.000Z",
+          },
+          ...afterAnnotation.inspect.operatorActions,
+        ],
+      },
+    });
+    mocks.mockFetchAdminTakeoverConsole
+      .mockResolvedValueOnce(buildConsoleSnapshot())
+      .mockResolvedValueOnce(afterAnnotation)
+      .mockResolvedValueOnce(afterResume);
+
+    const { result } = renderHook(() => useTakeoverVm());
+
+    await waitFor(() => {
+      expect(result.current.currentSnapshot?.taskId).toBe("task-1");
     });
 
+    await act(async () => {
+      await result.current.annotateCurrentSnapshot("manual-note", "platform-sre");
+    });
+
+    expect(mocks.mockAnnotateAdminTakeoverSession).toHaveBeenCalledWith(mocks.mockClient, "takeover-1", {
+      reasonCode: "operator.takeover_annotation",
+      note: "manual-note",
+    });
     expect(result.current.ownershipHistory[0]?.action).toBe("annotate:manual-note");
 
-    unmount();
+    await act(async () => {
+      await result.current.resumeAutomaticExecution("platform-sre");
+    });
 
-    const remounted = renderHook(() => useTakeoverVm());
-    expect(remounted.result.current.ownershipHistory[0]?.action).toBe("annotate:manual-note");
+    expect(mocks.mockResumeAdminTakeoverSession).toHaveBeenCalledWith(mocks.mockClient, "takeover-1", {
+      reasonCode: "operator.resume_automatic_execution",
+    });
+    expect(result.current.ownershipHistory[0]?.action).toBe("resume");
+    expect(result.current.canResume).toBe(false);
   });
 });

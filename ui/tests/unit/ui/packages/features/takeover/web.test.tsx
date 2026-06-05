@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const mockTakeoverCurrentTask = vi.fn(async () => undefined);
 const mockAnnotateCurrentSnapshot = vi.fn();
 const mockResumeAutomaticExecution = vi.fn(async () => undefined);
+const mockRefresh = vi.fn(async () => undefined);
 
 vi.mock("@aa/ui-core", () => ({
   FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -29,6 +30,9 @@ vi.mock("@aa/ui-core", () => ({
 vi.mock("../../../../../../packages/features/takeover/src/hooks", () => ({
   useTakeoverVm: () => ({
     items: [{ title: "Execution Snapshot", description: "Captured context" }],
+    loading: false,
+    mutating: false,
+    errorMessage: null,
     currentSnapshot: {
       taskId: "task-1",
       owner: "web-operator",
@@ -50,6 +54,7 @@ vi.mock("../../../../../../packages/features/takeover/src/hooks", () => ({
     takeoverCurrentTask: mockTakeoverCurrentTask,
     annotateCurrentSnapshot: mockAnnotateCurrentSnapshot,
     resumeAutomaticExecution: mockResumeAutomaticExecution,
+    refresh: mockRefresh,
   }),
 }));
 
@@ -64,7 +69,7 @@ describe("TakeoverWebView", () => {
     render(<TakeoverWebView />);
 
     expect(screen.getByText("Current snapshot")).toBeTruthy();
-    expect(screen.getByText(/当前只会把任务重新写回 `running` 状态/)).toBeTruthy();
+    expect(screen.getByText(/会写入后端 takeover session 与 operator action 审计链/)).toBeTruthy();
     expect(screen.getByText("task-1")).toBeTruthy();
     expect(screen.getByText("Collect inputs · completed · agent-1")).toBeTruthy();
     expect(screen.getByText("Ownership history")).toBeTruthy();
@@ -73,9 +78,11 @@ describe("TakeoverWebView", () => {
     fireEvent.click(screen.getByRole("button", { name: "接管当前任务" }));
     fireEvent.click(screen.getByRole("button", { name: "添加人工批注" }));
     fireEvent.click(screen.getByRole("button", { name: "恢复任务运行" }));
+    fireEvent.click(screen.getByRole("button", { name: "刷新接管快照" }));
 
     expect(mockTakeoverCurrentTask).toHaveBeenCalledWith("web-operator");
     expect(mockAnnotateCurrentSnapshot).toHaveBeenCalledWith("manual-note", "web-operator");
     expect(mockResumeAutomaticExecution).toHaveBeenCalledWith("web-operator");
+    expect(mockRefresh).toHaveBeenCalled();
   });
 });

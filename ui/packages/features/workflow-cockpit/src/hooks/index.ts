@@ -16,6 +16,13 @@ export interface WorkflowCockpitVm {
   readonly listItems: readonly { id: string; title: string; subtitle: string }[];
   readonly selectedId: string | null;
   readonly selectedWorkflow: WorkflowDTO | null;
+  readonly controls: {
+    readonly cancelEnabled: boolean;
+    readonly pauseEnabled: boolean;
+    readonly resumeEnabled: boolean;
+    readonly recoverEnabled: boolean;
+    readonly releaseEnabled: boolean;
+  };
   readonly activityItems: readonly { title: string; description: string }[];
   readonly pendingOperations: number;
   selectWorkflow(id: string): void;
@@ -193,6 +200,53 @@ export function mapWorkflowsToVm(workflows: readonly WorkflowDTO[]): Pick<Workfl
   };
 }
 
+function buildWorkflowControls(workflow: WorkflowDTO | null): WorkflowCockpitVm["controls"] {
+  if (workflow == null) {
+    return {
+      cancelEnabled: false,
+      pauseEnabled: false,
+      resumeEnabled: false,
+      recoverEnabled: false,
+      releaseEnabled: false,
+    };
+  }
+
+  switch (workflow.status) {
+    case "running":
+      return {
+        cancelEnabled: true,
+        pauseEnabled: true,
+        resumeEnabled: false,
+        recoverEnabled: false,
+        releaseEnabled: true,
+      };
+    case "paused":
+      return {
+        cancelEnabled: true,
+        pauseEnabled: false,
+        resumeEnabled: true,
+        recoverEnabled: false,
+        releaseEnabled: false,
+      };
+    case "failed":
+      return {
+        cancelEnabled: false,
+        pauseEnabled: false,
+        resumeEnabled: false,
+        recoverEnabled: true,
+        releaseEnabled: false,
+      };
+    default:
+      return {
+        cancelEnabled: false,
+        pauseEnabled: false,
+        resumeEnabled: false,
+        recoverEnabled: false,
+        releaseEnabled: false,
+      };
+  }
+}
+
 export function useWorkflowCockpitVm(): WorkflowCockpitVm {
   const client = useRestClient();
   const queryClient = useQueryClient();
@@ -232,6 +286,7 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
   const selectedWorkflow = serverWorkflow?.id === selectedId
     ? serverWorkflow
     : selectedSummaryWorkflow;
+  const controls = useMemo(() => buildWorkflowControls(selectedWorkflow), [selectedWorkflow]);
 
   const fetchWorkflowDetail = useCallback(async (workflowId: string) => {
     const cockpit = await client.get<WorkflowCockpitResponse>(`/v1/workflows/${encodeURIComponent(workflowId)}`);
@@ -272,7 +327,7 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
   }, [fetchWorkflowDetail, selectedId, selectedSummaryWorkflow?.currentStage, selectedSummaryWorkflow?.status]);
 
   const cancelSelectedWorkflow = useCallback(async () => {
-    if (selectedWorkflow == null) {
+    if (selectedWorkflow == null || !controls.cancelEnabled) {
       return;
     }
     await runAction(
@@ -280,10 +335,10 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
       translateMessage("ui.workflowCockpit.activity.cancel.title", { title: selectedWorkflow.title }),
       translateMessage("ui.workflowCockpit.activity.cancel.description"),
     );
-  }, [client, runAction, selectedWorkflow]);
+  }, [client, controls.cancelEnabled, runAction, selectedWorkflow]);
 
   const pauseSelectedWorkflow = useCallback(async () => {
-    if (selectedWorkflow == null) {
+    if (selectedWorkflow == null || !controls.pauseEnabled) {
       return;
     }
     await runAction(
@@ -291,10 +346,10 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
       translateMessage("ui.workflowCockpit.activity.pause.title", { title: selectedWorkflow.title }),
       translateMessage("ui.workflowCockpit.activity.pause.description"),
     );
-  }, [client, runAction, selectedWorkflow]);
+  }, [client, controls.pauseEnabled, runAction, selectedWorkflow]);
 
   const resumeSelectedWorkflow = useCallback(async () => {
-    if (selectedWorkflow == null) {
+    if (selectedWorkflow == null || !controls.resumeEnabled) {
       return;
     }
     await runAction(
@@ -302,10 +357,10 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
       translateMessage("ui.workflowCockpit.activity.resume.title", { title: selectedWorkflow.title }),
       translateMessage("ui.workflowCockpit.activity.resume.description"),
     );
-  }, [client, runAction, selectedWorkflow]);
+  }, [client, controls.resumeEnabled, runAction, selectedWorkflow]);
 
   const recoverSelectedWorkflow = useCallback(async () => {
-    if (selectedWorkflow == null) {
+    if (selectedWorkflow == null || !controls.recoverEnabled) {
       return;
     }
     await runAction(
@@ -313,10 +368,10 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
       translateMessage("ui.workflowCockpit.activity.recover.title", { title: selectedWorkflow.title }),
       translateMessage("ui.workflowCockpit.activity.recover.description"),
     );
-  }, [client, runAction, selectedWorkflow]);
+  }, [client, controls.recoverEnabled, runAction, selectedWorkflow]);
 
   const releaseSelectedWorkflow = useCallback(async () => {
-    if (selectedWorkflow == null) {
+    if (selectedWorkflow == null || !controls.releaseEnabled) {
       return;
     }
     await runAction(
@@ -324,12 +379,13 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
       translateMessage("ui.workflowCockpit.activity.release.title", { title: selectedWorkflow.title }),
       translateMessage("ui.workflowCockpit.activity.release.description"),
     );
-  }, [client, runAction, selectedWorkflow]);
+  }, [client, controls.releaseEnabled, runAction, selectedWorkflow]);
 
   return {
     ...baseVm,
     selectedId,
     selectedWorkflow,
+    controls,
     activityItems,
     pendingOperations,
     selectWorkflow,

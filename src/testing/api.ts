@@ -18,6 +18,7 @@ import { SqliteDatabase } from "../platform/five-plane-state-evidence/truth/sqli
 import { ArtifactPlaneService } from "../platform/five-plane-state-evidence/artifacts/artifact-plane-service.js";
 import { DomainRegistryService } from "../domains/registry/domain-registry-service.js";
 import { PluginSpiRegistry } from "../domains/registry/plugin-spi-registry.js";
+import { SqliteMissionRepository } from "../platform/five-plane-state-evidence/truth/mission-repository.js";
 import type { RetrieverKnowledgeResult } from "../domains/registry/plugin-spi.js";
 import { KnowledgePlaneService } from "../platform/five-plane-state-evidence/knowledge/knowledge-plane-service.js";
 import { seedBillingDataset } from "./billing.js";
@@ -31,6 +32,7 @@ export interface SeededApiContext {
   authService: ApiAuthService;
   inspectService: InspectService;
   missionControlService: MissionControlService;
+  missionRepository: SqliteMissionRepository;
   gatewayTargetDirectoryService: GatewayTargetDirectoryService;
   knowledgePlaneService: KnowledgePlaneService;
   artifactPlaneService: ArtifactPlaneService;
@@ -149,6 +151,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     pluginRegistry,
   });
   const artifactPlaneService = new ArtifactPlaneService();
+  const missionRepository = new SqliteMissionRepository(db);
   const authService = new ApiAuthService({
     apiKeys: [
       {
@@ -319,6 +322,8 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     domainRegistryService,
     pluginRegistry,
     taskStore: store,
+    db,
+    missionRepository,
   });
 
   return {
@@ -329,6 +334,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     authService,
     inspectService,
     missionControlService,
+    missionRepository,
     gatewayTargetDirectoryService: gatewayTargets,
     knowledgePlaneService,
     artifactPlaneService,

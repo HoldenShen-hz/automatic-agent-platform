@@ -1,13 +1,42 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useDomainConfigsQuery } from "@aa/shared-state";
+import { translateMessage } from "@aa/shared-i18n";
+import { useAuthState, useDomainConfigsQuery } from "@aa/shared-state";
 const STORAGE_KEY = "aa-domain-wizard-draft";
 const orderedSteps = ["domain-select", "risk-profile", "capability-config", "review"];
-const stepDescriptors = [
-    { id: "domain-select", label: "选择域", description: "选择要配置的领域" },
-    { id: "risk-profile", label: "风险配置", description: "设置风险等级和数据分类" },
-    { id: "capability-config", label: "能力配置", description: "配置并发任务和钻取深度" },
-    { id: "review", label: "审核确认", description: "在本地交接前审核配置" },
-];
+function buildMutationHeaders(prefix) {
+    const key = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? `${prefix}-${crypto.randomUUID()}`
+        : `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    return new Headers({
+        "content-type": "application/json",
+        "Accept-Version": "2026-04-01,2026-01-01",
+        "Idempotency-Key": key,
+    });
+}
+function buildStepDescriptors() {
+    return [
+        {
+            id: "domain-select",
+            label: translateMessage("ui.domainWizard.step.select.label"),
+            description: translateMessage("ui.domainWizard.step.select.description"),
+        },
+        {
+            id: "risk-profile",
+            label: translateMessage("ui.domainWizard.step.risk.label"),
+            description: translateMessage("ui.domainWizard.step.risk.description"),
+        },
+        {
+            id: "capability-config",
+            label: translateMessage("ui.domainWizard.step.capability.label"),
+            description: translateMessage("ui.domainWizard.step.capability.description"),
+        },
+        {
+            id: "review",
+            label: translateMessage("ui.domainWizard.step.review.label"),
+            description: translateMessage("ui.domainWizard.step.review.description"),
+        },
+    ];
+}
 function createDefaultDraft() {
     return {
         currentStep: "domain-select",
@@ -43,6 +72,7 @@ function normalizePositiveInt(value, fallback) {
     return Math.max(1, Math.round(value));
 }
 export function useDomainWizardVm() {
+    const accessToken = useAuthState((state) => state.accessToken);
     const stored = useMemo(readStoredDraft, []);
     const domains = useDomainConfigsQuery().data ?? [];
     const [currentStep, setCurrentStep] = useState(stored.currentStep);
@@ -54,10 +84,15 @@ export function useDomainWizardVm() {
     const [allowedDrillDepth, setAllowedDrillDepth] = useState(stored.allowedDrillDepth);
     const [enableAutoRollback, setEnableAutoRollback] = useState(stored.enableAutoRollback);
     const [submissionMessage, setSubmissionMessage] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const persistTimeoutRef = useRef(null);
     const items = useMemo(() => domains.map((domain) => ({
+        id: domain.id,
         title: domain.displayName,
-        description: `owner ${domain.owner} · drill ${domain.defaultDrillDepth}`,
+        description: translateMessage("ui.domainWizard.domainItem.description", {
+            owner: domain.owner,
+            depth: domain.defaultDrillDepth,
+        }),
     })), [domains]);
     const persist = useCallback((next = {}) => {
         if (typeof window === "undefined") {
@@ -112,19 +147,19 @@ export function useDomainWizardVm() {
     const validationErrors = useMemo(() => {
         const errors = [];
         if (selectedDomainId == null) {
-            errors.push("Select a domain before continuing.");
+            errors.push(translateMessage("ui.domainWizard.validation.selectDomain"));
         }
         if (currentStep === "risk-profile" || currentStep === "review") {
             if (riskLevel === "critical" && dataClassification === "public") {
-                errors.push("Critical domains cannot be marked public.");
+                errors.push(translateMessage("ui.domainWizard.validation.criticalPublic"));
             }
         }
         if (currentStep === "capability-config" || currentStep === "review") {
             if (maxConcurrentTasks < 1) {
-                errors.push("Max concurrent tasks must be at least 1.");
+                errors.push(translateMessage("ui.domainWizard.validation.maxConcurrentTasks"));
             }
             if (allowedDrillDepth < 1 || allowedDrillDepth > 5) {
-                errors.push("Allowed drill depth must stay between 1 and 5.");
+                errors.push(translateMessage("ui.domainWizard.validation.allowedDrillDepth"));
             }
         }
         return errors;
@@ -144,17 +179,17 @@ export function useDomainWizardVm() {
         });
     }, [domains, persist]);
     const previewRows = useMemo(() => [
-        { key: "Domain", value: selectedDomainId ?? "Unspecified" },
-        { key: "Risk level", value: riskLevel },
-        { key: "Data classification", value: dataClassification },
-        { key: "External integrations", value: hasExternalIntegration ? "enabled" : "disabled" },
-        { key: "Max concurrent tasks", value: String(maxConcurrentTasks) },
-        { key: "Allowed drill depth", value: String(allowedDrillDepth) },
-        { key: "Auto rollback", value: enableAutoRollback ? "enabled" : "disabled" },
-    ], [allowedDrillDepth, dataClassification, enableAutoRollback, hasExternalIntegration, maxConcurrentTasks, riskLevel, selectedDomainId]);
+        { key: translateMessage("ui.domainWizard.preview.domain"), value: domains.find((domain) => domain.id === selectedDomainId)?.displayName ?? selectedDomainId ?? translateMessage("ui.domainWizard.value.unspecified") },
+        { key: translateMessage("ui.domainWizard.preview.riskLevel"), value: riskLevel },
+        { key: translateMessage("ui.domainWizard.preview.dataClassification"), value: dataClassification },
+        { key: translateMessage("ui.domainWizard.preview.externalIntegrations"), value: hasExternalIntegration ? translateMessage("ui.domainWizard.value.enabled") : translateMessage("ui.domainWizard.value.disabled") },
+        { key: translateMessage("ui.domainWizard.preview.maxConcurrentTasks"), value: String(maxConcurrentTasks) },
+        { key: translateMessage("ui.domainWizard.preview.allowedDrillDepth"), value: String(allowedDrillDepth) },
+        { key: translateMessage("ui.domainWizard.preview.autoRollback"), value: enableAutoRollback ? translateMessage("ui.domainWizard.value.enabled") : translateMessage("ui.domainWizard.value.disabled") },
+    ], [allowedDrillDepth, dataClassification, domains, enableAutoRollback, hasExternalIntegration, maxConcurrentTasks, riskLevel, selectedDomainId]);
     return {
         items,
-        steps: stepDescriptors,
+        steps: buildStepDescriptors(),
         currentStep,
         selectedDomainId,
         riskProfile: {
@@ -197,8 +232,9 @@ export function useDomainWizardVm() {
         previewRows,
         validationErrors,
         submissionMessage,
+        isSubmitting,
         canGoBack: currentIndex > 0,
-        canGoNext: validationErrors.length === 0,
+        canGoNext: validationErrors.length === 0 && !isSubmitting,
         setCurrentStep(step) {
             setCurrentStep(step);
             persist({ currentStep: step });
@@ -221,11 +257,65 @@ export function useDomainWizardVm() {
             persist({ currentStep: nextStep });
         },
         loadTemplate: applyDomainTemplate,
-        submitConfig() {
-            if (typeof window !== "undefined") {
-                window.localStorage.removeItem(STORAGE_KEY);
+        async submitConfig() {
+            if (selectedDomainId == null) {
+                setSubmissionMessage(translateMessage("ui.domainWizard.validation.selectDomain"));
+                return;
             }
-            setSubmissionMessage("Local draft cleared. Domain submission API is not available yet, so nothing was written to the backend.");
+            const selectedDomain = domains.find((domain) => domain.id === selectedDomainId);
+            if (selectedDomain == null) {
+                setSubmissionMessage(translateMessage("ui.domainWizard.validation.selectDomain"));
+                return;
+            }
+            setIsSubmitting(true);
+            setSubmissionMessage(null);
+            const packId = `domain-${selectedDomain.id}-${Date.now().toString(36)}`;
+            try {
+                const headers = buildMutationHeaders("domain-wizard-pack");
+                if (accessToken.length > 0) {
+                    headers.set("authorization", `Bearer ${accessToken}`);
+                }
+                const response = await fetch("/api/v1/packs", {
+                    method: "POST",
+                    headers,
+                    body: JSON.stringify({
+                        packId,
+                        name: `${selectedDomain.displayName} starter pack`,
+                        version: "0.1.0",
+                        domainId: selectedDomain.id,
+                        description: JSON.stringify({
+                            source: "domain-wizard",
+                            riskLevel,
+                            dataClassification,
+                            hasExternalIntegration,
+                            maxConcurrentTasks,
+                            allowedDrillDepth,
+                            enableAutoRollback,
+                        }),
+                        riskMatrix: [{
+                                riskId: `risk-${riskLevel}`,
+                                level: riskLevel,
+                                mitigation: `classification:${dataClassification}`,
+                                escalationPolicy: hasExternalIntegration ? "manual_review_required" : "standard_review",
+                            }],
+                        sandboxTier: hasExternalIntegration ? "scoped_external_access" : "workspace_write",
+                    }),
+                });
+                if (!response.ok) {
+                    const payload = await response.json().catch(() => null);
+                    throw new Error(payload?.error?.message ?? `domain_wizard.submit_failed:${response.status}`);
+                }
+                if (typeof window !== "undefined") {
+                    window.localStorage.removeItem(STORAGE_KEY);
+                }
+                setSubmissionMessage(`Pack ${packId} 已提交到后端目录。`);
+            }
+            catch (error) {
+                setSubmissionMessage(error instanceof Error ? error.message : "domain_wizard.submit_failed");
+            }
+            finally {
+                setIsSubmitting(false);
+            }
         },
     };
 }

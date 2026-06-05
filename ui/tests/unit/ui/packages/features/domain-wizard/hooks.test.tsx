@@ -1,10 +1,14 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({}) }));
+vi.stubGlobal("fetch", fetchMock);
+
 vi.mock("@aa/shared-state", () => ({
   useDomainConfigsQuery: () => ({
-    data: [{ displayName: "Marketing", owner: "growth-ops", defaultDrillDepth: 3 }],
+    data: [{ id: "marketing", displayName: "Marketing", owner: "growth-ops", defaultDrillDepth: 3 }],
   }),
+  useAuthState: (selector: (state: { accessToken: string }) => string) => selector({ accessToken: "test-token" }),
 }));
 
 import { useDomainWizardVm } from "../../../../../../packages/features/domain-wizard/src/hooks";
@@ -13,12 +17,13 @@ describe("useDomainWizardVm", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.restoreAllMocks();
+    fetchMock.mockClear();
   });
 
-  it("restores drafts from storage, persists edits, and clears the draft on submit", () => {
+  it("restores drafts from storage, persists edits, and submits to the backend on review", async () => {
     localStorage.setItem("aa-domain-wizard-draft", JSON.stringify({
       currentStep: "risk-profile",
-      selectedDomainId: "domain-1",
+      selectedDomainId: "marketing",
       riskLevel: "high",
       dataClassification: "restricted",
       hasExternalIntegration: true,
@@ -30,7 +35,7 @@ describe("useDomainWizardVm", () => {
     const { result } = renderHook(() => useDomainWizardVm());
 
     expect(result.current.currentStep).toBe("risk-profile");
-    expect(result.current.selectedDomainId).toBe("domain-1");
+    expect(result.current.selectedDomainId).toBe("marketing");
     expect(result.current.riskProfile.riskLevel).toBe("high");
 
     act(() => {
@@ -40,11 +45,12 @@ describe("useDomainWizardVm", () => {
     const persisted = JSON.parse(localStorage.getItem("aa-domain-wizard-draft") ?? "{}");
     expect(persisted.maxConcurrentTasks).toBe(12);
 
-    act(() => {
-      result.current.submitConfig();
+    await act(async () => {
+      await result.current.submitConfig();
     });
 
-    expect(result.current.submissionMessage).toBe("已清除本地草稿。当前还没有领域提交 API，因此这一步不会写入后端。");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.submissionMessage).toContain("已提交到后端目录");
     expect(localStorage.getItem("aa-domain-wizard-draft")).toBeNull();
   });
 
@@ -73,7 +79,7 @@ describe("useDomainWizardVm", () => {
     const { result } = renderHook(() => useDomainWizardVm());
 
     act(() => {
-      result.current.setSelectedDomainId("Marketing");
+      result.current.setSelectedDomainId("marketing");
       result.current.setCurrentStep("review");
     });
 

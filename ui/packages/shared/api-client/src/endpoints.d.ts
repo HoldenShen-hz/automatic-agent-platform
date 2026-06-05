@@ -1,5 +1,5 @@
-import type { AgentDTO, AnalyticsMetricDTO, ApprovalDTO, CostReportDTO, DashboardSnapshotDTO, DomainConfigDTO, ExplanationDTO, FeatureFlagDTO, HealthStatusReportDTO, IncidentDTO, KnowledgeItemDTO, MarketplacePackDTO, MissionBudgetSummaryDTO, MissionDTO, MissionMemberDTO, MissionResourceDTO, ModelConfigDTO, PackVersionDTO, PluginDTO, PromptDTO, QueueDTO, RoleDTO, SystemConfigDTO, TaskDTO, TenantDTO, UserDTO, UserPreferenceDTO, WebhookDTO, WorkerDTO, WorkflowRunStepDTO, WorkflowDTO } from "@aa/shared-types";
-import type { RESTClient } from "./rest-client";
+import type { AgentDTO, AnalyticsMetricDTO, ApprovalDTO, CostReportDTO, DashboardSnapshotDTO, DomainConfigDTO, ExplanationDTO, FeatureFlagDTO, HealthStatusReportDTO, IncidentDTO, KnowledgeItemDTO, MarketplacePackDTO, MissionBudgetSummaryDTO, MissionDTO, MissionMemberDTO, MissionResourceDTO, ModelConfigDTO, PackVersionDTO, PluginDTO, PromptDTO, QueueDTO, RoleDTO, SystemConfigDTO, TaskDTO, TenantDTO, UserDTO, UserPreferenceDTO, WebhookDTO, WorkerDTO, WorkflowBuilderDraftDTO, WorkflowRunStepDTO, WorkflowDTO } from "@aa/shared-types";
+import type { RESTClient, RestRequestOptions } from "./rest-client";
 export interface ListQueryParams {
     readonly page?: number;
     readonly pageSize?: number;
@@ -25,6 +25,14 @@ export interface CreateTaskResponse {
             readonly id?: string;
         };
     };
+}
+export interface WorkflowBuilderDraftUpsertInput {
+    readonly title?: string;
+    readonly builder: WorkflowBuilderDraftDTO["builder"];
+}
+export interface WorkflowBuilderDraftPatchInput {
+    readonly title?: string;
+    readonly builder?: WorkflowBuilderDraftDTO["builder"];
 }
 export interface EndpointDefinition<TResponse = unknown, TRequestBody = never, TPathParams = never, TQueryParams = never> {
     readonly id: string;
@@ -329,6 +337,13 @@ export declare const endpointCatalog: {
         apiLayer: "C";
         planned: false;
     };
+    packsCreate: {
+        id: string;
+        path: string;
+        method: "POST";
+        apiLayer: "C";
+        planned: false;
+    };
     packVersions: {
         id: string;
         path: string;
@@ -483,6 +498,34 @@ export declare const endpointCatalog: {
         apiLayer: "C";
         planned: false;
     };
+    workflowBuilderDraft: {
+        id: string;
+        path: string;
+        method: "GET";
+        apiLayer: "C";
+        planned: false;
+    };
+    workflowBuilderCreate: {
+        id: string;
+        path: string;
+        method: "POST";
+        apiLayer: "C";
+        planned: false;
+    };
+    workflowBuilderUpdate: {
+        id: string;
+        path: string;
+        method: "PATCH";
+        apiLayer: "C";
+        planned: false;
+    };
+    workflowBuilderDelete: {
+        id: string;
+        path: string;
+        method: "DELETE";
+        apiLayer: "C";
+        planned: false;
+    };
     contractVersion: {
         id: string;
         path: string;
@@ -505,6 +548,14 @@ export declare function deleteTask(client: RESTClient, taskId: string): Promise<
 }>;
 export declare function fetchWorkflows(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly WorkflowDTO[]>;
 export declare function createWorkflow(client: RESTClient, body: Partial<WorkflowDTO>): Promise<{
+    ok: true;
+    body?: unknown;
+}>;
+export declare function fetchWorkflowBuilderDrafts(client: RESTClient): Promise<readonly WorkflowBuilderDraftDTO[]>;
+export declare function fetchWorkflowBuilderDraft(client: RESTClient, draftId: string): Promise<WorkflowBuilderDraftDTO>;
+export declare function createWorkflowBuilderDraft(client: RESTClient, body: WorkflowBuilderDraftUpsertInput, options?: RestRequestOptions): Promise<WorkflowBuilderDraftDTO>;
+export declare function updateWorkflowBuilderDraft(client: RESTClient, draftId: string, body: WorkflowBuilderDraftPatchInput, options?: RestRequestOptions): Promise<WorkflowBuilderDraftDTO>;
+export declare function deleteWorkflowBuilderDraft(client: RESTClient, draftId: string, options?: RestRequestOptions): Promise<{
     ok: true;
     body?: unknown;
 }>;
@@ -628,6 +679,10 @@ export declare function fetchMissionLearning(client: RESTClient, missionId: stri
 export declare function fetchMissionBudget(client: RESTClient, missionId: string): Promise<MissionBudgetSummaryDTO>;
 export declare function fetchKnowledge(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly KnowledgeItemDTO[]>;
 export declare function fetchPacks(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly MarketplacePackDTO[]>;
+export declare function createPack(client: RESTClient, body: Record<string, unknown>, options?: RestRequestOptions): Promise<{
+    ok: true;
+    body?: unknown;
+}>;
 export declare function fetchPackVersions(client: RESTClient, packId: string): Promise<readonly PackVersionDTO[]>;
 export declare function fetchPlugins(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly PluginDTO[]>;
 export declare function fetchPrompts(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly PromptDTO[]>;
@@ -682,4 +737,151 @@ export declare function updatePreferences(client: RESTClient, body: Partial<User
 export declare function fetchContractVersion(client: RESTClient): Promise<{
     contractVersion: string;
     minServerVersion?: string;
+}>;
+export declare function fetchLeadershipClaimsConsole(client: RESTClient): Promise<LeadershipClaimsConsoleDTO>;
+export declare function fetchDivisionInventorySnapshot(client: RESTClient): Promise<DivisionInventorySnapshotDTO>;
+export declare function fetchAdminTakeoverConsole(client: RESTClient, taskId: string): Promise<{
+    readonly generatedAt: string;
+    readonly scope: {
+        readonly taskId: string;
+        readonly divisionId: string | null;
+        readonly workspaceId: string | null;
+        readonly tenantId: string | null;
+    };
+    readonly executionOwner: {
+        readonly executionId: string | null;
+        readonly agentId: string | null;
+        readonly workerId: string | null;
+        readonly leaseId: string | null;
+        readonly leaseStatus: string | null;
+    };
+    readonly activeWorker: Record<string, unknown> | null;
+    readonly versions: {
+        readonly modelVersion: string | null;
+        readonly promptVersion: string | null;
+        readonly policyVersion: string | null;
+    };
+    readonly latestPmfVerdict: string | null;
+    readonly billingAccounts: readonly Record<string, unknown>[];
+    readonly inspect: {
+        readonly task: {
+            readonly id: string;
+            readonly status: string;
+            readonly inputJson?: string | null;
+        };
+        readonly execution?: {
+            readonly id?: string;
+            readonly status?: string;
+        } | null;
+        readonly stepOutputs?: ReadonlyArray<{
+            readonly id?: string;
+            readonly stepId?: string | null;
+            readonly summary?: string | null;
+            readonly status?: string | null;
+            readonly roleId?: string | null;
+            readonly producedAt?: string;
+        }>;
+        readonly takeoverSessions: ReadonlyArray<{
+            readonly id: string;
+            readonly operatorId: string;
+            readonly status: string;
+            readonly reasonCode: string;
+            readonly startedAt: string;
+            readonly closedAt: string | null;
+        }>;
+        readonly operatorActions: ReadonlyArray<{
+            readonly id: string;
+            readonly takeoverSessionId: string;
+            readonly taskId: string;
+            readonly operatorId: string;
+            readonly actionType: string;
+            readonly reasonCode: string;
+            readonly actionPayloadJson?: string;
+            readonly createdAt: string;
+        }>;
+    };
+    readonly timeline: {
+        readonly entries?: readonly unknown[];
+    };
+}>;
+export declare function openAdminTakeoverSession(client: RESTClient, taskId: string, body: {
+    reasonCode: string;
+}): Promise<{
+    readonly taskId: string;
+    readonly takeoverSessionId: string;
+    readonly operatorActionId: string;
+    readonly recordedAt?: string;
+    readonly closedAt?: string;
+    readonly executionId?: string | null;
+}>;
+export declare function annotateAdminTakeoverSession(client: RESTClient, sessionId: string, body: {
+    reasonCode: string;
+    note: string;
+}): Promise<{
+    readonly taskId: string;
+    readonly takeoverSessionId: string;
+    readonly operatorActionId: string;
+    readonly recordedAt?: string;
+    readonly closedAt?: string;
+    readonly executionId?: string | null;
+}>;
+export declare function resumeAdminTakeoverSession(client: RESTClient, sessionId: string, body: {
+    reasonCode: string;
+}): Promise<{
+    readonly taskId: string;
+    readonly takeoverSessionId: string;
+    readonly operatorActionId: string;
+    readonly recordedAt?: string;
+    readonly closedAt?: string;
+    readonly executionId?: string | null;
+}>;
+export declare function submitLeadershipClaimReviewRequest(client: RESTClient, body: {
+    familyId: string;
+    divisionId?: string;
+    scenarioId?: string;
+    requestedClaimLevel: string;
+    requestedSurfaces: readonly string[];
+    evidenceRefs: readonly string[];
+    rationale: string;
+}): Promise<{
+    reviewRequest: {
+        requestId: string;
+        familyId: string;
+        requestedBy: string;
+        status: string;
+    };
+}>;
+export declare function approveLeadershipClaimReviewRequest(client: RESTClient, requestId: string, body: {
+    reasonCode: string;
+    comment?: string;
+}): Promise<{
+    reviewRequest: {
+        requestId: string;
+        status: string;
+        reviewedBy: string | null;
+    };
+}>;
+export declare function rejectLeadershipClaimReviewRequest(client: RESTClient, requestId: string, body: {
+    reasonCode: string;
+    comment?: string;
+}): Promise<{
+    reviewRequest: {
+        requestId: string;
+        status: string;
+        reviewedBy: string | null;
+    };
+}>;
+export declare function revokeLeadershipClaim(client: RESTClient, claimId: string, body: {
+    reasonCode: string;
+    comment?: string;
+    replacementRequired: boolean;
+}): Promise<{
+    statusOverride: {
+        claimId: string;
+        status: string;
+        reasonCode: string;
+        revokedBy: string;
+        revokedAt: string;
+        replacementRequired: boolean;
+    };
 }>;

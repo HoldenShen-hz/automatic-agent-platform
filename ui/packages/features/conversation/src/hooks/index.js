@@ -579,6 +579,7 @@ export function useConversationVm(wsClient) {
                     ?? translateMessage("ui.taskCockpit.value.noRealOutput"));
                 setStatus("connected");
                 setIsStreaming(false);
+                setPlanReady(false);
                 syncPersistedSnapshot((snapshot) => ({
                     ...snapshot,
                     status: "connected",
@@ -591,6 +592,7 @@ export function useConversationVm(wsClient) {
             appendConversationMessage("system", completedTask.outputSummary ?? "real task execution failed");
             setStatus("error");
             setIsStreaming(false);
+            setPlanReady(false);
             syncPersistedSnapshot((snapshot) => ({
                 ...snapshot,
                 status: "error",
@@ -603,6 +605,7 @@ export function useConversationVm(wsClient) {
             appendConversationMessage("system", error instanceof Error ? error.message : String(error));
             setStatus("error");
             setIsStreaming(false);
+            setPlanReady(false);
             syncPersistedSnapshot((snapshot) => ({
                 ...snapshot,
                 status: "error",

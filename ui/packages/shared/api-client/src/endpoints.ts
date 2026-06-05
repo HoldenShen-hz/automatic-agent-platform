@@ -30,6 +30,7 @@ import type {
   UserPreferenceDTO,
   WebhookDTO,
   WorkerDTO,
+  WorkflowBuilderDraftDTO,
   WorkflowRunStepDTO,
   WorkflowDTO,
 } from "@aa/shared-types";
@@ -62,6 +63,16 @@ export interface CreateTaskResponse {
       readonly id?: string;
     };
   };
+}
+
+export interface WorkflowBuilderDraftUpsertInput {
+  readonly title?: string;
+  readonly builder: WorkflowBuilderDraftDTO["builder"];
+}
+
+export interface WorkflowBuilderDraftPatchInput {
+  readonly title?: string;
+  readonly builder?: WorkflowBuilderDraftDTO["builder"];
 }
 
 export interface UpdateIncidentInput {
@@ -117,6 +128,7 @@ type ApprovalPathParams = { approvalId: string };
 type IncidentPathParams = { incidentId: string };
 type LeadershipClaimPathParams = { claimId: string };
 type LeadershipClaimReviewRequestPathParams = { requestId: string };
+type TakeoverSessionPathParams = { sessionId: string };
 type PackVersionPathParams = { packId: string };
 type CompliancePolicyPathParams = { policyId: string };
 type ComplianceExceptionPathParams = { exceptionId: string };
@@ -144,6 +156,78 @@ type ComplianceExceptionVmDTO = {
 };
 type ComplianceExceptionResponse = { id: string };
 type ContractVersionResponse = { contractVersion: string; minServerVersion?: string };
+type AdminTakeoverConsoleResponse = {
+  readonly generatedAt: string;
+  readonly scope: {
+    readonly taskId: string;
+    readonly divisionId: string | null;
+    readonly workspaceId: string | null;
+    readonly tenantId: string | null;
+  };
+  readonly executionOwner: {
+    readonly executionId: string | null;
+    readonly agentId: string | null;
+    readonly workerId: string | null;
+    readonly leaseId: string | null;
+    readonly leaseStatus: string | null;
+  };
+  readonly activeWorker: Record<string, unknown> | null;
+  readonly versions: {
+    readonly modelVersion: string | null;
+    readonly promptVersion: string | null;
+    readonly policyVersion: string | null;
+  };
+  readonly latestPmfVerdict: string | null;
+  readonly billingAccounts: readonly Record<string, unknown>[];
+  readonly inspect: {
+    readonly task: {
+      readonly id: string;
+      readonly status: string;
+      readonly inputJson?: string | null;
+    };
+    readonly execution?: {
+      readonly id?: string;
+      readonly status?: string;
+    } | null;
+    readonly stepOutputs?: ReadonlyArray<{
+      readonly id?: string;
+      readonly stepId?: string | null;
+      readonly summary?: string | null;
+      readonly status?: string | null;
+      readonly roleId?: string | null;
+      readonly producedAt?: string;
+    }>;
+    readonly takeoverSessions: ReadonlyArray<{
+      readonly id: string;
+      readonly operatorId: string;
+      readonly status: string;
+      readonly reasonCode: string;
+      readonly startedAt: string;
+      readonly closedAt: string | null;
+    }>;
+    readonly operatorActions: ReadonlyArray<{
+      readonly id: string;
+      readonly takeoverSessionId: string;
+      readonly taskId: string;
+      readonly operatorId: string;
+      readonly actionType: string;
+      readonly reasonCode: string;
+      readonly actionPayloadJson?: string;
+      readonly createdAt: string;
+    }>;
+  };
+  readonly timeline: {
+    readonly entries?: readonly unknown[];
+  };
+};
+type TakeoverMutationResponse = {
+  readonly taskId: string;
+  readonly takeoverSessionId: string;
+  readonly operatorActionId: string;
+  readonly recordedAt?: string;
+  readonly closedAt?: string;
+  readonly executionId?: string | null;
+};
 type TaskLikeRecord = Partial<TaskDTO> & {
   readonly taskId?: string;
   readonly taskStatus?: string;
@@ -164,6 +248,15 @@ type WorkflowLikeRecord = Partial<WorkflowDTO> & {
   readonly divisionId?: string | null;
   readonly currentStepIndex?: number | null;
   readonly resumableFromStep?: string | null;
+};
+type CostReportLikeRecord = Partial<CostReportDTO> & {
+  readonly reportId?: string;
+  readonly periodStart?: string;
+  readonly periodEnd?: string;
+  readonly totalCostUsd?: number;
+  readonly currency?: string;
+  readonly resourceCount?: number;
+  readonly submittedBy?: string;
 };
 
 function mapTaskStatus(status: string | undefined): TaskDTO["status"] {
@@ -377,6 +470,7 @@ type EndpointCatalogDefinition = {
   missionBudget: EndpointDefinition<MissionBudgetSummaryDTO, never, { missionId: string }>;
   knowledge: EndpointDefinition<readonly KnowledgeItemDTO[], never, never, ListQueryParams>;
   packs: EndpointDefinition<readonly MarketplacePackDTO[], never, never, ListQueryParams>;
+  packsCreate: EndpointDefinition<MutationAck<Record<string, unknown>>, Record<string, unknown>>;
   packVersions: EndpointDefinition<readonly PackVersionDTO[], never, PackVersionPathParams>;
   plugins: EndpointDefinition<readonly PluginDTO[], never, never, ListQueryParams>;
   prompts: EndpointDefinition<readonly PromptDTO[], never, never, ListQueryParams>;
@@ -399,10 +493,18 @@ type EndpointCatalogDefinition = {
   systemConfig: EndpointDefinition<SystemConfigDTO>;
   webhooks: EndpointDefinition<readonly WebhookDTO[]>;
   preferences: EndpointDefinition<UserPreferenceDTO>;
-  workflowBuilder: EndpointDefinition<readonly WorkflowDTO[]>;
+  workflowBuilder: EndpointDefinition<{ drafts: readonly WorkflowBuilderDraftDTO[] }>;
+  workflowBuilderDraft: EndpointDefinition<WorkflowBuilderDraftDTO, never, { draftId: string }>;
+  workflowBuilderCreate: EndpointDefinition<WorkflowBuilderDraftDTO, WorkflowBuilderDraftUpsertInput>;
+  workflowBuilderUpdate: EndpointDefinition<WorkflowBuilderDraftDTO, WorkflowBuilderDraftPatchInput, { draftId: string }>;
+  workflowBuilderDelete: EndpointDefinition<MutationAck<Record<string, unknown>>, never, { draftId: string }>;
   contractVersion: EndpointDefinition<ContractVersionResponse>;
   divisionInventorySnapshot: EndpointDefinition<DivisionInventorySnapshotDTO>;
   leadershipClaimsConsole: EndpointDefinition<LeadershipClaimsConsoleDTO>;
+  adminTakeoverConsole: EndpointDefinition<AdminTakeoverConsoleResponse, never, TaskPathParams>;
+  adminTakeoverOpenSession: EndpointDefinition<TakeoverMutationResponse, { reasonCode: string }, TaskPathParams>;
+  adminTakeoverAnnotateSession: EndpointDefinition<TakeoverMutationResponse, { reasonCode: string; note: string }, TakeoverSessionPathParams>;
+  adminTakeoverResumeSession: EndpointDefinition<TakeoverMutationResponse, { reasonCode: string }, TakeoverSessionPathParams>;
   leadershipClaimsReviewRequest: EndpointDefinition<
     { reviewRequest: { requestId: string; familyId: string; requestedBy: string; status: string } },
     {
@@ -492,6 +594,7 @@ export const endpointCatalog = {
   missionBudget: { id: "missions.budget", path: "/v1/missions/:missionId/budget", method: "GET", apiLayer: "C", planned: false },
   knowledge: { id: "knowledge.list", path: "/v1/knowledge", method: "GET", apiLayer: "C", planned: false },
   packs: { id: "packs.list", path: "/v1/packs", method: "GET", apiLayer: "C", planned: false },
+  packsCreate: { id: "packs.create", path: "/v1/packs", method: "POST", apiLayer: "C", planned: false },
   packVersions: { id: "packs.versions", path: "/v1/packs/:packId/versions", method: "GET", apiLayer: "C", planned: false },
   plugins: { id: "plugins.list", path: "/v1/plugins", method: "GET", apiLayer: "C", planned: false },
   prompts: { id: "prompts.list", path: "/v1/prompts", method: "GET", apiLayer: "C", planned: false },
@@ -515,9 +618,17 @@ export const endpointCatalog = {
   webhooks: { id: "admin.webhooks", path: "/v1/webhooks", method: "GET", apiLayer: "C", planned: false },
   preferences: { id: "user.preferences", path: "/v1/preferences", method: "GET", apiLayer: "C", planned: false },
   workflowBuilder: { id: "workflow-builder", path: "/v1/workflows/builder", method: "GET", apiLayer: "C", planned: false },
+  workflowBuilderDraft: { id: "workflow-builder.draft", path: "/v1/workflows/builder/:draftId", method: "GET", apiLayer: "C", planned: false },
+  workflowBuilderCreate: { id: "workflow-builder.create", path: "/v1/workflows/builder", method: "POST", apiLayer: "C", planned: false },
+  workflowBuilderUpdate: { id: "workflow-builder.update", path: "/v1/workflows/builder/:draftId", method: "PATCH", apiLayer: "C", planned: false },
+  workflowBuilderDelete: { id: "workflow-builder.delete", path: "/v1/workflows/builder/:draftId", method: "DELETE", apiLayer: "C", planned: false },
   contractVersion: { id: "meta.contract-version", path: "/v1/meta/contract-version", method: "GET", apiLayer: "A", planned: false },
   divisionInventorySnapshot: { id: "admin.governance.division-inventory", path: "/v1/admin/governance/division-inventory", method: "GET", apiLayer: "C", planned: false },
   leadershipClaimsConsole: { id: "admin.governance.leadership-claims", path: "/v1/admin/governance/leadership-claims", method: "GET", apiLayer: "C", planned: false },
+  adminTakeoverConsole: { id: "admin.takeover.console", path: "/v1/admin/tasks/:taskId", method: "GET", apiLayer: "C", planned: false },
+  adminTakeoverOpenSession: { id: "admin.takeover.open", path: "/v1/admin/tasks/:taskId/takeover/open", method: "POST", apiLayer: "C", planned: false },
+  adminTakeoverAnnotateSession: { id: "admin.takeover.annotate", path: "/v1/admin/takeover/sessions/:sessionId/annotations", method: "POST", apiLayer: "C", planned: false },
+  adminTakeoverResumeSession: { id: "admin.takeover.resume", path: "/v1/admin/takeover/sessions/:sessionId/resume", method: "POST", apiLayer: "C", planned: false },
   leadershipClaimsReviewRequest: { id: "admin.governance.leadership-claims.review-request", path: "/v1/admin/governance/leadership-claims/review-requests", method: "POST", apiLayer: "C", planned: false },
   leadershipClaimsApproveReviewRequest: { id: "admin.governance.leadership-claims.review-request.approve", path: "/v1/admin/governance/leadership-claims/review-requests/:requestId/approve", method: "POST", apiLayer: "C", planned: false },
   leadershipClaimsRejectReviewRequest: { id: "admin.governance.leadership-claims.review-request.reject", path: "/v1/admin/governance/leadership-claims/review-requests/:requestId/reject", method: "POST", apiLayer: "C", planned: false },
@@ -677,6 +788,40 @@ export async function createWorkflow(client: RESTClient, body: Partial<WorkflowD
   return client.post<{ ok: true; body?: unknown }>(endpointCatalog.workflowsCreate.path, body);
 }
 
+export async function fetchWorkflowBuilderDrafts(client: RESTClient): Promise<readonly WorkflowBuilderDraftDTO[]> {
+  const response = await client.get<{ drafts: readonly WorkflowBuilderDraftDTO[] }>(endpointCatalog.workflowBuilder.path);
+  return response.drafts ?? [];
+}
+
+export async function fetchWorkflowBuilderDraft(client: RESTClient, draftId: string): Promise<WorkflowBuilderDraftDTO> {
+  return client.get<WorkflowBuilderDraftDTO>(resolvePath(endpointCatalog.workflowBuilderDraft.path, { draftId }));
+}
+
+export async function createWorkflowBuilderDraft(
+  client: RESTClient,
+  body: WorkflowBuilderDraftUpsertInput,
+  options?: RestRequestOptions,
+): Promise<WorkflowBuilderDraftDTO> {
+  return client.post<WorkflowBuilderDraftDTO>(endpointCatalog.workflowBuilderCreate.path, body, options);
+}
+
+export async function updateWorkflowBuilderDraft(
+  client: RESTClient,
+  draftId: string,
+  body: WorkflowBuilderDraftPatchInput,
+  options?: RestRequestOptions,
+): Promise<WorkflowBuilderDraftDTO> {
+  return client.patch<WorkflowBuilderDraftDTO>(resolvePath(endpointCatalog.workflowBuilderUpdate.path, { draftId }), body, options);
+}
+
+export async function deleteWorkflowBuilderDraft(
+  client: RESTClient,
+  draftId: string,
+  options?: RestRequestOptions,
+): Promise<{ ok: true; body?: unknown }> {
+  return client.delete<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowBuilderDelete.path, { draftId }), options);
+}
+
 export async function pauseWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
   return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsPause.path, { workflowId }), { action: "pause" });
 }
@@ -826,10 +971,42 @@ export async function fetchAnalytics(client: RESTClient, queryParams?: ListQuery
 
 export async function fetchCosts(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly CostReportDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  const response = await client.get<readonly CostReportDTO[] | { costReports: readonly CostReportDTO[] }>(
+  const response = await client.get<readonly CostReportLikeRecord[] | { costReports: readonly CostReportLikeRecord[] }>(
     `${endpointCatalog.costs.path}${queryString}`,
   );
-  return unwrapCollectionResponse(response, ["costReports"]);
+  return unwrapCollectionResponse(response, ["costReports"]).map((report) => normalizeCostReportDto(report));
+}
+
+function normalizeCostReportDto(report: CostReportLikeRecord): CostReportDTO {
+  const periodStart = typeof report.periodStart === "string" ? report.periodStart : undefined;
+  const periodEnd = typeof report.periodEnd === "string" ? report.periodEnd : undefined;
+  const scope = typeof report.scope === "string" && report.scope.trim().length > 0
+    ? report.scope
+    : periodStart != null && periodEnd != null
+      ? `${periodStart.slice(0, 10)} -> ${periodEnd.slice(0, 10)}`
+      : typeof report.submittedBy === "string" && report.submittedBy.trim().length > 0
+        ? report.submittedBy
+        : "platform";
+  const amountUsd = typeof report.amountUsd === "number" && Number.isFinite(report.amountUsd)
+    ? report.amountUsd
+    : typeof report.totalCostUsd === "number" && Number.isFinite(report.totalCostUsd)
+      ? report.totalCostUsd
+      : 0;
+  return {
+    id: typeof report.id === "string" && report.id.trim().length > 0
+      ? report.id
+      : typeof report.reportId === "string" && report.reportId.trim().length > 0
+        ? report.reportId
+        : `cost-report:${scope}:${periodEnd ?? "unknown"}`,
+    scope,
+    amountUsd,
+    budgetUsd: typeof report.budgetUsd === "number" && Number.isFinite(report.budgetUsd) ? report.budgetUsd : null,
+    ...(typeof report.currency === "string" ? { currency: report.currency } : {}),
+    ...(periodStart == null ? {} : { periodStart }),
+    ...(periodEnd == null ? {} : { periodEnd }),
+    ...(typeof report.resourceCount === "number" ? { resourceCount: report.resourceCount } : {}),
+    ...(typeof report.submittedBy === "string" ? { submittedBy: report.submittedBy } : {}),
+  };
 }
 
 export async function fetchMarketplace(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly MarketplacePackDTO[]> {
@@ -928,6 +1105,14 @@ export async function fetchKnowledge(client: RESTClient, queryParams?: ListQuery
 export async function fetchPacks(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly MarketplacePackDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
   return client.get<readonly MarketplacePackDTO[]>(`${endpointCatalog.packs.path}${queryString}`);
+}
+
+export async function createPack(
+  client: RESTClient,
+  body: Record<string, unknown>,
+  options?: RestRequestOptions,
+): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(endpointCatalog.packsCreate.path, body, options);
 }
 
 export async function fetchPackVersions(client: RESTClient, packId: string): Promise<readonly PackVersionDTO[]> {
@@ -1092,6 +1277,34 @@ export async function fetchLeadershipClaimsConsole(client: RESTClient): Promise<
 
 export async function fetchDivisionInventorySnapshot(client: RESTClient): Promise<DivisionInventorySnapshotDTO> {
   return client.get<DivisionInventorySnapshotDTO>(endpointCatalog.divisionInventorySnapshot.path);
+}
+
+export async function fetchAdminTakeoverConsole(client: RESTClient, taskId: string): Promise<AdminTakeoverConsoleResponse> {
+  return client.get<AdminTakeoverConsoleResponse>(resolvePath(endpointCatalog.adminTakeoverConsole.path, { taskId }));
+}
+
+export async function openAdminTakeoverSession(
+  client: RESTClient,
+  taskId: string,
+  body: { reasonCode: string },
+): Promise<TakeoverMutationResponse> {
+  return client.post(resolvePath(endpointCatalog.adminTakeoverOpenSession.path, { taskId }), body);
+}
+
+export async function annotateAdminTakeoverSession(
+  client: RESTClient,
+  sessionId: string,
+  body: { reasonCode: string; note: string },
+): Promise<TakeoverMutationResponse> {
+  return client.post(resolvePath(endpointCatalog.adminTakeoverAnnotateSession.path, { sessionId }), body);
+}
+
+export async function resumeAdminTakeoverSession(
+  client: RESTClient,
+  sessionId: string,
+  body: { reasonCode: string },
+): Promise<TakeoverMutationResponse> {
+  return client.post(resolvePath(endpointCatalog.adminTakeoverResumeSession.path, { sessionId }), body);
 }
 
 export async function submitLeadershipClaimReviewRequest(

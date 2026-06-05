@@ -21,10 +21,10 @@ export function DomainWizardWebView(): ReactElement {
   return (
     <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Partial">
       <form
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
           if (vm.currentStep === "review") {
-            vm.submitConfig();
+            await vm.submitConfig();
             return;
           }
           vm.goNext();
@@ -50,8 +50,8 @@ export function DomainWizardWebView(): ReactElement {
           <div style={{ display: "grid", gap: 12 }}>
             {items.map((item) => (
               <button
-                key={item.title}
-                onClick={() => vm.setSelectedDomainId(item.title)}
+                key={item.id}
+                onClick={() => vm.setSelectedDomainId(item.id)}
                 style={{ textAlign: "left" }}
                 type="button"
               >
@@ -145,7 +145,7 @@ export function DomainWizardWebView(): ReactElement {
         )}
 
         <Inline>
-          <button disabled={!vm.canGoBack} onClick={vm.goBack} type="button">{translateMessage("ui.domainWizard.back")}</button>
+          <button disabled={!vm.canGoBack || vm.isSubmitting} onClick={vm.goBack} type="button">{translateMessage("ui.domainWizard.back")}</button>
           <button disabled={!vm.canGoNext} type="submit">{vm.currentStep === "review" ? translateMessage("ui.domainWizard.submit") : translateMessage("ui.domainWizard.next")}</button>
         </Inline>
       </Stack>

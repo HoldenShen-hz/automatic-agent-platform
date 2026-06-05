@@ -1,10 +1,15 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchWorkflowBuilderDrafts } from "@aa/shared-api-client";
 import { translateMessage } from "@aa/shared-i18n";
-import { useWorkflowsQuery } from "@aa/shared-state";
-import type { WorkflowDTO, WorkflowStepDTO } from "@aa/shared-types";
+import { useAuthState, useRestClient, useWorkflowsQuery } from "@aa/shared-state";
+import type { WorkflowBuilderDraftDTO, WorkflowDTO, WorkflowStepDTO } from "@aa/shared-types";
 
 export interface WorkflowBuilderVm {
   readonly items: readonly { title: string; description: string }[];
+  readonly drafts: readonly { draftId: string; title: string; updatedAt: string }[];
+  readonly selectedDraftId: string | null;
+  readonly draftTitle: string;
   readonly nodes: readonly {
     readonly id: string;
     readonly position: { readonly x: number; readonly y: number };
@@ -16,6 +21,16 @@ export interface WorkflowBuilderVm {
     readonly source: string;
     readonly target: string;
   }[];
+  readonly validationMessages: readonly string[];
+  readonly statusMessage: string | null;
+  readonly isMutating: boolean;
+  readonly canSave: boolean;
+  readonly canDelete: boolean;
+  setSelectedDraftId(draftId: string): void;
+  setDraftTitle(value: string): void;
+  createDraft(): Promise<void>;
+  saveDraft(): Promise<void>;
+  deleteDraft(): Promise<void>;
 }
 
 const PHASE_Y_POSITION: Readonly<Record<WorkflowStepDTO["phase"], number>> = {
@@ -29,90 +44,285 @@ const PHASE_Y_POSITION: Readonly<Record<WorkflowStepDTO["phase"], number>> = {
   Release: 696,
 };
 
-function mapWorkflowStepsToNodes(steps: readonly WorkflowStepDTO[]): WorkflowBuilderVm["nodes"] {
-  return steps.map((step, index) => ({
-    id: step.id,
+function buildMutationHeaders(prefix: string): Headers {
+  const key = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? `${prefix}-${crypto.randomUUID()}`
+    : `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return new Headers({
+    "content-type": "application/json",
+    "Accept-Version": "2026-04-01,2026-01-01",
+    "Idempotency-Key": key,
+  });
+}
+
+function mapDraftToNodes(draft: WorkflowBuilderDraftDTO | null): WorkflowBuilderVm["nodes"] {
+  if (draft == null) {
+    return [];
+  }
+  return draft.builder.canvas.nodes.map((node, index) => ({
+    id: node.nodeId,
     position: {
       x: index * 180,
-      y: PHASE_Y_POSITION[step.phase],
+      y: PHASE_Y_POSITION[resolvePhase(node.label, index)],
     },
     data: {
-      label: `${step.phase} · ${step.title}`,
+      label: node.label,
     },
     type: "default",
   }));
 }
 
-function mapWorkflowStepsToEdges(steps: readonly WorkflowStepDTO[]): WorkflowBuilderVm["edges"] {
-  const stepIds = new Set(steps.map((step) => step.id));
-  const dependencyEdges = steps.flatMap((step) =>
-    (step.dependsOnStepIds ?? [])
-      .filter((dependencyId) => stepIds.has(dependencyId))
-      .map((dependencyId) => ({
-        id: `${dependencyId}->${step.id}`,
-        source: dependencyId,
-        target: step.id,
-      })));
-  if (dependencyEdges.length > 0) {
-    return dependencyEdges;
+function mapDraftToEdges(draft: WorkflowBuilderDraftDTO | null): WorkflowBuilderVm["edges"] {
+  if (draft == null) {
+    return [];
   }
-  return steps.slice(1).map((step, index) => ({
-    id: `${steps[index]!.id}->${step.id}`,
-    source: steps[index]!.id,
-    target: step.id,
+  return draft.builder.canvas.edges.map((edge) => ({
+    id: `${edge.fromNodeId}->${edge.toNodeId}`,
+    source: edge.fromNodeId,
+    target: edge.toNodeId,
   }));
 }
 
-export function mapWorkflowsToBuilderVm(workflows: readonly WorkflowDTO[]): WorkflowBuilderVm {
-  const selectedWorkflow = workflows[0] ?? null;
-  if (selectedWorkflow == null) {
-    return {
-      nodes: [],
-      edges: [],
-      items: [
-        {
-          title: translateMessage("ui.workflowBuilder.empty.title"),
-          description: translateMessage("ui.workflowBuilder.empty.description"),
-        },
-      ],
-    };
+function resolvePhase(label: string, index: number): WorkflowStepDTO["phase"] {
+  const match = label.match(/^(Observe|Assess|Plan|Execute|Feedback|Learn|Improve|Release)\b/i)?.[1];
+  if (match === "Observe" || match === "Assess" || match === "Plan" || match === "Execute" || match === "Feedback" || match === "Learn" || match === "Improve" || match === "Release") {
+    return match;
   }
+  const orderedPhases: readonly WorkflowStepDTO["phase"][] = ["Observe", "Assess", "Plan", "Execute", "Feedback", "Learn", "Improve", "Release"];
+  return orderedPhases[Math.min(index, orderedPhases.length - 1)] ?? "Plan";
+}
 
-  const evidenceCount = selectedWorkflow.steps.reduce(
-    (count, step) => count + (step.evidenceRefs?.length ?? 0),
-    selectedWorkflow.evidenceRefs?.length ?? 0,
-  );
+export function buildWorkflowBuilderSeed(workflows: readonly WorkflowDTO[]): WorkflowBuilderDraftDTO["builder"] {
+  const sourceWorkflow = workflows[0] ?? null;
+  const sourceSteps = sourceWorkflow?.steps?.length
+    ? sourceWorkflow.steps
+    : [
+        { id: "observe", title: "Observe", phase: "Observe", status: "completed" },
+        { id: "plan", title: "Plan", phase: "Plan", status: "running", dependsOnStepIds: ["observe"] },
+        { id: "execute", title: "Execute", phase: "Execute", status: "pending", dependsOnStepIds: ["plan"] },
+      ] satisfies readonly WorkflowStepDTO[];
+
+  const nodes = sourceSteps.map((step) => ({
+    nodeId: step.id,
+    componentId: `component:${step.phase.toLowerCase()}`,
+    label: `${step.phase} · ${step.title}`,
+  }));
+  const dependencyEdges = sourceSteps.flatMap((step) =>
+    (step.dependsOnStepIds ?? []).map((dependencyId) => ({
+      fromNodeId: dependencyId,
+      toNodeId: step.id,
+    })));
+  const edges = dependencyEdges.length > 0
+    ? dependencyEdges
+    : sourceSteps.slice(1).map((step, index) => ({
+        fromNodeId: sourceSteps[index]!.id,
+        toNodeId: step.id,
+      }));
 
   return {
-    nodes: mapWorkflowStepsToNodes(selectedWorkflow.steps),
-    edges: mapWorkflowStepsToEdges(selectedWorkflow.steps),
-    items: [
+    canvas: { nodes, edges },
+    componentPalette: [
       {
-        title: translateMessage("ui.workflowBuilder.summary.workflow.title"),
-        description: translateMessage("ui.workflowBuilder.summary.workflow.description", {
-          title: selectedWorkflow.title,
-          status: selectedWorkflow.status,
-          stage: selectedWorkflow.currentStage,
-        }),
-      },
-      {
-        title: translateMessage("ui.workflowBuilder.summary.steps.title"),
-        description: translateMessage("ui.workflowBuilder.summary.steps.description", {
-          count: selectedWorkflow.steps.length,
-        }),
-      },
-      {
-        title: translateMessage("ui.workflowBuilder.summary.governance.title"),
-        description: translateMessage("ui.workflowBuilder.summary.governance.description", {
-          approvals: selectedWorkflow.approvalNodes?.length ?? 0,
-          evidence: evidenceCount,
-        }),
+        category: "action",
+        components: nodes.map((node) => ({
+          componentId: node.componentId,
+          name: node.label,
+          icon: "workflow",
+          domainId: sourceWorkflow?.id ?? "platform",
+          riskLevel: "medium",
+          configSchema: {},
+          previewDescription: node.label,
+        })),
       },
     ],
+    livePreview: {
+      estimatedDuration: `${Math.max(5, sourceSteps.length * 5)} min`,
+      estimatedCost: `$${(Math.max(1, sourceSteps.length) * 0.03).toFixed(2)}`,
+      riskAssessment: sourceWorkflow?.status === "failed" ? "needs_review" : "ready",
+      stepByStepDescription: sourceSteps.map((step) => `${step.phase} · ${step.title}`),
+    },
+    validation: {
+      valid: nodes.length > 0,
+      messages: nodes.length > 0 ? [] : ["workflow_builder.empty"],
+    },
+    progressiveDisclosure: {
+      level: "guided",
+      hiddenCategories: [],
+      defaultExpandedCategories: ["action"],
+    },
   };
 }
 
 export function useWorkflowBuilderVm(): WorkflowBuilderVm {
+  const client = useRestClient();
+  const accessToken = useAuthState((state) => state.accessToken);
+  const queryClient = useQueryClient();
   const workflows = useWorkflowsQuery().data ?? [];
-  return useMemo(() => mapWorkflowsToBuilderVm(workflows), [workflows]);
+  const draftsQuery = useQuery({
+    queryKey: ["workflow-builder-drafts"],
+    queryFn: () => fetchWorkflowBuilderDrafts(client),
+  });
+  const drafts = draftsQuery.data ?? [];
+  const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
+  const [draftTitle, setDraftTitle] = useState("");
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [isMutating, setIsMutating] = useState(false);
+
+  useEffect(() => {
+    if (drafts.length === 0) {
+      setSelectedDraftId(null);
+      return;
+    }
+    if (selectedDraftId == null || !drafts.some((draft) => draft.draftId === selectedDraftId)) {
+      setSelectedDraftId(drafts[0]!.draftId);
+    }
+  }, [drafts, selectedDraftId]);
+
+  const selectedDraft = useMemo(
+    () => drafts.find((draft) => draft.draftId === selectedDraftId) ?? null,
+    [drafts, selectedDraftId],
+  );
+
+  useEffect(() => {
+    setDraftTitle(selectedDraft?.title ?? "");
+  }, [selectedDraft?.draftId, selectedDraft?.title]);
+
+  const items = useMemo(() => {
+    if (selectedDraft == null) {
+      return [
+        {
+          title: translateMessage("ui.workflowBuilder.empty.title"),
+          description: translateMessage("ui.workflowBuilder.empty.description"),
+        },
+      ];
+    }
+    return [
+      {
+        title: translateMessage("ui.workflowBuilder.summary.workflow.title"),
+        description: `${selectedDraft.title} · ${selectedDraft.draftId}`,
+      },
+      {
+        title: translateMessage("ui.workflowBuilder.summary.steps.title"),
+        description: translateMessage("ui.workflowBuilder.summary.steps.description", {
+          count: selectedDraft.builder.canvas.nodes.length,
+        }),
+      },
+      {
+        title: translateMessage("ui.workflowBuilder.summary.governance.title"),
+        description: `${selectedDraft.builder.validation.valid ? "valid" : "invalid"} · ${selectedDraft.updatedAt}`,
+      },
+    ];
+  }, [selectedDraft]);
+
+  return {
+    items,
+    drafts: drafts.map((draft) => ({
+      draftId: draft.draftId,
+      title: draft.title,
+      updatedAt: draft.updatedAt,
+    })),
+    selectedDraftId,
+    draftTitle,
+    nodes: mapDraftToNodes(selectedDraft),
+    edges: mapDraftToEdges(selectedDraft),
+    validationMessages: selectedDraft?.builder.validation.messages ?? [],
+    statusMessage,
+    isMutating,
+    canSave: selectedDraft != null && draftTitle.trim().length > 0 && !isMutating,
+    canDelete: selectedDraft != null && !isMutating,
+    setSelectedDraftId,
+    setDraftTitle,
+    async createDraft() {
+      setIsMutating(true);
+      setStatusMessage(null);
+      try {
+        const headers = buildMutationHeaders("workflow-builder-create");
+        if (accessToken.length > 0) {
+          headers.set("authorization", `Bearer ${accessToken}`);
+        }
+        const response = await fetch("/api/v1/workflows/builder", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            title: `${workflows[0]?.title ?? "Workflow"} draft`,
+            builder: buildWorkflowBuilderSeed(workflows),
+          }),
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+          throw new Error(payload?.error?.message ?? `workflow_builder.create_failed:${response.status}`);
+        }
+        const created = (await response.json()) as { data: WorkflowBuilderDraftDTO };
+        await queryClient.invalidateQueries({ queryKey: ["workflow-builder-drafts"] });
+        setSelectedDraftId(created.data.draftId);
+        setStatusMessage(`Draft ${created.data.draftId} created.`);
+      } catch (error) {
+        setStatusMessage(error instanceof Error ? error.message : "workflow_builder.create_failed");
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    async saveDraft() {
+      if (selectedDraft == null) {
+        return;
+      }
+      setIsMutating(true);
+      setStatusMessage(null);
+      try {
+        const headers = buildMutationHeaders("workflow-builder-save");
+        if (accessToken.length > 0) {
+          headers.set("authorization", `Bearer ${accessToken}`);
+        }
+        const response = await fetch(`/api/v1/workflows/builder/${selectedDraft.draftId}`, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({
+            title: draftTitle.trim(),
+            builder: selectedDraft.builder,
+          }),
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+          throw new Error(payload?.error?.message ?? `workflow_builder.save_failed:${response.status}`);
+        }
+        const updated = (await response.json()) as { data: WorkflowBuilderDraftDTO };
+        await queryClient.invalidateQueries({ queryKey: ["workflow-builder-drafts"] });
+        setDraftTitle(updated.data.title);
+        setStatusMessage(`Draft ${updated.data.draftId} saved.`);
+      } catch (error) {
+        setStatusMessage(error instanceof Error ? error.message : "workflow_builder.save_failed");
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    async deleteDraft() {
+      if (selectedDraft == null) {
+        return;
+      }
+      setIsMutating(true);
+      setStatusMessage(null);
+      try {
+        const deletedDraftId = selectedDraft.draftId;
+        const headers = buildMutationHeaders("workflow-builder-delete");
+        if (accessToken.length > 0) {
+          headers.set("authorization", `Bearer ${accessToken}`);
+        }
+        const response = await fetch(`/api/v1/workflows/builder/${deletedDraftId}`, {
+          method: "DELETE",
+          headers,
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+          throw new Error(payload?.error?.message ?? `workflow_builder.delete_failed:${response.status}`);
+        }
+        await queryClient.invalidateQueries({ queryKey: ["workflow-builder-drafts"] });
+        setSelectedDraftId(null);
+        setStatusMessage(`Draft ${deletedDraftId} deleted.`);
+      } catch (error) {
+        setStatusMessage(error instanceof Error ? error.message : "workflow_builder.delete_failed");
+      } finally {
+        setIsMutating(false);
+      }
+    },
+  };
 }

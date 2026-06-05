@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel, KeyValueTable, ListCard } from "@aa/ui-core";
 import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
+import { copyTextToClipboard } from "@aa/shared-platform";
 import { useReleaseConsoleVm } from "../hooks";
 
 function statusTone(status: string): string {
@@ -43,13 +44,36 @@ function GovernanceRow(props: {
   );
 }
 
+function buildScannerHitKey(
+  hit: {
+    readonly filePath: string;
+    readonly lineNumber: number;
+    readonly matchedText: string;
+  },
+  index: number,
+): string {
+  return `${hit.filePath}:${hit.lineNumber}:${hit.matchedText}:${index}`;
+}
+
+function buildAllowlistKey(
+  entry: {
+    readonly filePath: string;
+    readonly matchedText: string;
+    readonly owner: string;
+    readonly expiresAt: string | null;
+  },
+  index: number,
+): string {
+  return `${entry.filePath}:${entry.matchedText}:${entry.owner}:${entry.expiresAt ?? "none"}:${index}`;
+}
+
 export function ReleaseConsoleWebView(): ReactElement {
   const vm = useReleaseConsoleVm();
   const featureCopy = translateFeatureCopy("release-console");
 
   async function copySummary(): Promise<void> {
     const summary = vm.summaryRows.map((row) => `${row.key}: ${row.value}`).join("\n");
-    await globalThis.navigator?.clipboard?.writeText?.(summary);
+    await copyTextToClipboard(summary);
   }
 
   return (
@@ -145,9 +169,9 @@ export function LeadershipClaimsWebView(): ReactElement {
 
           <GovernanceSection title="Scanner hits">
             <div style={{ display: "grid", gap: 12 }}>
-              {vm.leadershipClaims.scannerHits.map((hit) => (
+              {vm.leadershipClaims.scannerHits.map((hit, index) => (
                 <GovernanceRow
-                  key={`${hit.filePath}:${hit.lineNumber}:${hit.matchedText}`}
+                  key={buildScannerHitKey(hit, index)}
                   title={`${hit.status} · ${hit.matchedText}`}
                   status={hit.status}
                   description={`${hit.filePath}:${hit.lineNumber}\n${hit.excerpt}\n${hit.reason ?? "unreviewed"}`}
@@ -158,9 +182,9 @@ export function LeadershipClaimsWebView(): ReactElement {
 
           <GovernanceSection title="Allowlist entries">
             <div style={{ display: "grid", gap: 12 }}>
-              {vm.leadershipClaims.allowlist.map((entry) => (
+              {vm.leadershipClaims.allowlist.map((entry, index) => (
                 <GovernanceRow
-                  key={`${entry.filePath}:${entry.matchedText}`}
+                  key={buildAllowlistKey(entry, index)}
                   title={`${entry.expired ? "expired_allowlist" : "allowlist"} · ${entry.matchedText}`}
                   status={entry.expired ? "expired_allowlist" : "allowlisted"}
                   description={[

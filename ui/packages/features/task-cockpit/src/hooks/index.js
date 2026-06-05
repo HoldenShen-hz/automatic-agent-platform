@@ -39,7 +39,13 @@ function mapStepOutputStatus(status) {
       return "completed";
     default:
       return "pending";
-  }
+    }
+}
+function isImmutableTaskStatus(status) {
+    return status === "completed"
+        || status === "done"
+        || status === "cancelled"
+        || status === "superseded";
 }
 function buildDrillDownSteps(task, cockpit) {
   const execution = cockpit.inspect?.execution ?? null;
@@ -232,18 +238,24 @@ function useTaskCockpitVm() {
       setPendingOperations((current) => Math.max(0, current - 1));
     }
   }, [client, selectedTask, updateSelected]);
-  const fetchTaskDrillDown = useCallback(async (taskId) => {
-    const cockpit = await client.get(`/v1/tasks/${encodeURIComponent(taskId)}`);
-    const task = visibleTasks.find((candidate) => candidate.id === taskId) ?? null;
-    const steps = buildDrillDownSteps(task, cockpit);
-    const hasWorkflowControl = cockpit.inspect?.workflowState != null || cockpit.snapshot?.workflow != null;
-    setServerEvidenceChain(buildEvidenceItemsFromCockpit(taskId, cockpit));
-    setServerTimelineItems(buildTimelineItemsFromCockpit(cockpit));
-    setDrillDownSteps(steps);
-    setSelectedStepId(steps[0]?.id ?? null);
-    setWorkflowControlsAvailable(hasWorkflowControl);
-    setWorkflowControlReason(hasWorkflowControl ? null : "This task does not have a live workflow control record, so pause/retry/resume controls are unavailable.");
-  }, [client, visibleTasks]);
+    const fetchTaskDrillDown = useCallback(async (taskId) => {
+        const cockpit = await client.get(`/v1/tasks/${encodeURIComponent(taskId)}`);
+        const task = visibleTasks.find((candidate) => candidate.id === taskId) ?? null;
+        const steps = buildDrillDownSteps(task, cockpit);
+        const hasLiveWorkflowRecord = cockpit.inspect?.workflowState != null || cockpit.snapshot?.workflow != null;
+        const immutableTask = isImmutableTaskStatus(task?.status);
+        const hasWorkflowControl = hasLiveWorkflowRecord && !immutableTask;
+        setServerEvidenceChain(buildEvidenceItemsFromCockpit(taskId, cockpit));
+        setServerTimelineItems(buildTimelineItemsFromCockpit(cockpit));
+        setDrillDownSteps(steps);
+        setSelectedStepId(steps[0]?.id ?? null);
+        setWorkflowControlsAvailable(hasWorkflowControl);
+        setWorkflowControlReason(hasWorkflowControl
+            ? null
+            : immutableTask
+                ? "This task is already terminal and no longer accepts ownership, escalation, or workflow control actions."
+                : "This task does not have a live workflow control record, so pause/retry/resume controls are unavailable.");
+    }, [client, visibleTasks]);
   const selectTask = useCallback((id) => {
     setSelectedId(id);
     setOperationError(null);

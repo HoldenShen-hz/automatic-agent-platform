@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mapWorkflowsToBuilderVm } from "../../packages/features/workflow-builder/src/hooks/index.ts";
+import { buildWorkflowBuilderSeed } from "../../packages/features/workflow-builder/src/hooks/index.ts";
 import { getSharedTranslationService, resetSharedTranslationService } from "../../packages/shared/i18n/src/index.ts";
 import type { WorkflowDTO } from "../../packages/shared/types/src";
 
@@ -32,28 +32,28 @@ function buildWorkflow(overrides: Partial<WorkflowDTO> = {}): WorkflowDTO {
   };
 }
 
-describe("workflow builder vm", () => {
+describe("workflow builder seed", () => {
   afterEach(() => {
     resetSharedTranslationService();
   });
 
-  it("does not fabricate a demo graph when no workflows are available", () => {
+  it("creates a fallback guided draft when no workflows are available", () => {
     getSharedTranslationService().setLocale("en-US");
-    const vm = mapWorkflowsToBuilderVm([]);
+    const builder = buildWorkflowBuilderSeed([]);
 
-    expect(vm.nodes).toEqual([]);
-    expect(vm.edges).toEqual([]);
-    expect(vm.items[0]?.title).toBe("No workflow data");
+    expect(builder.canvas.nodes.length).toBeGreaterThan(0);
+    expect(builder.canvas.edges.length).toBeGreaterThan(0);
+    expect(builder.progressiveDisclosure.level).toBe("guided");
   });
 
-  it("maps real workflow steps into nodes, edges, and governance summaries", () => {
+  it("maps workflow steps into builder nodes and dependency edges", () => {
     getSharedTranslationService().setLocale("en-US");
-    const vm = mapWorkflowsToBuilderVm([buildWorkflow()]);
+    const builder = buildWorkflowBuilderSeed([buildWorkflow()]);
 
-    expect(vm.nodes.map((node) => node.id)).toEqual(["observe", "plan"]);
-    expect(vm.nodes[0]?.data.label).toBe("Observe · Collect alerts");
-    expect(vm.edges).toEqual([{ id: "observe->plan", source: "observe", target: "plan" }]);
-    expect(vm.items[0]?.description).toContain("Incident Recovery");
-    expect(vm.items[2]?.description).toContain("approval");
+    expect(builder.canvas.nodes.map((node) => node.nodeId)).toEqual(["observe", "plan"]);
+    expect(builder.canvas.nodes[0]?.label).toBe("Observe · Collect alerts");
+    expect(builder.canvas.edges).toEqual([{ fromNodeId: "observe", toNodeId: "plan" }]);
+    expect(builder.componentPalette[0]?.components[0]?.name).toContain("Observe");
+    expect(builder.componentPalette[0]?.components[0]?.configSchema).toEqual({});
   });
 });

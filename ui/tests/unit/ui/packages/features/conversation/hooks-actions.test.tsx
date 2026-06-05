@@ -214,6 +214,7 @@ describe("useConversationVm action guards", () => {
       expect(result.current.isExecuting).toBe(false);
       expect(result.current.status).toBe("connected");
       expect(result.current.messages.at(-1)?.content).toBe("MiniMax delivered the final markdown report");
+      expect(result.current.planReady).toBe(false);
     });
     expect(mocks.client.get).toHaveBeenCalledWith("/v1/tasks/task_done_001");
   });

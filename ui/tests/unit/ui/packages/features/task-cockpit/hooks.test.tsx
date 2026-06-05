@@ -223,6 +223,25 @@ describe("useTaskCockpitVm", () => {
     });
   });
 
+  it("disables ownership and workflow controls for terminal completed tasks", async () => {
+    taskData = [
+      {
+        ...taskData[0]!,
+        status: "completed",
+      },
+    ];
+    const { result } = renderTaskCockpitHook();
+
+    act(() => {
+      result.current.selectTask("task-1");
+    });
+
+    await waitFor(() => {
+      expect(result.current.workflowControlsAvailable).toBe(false);
+      expect(result.current.workflowControlReason).toMatch(/already terminal/);
+    });
+  });
+
   it("creates a task from operator input and selects it optimistically", async () => {
     taskData = [
       {

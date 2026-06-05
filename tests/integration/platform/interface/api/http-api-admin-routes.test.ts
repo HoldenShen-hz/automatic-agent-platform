@@ -119,6 +119,7 @@ test("integration: POST /v1/admin/control-plane/load-balancing/select rejects in
       headers: {
         authorization: `Bearer ${accessToken}`,
         "content-type": "application/json",
+        "idempotency-key": "takeover-open",
       },
       body: "not valid json",
     });
@@ -356,6 +357,7 @@ test("integration: compliance governance routes roundtrip policy updates and exc
       headers: {
         authorization: `Bearer ${accessToken}`,
         "content-type": "application/json",
+        "idempotency-key": "takeover-note",
       },
       body: JSON.stringify({ severity: "high", reviewLabel: "integration" }),
     });
@@ -367,6 +369,7 @@ test("integration: compliance governance routes roundtrip policy updates and exc
       headers: {
         authorization: `Bearer ${accessToken}`,
         "content-type": "application/json",
+        "idempotency-key": "takeover-resume",
       },
       body: JSON.stringify({ reason: "manual_exception_review_requested", policyId: "gdpr" }),
     });
@@ -919,6 +922,74 @@ test("integration: GET /v1/admin/tasks/:id returns admin takeover console", asyn
     if (context.takeoverSessionId) {
       assert.ok(payload.data.inspect.takeoverSessions.some((s) => s.id === context.takeoverSessionId));
     }
+  } finally {
+    context.db.close();
+    cleanupPath(workspace);
+  }
+});
+
+test("integration: admin takeover routes open, annotate, and resume a session", async () => {
+  const workspace = createTempWorkspace("aa-admin-takeover-actions-");
+  const context = createSeededApiContext(workspace);
+  const server = context.createServer();
+
+  try {
+    const accessToken = await getAccessToken(server);
+
+    const openResponse = await server.inject({
+      url: `/v1/admin/tasks/${context.seededTaskId}/takeover/open`,
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ reasonCode: "operator.manual_takeover" }),
+    });
+    assert.equal(openResponse.statusCode, 200);
+    const opened = readJson<{ takeoverSessionId: string; taskId: string }>(openResponse);
+    assert.equal(opened.data.taskId, context.seededTaskId);
+
+    const noteResponse = await server.inject({
+      url: `/v1/admin/takeover/sessions/${opened.data.takeoverSessionId}/annotations`,
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        reasonCode: "operator.takeover_annotation",
+        note: "manual-note",
+      }),
+    });
+    assert.equal(noteResponse.statusCode, 200);
+
+    const resumeResponse = await server.inject({
+      url: `/v1/admin/takeover/sessions/${opened.data.takeoverSessionId}/resume`,
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ reasonCode: "operator.resume_automatic_execution" }),
+    });
+    assert.equal(resumeResponse.statusCode, 200);
+
+    const consoleResponse = await server.inject({
+      url: `/v1/admin/tasks/${context.seededTaskId}`,
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    assert.equal(consoleResponse.statusCode, 200);
+    const payload = readJson<{
+      inspect: {
+        takeoverSessions: Array<{ id: string; status: string }>;
+        operatorActions: Array<{ actionType: string; reasonCode: string }>;
+      };
+    }>(consoleResponse);
+
+    const resumedSession = payload.data.inspect.takeoverSessions.find((session) => session.id === opened.data.takeoverSessionId);
+    assert.equal(resumedSession?.status, "closed");
+    assert.ok(payload.data.inspect.operatorActions.some((action) => action.reasonCode === "operator.takeover_annotation"));
+    assert.ok(payload.data.inspect.operatorActions.some((action) => action.reasonCode === "operator.resume_automatic_execution"));
   } finally {
     context.db.close();
     cleanupPath(workspace);

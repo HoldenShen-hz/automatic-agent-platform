@@ -13,7 +13,7 @@ vi.mock("@aa/ui-core", async () => {
 
 vi.mock("../../../../../../packages/features/domain-wizard/src/hooks", () => ({
   useDomainWizardVm: () => ({
-    items: [{ title: "Security", description: "owner <img src=x onerror=alert(1)> · drill 3" }],
+    items: [{ id: "security", title: "Security", description: "owner <img src=x onerror=alert(1)> · drill 3" }],
     steps: [
       { id: "domain-select", label: "选择域", description: "选择要配置的领域" },
       { id: "risk-profile", label: "风险配置", description: "设置风险等级和数据分类" },
@@ -41,6 +41,7 @@ vi.mock("../../../../../../packages/features/domain-wizard/src/hooks", () => ({
       setEnableAutoRollback: vi.fn(),
     },
     submissionMessage: null,
+    isSubmitting: false,
     submitConfig: vi.fn(),
     canGoBack: false,
     canGoNext: false,

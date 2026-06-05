@@ -131,7 +131,34 @@ describe("useWorkflowCockpitVm", () => {
     });
   });
 
-  it("calls workflow control APIs instead of mutating local state only", async () => {
+  it("calls allowed workflow control APIs for running workflows", async () => {
+    mocks.mockClient.get.mockResolvedValue({
+      summary: {
+        taskId: "workflow-1",
+        workflowId: "real_task_execution",
+        workflowStatus: "running",
+        currentStepIndex: 0,
+        divisionId: "growth-ops",
+      },
+      inspect: {
+        task: {
+          id: "workflow-1",
+          title: "Campaign Launch",
+          divisionId: "growth-ops",
+          status: "running",
+        },
+        workflowState: {
+          workflowId: "real_task_execution",
+          status: "running",
+          currentStepIndex: 0,
+          resumableFromStep: "execute",
+        },
+        approvals: [],
+        stepOutputs: [],
+        artifacts: [],
+      },
+    });
+
     const { result } = renderHook(() => useWorkflowCockpitVm());
 
     act(() => {
@@ -141,21 +168,129 @@ describe("useWorkflowCockpitVm", () => {
     await act(async () => {
       await result.current.pauseWorkflow();
       await result.current.cancelWorkflow();
-      await result.current.resumeWorkflow();
-      await result.current.recoverWorkflow();
       await result.current.releaseWorkflow();
     });
 
     expect(mocks.mockPauseWorkflow).toHaveBeenCalledWith(mocks.mockClient, "workflow-1");
     expect(mocks.mockCancelWorkflow).toHaveBeenCalledWith(mocks.mockClient, "workflow-1");
-    expect(mocks.mockResumeWorkflow).toHaveBeenCalledWith(mocks.mockClient, "workflow-1");
-    expect(mocks.mockRecoverWorkflow).toHaveBeenCalledWith(mocks.mockClient, "workflow-1");
     expect(mocks.mockReleaseWorkflow).toHaveBeenCalledWith(mocks.mockClient, "workflow-1");
     expect(mocks.mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ["workflows"] });
 
     await waitFor(() => {
       expect(result.current.activityItems[0]?.title).toContain("Campaign Launch");
     });
+  });
+
+  it("disables invalid actions for paused workflows", async () => {
+    mocks.mockClient.get.mockResolvedValue({
+      summary: {
+        taskId: "workflow-1",
+        workflowId: "real_task_execution",
+        workflowStatus: "paused",
+        currentStepIndex: 0,
+        divisionId: "growth-ops",
+        taskStatus: "awaiting_decision",
+      },
+      inspect: {
+        task: {
+          id: "workflow-1",
+          title: "Campaign Launch",
+          divisionId: "growth-ops",
+          status: "awaiting_decision",
+        },
+        workflowState: {
+          workflowId: "real_task_execution",
+          status: "paused",
+          currentStepIndex: 0,
+          resumableFromStep: "execute",
+        },
+        approvals: [],
+        stepOutputs: [],
+        artifacts: [],
+      },
+    });
+
+    const { result } = renderHook(() => useWorkflowCockpitVm());
+
+    act(() => {
+      result.current.selectWorkflow("workflow-1");
+    });
+
+    await waitFor(() => {
+      expect(result.current.selectedWorkflow?.status).toBe("paused");
+    });
+
+    expect(result.current.controls).toEqual({
+      cancelEnabled: true,
+      pauseEnabled: false,
+      resumeEnabled: true,
+      recoverEnabled: false,
+      releaseEnabled: false,
+    });
+
+    await act(async () => {
+      await result.current.pauseWorkflow();
+      await result.current.recoverWorkflow();
+      await result.current.releaseWorkflow();
+    });
+
+    expect(mocks.mockPauseWorkflow).not.toHaveBeenCalled();
+    expect(mocks.mockRecoverWorkflow).not.toHaveBeenCalled();
+    expect(mocks.mockReleaseWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("enables recovery controls for failed workflows only", async () => {
+    mocks.mockClient.get.mockResolvedValue({
+      summary: {
+        taskId: "workflow-1",
+        workflowId: "real_task_execution",
+        workflowStatus: "failed",
+        currentStepIndex: 0,
+        divisionId: "growth-ops",
+        taskStatus: "failed",
+      },
+      inspect: {
+        task: {
+          id: "workflow-1",
+          title: "Campaign Launch",
+          divisionId: "growth-ops",
+          status: "failed",
+        },
+        workflowState: {
+          workflowId: "real_task_execution",
+          status: "failed",
+          currentStepIndex: 0,
+          resumableFromStep: "execute",
+        },
+        approvals: [],
+        stepOutputs: [],
+        artifacts: [],
+      },
+    });
+
+    const { result } = renderHook(() => useWorkflowCockpitVm());
+
+    act(() => {
+      result.current.selectWorkflow("workflow-1");
+    });
+
+    await waitFor(() => {
+      expect(result.current.selectedWorkflow?.status).toBe("failed");
+    });
+
+    expect(result.current.controls).toEqual({
+      cancelEnabled: false,
+      pauseEnabled: false,
+      resumeEnabled: false,
+      recoverEnabled: true,
+      releaseEnabled: false,
+    });
+
+    await act(async () => {
+      await result.current.recoverWorkflow();
+    });
+
+    expect(mocks.mockRecoverWorkflow).toHaveBeenCalledWith(mocks.mockClient, "workflow-1");
   });
 
   it("reflects upstream workflow query changes without mirroring the full list into local state", async () => {

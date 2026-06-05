@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { translateMessage } from "@aa/shared-i18n";
-import { useDomainConfigsQuery } from "@aa/shared-state";
+import { useAuthState, useDomainConfigsQuery } from "@aa/shared-state";
 
 export type DomainWizardStepId = "domain-select" | "risk-profile" | "capability-config" | "review";
 export type RiskLevel = "low" | "medium" | "high" | "critical";
@@ -19,7 +19,7 @@ export interface DomainWizardPersistedDraft {
 }
 
 export interface DomainWizardVm {
-  readonly items: readonly { title: string; description: string }[];
+  readonly items: readonly { id: string; title: string; description: string }[];
   readonly steps: readonly { id: DomainWizardStepId; label: string; description: string }[];
   readonly currentStep: DomainWizardStepId;
   readonly selectedDomainId: string | null;
@@ -39,10 +39,11 @@ export interface DomainWizardVm {
     setAllowedDrillDepth(value: number): void;
     setEnableAutoRollback(value: boolean): void;
   };
-  readonly catalogItems: readonly { title: string; description: string }[];
+  readonly catalogItems: readonly { id: string; title: string; description: string }[];
   readonly previewRows: readonly { key: string; value: string }[];
   readonly validationErrors: readonly string[];
   readonly submissionMessage: string | null;
+  readonly isSubmitting: boolean;
   readonly canGoBack: boolean;
   readonly canGoNext: boolean;
   setCurrentStep(step: DomainWizardStepId): void;
@@ -50,11 +51,22 @@ export interface DomainWizardVm {
   goBack(): void;
   goNext(): void;
   loadTemplate(domainIdOrName: string): void;
-  submitConfig(): void;
+  submitConfig(): Promise<void>;
 }
 
 const STORAGE_KEY = "aa-domain-wizard-draft";
 const orderedSteps: readonly DomainWizardStepId[] = ["domain-select", "risk-profile", "capability-config", "review"];
+
+function buildMutationHeaders(prefix: string): Headers {
+  const key = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? `${prefix}-${crypto.randomUUID()}`
+    : `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return new Headers({
+    "content-type": "application/json",
+    "Accept-Version": "2026-04-01,2026-01-01",
+    "Idempotency-Key": key,
+  });
+}
 
 function buildStepDescriptors(): DomainWizardVm["steps"] {
   return [
@@ -118,6 +130,7 @@ function normalizePositiveInt(value: number, fallback: number): number {
 }
 
 export function useDomainWizardVm(): DomainWizardVm {
+  const accessToken = useAuthState((state) => state.accessToken);
   const stored = useMemo(readStoredDraft, []);
   const domains = useDomainConfigsQuery().data ?? [];
   const [currentStep, setCurrentStep] = useState<DomainWizardStepId>(stored.currentStep);
@@ -129,9 +142,11 @@ export function useDomainWizardVm(): DomainWizardVm {
   const [allowedDrillDepth, setAllowedDrillDepth] = useState(stored.allowedDrillDepth);
   const [enableAutoRollback, setEnableAutoRollback] = useState(stored.enableAutoRollback);
   const [submissionMessage, setSubmissionMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const items = useMemo(() => domains.map((domain) => ({
+    id: domain.id,
     title: domain.displayName,
     description: translateMessage("ui.domainWizard.domainItem.description", {
       owner: domain.owner,
@@ -228,14 +243,14 @@ export function useDomainWizardVm(): DomainWizardVm {
   }, [domains, persist]);
 
   const previewRows = useMemo(() => [
-    { key: translateMessage("ui.domainWizard.preview.domain"), value: selectedDomainId ?? translateMessage("ui.domainWizard.value.unspecified") },
+    { key: translateMessage("ui.domainWizard.preview.domain"), value: domains.find((domain) => domain.id === selectedDomainId)?.displayName ?? selectedDomainId ?? translateMessage("ui.domainWizard.value.unspecified") },
     { key: translateMessage("ui.domainWizard.preview.riskLevel"), value: riskLevel },
     { key: translateMessage("ui.domainWizard.preview.dataClassification"), value: dataClassification },
     { key: translateMessage("ui.domainWizard.preview.externalIntegrations"), value: hasExternalIntegration ? translateMessage("ui.domainWizard.value.enabled") : translateMessage("ui.domainWizard.value.disabled") },
     { key: translateMessage("ui.domainWizard.preview.maxConcurrentTasks"), value: String(maxConcurrentTasks) },
     { key: translateMessage("ui.domainWizard.preview.allowedDrillDepth"), value: String(allowedDrillDepth) },
     { key: translateMessage("ui.domainWizard.preview.autoRollback"), value: enableAutoRollback ? translateMessage("ui.domainWizard.value.enabled") : translateMessage("ui.domainWizard.value.disabled") },
-  ], [allowedDrillDepth, dataClassification, enableAutoRollback, hasExternalIntegration, maxConcurrentTasks, riskLevel, selectedDomainId]);
+  ], [allowedDrillDepth, dataClassification, domains, enableAutoRollback, hasExternalIntegration, maxConcurrentTasks, riskLevel, selectedDomainId]);
 
   return {
     items,
@@ -282,8 +297,9 @@ export function useDomainWizardVm(): DomainWizardVm {
     previewRows,
     validationErrors,
     submissionMessage,
+    isSubmitting,
     canGoBack: currentIndex > 0,
-    canGoNext: validationErrors.length === 0,
+    canGoNext: validationErrors.length === 0 && !isSubmitting,
     setCurrentStep(step) {
       setCurrentStep(step);
       persist({ currentStep: step });
@@ -306,11 +322,63 @@ export function useDomainWizardVm(): DomainWizardVm {
       persist({ currentStep: nextStep });
     },
     loadTemplate: applyDomainTemplate,
-    submitConfig() {
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(STORAGE_KEY);
+    async submitConfig() {
+      if (selectedDomainId == null) {
+        setSubmissionMessage(translateMessage("ui.domainWizard.validation.selectDomain"));
+        return;
       }
-      setSubmissionMessage(translateMessage("ui.domainWizard.submitted"));
+      const selectedDomain = domains.find((domain) => domain.id === selectedDomainId);
+      if (selectedDomain == null) {
+        setSubmissionMessage(translateMessage("ui.domainWizard.validation.selectDomain"));
+        return;
+      }
+      setIsSubmitting(true);
+      setSubmissionMessage(null);
+      const packId = `domain-${selectedDomain.id}-${Date.now().toString(36)}`;
+      try {
+        const headers = buildMutationHeaders("domain-wizard-pack");
+        if (accessToken.length > 0) {
+          headers.set("authorization", `Bearer ${accessToken}`);
+        }
+        const response = await fetch("/api/v1/packs", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            packId,
+            name: `${selectedDomain.displayName} starter pack`,
+            version: "0.1.0",
+            domainId: selectedDomain.id,
+            description: JSON.stringify({
+              source: "domain-wizard",
+              riskLevel,
+              dataClassification,
+              hasExternalIntegration,
+              maxConcurrentTasks,
+              allowedDrillDepth,
+              enableAutoRollback,
+            }),
+            riskMatrix: [{
+              riskId: `risk-${riskLevel}`,
+              level: riskLevel,
+              mitigation: `classification:${dataClassification}`,
+              escalationPolicy: hasExternalIntegration ? "manual_review_required" : "standard_review",
+            }],
+            sandboxTier: hasExternalIntegration ? "scoped_external_access" : "workspace_write",
+          }),
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+          throw new Error(payload?.error?.message ?? `domain_wizard.submit_failed:${response.status}`);
+        }
+        if (typeof window !== "undefined") {
+          window.localStorage.removeItem(STORAGE_KEY);
+        }
+        setSubmissionMessage(`Pack ${packId} 已提交到后端目录。`);
+      } catch (error) {
+        setSubmissionMessage(error instanceof Error ? error.message : "domain_wizard.submit_failed");
+      } finally {
+        setIsSubmitting(false);
+      }
     },
   };
 }

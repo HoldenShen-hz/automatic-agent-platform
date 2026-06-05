@@ -10,22 +10,27 @@ export function TakeoverWebView(): ReactElement {
   return (
     <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Partial">
       <p style={{ marginTop: 0 }}>
-        人工批注当前只保存在浏览器本地历史中；后端 takeover annotation / audit 接口尚未提供。
+        接管、批注与恢复动作现在都会写入后端 takeover session 与 operator action 审计链，页面不再使用浏览器本地历史充当真实状态。
       </p>
-      <p style={{ marginTop: 0 }}>
-        “恢复任务运行” 当前只会把任务重新写回 `running` 状态，不会把 owner 从人工接管切回自动执行；后端 restore-automation 接口尚未提供。
-      </p>
+      {vm.errorMessage != null ? (
+        <p style={{ marginTop: 0, color: "#b42318" }}>
+          {vm.errorMessage}
+        </p>
+      ) : null}
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[
           { id: "takeover-start", label: "接管当前任务", tone: "danger", disabled: !vm.canTakeover, onTrigger: () => vm.takeoverCurrentTask("web-operator") },
           { id: "takeover-annotate", label: "添加人工批注", tone: "neutral", disabled: !vm.canAnnotate, onTrigger: () => vm.annotateCurrentSnapshot("manual-note", "web-operator") },
           { id: "takeover-resume", label: "恢复任务运行", tone: "accent", disabled: !vm.canResume, onTrigger: () => vm.resumeAutomaticExecution("web-operator") },
+          { id: "takeover-refresh", label: "刷新接管快照", tone: "neutral", onTrigger: () => vm.refresh() },
         ]}
       />
       <section aria-label="Current takeover snapshot" style={{ display: "grid", gap: 12, marginTop: 16 }}>
         <h3 style={{ margin: 0 }}>Current snapshot</h3>
-        {snapshot == null ? (
+        {vm.loading ? (
+          <p style={{ margin: 0 }}>Loading takeover snapshot...</p>
+        ) : snapshot == null ? (
           <p style={{ margin: 0 }}>No takeover snapshot captured yet.</p>
         ) : (
           <div style={{ display: "grid", gap: 12 }}>

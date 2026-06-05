@@ -2,6 +2,7 @@ import { readJsonBody } from "../http-server/utils.js";
 import { sanitizeJsonValue } from "./sanitize.js";
 import { ApiError } from "../http-server/api-error.js";
 import type { ApiRequestLike } from "../http-server/types.js";
+import { ZodError } from "zod";
 
 interface ContractEnvelopeLike {
   readonly envelopeId: string;
@@ -90,7 +91,22 @@ export function readValidatedJsonBody<T>(
 ): T {
   const parsed = readJsonBody(body);
   const sanitized = sanitizeJsonValue(parsed);
-  return parser(unwrapContractEnvelopePayload(sanitized));
+  try {
+    return parser(unwrapContractEnvelopePayload(sanitized));
+  } catch (error) {
+    if (error instanceof ZodError) {
+      throw new ApiError(400, "api.invalid_request_body", "Request body failed validation.", {
+        details: {
+          issues: error.issues.map((issue) => ({
+            code: issue.code,
+            message: issue.message,
+            path: issue.path,
+          })),
+        },
+      });
+    }
+    throw error;
+  }
 }
 
 function unwrapContractEnvelopePayload(value: unknown): unknown {

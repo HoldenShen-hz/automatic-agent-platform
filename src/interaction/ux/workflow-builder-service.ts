@@ -29,6 +29,7 @@ import type {
 export interface WorkflowBuilderRecord {
   readonly draftId: string;
   readonly taskId: string;
+  readonly title?: string;
   readonly builderJson: string;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -92,6 +93,7 @@ export class DurableWorkflowBuilderRepository implements WorkflowBuilderReposito
       0,
       JSON.stringify({
         draftId: record.draftId,
+        ...(record.title == null ? {} : { title: record.title }),
         builderJson: record.builderJson,
         createdAt: record.createdAt,
       }),
@@ -282,6 +284,7 @@ function parseStoredWorkflowBuilderRecord(
   return {
     draftId: envelope["draftId"],
     taskId: workflowState.taskId,
+    ...(typeof envelope["title"] === "string" ? { title: envelope["title"] } : {}),
     builderJson: envelope["builderJson"],
     createdAt: envelope["createdAt"],
     updatedAt: workflowState.updatedAt,
@@ -778,8 +781,10 @@ export class WorkflowBuilderService {
   public saveWorkflow(input: {
     readonly draftId?: string;
     readonly taskId?: string;
+    readonly title?: string;
     readonly builder: VisualWorkflowBuilder;
     readonly ownerUserId?: string;
+    readonly createdAt?: string;
   }): WorkflowBuilderRecord | null {
     if (this.repository == null) {
       return null;
@@ -790,8 +795,9 @@ export class WorkflowBuilderService {
     const record: WorkflowBuilderRecord = {
       draftId,
       taskId,
+      ...(input.title == null ? {} : { title: input.title }),
       builderJson: JSON.stringify(input.builder),
-      createdAt: now,
+      createdAt: input.createdAt ?? now,
       updatedAt: now,
     };
     this.repository.saveWorkflow(record);

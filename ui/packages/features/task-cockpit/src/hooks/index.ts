@@ -138,6 +138,13 @@ function mapStepOutputStatus(status: TaskCockpitStepOutput["status"]): WorkflowR
   }
 }
 
+function isImmutableTaskStatus(status: TaskDTO["status"] | string | undefined): boolean {
+  return status === "completed"
+    || status === "done"
+    || status === "cancelled"
+    || status === "superseded";
+}
+
 function buildDrillDownSteps(
   task: TaskDTO | null,
   cockpit: TaskCockpitResponse,
@@ -394,13 +401,21 @@ export function useTaskCockpitVm(): TaskCockpitVm {
     const cockpit = await client.get<TaskCockpitResponse>(`/v1/tasks/${encodeURIComponent(taskId)}`);
     const task = visibleTasks.find((candidate) => candidate.id === taskId) ?? null;
     const steps = buildDrillDownSteps(task, cockpit);
-    const hasWorkflowControl = cockpit.inspect?.workflowState != null || cockpit.snapshot?.workflow != null;
+    const hasLiveWorkflowRecord = cockpit.inspect?.workflowState != null || cockpit.snapshot?.workflow != null;
+    const immutableTask = isImmutableTaskStatus(task?.status);
+    const hasWorkflowControl = hasLiveWorkflowRecord && !immutableTask;
     setServerEvidenceChain(buildEvidenceItemsFromCockpit(taskId, cockpit));
     setServerTimelineItems(buildTimelineItemsFromCockpit(cockpit));
     setDrillDownSteps(steps);
     setSelectedStepId(steps[0]?.id ?? null);
     setWorkflowControlsAvailable(hasWorkflowControl);
-    setWorkflowControlReason(hasWorkflowControl ? null : "This task does not have a live workflow control record, so pause/retry/resume controls are unavailable.");
+    setWorkflowControlReason(
+      hasWorkflowControl
+        ? null
+        : immutableTask
+          ? "This task is already terminal and no longer accepts ownership, escalation, or workflow control actions."
+          : "This task does not have a live workflow control record, so pause/retry/resume controls are unavailable.",
+    );
   }, [client, visibleTasks]);
 
   const selectTask = useCallback((id: string) => {

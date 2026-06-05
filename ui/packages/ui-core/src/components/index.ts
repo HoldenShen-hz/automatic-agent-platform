@@ -1,4 +1,5 @@
 import { createElement, useEffect, useMemo, useState, type ChangeEvent, type KeyboardEvent, type PropsWithChildren, type ReactElement, type ReactNode } from "react";
+import { copyTextToClipboard } from "@aa/shared-platform";
 import type { ImplementationStatus } from "@aa/shared-types";
 import { createPanelStyle, designTokens } from "../design-tokens";
 import { Inline, LayoutFrame, Stack, ThreePaneLayout } from "../layouts";
@@ -144,7 +145,7 @@ export function buildWorkbenchActionHandler(
   return async (item) => {
     if (options.copySelection && item != null) {
       const summary = `${item.title}\n${item.description}`;
-      await globalThis.navigator?.clipboard?.writeText?.(summary);
+      await copyTextToClipboard(summary);
     }
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("aa:feature-workbench-action", {

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RealTaskExecutionService } from "../../../../../src/platform/five-plane-interface/api/real-task-execution-service.js";
+import {
+  buildRealTaskMarkdownPrompt,
+  RealTaskExecutionService,
+} from "../../../../../src/platform/five-plane-interface/api/real-task-execution-service.js";
 
 function createStoreMock() {
   const taskStatusCalls: Array<{ taskId: string; status: string; updatedAt: string; errorCode?: string | null; completedAt?: string | null }> = [];
@@ -143,4 +146,29 @@ test("RealTaskExecutionService records failed step output and workflow failure o
     mock.eventCalls.map((event) => (event as { eventType?: string }).eventType),
     ["workflow:step_started", "workflow:step_failed"],
   );
+});
+
+test("buildRealTaskMarkdownPrompt keeps the original task intent instead of hardcoded report templates", () => {
+  const prompt = buildRealTaskMarkdownPrompt(
+    {
+      taskId: "task-prompt-1",
+      title: "请用一句中文确认 minimax m2.7 前端回显链路正常",
+      divisionId: "platform",
+      requestedBy: "tester",
+    },
+    {
+      humanSummary: "我将把请求路由到 design，使用工作流 design_single_step，预估成本 $0.05，风险等级 low，需要先完成澄清",
+    },
+    {
+      tasks: [
+        { domainId: "platform", description: "核对真实任务执行与前端回显状态" },
+      ],
+    },
+  );
+
+  assert.match(prompt, /严格围绕任务主题本身作答/);
+  assert.match(prompt, /以任务主题为准/);
+  assert.match(prompt, /请用一句中文确认 minimax m2\.7 前端回显链路正常/);
+  assert.doesNotMatch(prompt, /5-8 类能提升代码工作效率\/质量的方法/);
+  assert.doesNotMatch(prompt, /30\/60\/90 天执行计划/);
 });

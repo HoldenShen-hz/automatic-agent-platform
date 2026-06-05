@@ -2,7 +2,7 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { Accordion, Drawer, PieChart, SegmentedControl, Stepper, Tabs, Toast, Tooltip } from "../../../../../packages/ui-core/src/components/extended.tsx";
-import { ListCard } from "../../../../../packages/ui-core/src/components/index.ts";
+import { buildWorkbenchActionHandler, ListCard } from "../../../../../packages/ui-core/src/components/index.ts";
 import { ThreePaneLayout } from "../../../../../packages/ui-core/src/layouts/index.ts";
 
 describe("ui-core component and layout baselines", () => {
@@ -125,5 +125,36 @@ describe("ui-core component and layout baselines", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Activate mission" }));
     expect(onAction).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps workbench copy actions best-effort when the browser clipboard API rejects", async () => {
+    const originalClipboard = navigator.clipboard;
+    const writeText = vi.fn().mockRejectedValue(new Error("Document is not focused"));
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, "execCommand", {
+      configurable: true,
+      value: execCommand,
+    });
+
+    const eventListener = vi.fn();
+    window.addEventListener("aa:feature-workbench-action", eventListener as EventListener);
+
+    const action = buildWorkbenchActionHandler("workers", "copy", { copySelection: true });
+    await expect(action({ id: "worker-1", title: "Worker", description: "offline" })).resolves.toBeUndefined();
+
+    expect(writeText).toHaveBeenCalledWith("Worker\noffline");
+    expect(execCommand).toHaveBeenCalledWith("copy");
+    expect(eventListener).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener("aa:feature-workbench-action", eventListener as EventListener);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: originalClipboard,
+    });
   });
 });

@@ -183,7 +183,7 @@ export function TaskCockpitWebView(): ReactElement {
                 placeholder={translateMessage("ui.taskCockpit.operatorPlaceholder")}
                 value={operator}
               />
-              <button type="submit">{translateMessage("ui.taskCockpit.takeOver")}</button>
+              <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} type="submit">{translateMessage("ui.taskCockpit.takeOver")}</button>
               <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} onClick={() => { void vm.pauseTask(); }} type="button">{translateMessage("ui.taskCockpit.pause")}</button>
               <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} onClick={() => { void vm.cancelTask(); }} type="button">{translateMessage("ui.taskCockpit.cancel")}</button>
               <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} onClick={() => { void vm.retryTask(); }} type="button">{translateMessage("ui.taskCockpit.retry")}</button>
@@ -205,7 +205,7 @@ export function TaskCockpitWebView(): ReactElement {
                 placeholder={translateMessage("ui.taskCockpit.targetPlaceholder")}
                 value={target}
               />
-              <button type="submit">{translateMessage("ui.taskCockpit.escalate")}</button>
+              <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} type="submit">{translateMessage("ui.taskCockpit.escalate")}</button>
               </Inline>
             </form>
           </Stack>

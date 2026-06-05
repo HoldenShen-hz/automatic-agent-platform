@@ -1,4 +1,5 @@
 import { DefaultPlatformAdapter } from "./base-platform-adapter";
+import { copyTextToClipboard } from "./clipboard.js";
 
 const LOCAL_FILE_PREFIX = "aa.file.";
 const MAX_FILE_STORAGE_BYTES = 256 * 1024;
@@ -21,7 +22,7 @@ export class WebPlatformAdapter extends DefaultPlatformAdapter {
   }
 
   public override async copyToClipboard(text: string): Promise<void> {
-    await globalThis.navigator?.clipboard?.writeText?.(text);
+    await copyTextToClipboard(text);
     await super.copyToClipboard(text);
   }
 

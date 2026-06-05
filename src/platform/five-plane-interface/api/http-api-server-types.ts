@@ -10,6 +10,7 @@ import type { ArtifactPlaneService } from "../../five-plane-state-evidence/artif
 import type { KnowledgePlaneService } from "../../five-plane-state-evidence/knowledge/knowledge-plane-service.js";
 import type { MissionRepository } from "../../five-plane-state-evidence/truth/mission-repository.js";
 import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { InspectService } from "../../shared/observability/inspect-service.js";
 import type { ChannelGatewayService } from "../channel-gateway/channel-gateway-service.js";
 import type { ChannelGatewayDeliveryService } from "../channel-gateway/channel-gateway-delivery-service.js";
@@ -60,6 +61,7 @@ export interface HttpApiServerOptions {
   domainRegistryService?: DomainRegistryService | null;
   pluginRegistry?: PluginSpiRegistry | null;
   taskStore?: AuthoritativeTaskStore | null;
+  db?: AuthoritativeSqlDatabase | null;
   intakeAdmissionService?: IntakeAdmissionService | null;
   realTaskExecutionService?: RealTaskExecutionService | null;
   rateLimiter?: DistributedRateLimiter | null;

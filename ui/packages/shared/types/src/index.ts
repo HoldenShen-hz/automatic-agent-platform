@@ -248,6 +248,53 @@ export interface WorkflowDTO {
   readonly evidenceRefs?: readonly WorkflowEvidenceRefDTO[];
 }
 
+export interface WorkflowBuilderDraftDTO {
+  readonly draftId: string;
+  readonly taskId: string;
+  readonly title: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly builder: {
+    readonly canvas: {
+      readonly nodes: readonly {
+        readonly nodeId: string;
+        readonly componentId: string;
+        readonly label: string;
+      }[];
+      readonly edges: readonly {
+        readonly fromNodeId: string;
+        readonly toNodeId: string;
+      }[];
+    };
+    readonly componentPalette: readonly {
+      readonly category: "trigger" | "action" | "condition" | "approval" | "output";
+      readonly components: readonly {
+        readonly componentId: string;
+        readonly name: string;
+        readonly icon: string;
+        readonly domainId: string;
+        readonly riskLevel: "low" | "medium" | "high" | "critical";
+        readonly previewDescription: string;
+      }[];
+    }[];
+    readonly livePreview: {
+      readonly estimatedDuration: string;
+      readonly estimatedCost: string;
+      readonly riskAssessment: string;
+      readonly stepByStepDescription: readonly string[];
+    };
+    readonly validation: {
+      readonly valid: boolean;
+      readonly messages: readonly string[];
+    };
+    readonly progressiveDisclosure: {
+      readonly level: "minimal" | "guided" | "governed";
+      readonly hiddenCategories: readonly string[];
+      readonly defaultExpandedCategories: readonly string[];
+    };
+  };
+}
+
 export interface WorkflowRunStepDTO {
   readonly id: string;
   readonly title: string;
@@ -369,7 +416,12 @@ export interface CostReportDTO {
   readonly id: string;
   readonly scope: string;
   readonly amountUsd: number;
-  readonly budgetUsd: number;
+  readonly budgetUsd: number | null;
+  readonly currency?: string;
+  readonly periodStart?: string;
+  readonly periodEnd?: string;
+  readonly resourceCount?: number;
+  readonly submittedBy?: string;
 }
 
 export interface MarketplacePackDTO {

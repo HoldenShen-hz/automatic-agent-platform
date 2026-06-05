@@ -1,6 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel, KeyValueTable, ListCard } from "@aa/ui-core";
 import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
+import { copyTextToClipboard } from "@aa/shared-platform";
 import { useReleaseConsoleVm } from "../hooks";
 function statusTone(status) {
     if (status === "revoked" || status === "expired" || status === "blocked" || status === "expired_allowlist" || status === "rejected") {
@@ -17,12 +18,18 @@ function GovernanceSection(props) {
 function GovernanceRow(props) {
     return (_jsxs("div", { style: { display: "grid", gap: 8, padding: 12, borderRadius: 10, background: "#ffffff", border: "1px solid #e7e5e4" }, children: [_jsxs("div", { style: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }, children: [_jsx("strong", { children: props.title }), _jsx("span", { style: { color: statusTone(props.status), fontWeight: 700 }, children: props.status })] }), _jsx("div", { style: { color: "#44403c", whiteSpace: "pre-wrap" }, children: props.description }), props.action ?? null] }));
 }
+function buildScannerHitKey(hit, index) {
+    return `${hit.filePath}:${hit.lineNumber}:${hit.matchedText}:${index}`;
+}
+function buildAllowlistKey(entry, index) {
+    return `${entry.filePath}:${entry.matchedText}:${entry.owner}:${entry.expiresAt ?? "none"}:${index}`;
+}
 export function ReleaseConsoleWebView() {
     const vm = useReleaseConsoleVm();
     const featureCopy = translateFeatureCopy("release-console");
     async function copySummary() {
         const summary = vm.summaryRows.map((row) => `${row.key}: ${row.value}`).join("\n");
-        await globalThis.navigator?.clipboard?.writeText?.(summary);
+        await copyTextToClipboard(summary);
     }
     return (_jsx(FeatureScaffold, { title: featureCopy.title, summary: featureCopy.summary, status: "Implemented/Internal", children: _jsxs("div", { children: [_jsx(FeatureWorkbenchPanel, { items: vm.items, actions: [
                     { id: "release-console-refresh", label: "刷新治理快照", tone: "accent", onTrigger: () => vm.refresh(), activityDescription: "已从真实后端刷新发布治理快照。" },
@@ -53,14 +60,14 @@ export function LeadershipClaimsWebView() {
                                         `Freshness: ${claim.freshnessStatus}`,
                                         `Reason: ${claim.effectiveStatusReasonCode ?? "n/a"}`,
                                         `Revoked by: ${claim.revokedBy ?? "n/a"}`,
-                                    ].join("\n"), action: claim.effectiveStatus === "approved" ? (_jsx("button", { type: "button", disabled: vm.mutating, onClick: () => void vm.revokeClaim(claim.claimId), children: "Revoke claim" })) : undefined }, claim.claimId))) }) }), _jsx(GovernanceSection, { title: "Scanner hits", children: _jsx("div", { style: { display: "grid", gap: 12 }, children: vm.leadershipClaims.scannerHits.map((hit) => (_jsx(GovernanceRow, { title: `${hit.status} · ${hit.matchedText}`, status: hit.status, description: `${hit.filePath}:${hit.lineNumber}\n${hit.excerpt}\n${hit.reason ?? "unreviewed"}` }, `${hit.filePath}:${hit.lineNumber}:${hit.matchedText}`))) }) }), _jsx(GovernanceSection, { title: "Allowlist entries", children: _jsx("div", { style: { display: "grid", gap: 12 }, children: vm.leadershipClaims.allowlist.map((entry) => (_jsx(GovernanceRow, { title: `${entry.expired ? "expired_allowlist" : "allowlist"} · ${entry.matchedText}`, status: entry.expired ? "expired_allowlist" : "allowlisted", description: [
+                                    ].join("\n"), action: claim.effectiveStatus === "approved" ? (_jsx("button", { type: "button", disabled: vm.mutating, onClick: () => void vm.revokeClaim(claim.claimId), children: "Revoke claim" })) : undefined }, claim.claimId))) }) }), _jsx(GovernanceSection, { title: "Scanner hits", children: _jsx("div", { style: { display: "grid", gap: 12 }, children: vm.leadershipClaims.scannerHits.map((hit, index) => (_jsx(GovernanceRow, { title: `${hit.status} · ${hit.matchedText}`, status: hit.status, description: `${hit.filePath}:${hit.lineNumber}\n${hit.excerpt}\n${hit.reason ?? "unreviewed"}` }, buildScannerHitKey(hit, index)))) }) }), _jsx(GovernanceSection, { title: "Allowlist entries", children: _jsx("div", { style: { display: "grid", gap: 12 }, children: vm.leadershipClaims.allowlist.map((entry, index) => (_jsx(GovernanceRow, { title: `${entry.expired ? "expired_allowlist" : "allowlist"} · ${entry.matchedText}`, status: entry.expired ? "expired_allowlist" : "allowlisted", description: [
                                         `${entry.filePath}`,
                                         `Owner: ${entry.owner}`,
                                         `Claim level: ${entry.claimLevel ?? "n/a"} / Surface: ${entry.surface ?? "n/a"}`,
                                         `Expires: ${entry.expiresAt ?? "n/a"}`,
                                         `Replacement: ${entry.replacementSuggestion ?? "n/a"}`,
                                         `Reason: ${entry.reason}`,
-                                    ].join("\n") }, `${entry.filePath}:${entry.matchedText}`))) }) }), _jsx(GovernanceSection, { title: "Review requests", children: _jsx("div", { style: { display: "grid", gap: 12 }, children: vm.leadershipClaims.reviewRequests.map((request) => (_jsx(GovernanceRow, { title: `${request.familyId} · ${request.requestedClaimLevel} · ${request.status}`, status: request.status, description: [
+                                    ].join("\n") }, buildAllowlistKey(entry, index)))) }) }), _jsx(GovernanceSection, { title: "Review requests", children: _jsx("div", { style: { display: "grid", gap: 12 }, children: vm.leadershipClaims.reviewRequests.map((request) => (_jsx(GovernanceRow, { title: `${request.familyId} · ${request.requestedClaimLevel} · ${request.status}`, status: request.status, description: [
                                         `${request.requestedBy} / ${request.rationale}`,
                                         `Surfaces: ${request.requestedSurfaces.join(", ")}`,
                                         `Evidence: ${request.evidenceRefs.join(", ") || "n/a"}`,

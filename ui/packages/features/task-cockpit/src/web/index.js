@@ -189,7 +189,7 @@ function TaskCockpitWebView() {
                     value: operator
                   }
                 ),
-                /* @__PURE__ */ jsx("button", { type: "submit", children: translateMessage("ui.taskCockpit.takeOver") }),
+                /* @__PURE__ */ jsx("button", { disabled: !vm.workflowControlsAvailable || vm.pendingOperations > 0, type: "submit", children: translateMessage("ui.taskCockpit.takeOver") }),
                 /* @__PURE__ */ jsx("button", { disabled: !vm.workflowControlsAvailable || vm.pendingOperations > 0, onClick: () => {
                   void vm.pauseTask();
                 }, type: "button", children: translateMessage("ui.taskCockpit.pause") }),
@@ -226,7 +226,7 @@ function TaskCockpitWebView() {
                     value: target
                   }
                 ),
-                /* @__PURE__ */ jsx("button", { type: "submit", children: translateMessage("ui.taskCockpit.escalate") })
+                /* @__PURE__ */ jsx("button", { disabled: !vm.workflowControlsAvailable || vm.pendingOperations > 0, type: "submit", children: translateMessage("ui.taskCockpit.escalate") })
               ] })
             }
           )
