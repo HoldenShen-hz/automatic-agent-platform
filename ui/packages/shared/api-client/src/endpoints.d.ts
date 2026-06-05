@@ -1,10 +1,30 @@
-import type { AgentDTO, AnalyticsMetricDTO, ApprovalDTO, CostReportDTO, DashboardSnapshotDTO, DomainConfigDTO, ExplanationDTO, FeatureFlagDTO, IncidentDTO, KnowledgeItemDTO, MarketplacePackDTO, MissionBudgetSummaryDTO, MissionDTO, MissionMemberDTO, MissionResourceDTO, ModelConfigDTO, PackVersionDTO, PluginDTO, PromptDTO, QueueDTO, RoleDTO, SystemConfigDTO, TaskDTO, TenantDTO, UserDTO, UserPreferenceDTO, WebhookDTO, WorkerDTO, WorkflowRunStepDTO, WorkflowDTO } from "@aa/shared-types";
+import type { AgentDTO, AnalyticsMetricDTO, ApprovalDTO, CostReportDTO, DashboardSnapshotDTO, DomainConfigDTO, ExplanationDTO, FeatureFlagDTO, HealthStatusReportDTO, IncidentDTO, KnowledgeItemDTO, MarketplacePackDTO, MissionBudgetSummaryDTO, MissionDTO, MissionMemberDTO, MissionResourceDTO, ModelConfigDTO, PackVersionDTO, PluginDTO, PromptDTO, QueueDTO, RoleDTO, SystemConfigDTO, TaskDTO, TenantDTO, UserDTO, UserPreferenceDTO, WebhookDTO, WorkerDTO, WorkflowRunStepDTO, WorkflowDTO } from "@aa/shared-types";
 import type { RESTClient } from "./rest-client";
 export interface ListQueryParams {
     readonly page?: number;
     readonly pageSize?: number;
     readonly sort?: string;
     readonly filter?: string;
+}
+export interface CreateTaskInput {
+    readonly [key: string]: unknown;
+    readonly id?: string;
+    readonly title: string;
+    readonly domainId?: string;
+    readonly divisionId?: string;
+    readonly owner?: string;
+    readonly status?: string;
+    readonly parentId?: string;
+    readonly inputJson?: string;
+    readonly priority?: "low" | "normal" | "high" | "urgent";
+    readonly source?: "user" | "perception" | "system";
+}
+export interface CreateTaskResponse {
+    readonly snapshot?: {
+        readonly task?: {
+            readonly id?: string;
+        };
+    };
 }
 export interface EndpointDefinition<TResponse = unknown, TRequestBody = never, TPathParams = never, TQueryParams = never> {
     readonly id: string;
@@ -22,6 +42,13 @@ export type EndpointRequestBody<TEndpoint extends EndpointDefinition> = TEndpoin
 export type EndpointPathParams<TEndpoint extends EndpointDefinition> = TEndpoint extends EndpointDefinition<unknown, unknown, infer TPathParams, unknown> ? TPathParams : never;
 export type EndpointQueryParams<TEndpoint extends EndpointDefinition> = TEndpoint extends EndpointDefinition<unknown, unknown, unknown, infer TQueryParams> ? TQueryParams : never;
 export declare const endpointCatalog: {
+    healthReport: {
+        id: string;
+        path: string;
+        method: "GET";
+        apiLayer: "A";
+        planned: false;
+    };
     dashboardSnapshot: {
         id: string;
         path: string;
@@ -465,11 +492,9 @@ export declare const endpointCatalog: {
     };
 };
 export declare function fetchDashboardSnapshot(client: RESTClient): Promise<DashboardSnapshotDTO>;
+export declare function fetchHealthReport(client: RESTClient): Promise<HealthStatusReportDTO>;
 export declare function fetchTasks(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly TaskDTO[]>;
-export declare function createTask(client: RESTClient, body: Partial<TaskDTO>): Promise<{
-    ok: true;
-    body?: unknown;
-}>;
+export declare function createTask(client: RESTClient, body: CreateTaskInput): Promise<CreateTaskResponse>;
 export declare function updateTask(client: RESTClient, taskId: string, body: Partial<TaskDTO>): Promise<{
     ok: true;
     body?: unknown;
@@ -547,7 +572,20 @@ export declare function submitApprovalTextInput(client: RESTClient, approvalId: 
 }>;
 export declare function fetchIncidents(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly IncidentDTO[]>;
 export declare function fetchWorkers(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly WorkerDTO[]>;
+export declare function drainWorkers(client: RESTClient): Promise<{
+    drainedWorkerIds: readonly string[];
+    drainedCount: number;
+    totalWorkers: number;
+    workers: readonly WorkerDTO[];
+}>;
 export declare function fetchQueues(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly QueueDTO[]>;
+export declare function cleanupRetryQueue(client: RESTClient): Promise<{
+    cleanedTaskIds: readonly string[];
+    invalidatedTicketIds: readonly string[];
+    cleanedCount: number;
+    queues: readonly QueueDTO[];
+    total: number;
+}>;
 export declare function fetchAgents(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly AgentDTO[]>;
 export declare function fetchAnalytics(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly AnalyticsMetricDTO[]>;
 export declare function fetchCosts(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly CostReportDTO[]>;

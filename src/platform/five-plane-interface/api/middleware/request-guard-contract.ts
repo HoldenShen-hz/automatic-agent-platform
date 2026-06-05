@@ -14,6 +14,7 @@ export interface RequestGuardPlanInput {
 }
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const AUTH_TOKEN_PATHS = new Set(["/auth/token", "/v1/auth/token"]);
 
 export function buildRequestGuardPlan(input: RequestGuardPlanInput): RequestGuardPlan {
   const method = input.method.toUpperCase();
@@ -22,8 +23,9 @@ export function buildRequestGuardPlan(input: RequestGuardPlanInput): RequestGuar
   const path = input.path;
   const idempotencyKey = normalizeOptionalString(input.idempotencyKey);
   const isWebhookReceivePath = path === "/v1/webhooks" || path?.startsWith("/v1/webhooks/") === true;
+  const isAuthTokenPath = path != null && AUTH_TOKEN_PATHS.has(path);
 
-  if (WRITE_METHODS.has(method) && idempotencyKey == null && !isWebhookReceivePath) {
+  if (WRITE_METHODS.has(method) && idempotencyKey == null && !isWebhookReceivePath && !isAuthTokenPath) {
     beforeDispatch.push("request-deduplication");
   }
   if (method !== "OPTIONS") {

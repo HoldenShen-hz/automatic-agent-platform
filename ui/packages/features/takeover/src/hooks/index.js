@@ -35,6 +35,38 @@ function commitSnapshots(updater) {
     writeSnapshots(nextSnapshots);
     return nextSnapshots;
 }
+function selectTakeoverCandidate(tasks) {
+    const active = tasks.find((task) => task.status === "running" || task.status === "blocked");
+    if (active != null) {
+        return active;
+    }
+    const queued = tasks.find((task) => task.status === "queued");
+    if (queued != null) {
+        return queued;
+    }
+    return null;
+}
+function buildFallbackSnapshotSteps(task, owner) {
+    return [
+        {
+            id: task.currentStep,
+            title: task.currentStep,
+            status: task.status === "failed" ? "failed" : task.status === "completed" ? "completed" : "running",
+            executor: owner,
+        },
+    ];
+}
+async function resolveSnapshotSteps(client, task, owner) {
+    if (task == null) {
+        return [];
+    }
+    try {
+        return await fetchWorkflowRunSteps(client, task.currentStep);
+    }
+    catch {
+        return buildFallbackSnapshotSteps(task, owner);
+    }
+}
 export function useTakeoverVm() {
     const client = useRestClient();
     const wsClient = useWsClient();
@@ -47,7 +79,7 @@ export function useTakeoverVm() {
     const claimOwnership = useCallback(async (taskId, owner) => {
         const task = tasks.find((candidate) => candidate.id === taskId);
         await updateTask(client, taskId, { owner, status: "running" });
-        const steps = task?.currentStep == null ? [] : await fetchWorkflowRunSteps(client, task.currentStep);
+        const steps = await resolveSnapshotSteps(client, task, owner);
         const snapshot = {
             taskId,
             owner,
@@ -63,7 +95,6 @@ export function useTakeoverVm() {
         await updateTask(client, taskId, {
             owner,
             status: "running",
-            currentStep: `takeover-transfer:${reason}`,
         });
         const baseSnapshot = currentSnapshot ?? readSnapshots()[0] ?? null;
         if (baseSnapshot != null) {
@@ -78,21 +109,21 @@ export function useTakeoverVm() {
         appendHistory({ taskId, owner, action: `transfer:${reason}`, recordedAt: new Date().toISOString() });
     }, [appendHistory, client, currentSnapshot]);
     const takeoverCurrentTask = useCallback(async (owner) => {
-        const firstTask = tasks[0];
-        if (firstTask == null) {
-            return;
+        const candidate = selectTakeoverCandidate(tasks);
+        if (candidate == null) {
+            throw new Error("takeover.no_active_task_available");
         }
-        await claimOwnership(firstTask.id, owner);
+        await claimOwnership(candidate.id, owner);
     }, [claimOwnership, tasks]);
     const annotateCurrentSnapshot = useCallback((note, owner) => {
         if (currentSnapshot == null) {
-            return;
+            throw new Error("takeover.no_snapshot_available");
         }
         appendHistory({ taskId: currentSnapshot.taskId, owner, action: `annotate:${note}`, recordedAt: new Date().toISOString() });
     }, [appendHistory, currentSnapshot]);
     const resumeAutomaticExecution = useCallback(async (owner) => {
         if (currentSnapshot == null) {
-            return;
+            throw new Error("takeover.no_snapshot_available");
         }
         await updateTask(client, currentSnapshot.taskId, { owner, status: "running" });
         appendHistory({ taskId: currentSnapshot.taskId, owner, action: "resume", recordedAt: new Date().toISOString() });
@@ -139,13 +170,16 @@ export function useTakeoverVm() {
         ],
         currentSnapshot,
         ownershipHistory,
+        canTakeover: selectTakeoverCandidate(tasks) != null,
+        canAnnotate: currentSnapshot != null,
+        canResume: currentSnapshot != null,
         claimOwnership,
         transferOwnership,
         restoreFromSnapshot: setCurrentSnapshot,
         takeoverCurrentTask,
         annotateCurrentSnapshot,
         resumeAutomaticExecution,
-    }), [annotateCurrentSnapshot, claimOwnership, currentSnapshot, ownershipHistory, resumeAutomaticExecution, takeoverCurrentTask, transferOwnership]);
+    }), [annotateCurrentSnapshot, claimOwnership, currentSnapshot, ownershipHistory, resumeAutomaticExecution, takeoverCurrentTask, tasks, transferOwnership]);
 }
 function isTakeoverSnapshot(value) {
     if (value == null || typeof value !== "object") {

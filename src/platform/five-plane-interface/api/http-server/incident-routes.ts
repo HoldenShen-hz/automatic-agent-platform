@@ -43,8 +43,9 @@ const createIncidentSchema = z.object({
 }).strict();
 
 const updateIncidentSchema = z.object({
-  status: z.enum(["open", "acknowledged", "mitigating", "resolved"]).optional(),
+  status: z.enum(["open", "acknowledged", "mitigating", "resolved", "closed"]).optional(),
   owner: z.string().optional(),
+  snoozedUntil: z.string().datetime({ offset: true }).nullable().optional(),
 }).strict();
 
 // ─── Route Deps ─────────────────────────────────────────────────────────────
@@ -52,6 +53,22 @@ const updateIncidentSchema = z.object({
 export interface IncidentRouteDeps {
   authService: ApiAuthService | null;
   incidentService: IncidentFacadeService;
+}
+
+function toIncidentDto(incident: IncidentCase) {
+  return {
+    id: incident.incidentId,
+    severity: incident.severity,
+    title: incident.title,
+    summary: `${incident.status} · owner ${incident.owner ?? "unassigned"} · evidence ${incident.linkedEvidenceRefs.length}`,
+    createdAt: incident.createdAt,
+    status: incident.status,
+    owner: incident.owner,
+    updatedAt: incident.updatedAt,
+    resolvedAt: incident.resolvedAt,
+    snoozedUntil: incident.snoozedUntil ?? null,
+    linkedEvidenceRefs: incident.linkedEvidenceRefs,
+  };
 }
 
 // ─── Route Factory ─────────────────────────────────────────────────────────
@@ -69,10 +86,11 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
         const cursor = new URL(urlStr, "http://localhost").searchParams.get("cursor") ?? null;
         const limit = readLimit(ctx.request, 50);
         const { incidents, nextToken } = deps.incidentService.listIncidentsPaginated(limit, tenantId, cursor);
+        const incidentDtos = incidents.map((incident) => toIncidentDto(incident));
 
         const response: Record<string, unknown> = {
-          incidents,
-          total: incidents.length,
+          incidents: incidentDtos,
+          total: incidentDtos.length,
         };
         if (nextToken != null) {
           response.nextCursor = nextToken;
@@ -105,7 +123,7 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
           throw new ApiError(404, "incident.not_found", "Incident not found.");
         }
 
-        return buildJsonResponse(ctx.requestId, 200, incident);
+        return buildJsonResponse(ctx.requestId, 200, toIncidentDto(incident));
       },
     },
     {
@@ -123,7 +141,7 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
           tenantId,
         });
 
-        return buildJsonResponse(ctx.requestId, 201, incident);
+        return buildJsonResponse(ctx.requestId, 201, toIncidentDto(incident));
       },
     },
     {
@@ -154,17 +172,21 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
         }
 
         let updated: IncidentCase;
-        if (payload.status === "acknowledged" && incident.status === "open") {
+        if (payload.snoozedUntil != null) {
+          updated = deps.incidentService.snooze(incidentId, payload.snoozedUntil, tenantId);
+        } else if (payload.status === "acknowledged" && incident.status === "open") {
           updated = deps.incidentService.acknowledge(incidentId, payload.owner ?? principal.actorId, tenantId);
         } else if (payload.status === "mitigating") {
           updated = deps.incidentService.startMitigation(incidentId, tenantId);
         } else if (payload.status === "resolved") {
           updated = deps.incidentService.resolve(incidentId, tenantId);
+        } else if (payload.status === "closed") {
+          updated = deps.incidentService.close(incidentId, tenantId);
         } else {
           throw new ApiError(400, "incident.invalid_transition", `Cannot transition from ${incident.status} to ${payload.status}.`);
         }
 
-        return buildJsonResponse(ctx.requestId, 200, updated);
+        return buildJsonResponse(ctx.requestId, 200, toIncidentDto(updated));
       },
     },
   ];

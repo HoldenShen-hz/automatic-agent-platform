@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -5,11 +7,8 @@ import type { ReactNode } from "react";
 
 const mocks = vi.hoisted(() => ({
   mockClient: { patch: vi.fn(), get: vi.fn() },
-  mockCreateTask: vi.fn(async () => ({ ok: true })),
+  mockCreateTask: vi.fn(async () => ({ snapshot: { task: { id: "task-created-1" } } })),
   mockUpdateTask: vi.fn(async () => ({ ok: true })),
-  mockFetchWorkflowRunSteps: vi.fn(async () => [
-    { id: "step-1", title: "Collect inputs", status: "completed", executor: "agent-1", startedAt: "2026-05-04T00:00:00Z", completedAt: "2026-05-04T00:01:00Z" },
-  ]),
   mockUseTasksQuery: vi.fn(),
 }));
 let taskData: Array<{
@@ -55,7 +54,6 @@ vi.mock("@aa/shared-state", () => ({
 vi.mock("@aa/shared-api-client", () => ({
   createTask: mocks.mockCreateTask,
   updateTask: mocks.mockUpdateTask,
-  fetchWorkflowRunSteps: mocks.mockFetchWorkflowRunSteps,
 }));
 
 import { useTaskCockpitVm } from "../../../../../../packages/features/task-cockpit/src/hooks";
@@ -98,6 +96,46 @@ describe("useTaskCockpitVm", () => {
     mocks.mockUseTasksQuery.mockImplementation(() => ({
       data: taskData,
     }));
+    mocks.mockClient.get.mockImplementation(async (path: string) => {
+      if (path === "/v1/tasks") {
+        return { tasks: taskData };
+      }
+      return {
+        inspect: {
+          workflowState: { currentStepIndex: 1, status: "running", resumableFromStep: "review" },
+          execution: { agentId: "agent-1", startedAt: "2026-05-04T00:00:00Z", finishedAt: null },
+          stepOutputs: [
+            {
+              id: "step-output-1",
+              nodeRunId: "node-1",
+              stepId: "collect-inputs",
+              roleId: "agent-1",
+              status: "succeeded",
+              summary: "Collect inputs",
+              producedAt: "2026-05-04T00:01:00Z",
+            },
+          ],
+          artifacts: [
+            {
+              artifactId: "artifact-1",
+              kind: "report",
+              fileName: "analysis.md",
+              stepId: "collect-inputs",
+            },
+          ],
+        },
+        timeline: {
+          entries: [
+            {
+              id: "timeline-1",
+              title: "dispatch:dispatched",
+              summary: "Dispatch routed to worker-1",
+              occurredAt: "2026-05-04T00:01:30Z",
+            },
+          ],
+        },
+      };
+    });
   });
 
   it("keeps selection empty until the operator explicitly picks a task and enables polling", () => {
@@ -136,7 +174,64 @@ describe("useTaskCockpitVm", () => {
     });
   });
 
+  it("loads drill-down, evidence, and timeline data from the task cockpit endpoint", async () => {
+    const { result } = renderTaskCockpitHook();
+
+    act(() => {
+      result.current.selectTask("task-1");
+    });
+
+    await waitFor(() => {
+      expect(mocks.mockClient.get).toHaveBeenCalledWith("/v1/tasks/task-1");
+      expect(result.current.stepViewer.steps).toEqual([
+        expect.objectContaining({
+          id: "node-1",
+          title: "Collect inputs",
+          status: "completed",
+          executor: "agent-1",
+        }),
+        expect.objectContaining({
+          id: "workflow-run-1",
+          title: "review",
+          status: "running",
+          executor: "agent-1",
+        }),
+      ]);
+      expect(result.current.evidenceViewer.evidenceChain).toEqual([
+        {
+          id: "artifact-1",
+          type: "report",
+          description: "analysis.md",
+        },
+      ]);
+      expect(result.current.timelineViewer.timelineEvents[0]).toEqual({
+        id: "timeline-1",
+        title: "dispatch:dispatched",
+        description: "Dispatch routed to worker-1",
+      });
+    });
+  });
+
   it("creates a task from operator input and selects it optimistically", async () => {
+    taskData = [
+      {
+        id: "task-created-1",
+        title: "Analyze platform alerts and draft a remediation plan",
+        status: "queued",
+        domainId: "platform-ops",
+        currentStep: "intake",
+        owner: "platform-sre",
+        evidenceCount: 0,
+        timelineDepth: 1,
+        executionMode: "real_model",
+        modelCallStatus: "pending",
+        modelProvider: "minimax",
+        modelName: "minimax-m2.7",
+        outputSummary: null,
+        outputUri: null,
+      },
+      ...taskData,
+    ];
     const { result } = renderTaskCockpitHook();
 
     await act(async () => {
@@ -151,18 +246,11 @@ describe("useTaskCockpitVm", () => {
       mocks.mockClient,
       expect.objectContaining({
         title: "Analyze platform alerts and draft a remediation plan",
-        status: "queued",
-        domainId: "platform-ops",
-        currentStep: "intake",
+        divisionId: "platform-ops",
         owner: "platform-sre",
-        executionMode: "mock_dev",
-        modelCallStatus: "not_called",
-        modelProvider: "minimax",
-        modelName: "minimax-m2.7",
-        outputSummary: null,
-        outputUri: null,
       }),
     );
+    expect(result.current.selectedId).toBe("task-created-1");
     expect(result.current.selectedTask?.title).toBe("Analyze platform alerts and draft a remediation plan");
     expect(result.current.listItems[0]?.title).toBe("Analyze platform alerts and draft a remediation plan");
   });

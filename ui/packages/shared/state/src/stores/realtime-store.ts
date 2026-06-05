@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { withPersistDevtoolsDraft } from "./middleware";
+import { withDevtoolsDraft } from "./middleware";
 
 type RealtimeStoreDraft = {
   -readonly [K in keyof RealtimeStoreState]:
@@ -32,24 +32,9 @@ export interface RealtimeStoreState {
   removeActiveIncident(incidentId: string): void;
 }
 
-type PersistedRealtimeStoreState = Pick<
-  RealtimeStoreState,
-  | "wsStatus"
-  | "panicActivated"
-  | "offlineQueueSize"
-  | "syncStatus"
-  | "activeSubscriptions"
-  | "subscriptionLookup"
-  | "pendingApprovalCount"
-  | "activeIncidents"
-  | "activeIncidentLookup"
-  | "incidentCount"
-  | "criticalIncidentCount"
->;
-
 export function createRealtimeStore() {
   return createStore<RealtimeStoreState>()(
-    withPersistDevtoolsDraft<RealtimeStoreState, PersistedRealtimeStoreState>(
+    withDevtoolsDraft<RealtimeStoreState>(
       "aa-realtime-store",
       (set) => ({
         wsStatus: "disconnected",
@@ -138,22 +123,6 @@ export function createRealtimeStore() {
           });
         },
       }),
-      {
-        version: 2,
-        partialize: (state) => ({
-          wsStatus: state.wsStatus,
-          panicActivated: false,
-          offlineQueueSize: state.offlineQueueSize,
-          syncStatus: state.syncStatus,
-          activeSubscriptions: state.activeSubscriptions,
-          subscriptionLookup: state.subscriptionLookup,
-          pendingApprovalCount: state.pendingApprovalCount,
-          activeIncidents: state.activeIncidents,
-          activeIncidentLookup: state.activeIncidentLookup,
-          incidentCount: state.incidentCount,
-          criticalIncidentCount: state.criticalIncidentCount,
-        }),
-      },
     ),
   );
 }

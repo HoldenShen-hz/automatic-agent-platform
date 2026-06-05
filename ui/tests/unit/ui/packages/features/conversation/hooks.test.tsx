@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getSharedTranslationService, resetSharedTranslationService } from "@aa/shared-i18n";
@@ -85,15 +87,78 @@ import {
   conversationVmQueryClient,
   conversationVmQueryKey,
   useConversationVm,
-} from "../../../../../../packages/features/conversation/src/hooks";
+} from "../../../../../../packages/features/conversation/src/hooks/index.ts";
 
 describe("useConversationVm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionStorage.clear();
+    window.sessionStorage.clear();
     conversationVmQueryClient.clear();
     resetSharedTranslationService();
     getSharedTranslationService().setLocale("en-US");
+  });
+
+  it("hydrates persisted conversation state on the first render", () => {
+    window.sessionStorage.setItem("aa.conversation.vm", JSON.stringify({
+      messages: [
+        {
+          id: "msg-persisted",
+          role: "assistant",
+          content: "Recovered from storage",
+          timestamp: "2026-06-05T00:00:00.000Z",
+        },
+      ],
+      attachments: [
+        {
+          id: "att-1",
+          name: "report.md",
+          sizeLabel: "2 KB",
+        },
+      ],
+      status: "connected",
+      planReady: true,
+      executionReady: true,
+      isStreaming: false,
+      updatedAt: new Date().toISOString(),
+    }));
+
+    const { result } = renderHook(() => useConversationVm());
+
+    expect(result.current.messages).toHaveLength(0);
+    expect(result.current.attachments).toHaveLength(0);
+    expect(result.current.status).toBe("idle");
+    expect(result.current.planReady).toBe(false);
+    expect(result.current.executionReady).toBe(false);
+  });
+
+  it("restores only active in-flight conversation state", () => {
+    window.sessionStorage.setItem("aa.conversation.vm", JSON.stringify({
+      messages: [
+        {
+          id: "msg-persisted",
+          role: "assistant",
+          content: "Recovered from storage",
+          timestamp: "2026-06-05T00:00:00.000Z",
+        },
+      ],
+      attachments: [],
+      status: "running",
+      planReady: true,
+      executionReady: true,
+      isStreaming: true,
+      updatedAt: new Date().toISOString(),
+    }));
+
+    const { result } = renderHook(() => useConversationVm());
+
+    expect(result.current.messages).toHaveLength(1);
+    expect(result.current.messages[0]).toMatchObject({
+      content: "Recovered from storage",
+      role: "assistant",
+    });
+    expect(result.current.status).toBe("running");
+    expect(result.current.planReady).toBe(true);
+    expect(result.current.executionReady).toBe(true);
   });
 
   it("sends prompts directly and restores persisted history across remounts", async () => {

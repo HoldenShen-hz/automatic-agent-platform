@@ -10,12 +10,12 @@ const explainabilityFeature = createFeatureModule({
   group: "Shared",
   path: "/shared/explainability",
   permission: "authenticated",
-  status: "Planned",
+  status: "Implemented/Partial",
   summary: featureCopy.summary,
   render: ExplainabilityWebView,
 });
 
 export default explainabilityFeature;
 export { createExplainabilityMobileCards } from "./mobile";
-export { mapExplanationsToVm, useExplainabilityVm } from "./hooks";
+export { useExplainabilityVm } from "./hooks";
 export { ExplainabilityWebView } from "./web";

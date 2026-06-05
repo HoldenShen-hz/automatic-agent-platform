@@ -96,6 +96,7 @@ export interface StabilityPanelView {
   queuedTasks: TaskInspectSummary[];
   blockedTasks: TaskInspectSummary[];
   workflows: WorkflowInspectSummary[];
+  deadLetterCountsByDivision: Readonly<Record<string, number>>;
   pendingApprovals: ApprovalRecord[];
   workers: WorkerInspectSummary[];
   findings: string[];
@@ -299,6 +300,14 @@ export class MissionControlService {
     const queuedTasks = taskSummaries.filter((summary) => isQueuedTaskSummary(summary));
     const blockedTasks = taskSummaries.filter((summary) => isBlockedTaskSummary(summary));
     const findings = this.healthService.getReport().findings;
+    const deadLetterCountsByDivision = taskSummaries.reduce<Record<string, number>>((counts, summary) => {
+      const divisionId = summary.divisionId ?? "default";
+      const deadLetterCount = this.store.dispatch.listDeadLettersByTask(summary.taskId, tenantId).length;
+      if (deadLetterCount > 0) {
+        counts[divisionId] = (counts[divisionId] ?? 0) + deadLetterCount;
+      }
+      return counts;
+    }, {});
 
     return {
       generatedAt: new Date().toISOString(),
@@ -307,6 +316,7 @@ export class MissionControlService {
       queuedTasks: queuedTasks.slice(0, limit),
       blockedTasks: blockedTasks.slice(0, limit),
       workflows: workflowSummaries,
+      deadLetterCountsByDivision,
       pendingApprovals,
       workers,
       findings,

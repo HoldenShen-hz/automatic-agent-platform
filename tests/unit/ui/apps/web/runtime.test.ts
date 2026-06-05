@@ -28,7 +28,7 @@ test("web runtime avoids insecure localhost fallback and disables transport mock
   assert.equal(source.includes("http://localhost:3000"), false);
   assert.equal(source.includes('const DEFAULT_RUNTIME_API_BASE_URL = "/api";'), true);
   assert.equal(source.includes("baseUrl: config.apiBaseUrl ?? DEFAULT_RUNTIME_API_BASE_URL"), true);
-  assert.equal(source.includes("fallbackToMock: false"), true);
+  assert.equal(source.includes("fallbackToMock: config.fallbackToMock ?? false"), true);
 });
 
 test("web runtime client stack keeps auth, tenant, retry, and offline queue interceptors", () => {
@@ -52,9 +52,12 @@ test("web runtime seeds auth sessions and uses the runtime websocket factory bef
     "config.authToken != null && !hasSession(tokenManager)",
     "seedTokenManager(tokenManager, config.authToken)",
     "tokenManager.setSession({",
+    "bootstrapLocalDevAuthSession",
+    "/v1/auth/token",
+    "DEFAULT_LOCAL_DEV_API_KEY",
     "new OtlpHttpTelemetryExporter",
     "startWebVitalsCollection(sink)",
-    "createRuntimeWSClient(WebSocket, createDefaultSharedWorkerFactory())",
+    "createRuntimeWSClient(WebSocket)",
     "constructOrCall(InMemoryWSClient)",
   ]) {
     assert.equal(source.includes(fragment), true, `missing ${fragment}`);

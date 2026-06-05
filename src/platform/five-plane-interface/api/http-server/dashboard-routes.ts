@@ -224,10 +224,10 @@ function toWorkerDtos(workers: ReturnType<MissionControlService["getStabilityPan
 }
 
 function toQueueDtos(panel: ReturnType<MissionControlService["getStabilityPanel"]>) {
-  const queueMap = new Map<string, { ready: number; inFlight: number }>();
+  const queueMap = new Map<string, { ready: number; inFlight: number; retries: number; dlq: number }>();
   for (const worker of panel.workers) {
     const queue = worker.queueAffinity ?? "default";
-    const entry = queueMap.get(queue) ?? { ready: 0, inFlight: 0 };
+    const entry = queueMap.get(queue) ?? { ready: 0, inFlight: 0, retries: 0, dlq: 0 };
     entry.inFlight += worker.runningExecutionCount;
     queueMap.set(queue, entry);
   }
@@ -237,19 +237,30 @@ function toQueueDtos(panel: ReturnType<MissionControlService["getStabilityPanel"
     queuedByQueue.set(queue, (queuedByQueue.get(queue) ?? 0) + 1);
   }
   if (queueMap.size === 0 && queuedByQueue.size === 0) {
-    queueMap.set("default", { ready: panel.queuedTaskCount, inFlight: 0 });
+    queueMap.set("default", { ready: panel.queuedTaskCount, inFlight: 0, retries: 0, dlq: 0 });
   }
   for (const [queue, ready] of queuedByQueue.entries()) {
-    const entry = queueMap.get(queue) ?? { ready: 0, inFlight: 0 };
+    const entry = queueMap.get(queue) ?? { ready: 0, inFlight: 0, retries: 0, dlq: 0 };
     entry.ready = ready;
+    queueMap.set(queue, entry);
+  }
+  for (const workflow of panel.workflows) {
+    const queue = workflow.divisionId ?? "default";
+    const entry = queueMap.get(queue) ?? { ready: 0, inFlight: 0, retries: 0, dlq: 0 };
+    entry.retries += Math.max(0, workflow.retryCount);
+    queueMap.set(queue, entry);
+  }
+  for (const [queue, dlq] of Object.entries(panel.deadLetterCountsByDivision)) {
+    const entry = queueMap.get(queue) ?? { ready: 0, inFlight: 0, retries: 0, dlq: 0 };
+    entry.dlq += Math.max(0, dlq);
     queueMap.set(queue, entry);
   }
   return [...queueMap.entries()].map(([id, entry]) => ({
     id,
     ready: entry.ready,
     inFlight: entry.inFlight,
-    retries: 0,
-    dlq: 0,
+    retries: entry.retries,
+    dlq: entry.dlq,
   }));
 }
 

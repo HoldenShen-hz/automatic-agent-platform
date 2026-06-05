@@ -4,6 +4,7 @@ import { translateMessage } from "@aa/shared-i18n";
 import {
   approveException,
   fetchAuditLogs,
+  fetchComplianceExceptions,
   fetchCompliancePolicies,
   rejectException,
   submitException,
@@ -28,15 +29,18 @@ export interface ComplianceAuditVm {
 export interface ComplianceExceptionVm {
   readonly id: string;
   readonly reason: string;
+  readonly policyId: string;
   readonly status: "pending" | "approved" | "rejected";
 }
 
 export interface GovernanceComplianceVm {
   readonly items: readonly { title: string; description: string }[];
+  readonly loading: boolean;
   readonly selectedPolicyId: string | null;
   readonly policies: readonly CompliancePolicyVm[];
   readonly auditTrail: readonly ComplianceAuditVm[];
   readonly exceptionQueue: readonly ComplianceExceptionVm[];
+  refresh(): Promise<void>;
   selectPolicy(policyId: string): void;
   updatePolicy(policyId: string, patch: Record<string, unknown>): Promise<void>;
   submitExceptionRequest(reason: string, policyId: string): Promise<void>;
@@ -47,22 +51,22 @@ export interface GovernanceComplianceVm {
 
 export function useGovernanceComplianceVm(): GovernanceComplianceVm {
   const client = useRestClient();
+  const [loading, setLoading] = useState(true);
   const [policies, setPolicies] = useState<readonly CompliancePolicyVm[]>([]);
   const [selectedPolicyId, setSelectedPolicyId] = useState<string | null>(null);
   const [auditTrail, setAuditTrail] = useState<readonly ComplianceAuditVm[]>([]);
   const [exceptionQueue, setExceptionQueue] = useState<readonly ComplianceExceptionVm[]>([]);
 
-  useEffect(() => {
-    let mounted = true;
-    void Promise.all([
-      fetchCompliancePolicies(client),
-      fetchAuditLogs(client),
-    ]).then(([nextPolicies, nextAuditTrail]) => {
-      if (!mounted) {
-        return;
-      }
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [nextPolicies, nextAuditTrail, nextExceptions] = await Promise.all([
+        fetchCompliancePolicies(client),
+        fetchAuditLogs(client),
+        fetchComplianceExceptions(client),
+      ]);
       setPolicies(nextPolicies);
-      setSelectedPolicyId(nextPolicies[0]?.id ?? null);
+      setSelectedPolicyId((current) => current != null && nextPolicies.some((policy) => policy.id === current) ? current : nextPolicies[0]?.id ?? null);
       setAuditTrail(nextAuditTrail.map((entry) => ({
         id: entry.id,
         timestamp: entry.timestamp,
@@ -71,16 +75,31 @@ export function useGovernanceComplianceVm(): GovernanceComplianceVm {
         resource: entry.resource,
         outcome: entry.outcome,
       })));
-    }).catch(() => {
+      setExceptionQueue(nextExceptions.map((entry) => ({
+        id: entry.id,
+        reason: entry.reason,
+        policyId: entry.policyId,
+        status: entry.status,
+      })));
+    } finally {
+      setLoading(false);
+    }
+  }, [client]);
+
+  useEffect(() => {
+    let mounted = true;
+    void refresh().catch(() => {
       if (mounted) {
         setPolicies([]);
         setAuditTrail([]);
+        setExceptionQueue([]);
+        setLoading(false);
       }
     });
     return () => {
       mounted = false;
     };
-  }, [client]);
+  }, [refresh]);
 
   const items = useMemo(() => [
     {
@@ -101,22 +120,26 @@ export function useGovernanceComplianceVm(): GovernanceComplianceVm {
 
   const updatePolicy = useCallback(async (policyId: string, patch: Record<string, unknown>) => {
     await updateCompliancePolicy(client, policyId, patch);
-  }, [client]);
+    await refresh();
+  }, [client, refresh]);
 
   const submitExceptionRequest = useCallback(async (reason: string, policyId: string) => {
-    const result = await submitException(client, reason, policyId);
-    setExceptionQueue((current) => [{ id: result.id, reason, status: "pending" }, ...current]);
-  }, [client]);
+    if (policyId.trim().length === 0) {
+      throw new Error("governance_compliance.policy_required");
+    }
+    await submitException(client, reason, policyId);
+    await refresh();
+  }, [client, refresh]);
 
   const approveExceptionAction = useCallback(async (exceptionId: string) => {
     await approveException(client, exceptionId);
-    setExceptionQueue((current) => current.map((item) => item.id === exceptionId ? { ...item, status: "approved" } : item));
-  }, [client]);
+    await refresh();
+  }, [client, refresh]);
 
   const rejectExceptionAction = useCallback(async (exceptionId: string, rationale: string) => {
     await rejectException(client, exceptionId, rationale);
-    setExceptionQueue((current) => current.map((item) => item.id === exceptionId ? { ...item, status: "rejected" } : item));
-  }, [client]);
+    await refresh();
+  }, [client, refresh]);
 
   const filterAuditTrail = useCallback(() => {
     setAuditTrail((current) => [...current].sort((left, right) => right.timestamp.localeCompare(left.timestamp)));
@@ -124,10 +147,12 @@ export function useGovernanceComplianceVm(): GovernanceComplianceVm {
 
   return {
     items,
+    loading,
     selectedPolicyId,
     policies,
     auditTrail,
     exceptionQueue,
+    refresh,
     selectPolicy: setSelectedPolicyId,
     updatePolicy,
     submitExceptionRequest,

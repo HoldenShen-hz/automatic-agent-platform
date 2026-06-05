@@ -82,6 +82,26 @@ function createMockMissionControlService(): MissionControlService {
           updatedAt: "2026-04-16T00:00:00.000Z",
         },
       ],
+      workflows: [
+        {
+          taskId: "task-queue-1",
+          divisionId: "finance",
+          workflowId: "workflow-1",
+          workflowStatus: "queued",
+          currentStepIndex: 0,
+          retryCount: 2,
+          resumableFromStep: null,
+          lastErrorCode: null,
+          taskStatus: "queued",
+          activeExecutionId: null,
+          pendingApprovalCount: 0,
+          latestEventAt: null,
+          updatedAt: "2026-04-16T00:00:00.000Z",
+        },
+      ],
+      deadLetterCountsByDivision: {
+        finance: 1,
+      },
       queuedTaskCount: 1,
     }),
   } as unknown as MissionControlService;
@@ -273,8 +293,8 @@ test("GET /v1/queues returns public queue summaries", async () => {
     id: "finance",
     ready: 1,
     inFlight: 1,
-    retries: 0,
-    dlq: 0,
+    retries: 2,
+    dlq: 1,
   });
 });
 

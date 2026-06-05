@@ -4,6 +4,9 @@ export interface WorkersVm {
         label: string;
         value: string | number;
     }[];
+    readonly busyWorkerCount: number;
+    refresh(): Promise<void>;
+    drainBusyWorkers(): Promise<void>;
 }
 export declare function mapWorkersToVm(workers: readonly WorkerDTO[]): WorkersVm;
 export declare function useWorkersVm(): WorkersVm;

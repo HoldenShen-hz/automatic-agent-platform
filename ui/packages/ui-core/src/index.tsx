@@ -8,6 +8,7 @@ export {
   buildWorkbenchActionHandler,
   FeatureScaffold,
   FeatureWorkbench,
+  type FeatureWorkbenchItem,
   FeatureWorkbenchPanel,
   KeyValueTable,
   ListCard,

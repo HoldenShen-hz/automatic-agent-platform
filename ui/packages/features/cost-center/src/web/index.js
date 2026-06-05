@@ -1,11 +1,7 @@
-import { jsx as _jsx } from "react/jsx-runtime";
-import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { FeatureScaffold, KeyValueTable, ListCard, MetricGrid, Stack, ThreePaneLayout } from "@aa/ui-core";
 import { useCostCenterVm } from "../hooks";
 export function CostCenterWebView() {
     const vm = useCostCenterVm();
-    return (_jsx(FeatureScaffold, { title: "Cost Center", summary: "\u6210\u672C\u4E2D\u5FC3\u4E0E\u9884\u7B97\u89C6\u56FE", status: "Planned", children: _jsx(FeatureWorkbenchPanel, { items: vm.items, actions: [
-                { id: "cost-refresh", label: "刷新预算告警", tone: "accent", onTrigger: buildWorkbenchActionHandler("cost-center", "refresh", { deepLinkPath: "/operations/cost-center?mode=refresh" }) },
-                { id: "cost-drill", label: "下钻成本项", tone: "neutral", onTrigger: buildWorkbenchActionHandler("cost-center", "drill", { deepLinkPath: "/operations/cost-center?view=drilldown" }) },
-                { id: "cost-export", label: "导出成本报表", tone: "neutral", onTrigger: buildWorkbenchActionHandler("cost-center", "export", { copySelection: true }) },
-            ] }) }));
+    return (_jsxs(FeatureScaffold, { title: "Cost Center", summary: "\u6210\u672C\u4E2D\u5FC3\u4E0E\u9884\u7B97\u89C6\u56FE", status: "Implemented/Partial", children: [_jsx(MetricGrid, { metrics: vm.metrics }), _jsx(ThreePaneLayout, { left: _jsxs(Stack, { gap: 10, children: [_jsx("h3", { children: "Cost reports" }), vm.loading ? _jsx("p", { children: "Loading cost reports..." }) : null, vm.listItems.length === 0 ? _jsx("p", { children: "No cost reports published by the backend." }) : vm.listItems.map((item) => (_jsxs("button", { onClick: () => vm.selectReport(item.id), style: { textAlign: "left" }, type: "button", children: [_jsx("strong", { children: item.title }), _jsx("div", { children: item.subtitle })] }, item.id)))] }), center: vm.selectedReport == null ? _jsx("p", { children: "No report selected" }) : _jsxs(Stack, { gap: 16, children: [_jsx("h3", { children: "Cost detail" }), _jsx(KeyValueTable, { rows: vm.detailRows })] }), right: _jsxs(Stack, { gap: 12, children: [_jsx("h3", { children: "Cost summary" }), _jsx(ListCard, { items: vm.summaryItems })] }) })] }));
 }

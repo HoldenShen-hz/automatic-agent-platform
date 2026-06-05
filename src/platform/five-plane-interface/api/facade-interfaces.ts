@@ -10,7 +10,7 @@
 // ─── Types shared across facades ────────────────────────────────────────────
 
 export type IncidentSeverity = "low" | "medium" | "high" | "critical";
-export type IncidentStatus = "open" | "acknowledged" | "mitigating" | "resolved";
+export type IncidentStatus = "open" | "acknowledged" | "mitigating" | "resolved" | "closed";
 
 export interface IncidentCase {
   incidentId: string;
@@ -22,6 +22,7 @@ export interface IncidentCase {
   createdAt: string;
   updatedAt: string;
   resolvedAt: string | null;
+  snoozedUntil?: string | null;
 }
 
 // ─── Coordinator Load Balancing (P4) ────────────────────────────────────────
@@ -191,6 +192,8 @@ export interface IncidentFacadeService {
   acknowledge(incidentId: string, owner: string, tenantId?: string | null): IncidentCase;
   startMitigation(incidentId: string, tenantId?: string | null): IncidentCase;
   resolve(incidentId: string, tenantId?: string | null): IncidentCase;
+  close(incidentId: string, tenantId?: string | null): IncidentCase;
+  snooze(incidentId: string, snoozedUntil: string, tenantId?: string | null): IncidentCase;
 }
 
 class IncidentFacadeNotConfiguredError extends Error {
@@ -227,6 +230,12 @@ class NoOpIncidentFacadeService implements IncidentFacadeService {
     throw new IncidentFacadeNotConfiguredError();
   }
   public resolve(_incidentId: string, _tenantId?: string | null): IncidentCase {
+    throw new IncidentFacadeNotConfiguredError();
+  }
+  public close(_incidentId: string, _tenantId?: string | null): IncidentCase {
+    throw new IncidentFacadeNotConfiguredError();
+  }
+  public snooze(_incidentId: string, _snoozedUntil: string, _tenantId?: string | null): IncidentCase {
     throw new IncidentFacadeNotConfiguredError();
   }
 }

@@ -99,6 +99,23 @@ test("validateStartupEnv accepts port 1 and 65535", () => {
   }
 });
 
+test("validateStartupEnv accepts positive AA_API_TOKEN_TTL_MS", () => {
+  const result = validateStartupEnv({
+    AA_DB_PATH: "/tmp/db",
+    AA_API_TOKEN_TTL_MS: "86400000",
+  });
+  assert.equal(result.success, true);
+});
+
+test("validateStartupEnv rejects invalid AA_API_TOKEN_TTL_MS", () => {
+  const result = validateStartupEnv({
+    AA_DB_PATH: "/tmp/db",
+    AA_API_TOKEN_TTL_MS: "0",
+  });
+  assert.equal(result.success, false);
+  assert.ok(result.errors.some((e) => e.key === "AA_API_TOKEN_TTL_MS"));
+});
+
 test("validateStartupEnv accepts boolean-like strings for AA_LOG_STDOUT", () => {
   for (const val of ["1", "true", "yes", "on", "0", "false", "no", "off"]) {
     const result = validateStartupEnv({ AA_DB_PATH: "/tmp/db", AA_LOG_STDOUT: val });

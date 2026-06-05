@@ -1,8 +1,9 @@
 export const endpointCatalog = {
+    healthReport: { id: "meta.health", path: "/health", method: "GET", apiLayer: "A", planned: false },
     dashboardSnapshot: { id: "dashboard.snapshot", path: "/v1/dashboard/snapshot", method: "GET", apiLayer: "C", planned: false },
     tasks: { id: "tasks.list", path: "/v1/tasks", method: "GET", apiLayer: "C", planned: false },
     tasksCreate: { id: "tasks.create", path: "/v1/tasks", method: "POST", apiLayer: "C", planned: false },
-    tasksUpdate: { id: "tasks.update", path: "/v1/tasks/:taskId", method: "PUT", apiLayer: "C", planned: false },
+    tasksUpdate: { id: "tasks.update", path: "/v1/tasks/:taskId", method: "PATCH", apiLayer: "C", planned: false },
     tasksDelete: { id: "tasks.delete", path: "/v1/tasks/:taskId", method: "DELETE", apiLayer: "C", planned: false },
     workflows: { id: "workflows.list", path: "/v1/workflows", method: "GET", apiLayer: "C", planned: false },
     workflowsCreate: { id: "workflows.create", path: "/v1/workflows", method: "POST", apiLayer: "C", planned: false },
@@ -24,7 +25,9 @@ export const endpointCatalog = {
     approvalsTextInput: { id: "approvals.text-input", path: "/v1/approvals/:approvalId/text-input", method: "POST", apiLayer: "C", planned: false },
     incidents: { id: "incidents.list", path: "/v1/incidents", method: "GET", apiLayer: "C", planned: false },
     workers: { id: "workers.list", path: "/v1/workers", method: "GET", apiLayer: "C", planned: false },
+    workersDrain: { id: "workers.drain", path: "/v1/admin/workers/drain", method: "POST", apiLayer: "C", planned: false },
     queues: { id: "queues.list", path: "/v1/queues", method: "GET", apiLayer: "C", planned: false },
+    queuesRetryCleanup: { id: "queues.retry-cleanup", path: "/v1/admin/queues/retry-cleanup", method: "POST", apiLayer: "C", planned: false },
     agents: { id: "agents.list", path: "/v1/agents", method: "GET", apiLayer: "C", planned: false },
     analytics: { id: "analytics.metrics", path: "/v1/dashboard/metrics", method: "GET", apiLayer: "C", planned: false },
     costs: { id: "costs.report", path: "/v1/cost-reports", method: "GET", apiLayer: "C", planned: false },
@@ -85,8 +88,51 @@ function unwrapCollectionResponse(response, keys) {
     }
     return [];
 }
+function mapWorkflowStatus(status) {
+    switch (status) {
+        case "completed":
+        case "done":
+        case "failed":
+        case "cancelled":
+            return "completed";
+        case "paused":
+        case "awaiting_decision":
+        case "blocked":
+            return "paused";
+        case "draft":
+            return "draft";
+        case "running":
+        case "in_progress":
+        case "pending":
+        case "queued":
+        default:
+            return "running";
+    }
+}
+function normalizeWorkflowDto(workflow) {
+    const currentStage = typeof workflow.currentStage === "string" && workflow.currentStage.length > 0
+        ? workflow.currentStage
+        : typeof workflow.resumableFromStep === "string" && workflow.resumableFromStep.length > 0
+            ? workflow.resumableFromStep
+            : typeof workflow.currentStepIndex === "number"
+                ? `step-${workflow.currentStepIndex}`
+                : workflow.workflowStatus ?? "intake";
+    return {
+        id: workflow.id ?? workflow.taskId ?? workflow.workflowId ?? "workflow-unknown",
+        title: workflow.title ?? workflow.workflowId ?? workflow.taskId ?? "Untitled workflow",
+        status: mapWorkflowStatus(workflow.status ?? workflow.workflowStatus ?? workflow.taskStatus),
+        currentStage,
+        owner: workflow.owner ?? workflow.divisionId ?? "platform",
+        steps: workflow.steps ?? [],
+        ...(workflow.approvalNodes == null ? {} : { approvalNodes: workflow.approvalNodes }),
+        ...(workflow.evidenceRefs == null ? {} : { evidenceRefs: workflow.evidenceRefs }),
+    };
+}
 export async function fetchDashboardSnapshot(client) {
     return client.get(endpointCatalog.dashboardSnapshot.path);
+}
+export async function fetchHealthReport(client) {
+    return client.get(endpointCatalog.healthReport.path);
 }
 export async function fetchTasks(client, queryParams) {
     const queryString = buildQueryString(queryParams ?? {});
@@ -94,7 +140,11 @@ export async function fetchTasks(client, queryParams) {
     return unwrapCollectionResponse(response, ["tasks"]);
 }
 export async function createTask(client, body) {
-    return client.post(endpointCatalog.tasksCreate.path, body);
+    const { domainId, divisionId, status: _status, ...rest } = body;
+    return client.post(endpointCatalog.tasksCreate.path, {
+        ...rest,
+        ...(divisionId != null ? { divisionId } : domainId != null ? { divisionId: domainId } : {}),
+    });
 }
 export async function updateTask(client, taskId, body) {
     return client.put(resolvePath(endpointCatalog.tasksUpdate.path, { taskId }), body);
@@ -105,7 +155,7 @@ export async function deleteTask(client, taskId) {
 export async function fetchWorkflows(client, queryParams) {
     const queryString = buildQueryString(queryParams ?? {});
     const response = await client.get(`${endpointCatalog.workflows.path}${queryString}`);
-    return unwrapCollectionResponse(response, ["workflows"]);
+    return unwrapCollectionResponse(response, ["workflows"]).map((workflow) => normalizeWorkflowDto(workflow));
 }
 export async function createWorkflow(client, body) {
     return client.post(endpointCatalog.workflowsCreate.path, body);
@@ -172,10 +222,16 @@ export async function fetchWorkers(client, queryParams) {
     const response = await client.get(`${endpointCatalog.workers.path}${queryString}`);
     return unwrapCollectionResponse(response, ["workers"]);
 }
+export async function drainWorkers(client) {
+    return client.post(endpointCatalog.workersDrain.path, {});
+}
 export async function fetchQueues(client, queryParams) {
     const queryString = buildQueryString(queryParams ?? {});
     const response = await client.get(`${endpointCatalog.queues.path}${queryString}`);
     return unwrapCollectionResponse(response, ["queues"]);
+}
+export async function cleanupRetryQueue(client) {
+    return client.post(endpointCatalog.queuesRetryCleanup.path, {});
 }
 export async function fetchAgents(client, queryParams) {
     const queryString = buildQueryString(queryParams ?? {});

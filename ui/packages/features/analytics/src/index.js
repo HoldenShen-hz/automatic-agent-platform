@@ -8,7 +8,7 @@ const analyticsFeature = createFeatureModule({
     group: "Shared",
     path: "/shared/analytics",
     permission: "authenticated",
-    status: "Planned",
+    status: "Implemented/Partial",
     summary: featureCopy.summary,
     render: AnalyticsWebView,
 });

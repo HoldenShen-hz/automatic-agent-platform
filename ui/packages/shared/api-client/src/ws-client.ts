@@ -39,6 +39,18 @@ type WorkerMessage =
   | { readonly capability: string; readonly type: "status"; readonly status: WSStatus }
   | { readonly capability: string; readonly type: "event"; readonly event: WSEventEnvelope };
 
+type TaskBridgeEventMessage = {
+  readonly action?: string;
+  readonly type?: string;
+  readonly taskId?: string;
+  readonly eventId?: string;
+  readonly event?: {
+    readonly eventType?: string;
+  } & Record<string, unknown>;
+  readonly payload?: unknown;
+  readonly channel?: string;
+};
+
 function createWorkerCapability(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -177,8 +189,8 @@ export class BrowserWSClient implements WSClient {
     this.subscribedChannels.add(channel);
     if (this.socket != null && this.socket.readyState === this.getOpenState()) {
       this.socket.send(JSON.stringify({
-        action: "subscribe",
-        channel,
+        type: "subscribe",
+        taskId: channel,
         ...(this.lastEventIdByChannel.get(channel) == null
           ? {}
           : { lastEventId: this.lastEventIdByChannel.get(channel) }),
@@ -191,6 +203,12 @@ export class BrowserWSClient implements WSClient {
       if (channelHandlers.size === 0) {
         this.handlers.delete(channel);
         this.subscribedChannels.delete(channel);
+        if (this.socket != null && this.socket.readyState === this.getOpenState()) {
+          this.socket.send(JSON.stringify({
+            type: "unsubscribe",
+            taskId: channel,
+          }));
+        }
       }
       fallbackUnsubscribe?.();
     };
@@ -199,10 +217,8 @@ export class BrowserWSClient implements WSClient {
   public onStatusChange(handler: (status: WSStatus) => void): () => void {
     this.statusHandlers.add(handler);
     handler(this.status);
-    const fallbackUnsubscribe = this.fallbackClient?.onStatusChange(handler);
     return () => {
       this.statusHandlers.delete(handler);
-      fallbackUnsubscribe?.();
     };
   }
 
@@ -223,7 +239,7 @@ export class BrowserWSClient implements WSClient {
     this.clearReconnectTimer();
     this.stopHeartbeat();
     try {
-      const socket = new this.websocketFactory(url, "v1.auth.token");
+      const socket = new this.websocketFactory(url, token);
       const socketNonce = ++this.activeSocketNonce;
       this.socket = socket;
       socket.onopen = () => {
@@ -232,15 +248,10 @@ export class BrowserWSClient implements WSClient {
         }
         this.reconnectAttempts = 0;
         this.setStatus("connected");
-        socket.send(JSON.stringify({
-          action: "auth",
-          token,
-          ...(this.lastEventId == null ? {} : { lastEventId: this.lastEventId }),
-        }));
         for (const channel of this.subscribedChannels) {
           socket.send(JSON.stringify({
-            action: "subscribe",
-            channel,
+            type: "subscribe",
+            taskId: channel,
             ...(this.lastEventIdByChannel.get(channel) == null
               ? {}
               : { lastEventId: this.lastEventIdByChannel.get(channel) }),
@@ -252,9 +263,9 @@ export class BrowserWSClient implements WSClient {
         if (!this.isActiveSocket(socket, socketNonce)) {
           return;
         }
-        let data: WSEventEnvelope & { action?: string };
+        let data: WSEventEnvelope & TaskBridgeEventMessage;
         try {
-          data = JSON.parse(String(event.data)) as WSEventEnvelope & { action?: string };
+          data = JSON.parse(String(event.data)) as WSEventEnvelope & TaskBridgeEventMessage;
         } catch {
           this.clearReconnectTimer();
           this.stopHeartbeat();
@@ -274,10 +285,33 @@ export class BrowserWSClient implements WSClient {
           this.clearHeartbeatDeadline();
           return;
         }
+        if (data.type === "task_update" && typeof data.taskId === "string" && data.event != null && typeof data.event === "object") {
+          const taskEvent = data.event as { eventType?: string };
+          if (typeof taskEvent.eventType === "string") {
+            this.publish({
+              channel: data.taskId,
+              type: taskEvent.eventType,
+              payload: data.event,
+              ...(typeof data.eventId === "string" ? { eventId: data.eventId } : {}),
+            });
+            return;
+          }
+        }
+        if (data.type === "stream_gap" && typeof data.taskId === "string") {
+          this.publish({
+            channel: data.taskId,
+            type: "stream_gap",
+            payload: data,
+            ...(typeof data.eventId === "string" ? { eventId: data.eventId } : {}),
+          });
+          return;
+        }
         if (resolveTrustedReplayEventId(data) == null && (data.eventId != null || (typeof data.payload === "object" && data.payload !== null && ("eventId" in data.payload || "id" in data.payload)))) {
           return;
         }
-        this.publish(data);
+        if (typeof data.channel === "string" && typeof data.type === "string") {
+          this.publish(data);
+        }
       };
       socket.onclose = (event) => {
         if (!this.isActiveSocket(socket, socketNonce)) {
@@ -325,7 +359,7 @@ export class BrowserWSClient implements WSClient {
       if (this.socket == null || this.socket.readyState !== this.getOpenState()) {
         return;
       }
-      this.socket.send(JSON.stringify({ action: "ping" }));
+      this.socket.send(JSON.stringify({ type: "ping" }));
       this.clearHeartbeatDeadline();
       this.heartbeatDeadlineTimer = setTimeout(() => {
         this.socket?.close();

@@ -31,6 +31,11 @@ test("useAlertsVm filters incidents by auth permissions before exposing alert it
   );
 });
 
+test("alerts hook uses incident contract instead of orphaned alerts endpoints", () => {
+  assert.match(alertsHookSource, /updateIncident/);
+  assert.doesNotMatch(alertsHookSource, /\/alerts\/\$\{id\}\//);
+});
+
 test("web feature registry keeps alerts behind platform_sre and mission-control navigation", () => {
   assert.match(webRegistrySource, /\{[^}]*id: "alerts",[^}]*group: "Mission Control",[^}]*path: "\/mission-control\/alerts"/s);
 });

@@ -152,6 +152,124 @@ test("integration: GET /v1/admin/workers returns workers list", async () => {
   }
 });
 
+test("integration: POST /v1/admin/workers/drain marks busy workers as draining", async () => {
+  const workspace = createTempWorkspace("aa-admin-workers-drain-");
+  const context = createSeededApiContext(workspace);
+  const server = context.createServer();
+
+  try {
+    const accessToken = await getAccessToken(server);
+
+    const response = await server.inject({
+      url: "/v1/admin/workers/drain",
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+        "idempotency-key": "admin-workers-drain-1",
+      },
+      body: JSON.stringify({}),
+    });
+    assert.equal(response.statusCode, 200);
+    const payload = readJson<{ drainedWorkerIds: string[]; drainedCount: number }>(response);
+    assert.ok(payload.data.drainedWorkerIds.includes(context.seededWorkerId));
+    assert.equal(payload.data.drainedCount >= 1, true);
+    assert.equal(context.store.worker.getWorkerSnapshot(context.seededWorkerId)?.status, "draining");
+  } finally {
+    context.db.close();
+    cleanupPath(workspace);
+  }
+});
+
+test("integration: POST /v1/admin/queues/retry-cleanup fails queued retry tasks and cancels pending tickets", async () => {
+  const workspace = createTempWorkspace("aa-admin-queues-retry-cleanup-");
+  const context = createSeededApiContext(workspace);
+  const server = context.createServer();
+
+  try {
+    const now = "2026-06-05T00:00:00.000Z";
+    context.store.insertTask({
+      id: "task-admin-retry-cleanup",
+      parentId: null,
+      rootId: "task-admin-retry-cleanup",
+      divisionId: "default",
+      tenantId: null,
+      title: "Retry cleanup task",
+      status: "queued",
+      source: "user",
+      priority: "normal",
+      inputJson: "{}",
+      normalizedInputJson: "{}",
+      outputJson: null,
+      estimatedCostUsd: 0,
+      actualCostUsd: 0,
+      errorCode: null,
+      createdAt: now,
+      updatedAt: now,
+      completedAt: null,
+    });
+    context.store.insertWorkflowState({
+      taskId: "task-admin-retry-cleanup",
+      divisionId: "default",
+      workflowId: "workflow-admin-retry-cleanup",
+      currentStepIndex: 0,
+      status: "queued",
+      outputsJson: "{}",
+      lastErrorCode: "transient_failure",
+      retryCount: 2,
+      resumableFromStep: "step-0",
+      startedAt: now,
+      updatedAt: now,
+    });
+    context.store.worker.insertExecutionTicket({
+      id: "ticket-admin-retry-cleanup",
+      executionId: "exec-admin-retry-cleanup",
+      taskId: "task-admin-retry-cleanup",
+      tenantId: "",
+      priority: "normal",
+      queueName: "default",
+      dispatchTarget: "any",
+      requiredIsolationLevel: "standard",
+      requiredRepoVersion: null,
+      requiredCapabilitiesJson: "[]",
+      dispatchAfter: null,
+      attempt: 1,
+      status: "pending",
+      assignedWorkerId: null,
+      leaseId: null,
+      claimedAt: null,
+      consumedAt: null,
+      invalidatedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const accessToken = await getAccessToken(server);
+
+    const response = await server.inject({
+      url: "/v1/admin/queues/retry-cleanup",
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+        "idempotency-key": "admin-queues-retry-cleanup-1",
+      },
+      body: JSON.stringify({}),
+    });
+    assert.equal(response.statusCode, 200);
+    const payload = readJson<{ cleanedTaskIds: string[]; invalidatedTicketIds: string[]; cleanedCount: number }>(response);
+    assert.deepEqual(payload.data.cleanedTaskIds, ["task-admin-retry-cleanup"]);
+    assert.deepEqual(payload.data.invalidatedTicketIds, ["ticket-admin-retry-cleanup"]);
+    assert.equal(payload.data.cleanedCount, 1);
+    assert.equal(context.store.task.getTask("task-admin-retry-cleanup")?.status, "failed");
+    assert.equal(context.store.workflow.getWorkflowState("task-admin-retry-cleanup")?.retryCount, 0);
+    assert.equal(context.store.worker.getExecutionTicket("ticket-admin-retry-cleanup")?.status, "cancelled");
+  } finally {
+    context.db.close();
+    cleanupPath(workspace);
+  }
+});
+
 test("integration: GET /v1/admin/governance/leadership-claims returns leadership governance snapshot", async () => {
   const workspace = createTempWorkspace("aa-admin-leadership-claims-");
   const context = createSeededApiContext(workspace);
@@ -203,6 +321,77 @@ test("integration: GET /v1/admin/governance/division-inventory returns generated
     const payload = readJson<{ summary: { totalDivisions: number }; records: Array<{ divisionId: string }> }>(response);
     assert.equal(payload.data.summary.totalDivisions, 1);
     assert.equal(payload.data.records[0]?.divisionId, "coding");
+  } finally {
+    if (originalPlatformRoot == null) {
+      delete process.env.AA_PLATFORM_ROOT;
+    } else {
+      process.env.AA_PLATFORM_ROOT = originalPlatformRoot;
+    }
+    context.db.close();
+    cleanupPath(workspace);
+  }
+});
+
+test("integration: compliance governance routes roundtrip policy updates and exception approvals", async () => {
+  const originalPlatformRoot = process.env.AA_PLATFORM_ROOT;
+  const workspace = createTempWorkspace("aa-admin-compliance-int-");
+  process.env.AA_PLATFORM_ROOT = workspace;
+  const context = createSeededApiContext(workspace);
+  const server = context.createServer();
+
+  try {
+    const accessToken = await getAccessToken(server);
+
+    const policiesResponse = await server.inject({
+      url: "/v1/admin/compliance/policies",
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    assert.equal(policiesResponse.statusCode, 200);
+    const policiesPayload = readJson<Array<{ id: string; severity: string }>>(policiesResponse);
+    assert.ok(policiesPayload.data.some((policy) => policy.id === "sox"));
+
+    const updateResponse = await server.inject({
+      url: "/v1/admin/compliance/policies/sox",
+      method: "PATCH",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ severity: "high", reviewLabel: "integration" }),
+    });
+    assert.equal(updateResponse.statusCode, 200);
+
+    const createExceptionResponse = await server.inject({
+      url: "/v1/admin/compliance/exceptions",
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ reason: "manual_exception_review_requested", policyId: "gdpr" }),
+    });
+    assert.equal(createExceptionResponse.statusCode, 201);
+    const createExceptionPayload = readJson<{ id: string }>(createExceptionResponse);
+
+    const approveResponse = await server.inject({
+      url: `/v1/admin/compliance/exceptions/${createExceptionPayload.data.id}/approve`,
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ action: "approve" }),
+    });
+    assert.equal(approveResponse.statusCode, 200);
+
+    const auditResponse = await server.inject({
+      url: "/v1/admin/audit-logs",
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    assert.equal(auditResponse.statusCode, 200);
+    const auditPayload = readJson<Array<{ action: string; resource: string }>>(auditResponse);
+    assert.ok(auditPayload.data.some((entry) => entry.action === "compliance.policy.updated" && entry.resource === "compliance-policy:sox"));
+    assert.ok(auditPayload.data.some((entry) => entry.action === "compliance.exception.approved" && entry.resource === `compliance-exception:${createExceptionPayload.data.id}`));
   } finally {
     if (originalPlatformRoot == null) {
       delete process.env.AA_PLATFORM_ROOT;

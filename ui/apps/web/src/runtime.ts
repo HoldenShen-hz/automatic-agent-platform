@@ -1,6 +1,5 @@
 import {
   createDedupeInterceptor,
-  createDefaultSharedWorkerFactory,
   DefaultRESTClient,
   DEFAULT_ACCEPT_VERSIONS,
   HttpTransport,
@@ -19,7 +18,7 @@ import {
   type WSClient,
 } from "@aa/shared-api-client";
 import { TokenManager } from "@aa/shared-auth";
-import { createPersistentOfflineQueue } from "@aa/shared-sync";
+import { createMemoryOfflineMutationStore, createPersistentOfflineQueue } from "@aa/shared-sync";
 import {
   OtlpHttpTelemetryExporter,
   createTelemetrySink,
@@ -50,8 +49,13 @@ type CallableFactory<TValue, TArgs extends readonly unknown[]> = (...args: TArgs
 const STATIC_BOOTSTRAP_SESSION_REFRESH_TOKEN = "bootstrap-session";
 const MAX_BOOTSTRAP_TOKEN_LIFETIME_MS = 15 * 60 * 1000;
 const DEFAULT_RUNTIME_API_BASE_URL = "/api";
+const DEFAULT_LOCAL_DEV_API_KEY = "local-dev-platform-operator";
 
 const runtimeFetch: typeof fetch = (...args) => globalThis.fetch(...args);
+
+function isDevRuntime(): boolean {
+  return (import.meta as ImportMeta & { readonly env?: { readonly DEV?: boolean } }).env?.DEV === true;
+}
 
 export function createWebRuntimeConfig(env: Record<string, string | boolean | undefined>): WebRuntimeConfig {
   const apiBaseUrl = normalizeOptionalEnv(env.VITE_API_BASE_URL);
@@ -189,7 +193,9 @@ function decodeBase64UrlUtf8(value: string): string {
 export function createWebRuntimeClients(
   config: WebRuntimeConfig,
 ): { client: RESTClient; wsClient: WSClient; offlineQueue: ReturnType<typeof createPersistentOfflineQueue>; tokenManager: TokenManager } {
-  const offlineQueue = createPersistentOfflineQueue();
+  const offlineQueue = isDevRuntime()
+    ? createPersistentOfflineQueue(createMemoryOfflineMutationStore())
+    : createPersistentOfflineQueue();
   const tokenManager = config.tokenManager ?? constructOrCall(TokenManager);
 
   if (config.authToken != null && !hasSession(tokenManager)) {
@@ -218,9 +224,58 @@ export function createWebRuntimeClients(
 
   const wsClient = config.wsUrl == null
     ? constructOrCall(InMemoryWSClient)
-    : createRuntimeWSClient(WebSocket, createDefaultSharedWorkerFactory());
+    : createRuntimeWSClient(WebSocket);
 
   return { client, wsClient, offlineQueue, tokenManager };
+}
+
+function isLocalDevHost(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+}
+
+export async function bootstrapLocalDevAuthSession(
+  config: Pick<WebRuntimeConfig, "apiBaseUrl" | "authToken">,
+  tokenManager: TokenManager,
+): Promise<string | null> {
+  if (hasSession(tokenManager)) {
+    return tokenManager.getAccessToken();
+  }
+  if (config.authToken != null) {
+    seedTokenManager(tokenManager, config.authToken);
+    return tokenManager.getAccessToken();
+  }
+  if (!isDevRuntime() || !isLocalDevHost()) {
+    return null;
+  }
+
+  const localDevAuthRequestId =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `local-dev-auth-${Date.now()}`;
+  const response = await runtimeFetch(`${config.apiBaseUrl ?? DEFAULT_RUNTIME_API_BASE_URL}/v1/auth/token`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-idempotency-key": localDevAuthRequestId,
+    },
+    body: JSON.stringify({
+      apiKey: (import.meta as ImportMeta & { readonly env?: Record<string, string | undefined> }).env?.VITE_LOCAL_DEV_API_KEY
+        ?? DEFAULT_LOCAL_DEV_API_KEY,
+    }),
+  });
+  if (!response.ok) {
+    return null;
+  }
+  const payload = await response.json() as { data?: { accessToken?: string } };
+  const accessToken = normalizeOptionalEnv(payload.data?.accessToken);
+  if (accessToken == null) {
+    return null;
+  }
+  seedTokenManager(tokenManager, accessToken);
+  return accessToken;
 }
 
 export async function checkWebContractVersion(client: RESTClient): Promise<StartupBanner | null> {
@@ -238,6 +293,11 @@ export async function checkWebContractVersion(client: RESTClient): Promise<Start
 
 export async function registerWebServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (typeof window === "undefined" || "serviceWorker" in navigator === false) {
+    return null;
+  }
+  if (isDevRuntime()) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.unregister()));
     return null;
   }
   try {

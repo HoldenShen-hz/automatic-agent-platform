@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { FeatureWorkbenchPanel } from "../../packages/ui-core/src/components";
 import { designTokens } from "../../packages/ui-core/src/design-tokens";
@@ -58,13 +58,46 @@ describe("R24 UI foundations", () => {
       </div>,
     );
 
-    expect(screen.getByRole("searchbox", { name: "Filter items" })).toBeInTheDocument();
-    expect(screen.getByRole("listbox", { name: "Workbench items" })).toBeInTheDocument();
-    expect(screen.getByRole("log")).toBeInTheDocument();
-    expect(screen.getByText("Recent activity")).toBeInTheDocument();
+    expect(screen.queryByRole("searchbox", { name: "Filter items" })).not.toBeNull();
+    expect(screen.queryByRole("listbox", { name: "Workbench items" })).not.toBeNull();
+    expect(screen.queryByRole("log")).not.toBeNull();
+    expect(screen.queryByText("Recent activity")).not.toBeNull();
     const responsivePane = [...container.querySelectorAll("div")].find((element) =>
       element.textContent?.includes("LeftCenterRight") && element.getAttribute("style")?.includes("align-items: start"),
     );
     expect(responsivePane?.getAttribute("style")).toContain("grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))");
+  });
+
+  it("supports item-aware action disabling in the workbench", () => {
+    render(
+      <FeatureWorkbenchPanel
+        items={[
+          {
+            id: "resolved",
+            title: "Resolved incident",
+            description: "No further action allowed",
+            detailRows: [{ key: "Status", value: "resolved" }],
+          },
+          {
+            id: "open",
+            title: "Open incident",
+            description: "Can be acknowledged",
+            detailRows: [{ key: "Status", value: "open" }],
+          },
+        ]}
+        actions={[
+          {
+            id: "ack",
+            label: "Acknowledge",
+            disabled: (item) => item?.detailRows?.find((row) => row.key === "Status")?.value !== "open",
+            onTrigger: vi.fn(),
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Acknowledge" }).hasAttribute("disabled")).toBe(true);
+    fireEvent.click(screen.getByText("Open incident"));
+    expect(screen.getByRole("button", { name: "Acknowledge" }).hasAttribute("disabled")).toBe(false);
   });
 });

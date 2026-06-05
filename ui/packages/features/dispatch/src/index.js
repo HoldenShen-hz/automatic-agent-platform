@@ -8,7 +8,7 @@ const dispatchFeature = createFeatureModule({
     group: "Operations",
     path: "/operations/dispatch",
     permission: "platform_sre",
-    status: "Planned",
+    status: "Implemented/Partial",
     summary: featureCopy.summary,
     render: DispatchWebView,
 });

@@ -107,6 +107,62 @@ test("MiniMax chat service extracts reasoning_content when present", async () =>
   assert.equal(result.reasoningContent, "Let me think through this step by step...");
 });
 
+test("MiniMax chat service retries a single credential on transient 529 overload", async () => {
+  let requestCount = 0;
+  const service = new MiniMaxChatService({
+    credentialPool: createTestCredentialPool(),
+    fetchImpl: async () => {
+      requestCount += 1;
+      if (requestCount === 1) {
+        return new Response(JSON.stringify({
+          type: "error",
+          error: {
+            type: "overloaded_error",
+            message: "cluster busy",
+            http_code: "529",
+          },
+        }), {
+          status: 529,
+          statusText: "Unknown Status Code",
+          headers: new Headers({
+            "content-type": "application/json",
+            "retry-after-ms": "0",
+          }),
+        });
+      }
+      return new Response(JSON.stringify({
+        id: "resp-after-retry",
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              content: "Recovered after retry",
+            },
+            finish_reason: "stop",
+          },
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 5,
+          total_tokens: 15,
+        },
+        model: "MiniMax-M2",
+      }), {
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+      });
+    },
+  });
+
+  const result = await service.createChatCompletion({
+    model: "MiniMax-M2",
+    messages: [{ role: "user", content: "Hi" }],
+  });
+
+  assert.equal(requestCount, 2);
+  assert.equal(result.content, "Recovered after retry");
+});
+
 test("MiniMax chat service uses request model when response model is absent", async () => {
   const service = new MiniMaxChatService({
     credentialPool: createTestCredentialPool(),

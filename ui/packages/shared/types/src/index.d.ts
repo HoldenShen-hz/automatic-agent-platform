@@ -249,6 +249,12 @@ export interface IncidentDTO {
     readonly title: string;
     readonly summary: string;
     readonly createdAt: string;
+    readonly status?: "open" | "acknowledged" | "mitigating" | "resolved" | "closed" | (string & {});
+    readonly owner?: string | null;
+    readonly updatedAt?: string;
+    readonly resolvedAt?: string | null;
+    readonly snoozedUntil?: string | null;
+    readonly linkedEvidenceRefs?: readonly string[];
 }
 export interface WorkerDTO {
     readonly id: string;
@@ -262,6 +268,63 @@ export interface QueueDTO {
     readonly inFlight: number;
     readonly retries: number;
     readonly dlq: number;
+}
+export interface QueueGovernanceHealthSummaryDTO {
+    readonly backlogSize: number;
+    readonly dispatchableBacklogSize: number;
+    readonly claimedBacklogSize: number;
+    readonly oldestWaitSeconds: number | null;
+    readonly oldestClaimAgeSeconds: number | null;
+    readonly queueNames: readonly string[];
+    readonly starvationDetected: boolean;
+}
+export interface BackpressureHealthSummaryDTO {
+    readonly status: "ok" | "degraded" | "overloaded" | "unhealthy";
+    readonly degradationMode: "none" | "queue_only" | "fast_only" | "pause_non_critical" | "read_only_operations_only";
+    readonly tier1AckBacklog: number;
+    readonly queueGovernance: QueueGovernanceHealthSummaryDTO;
+}
+export interface WorkerHealthSummaryDTO {
+    readonly totalWorkers: number;
+    readonly healthyWorkers: number;
+    readonly busyWorkers: number;
+    readonly drainingWorkers: number;
+    readonly degradedWorkers: number;
+    readonly quarantinedWorkers: number;
+    readonly offlineWorkers: number;
+    readonly remoteWorkers: number;
+    readonly remoteConnectedWorkers: number;
+    readonly remoteReconnectingWorkers: number;
+    readonly remoteDegradedSessions: number;
+    readonly remoteFailedSessions: number;
+    readonly remoteViewerOnlyWorkers: number;
+    readonly remoteConsistencyMismatchWorkers: number;
+    readonly remoteWorkspaceSyncConflictWorkers: number;
+    readonly remoteOffsetMissingWorkers: number;
+    readonly staleWorkers: number;
+    readonly staleBusyWorkers: number;
+    readonly loadSkewDetected: boolean;
+    readonly dominantWorkerId: string | null;
+    readonly dominantWorkerShare: number | null;
+    readonly skewedWorkerIds: readonly string[];
+}
+export interface HealthStatusReportDTO {
+    readonly status: "ok" | "degraded" | "overloaded" | "unhealthy";
+    readonly uptimeSeconds: number;
+    readonly dbWritable: boolean;
+    readonly providerHealth: "healthy" | "degraded" | "failed";
+    readonly providerSuccessRate: number;
+    readonly providerRecentCalls: number;
+    readonly activeExecutions: number;
+    readonly queuedTasks: number;
+    readonly eventLoopLagMs: number | null;
+    readonly memoryRssMb: number;
+    readonly tier1AckBacklog: number;
+    readonly degradationMode: "none" | "queue_only" | "fast_only" | "pause_non_critical" | "read_only_operations_only";
+    readonly backpressure: BackpressureHealthSummaryDTO;
+    readonly queueGovernance: QueueGovernanceHealthSummaryDTO;
+    readonly workerHealth: WorkerHealthSummaryDTO;
+    readonly findings: readonly string[];
 }
 export interface AgentDTO {
     readonly id: string;

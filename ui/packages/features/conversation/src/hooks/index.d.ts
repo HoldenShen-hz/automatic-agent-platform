@@ -20,6 +20,7 @@ export interface ConversationVm {
     readonly executionReady: boolean;
     readonly isStreaming: boolean;
     setDraft(value: string): void;
+    restoreSuggestedDraft(): void;
     attachFiles(files: FileList | readonly File[]): void;
     sendPrompt(): Promise<void>;
     buildPlan(): Promise<void>;

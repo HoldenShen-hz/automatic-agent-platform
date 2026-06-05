@@ -13,3 +13,10 @@ test("offline executePlan no longer simulates local execution", () => {
   assert.ok(source.includes("requestClarification(translateMessage(\"ui.conversation.execute.requiresConnection\"))"));
   assert.ok(!source.includes("syncInMemoryState(planReady, false);"));
 });
+
+test("executePlan routes conversation execution through real task APIs", () => {
+  assert.ok(source.includes("createTask(restClient, {"));
+  assert.ok(source.includes("waitForRealTaskCompletion(taskId)"));
+  assert.ok(source.includes("fetchTasks(restClient)"));
+  assert.ok(!source.includes("type: \"execute_plan\""));
+});

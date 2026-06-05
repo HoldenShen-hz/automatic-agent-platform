@@ -356,6 +356,7 @@ export function parseControlPlaneLoadBalancingSelectionPayload(
 const createTaskPayloadSchema = z.object({
   title: nonEmptyStringSchema,
   divisionId: nonEmptyStringSchema.optional(),
+  owner: nonEmptyStringSchema.optional(),
   parentId: nonEmptyStringSchema.optional(),
   inputJson: z.string().optional(),
   priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
@@ -366,6 +367,7 @@ const createTaskPayloadSchema = z.object({
 
 const updateTaskPayloadSchema = z.object({
   title: nonEmptyStringSchema.optional(),
+  owner: nonEmptyStringSchema.optional(),
   status: z.enum(["queued", "pending", "in_progress", "awaiting_decision", "done", "failed", "cancelled",
     // R6-17 FIX: Add canonical HarnessRunStatus states for task status tracking
     // These additional states allow representation of all canonical execution lifecycle states
@@ -377,6 +379,7 @@ const updateTaskPayloadSchema = z.object({
 export interface CreateTaskPayload {
   title: string;
   divisionId?: string;
+  owner?: string;
   parentId?: string;
   inputJson?: string;
   priority?: "low" | "normal" | "high" | "urgent";
@@ -387,6 +390,7 @@ export interface CreateTaskPayload {
 
 export interface UpdateTaskPayload {
   title?: string;
+  owner?: string;
   // R6-17 FIX: Extended to support all canonical HarnessRunStatus states for full lifecycle tracking
   status?: "queued" | "pending" | "in_progress" | "awaiting_decision" | "done" | "failed" | "cancelled"
     | "prechecking" | "ready" | "dispatching" | "executing" | "blocked" | "paused" | "resuming" | "recovering" | "timed_out" | "superseded";
@@ -404,6 +408,7 @@ export function parseCreateTaskPayload(body: unknown): CreateTaskPayload {
   return {
     title: payload.title,
     ...(payload.divisionId != null ? { divisionId: payload.divisionId } : {}),
+    ...(payload.owner != null ? { owner: payload.owner } : {}),
     ...(payload.parentId != null ? { parentId: payload.parentId } : {}),
     ...(payload.inputJson != null ? { inputJson: payload.inputJson } : {}),
     ...(payload.priority != null ? { priority: payload.priority } : {}),
@@ -422,6 +427,7 @@ export function parseUpdateTaskPayload(body: unknown): UpdateTaskPayload {
   );
   return {
     ...(payload.title != null ? { title: payload.title } : {}),
+    ...(payload.owner != null ? { owner: payload.owner } : {}),
     ...(payload.status != null ? { status: payload.status } : {}),
     ...(payload.priority != null ? { priority: payload.priority } : {}),
     ...(payload.outputJson != null ? { outputJson: payload.outputJson } : {}),

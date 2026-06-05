@@ -1,7 +1,7 @@
 import type { ChangeEvent, ReactElement } from "react";
 import { useWsClient } from "@aa/shared-state";
 import { CodeBlock, FeatureScaffold, FileAttachment, Inline, KeyValueTable, Stack, designTokens } from "@aa/ui-core";
-import { translateFeatureCopy } from "@aa/shared-i18n";
+import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
 import { useConversationVm } from "../hooks";
 
 function renderMessageContent(content: string): ReactElement {
@@ -16,6 +16,8 @@ export function ConversationWebView(): ReactElement {
   const wsClient = useWsClient();
   const vm = useConversationVm(wsClient);
   const copy = translateFeatureCopy("conversation");
+  const hasDraft = vm.draft.trim().length > 0;
+  const hasPromptContext = hasDraft || vm.messages.some((message) => message.role === "user" && message.content.trim().length > 0);
 
   function handleFileAttach(event: ChangeEvent<HTMLInputElement>): void {
     if (event.target.files == null) {
@@ -40,14 +42,19 @@ export function ConversationWebView(): ReactElement {
             placeholder="Ask the platform to plan or execute work"
             value={vm.draft}
           />
+          {!hasDraft ? (
+            <button aria-label="Use Suggested Prompt" onClick={vm.restoreSuggestedDraft} type="button">
+              {translateMessage("ui.conversation.useSuggestedPrompt")}
+            </button>
+          ) : null}
           <label>
             Attach files
             <input aria-label="Attach files" onChange={handleFileAttach} style={{ display: "none" }} type="file" multiple />
           </label>
-          <button aria-label="Send Prompt" type="submit">Send Prompt</button>
-          <button aria-label="Build Plan" disabled={vm.messages.length === 0} onClick={() => { void vm.buildPlan(); }} type="button">Build Plan</button>
+          <button aria-label="Send Prompt" disabled={!hasDraft} type="submit">Send Prompt</button>
+          <button aria-label="Build Plan" disabled={!hasPromptContext} onClick={() => { void vm.buildPlan(); }} type="button">Build Plan</button>
           <button aria-label="Confirm" disabled={!vm.planReady} onClick={vm.confirmPlan} type="button">Confirm</button>
-          <button aria-label="Execute" disabled={!vm.executionReady && vm.messages.length === 0} onClick={() => { void vm.executePlan(); }} type="button">Execute</button>
+          <button aria-label="Execute" disabled={!vm.executionReady} onClick={() => { void vm.executePlan(); }} type="button">Execute</button>
           <button aria-label="Trigger Clarification" onClick={() => vm.requestClarification()} type="button">Trigger Clarification</button>
           </Inline>
         </form>

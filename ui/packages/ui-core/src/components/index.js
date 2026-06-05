@@ -60,6 +60,12 @@ const defaultWorkbenchLabels = {
     activityLogTitle: "Activity log",
     activityLogEmpty: "Recent actions will appear here after execution.",
 };
+function resolveActionDisabled(action, selectedItem) {
+    const disabled = typeof action.disabled === "function"
+        ? action.disabled(selectedItem)
+        : (action.disabled ?? false);
+    return disabled || action.onTrigger == null;
+}
 export function FeatureWorkbench({ metrics, rows, items, actions, emptyState, labels, }) {
     const resolvedLabels = {
         ...defaultWorkbenchLabels,
@@ -87,6 +93,9 @@ export function FeatureWorkbench({ metrics, rows, items, actions, emptyState, la
     }, [filteredItems, selectedId]);
     const selectedItem = filteredItems.find((item) => item.id === selectedId) ?? null;
     async function triggerAction(action) {
+        if (resolveActionDisabled(action, selectedItem)) {
+            return;
+        }
         try {
             await action.onTrigger?.(selectedItem);
             const activity = action.buildActivity?.(selectedItem) ?? {
@@ -133,6 +142,8 @@ export function FeatureWorkbench({ metrics, rows, items, actions, emptyState, la
         type: "search",
         value: filter,
     }), ...actions.map((action) => createElement("button", {
+        "aria-disabled": resolveActionDisabled(action, selectedItem),
+        disabled: resolveActionDisabled(action, selectedItem),
         key: action.id,
         onClick: () => {
             void triggerAction(action);
@@ -142,8 +153,9 @@ export function FeatureWorkbench({ metrics, rows, items, actions, emptyState, la
             border: `1px solid ${action.tone === "neutral" ? designTokens.color.border : "transparent"}`,
             borderRadius: designTokens.radius.sm,
             color: action.tone === "neutral" ? designTokens.color.text : "#04130a",
-            cursor: "pointer",
+            cursor: resolveActionDisabled(action, selectedItem) ? "not-allowed" : "pointer",
             fontWeight: designTokens.typography.fontWeight.semibold,
+            opacity: resolveActionDisabled(action, selectedItem) ? 0.45 : 1,
             padding: "8px 12px",
         },
         type: "button",
@@ -236,6 +248,7 @@ export function FeatureWorkbenchPanel({ metrics, rows, items = [], actions, empt
         id: action.id,
         label: action.label,
         ...(action.tone == null ? {} : { tone: action.tone }),
+        ...(action.disabled == null ? {} : { disabled: action.disabled }),
         ...(action.onTrigger == null ? {} : { onTrigger: action.onTrigger }),
         buildActivity: (item) => ({
             title: item == null ? action.label : `${action.label} · ${item.title}`,

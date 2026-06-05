@@ -16,6 +16,7 @@ export interface ReleaseConsoleVm {
   readonly leadershipClaims: LeadershipClaimsConsoleDTO | null;
   readonly summaryRows: readonly { key: string; value: string }[];
   readonly errorMessage: string | null;
+  refresh(): Promise<void>;
   approveReviewRequest(requestId: string): Promise<void>;
   rejectReviewRequest(requestId: string): Promise<void>;
   revokeClaim(claimId: string): Promise<void>;
@@ -85,6 +86,17 @@ export function useReleaseConsoleVm(): ReleaseConsoleVm {
     leadershipClaims,
     summaryRows,
     errorMessage,
+    refresh: async () => {
+      setLoading(true);
+      setErrorMessage(null);
+      try {
+        await loadSnapshot();
+      } catch {
+        setLeadershipClaims(null);
+        setLoading(false);
+        setErrorMessage("leadership_claims.load_failed");
+      }
+    },
     approveReviewRequest: async (requestId: string) => {
       setMutating(true);
       setErrorMessage(null);

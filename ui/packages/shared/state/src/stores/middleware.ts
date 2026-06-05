@@ -82,3 +82,10 @@ export function withPersistDevtoolsDraft<T, TPersisted = Partial<T>>(
     { name },
   ) as unknown as StateCreator<T, [], []>;
 }
+
+export function withDevtoolsDraft<T>(
+  name: string,
+  initializer: DraftStateCreator<T>,
+): StateCreator<T, [], []> {
+  return devtools(withDraft(initializer), { name }) as unknown as StateCreator<T, [], []>;
+}

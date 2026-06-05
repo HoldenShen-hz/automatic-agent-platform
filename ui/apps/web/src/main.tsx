@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { App } from "./App";
 import { GlobalErrorBoundary } from "./global-error-boundary";
 import {
+  bootstrapLocalDevAuthSession,
   createWebRuntimeClients,
   createWebRuntimeConfig,
   readBootstrapAuthToken,
@@ -26,6 +27,32 @@ function RuntimeBootstrap(): React.ReactElement {
     ...runtimeConfig,
     ...(authToken == null ? {} : { authToken }),
   }));
+  const [runtimeReady, setRuntimeReady] = React.useState(() =>
+    authToken != null
+    || runtimeConfig.authToken != null
+    || runtime.tokenManager.getAccessToken() != null,
+  );
+  const resolvedWsToken = authToken
+    ?? runtime.tokenManager.getAccessToken()
+    ?? runtimeConfig.authToken
+    ?? null;
+
+  React.useEffect(() => {
+    let disposed = false;
+    if (runtimeReady) {
+      return () => {
+        disposed = true;
+      };
+    }
+    void bootstrapLocalDevAuthSession(runtimeConfig, runtime.tokenManager).finally(() => {
+      if (!disposed) {
+        setRuntimeReady(true);
+      }
+    });
+    return () => {
+      disposed = true;
+    };
+  }, [runtime, runtimeConfig, runtimeReady]);
 
   React.useEffect(() => {
     const telemetry = startWebRuntimeTelemetry(runtimeConfig);
@@ -38,17 +65,31 @@ function RuntimeBootstrap(): React.ReactElement {
     void registerWebServiceWorker();
   }, []);
 
+  if (!runtimeReady) {
+    return <div>Connecting local runtime...</div>;
+  }
+
   return (
     <App
       client={runtime.client}
       wsClient={runtime.wsClient}
-      {...(authToken == null ? {} : { wsToken: authToken })}
+      offlineQueue={runtime.offlineQueue}
+      tokenManager={runtime.tokenManager}
+      {...(resolvedWsToken == null ? {} : { wsToken: resolvedWsToken })}
       {...(runtimeConfig.wsUrl == null ? {} : { wsUrl: runtimeConfig.wsUrl })}
     />
   );
 }
 
-ReactDOM.createRoot(rootElement).render(
+type RootWindow = Window & {
+  __AA_WEB_APP_ROOT__?: ReactDOM.Root;
+};
+
+const windowWithRoot = window as RootWindow;
+const appRoot = windowWithRoot.__AA_WEB_APP_ROOT__ ?? ReactDOM.createRoot(rootElement);
+windowWithRoot.__AA_WEB_APP_ROOT__ = appRoot;
+
+appRoot.render(
   <React.StrictMode>
     <GlobalErrorBoundary>
       <RuntimeBootstrap />

@@ -1,11 +1,7 @@
-import { jsx as _jsx } from "react/jsx-runtime";
-import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { FeatureScaffold, KeyValueTable, ListCard, MetricGrid, Stack, ThreePaneLayout } from "@aa/ui-core";
 import { useAuditVm } from "../hooks";
 export function AuditWebView() {
     const vm = useAuditVm();
-    return (_jsx(FeatureScaffold, { title: "Audit", summary: "\u5BA1\u8BA1\u4E0E\u8FFD\u8E2A\u4E2D\u5FC3", status: "Planned", children: _jsx(FeatureWorkbenchPanel, { items: vm.items, actions: [
-                { id: "audit-export", label: "导出证据包", tone: "accent", onTrigger: buildWorkbenchActionHandler("audit", "export", { copySelection: true }) },
-                { id: "audit-actor", label: "检索 Actor 轨迹", tone: "neutral", onTrigger: buildWorkbenchActionHandler("audit", "actor-trace", { deepLinkPath: "/governance/audit?view=actors" }) },
-                { id: "audit-lock", label: "锁定时间窗", tone: "neutral", onTrigger: buildWorkbenchActionHandler("audit", "lock-window", { deepLinkPath: "/governance/audit?view=time-window" }) },
-            ] }) }));
+    return (_jsxs(FeatureScaffold, { title: "Audit", summary: "\u5BA1\u8BA1\u4E0E\u8FFD\u8E2A\u4E2D\u5FC3", status: "Implemented/Partial", children: [_jsx(MetricGrid, { metrics: vm.metrics }), _jsx(ThreePaneLayout, { left: _jsxs(Stack, { gap: 10, children: [_jsx("h3", { children: "Audit entries" }), vm.loading ? _jsx("p", { children: "Loading audit log stream..." }) : null, vm.loadError != null ? _jsx("p", { children: vm.loadError }) : null, vm.listItems.length === 0 ? _jsx("p", { children: "No audit entries returned by the backend." }) : vm.listItems.map((item) => (_jsxs("button", { onClick: () => vm.selectEntry(item.id), style: { textAlign: "left" }, type: "button", children: [_jsx("strong", { children: item.title }), _jsx("div", { children: item.subtitle })] }, item.id)))] }), center: vm.detailRows.length === 0 ? _jsx("p", { children: "No audit entry selected" }) : _jsxs(Stack, { gap: 16, children: [_jsx("h3", { children: "Audit detail" }), _jsx(KeyValueTable, { rows: vm.detailRows })] }), right: _jsxs(Stack, { gap: 12, children: [_jsx("h3", { children: "Audit summary" }), _jsx(ListCard, { items: vm.summaryItems }), _jsx("h3", { children: "Structured metadata" }), _jsx(ListCard, { items: vm.metadataItems })] }) })] }));
 }

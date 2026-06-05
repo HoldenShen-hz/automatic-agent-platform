@@ -108,6 +108,20 @@ test("buildRequestGuardPlan does not add request-deduplication for /v1/webhooks 
   assert.ok(!plan.beforeDispatch.includes("request-deduplication"));
 });
 
+test("buildRequestGuardPlan does not add request-deduplication for auth token exchange routes", () => {
+  const v1Plan = buildRequestGuardPlan({
+    method: "POST",
+    path: "/v1/auth/token",
+  });
+  const legacyPlan = buildRequestGuardPlan({
+    method: "POST",
+    path: "/auth/token",
+  });
+
+  assert.ok(!v1Plan.beforeDispatch.includes("request-deduplication"));
+  assert.ok(!legacyPlan.beforeDispatch.includes("request-deduplication"));
+});
+
 test("buildRequestGuardPlan normalizes method to uppercase", () => {
   const input: RequestGuardPlanInput = {
     method: "get",

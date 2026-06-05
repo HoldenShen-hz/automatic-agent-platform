@@ -1136,6 +1136,7 @@ test("POST /v1/incidents is reachable through HttpApiServer", async () => {
   const { server, authService } = createTestServer({
     incidentService: {
       listIncidents: () => [],
+      listIncidentsPaginated: () => ({ incidents: [], nextToken: null }),
       getIncident: () => null,
       openIncident: ({ severity, title }) => ({
         incidentId: "incident_test_1",
@@ -1176,9 +1177,11 @@ test("POST /v1/incidents is reachable through HttpApiServer", async () => {
     });
 
     assert.equal(response.statusCode, 201);
-    const body = response.json<{ requestId: string; data: { title: string; severity: string } }>();
+    const body = response.json<{ requestId: string; data: { id: string; title: string; severity: string; summary: string } }>();
+    assert.equal(body.data.id, "incident_test_1");
     assert.equal(body.data.title, "API outage");
     assert.equal(body.data.severity, "high");
+    assert.match(body.data.summary, /open/);
   } finally {
     await server.stop();
   }

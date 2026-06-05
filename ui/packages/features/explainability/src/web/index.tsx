@@ -1,20 +1,40 @@
 import type { ReactElement } from "react";
-import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { FeatureScaffold, KeyValueTable, ListCard, MetricGrid, Stack, ThreePaneLayout } from "@aa/ui-core";
 import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useExplainabilityVm } from "../hooks";
 
 export function ExplainabilityWebView(): ReactElement {
   const vm = useExplainabilityVm();
   const featureCopy = translateFeatureCopy("explainability");
+
   return (
-    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
-      <FeatureWorkbenchPanel
-        items={vm.items}
-        actions={[
-          { id: "explain-chain", label: "展开因果链", tone: "accent", onTrigger: buildWorkbenchActionHandler("explainability", "chain", { deepLinkPath: "/observability/explainability?view=causal-chain" }) },
-          { id: "explain-pin", label: "固定证据包", tone: "neutral", onTrigger: buildWorkbenchActionHandler("explainability", "pin", { copySelection: true }) },
-          { id: "explain-export", label: "导出解释摘要", tone: "neutral", onTrigger: buildWorkbenchActionHandler("explainability", "export", { copySelection: true }) },
-        ]}
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Partial">
+      <MetricGrid metrics={vm.metrics} />
+      <ThreePaneLayout
+        left={(
+          <Stack gap={10}>
+            <h3>Explanations</h3>
+            {vm.loading ? <p>Loading explanations...</p> : null}
+            {vm.listItems.length === 0 ? <p>No explanation summaries available.</p> : vm.listItems.map((item) => (
+              <button key={item.id} onClick={() => vm.selectExplanation(item.id)} style={{ textAlign: "left" }} type="button">
+                <strong>{item.title}</strong>
+                <div>{item.subtitle}</div>
+              </button>
+            ))}
+          </Stack>
+        )}
+        center={vm.selectedExplanation == null ? <p>No explanation selected</p> : (
+          <Stack gap={16}>
+            <h3>Explanation detail</h3>
+            <KeyValueTable rows={vm.detailRows} />
+          </Stack>
+        )}
+        right={(
+          <Stack gap={12}>
+            <h3>Explainability summary</h3>
+            <ListCard items={vm.summaryItems} />
+          </Stack>
+        )}
       />
     </FeatureScaffold>
   );

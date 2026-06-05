@@ -217,6 +217,40 @@ test("POST /api/v1/tasks inserts task into task store", async () => {
   assert.ok(insertedTask.createdAt != null, "Expected createdAt timestamp");
 });
 
+test("POST /api/v1/tasks persists owner inside stored input metadata for later readback", async () => {
+  let insertedTask: any = null;
+  const mockTaskStore = {
+    task: {
+      insertTask: (task: any) => { insertedTask = task; },
+      getTask: () => null,
+      updateTaskInput: () => {},
+      updateTaskStatus: () => {},
+      updateTaskOutput: () => {},
+    },
+  } as unknown as AuthoritativeTaskStore;
+
+  const deps = {
+    authService: createMockAuthService(),
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+    taskStore: mockTaskStore,
+  };
+  const routes = createTaskRoutes(deps);
+  const ctx = createMockContext("/api/v1/tasks", ["api", "v1", "tasks"], {}, "POST", {
+    title: "Owner Metadata Task",
+    divisionId: "platform",
+    owner: "platform-owner",
+    inputJson: "{\"brief\":\"real backend\"}",
+  });
+
+  const response = await callRoute(routes, ctx);
+
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 201);
+  assert.ok(insertedTask != null, "Expected task to be inserted");
+  assert.equal(insertedTask.inputJson, "{\"brief\":\"real backend\",\"owner\":\"platform-owner\"}");
+});
+
 test("POST /api/v1/tasks with intakeAdmissionService persists task record before emitted events", async () => {
   const writeOrder: string[] = [];
   let insertedEvents = 0;

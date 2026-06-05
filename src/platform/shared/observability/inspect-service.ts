@@ -42,6 +42,12 @@ import {
   type WorkflowInspectSummary,
 } from "./inspect-service-support.js";
 
+function extractTaskOwner(task: TaskRecord): string | null {
+  const inputMetadata = readStoredJsonRecord(task.inputJson, { maxBytes: 512 * 1024, fallback: {} });
+  return typeof inputMetadata.owner === "string" && inputMetadata.owner.trim().length > 0
+    ? inputMetadata.owner.trim()
+    : null;
+}
 
 export class InspectService {
   private readonly runtimeRecovery: RuntimeRecoveryService;
@@ -377,6 +383,7 @@ export class InspectService {
     const approvals = this.store.approval.listApprovalsByTask(task.id);
     const session = this.store.operations.loadTaskSnapshot(task.id).session;
     const events = this.store.event.listEventsForTask(task.id);
+    const owner = extractTaskOwner(task);
     const outputMetadata = task.outputJson == null
       ? {}
       : readStoredJsonRecord(task.outputJson, { maxBytes: 512 * 1024, fallback: {} });
@@ -385,6 +392,7 @@ export class InspectService {
       taskId: task.id,
       title: task.title,
       divisionId: task.divisionId,
+      ...(owner == null ? {} : { owner }),
       priority: task.priority,
       taskStatus: task.status,
       workflowId: workflow?.workflowId ?? null,

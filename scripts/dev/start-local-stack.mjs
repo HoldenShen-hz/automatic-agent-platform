@@ -31,12 +31,22 @@ const uiPort = readLocalStackPort(process.env, "AA_LOCAL_UI_PORT", 5173);
 const localProviderEnv = loadLocalStackProviderEnv(repoRoot, process.env);
 const LOCAL_DEV_API_KEY = "local-dev-platform-operator";
 const LOCAL_DEV_JWT_SECRET = "AA-local-dev-jwt-2026-06-04-4n7Qp9Lc2Vx8MzK5Rt1Hy6Ws3Ef0Ud";
+const LOCAL_DEV_AUDIT_INTEGRITY_HMAC_KEY =
+  process.env.AA_AUDIT_INTEGRITY_HMAC_KEY
+  ?? "AA-local-dev-audit-integrity-key-2026-06-05-7Lm2Qp4Nx8Rt1Hy6Ks9Uv3Wd";
 
 mkdirSync(pidDir, { recursive: true });
 mkdirSync(logDir, { recursive: true });
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isAcceptableApiHealthResponse(response) {
+  if (response.statusCode !== 200 && response.statusCode !== 503) {
+    return false;
+  }
+  return /"status"\s*:\s*"(ok|degraded|overloaded|unhealthy)"/u.test(response.body);
 }
 
 function readPid(pidFile) {
@@ -257,7 +267,7 @@ async function ensureApi() {
   const existingPid = readPid(apiPidFile);
   if (existingPid != null && isPidAlive(existingPid)) {
     const health = await request(`http://127.0.0.1:${apiPort}/healthz`).catch(() => null);
-    if (health?.statusCode === 200) {
+    if (health != null && isAcceptableApiHealthResponse(health)) {
       console.log(`[api] already running on http://127.0.0.1:${apiPort}`);
       return;
     }
@@ -270,6 +280,9 @@ async function ensureApi() {
     AA_DB_PATH: join(repoRoot, "data", "sqlite", "automatic-agent-dev.db"),
     AA_API_HOST: "127.0.0.1",
     AA_API_PORT: String(apiPort),
+    AA_API_ENABLE_WEBSOCKET: "true",
+    AA_API_ALLOWED_ORIGINS: `http://localhost:${uiPort},http://127.0.0.1:${uiPort}`,
+    AA_API_TOKEN_TTL_MS: String(24 * 60 * 60 * 1000),
     AA_API_KEYS_JSON: JSON.stringify([
       {
         apiKey: LOCAL_DEV_API_KEY,
@@ -278,6 +291,7 @@ async function ensureApi() {
       },
     ]),
     AA_API_JWT_SECRET: LOCAL_DEV_JWT_SECRET,
+    AA_AUDIT_INTEGRITY_HMAC_KEY: LOCAL_DEV_AUDIT_INTEGRITY_HMAC_KEY,
     AA_METRICS_HOST: "127.0.0.1",
     AA_METRICS_PORT: String(metricsPort),
     AA_LOG_STDOUT: "0",
@@ -297,7 +311,7 @@ async function ensureApi() {
   writeFileSync(apiPidFile, `${pid}\n`, "utf8");
   await waitForHttp(
     `http://127.0.0.1:${apiPort}/healthz`,
-    (response) => response.statusCode === 200 && /"status"\s*:\s*"ok"/u.test(response.body),
+    (response) => isAcceptableApiHealthResponse(response),
     30_000,
   );
   await waitForHttp(
@@ -322,10 +336,11 @@ async function ensureUi() {
 
   const authToken = await issueLocalDevAuthToken();
   const env = {
-    VITE_API_BASE_URL: `http://127.0.0.1:${apiPort}/api`,
+    AA_UI_API_PROXY_TARGET: `http://127.0.0.1:${apiPort}`,
+    VITE_API_BASE_URL: "/api",
     VITE_API_FALLBACK_TO_MOCK: "false",
     VITE_AUTH_TOKEN: authToken,
-    VITE_WS_URL: `ws://127.0.0.1:${apiPort}/ws/v1/stream`,
+    VITE_WS_URL: `ws://localhost:${uiPort}/ws/v1/stream`,
   };
   appendFileSync(
     uiLogFile,

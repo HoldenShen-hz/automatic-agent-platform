@@ -8,7 +8,7 @@ const costCenterFeature = createFeatureModule({
     group: "Shared",
     path: "/shared/costs",
     permission: "domain_admin+",
-    status: "Planned",
+    status: "Implemented/Partial",
     summary: featureCopy.summary,
     render: CostCenterWebView,
 });

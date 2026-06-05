@@ -77,14 +77,50 @@ const featurePackageAliases = Object.fromEntries(
 function resolveConnectSrcOrigins(env: Record<string, string | undefined>): readonly string[] {
   const candidates = [env.VITE_API_BASE_URL, env.VITE_WS_URL, env.VITE_OTLP_ENDPOINT]
     .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
-    .map((value) => {
-      const url = new URL(value);
-      if (url.protocol === "ws:" || url.protocol === "wss:") {
-        return `${url.protocol}//${url.host}`;
+    .flatMap((value) => {
+      try {
+        const url = new URL(value);
+        if (url.protocol === "ws:" || url.protocol === "wss:") {
+          return [`${url.protocol}//${url.host}`];
+        }
+        return [url.origin];
+      } catch {
+        return [];
       }
-      return url.origin;
     });
   return Array.from(new Set(candidates));
+}
+
+function resolveDevProxyTarget(env: Record<string, string | undefined>): string | undefined {
+  const explicitTarget = env.AA_UI_API_PROXY_TARGET?.trim();
+  if (explicitTarget) {
+    return explicitTarget.replace(/\/+$/u, "");
+  }
+  const apiBaseUrl = env.VITE_API_BASE_URL?.trim();
+  if (apiBaseUrl == null || apiBaseUrl.length === 0) {
+    return undefined;
+  }
+  try {
+    const url = new URL(apiBaseUrl);
+    return url.origin;
+  } catch {
+    return undefined;
+  }
+}
+
+function resolveDevHmrHost(env: Record<string, string | undefined>, uiHost: string): string {
+  const wsUrl = env.VITE_WS_URL?.trim();
+  if (wsUrl != null && wsUrl.length > 0) {
+    try {
+      const url = new URL(wsUrl);
+      if (url.hostname.length > 0) {
+        return url.hostname;
+      }
+    } catch {
+      // Fall through to the resolved UI host.
+    }
+  }
+  return uiHost === "0.0.0.0" ? "localhost" : uiHost;
 }
 
 export function buildCspHeader(
@@ -205,6 +241,8 @@ export default defineConfig(({ mode }) => {
   const uiHost = env.AA_UI_HOST ?? testTarget.host;
   const uiPreviewPort = Number.parseInt(env.AA_UI_PORT ?? String(testTarget.port), 10);
   const uiDevPort = Number.parseInt(env.AA_UI_DEV_PORT ?? String(uiPreviewPort + 1000), 10);
+  const proxyTarget = resolveDevProxyTarget(env);
+  const hmrHost = resolveDevHmrHost(env, uiHost);
   return {
     plugins: [react(), tsconfigPaths(), createCspHeadersPlugin(cspHeader)],
     define: {
@@ -222,6 +260,28 @@ export default defineConfig(({ mode }) => {
       host: uiHost,
       port: uiDevPort,
       strictPort: true,
+      hmr: {
+        host: hmrHost,
+        clientPort: uiDevPort,
+        protocol: "ws",
+      },
+      ...(proxyTarget == null
+        ? {}
+        : {
+          proxy: {
+            "/api": {
+              target: proxyTarget,
+              changeOrigin: false,
+              secure: false,
+            },
+            "/ws/v1/stream": {
+              target: proxyTarget,
+              ws: true,
+              changeOrigin: false,
+              secure: false,
+            },
+          },
+        }),
     },
     preview: {
       host: uiHost,

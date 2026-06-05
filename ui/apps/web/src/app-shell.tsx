@@ -17,6 +17,8 @@ import { PlatformAdapterProvider, createWebPlatformAdapter } from "@aa/shared-pl
 import { UiRuntimeProvider, useSystemStatus } from "@aa/shared-state";
 import type { FeatureGuardContext } from "@aa/shared-types";
 import type { RESTClient, WSClient } from "@aa/shared-api-client";
+import type { TokenManager } from "@aa/shared-auth";
+import type { OfflineQueue } from "@aa/shared-sync";
 import { reportUiError } from "./ui-telemetry";
 
 export interface AuthContext extends Partial<FeatureGuardContext> {
@@ -38,6 +40,8 @@ export interface WebAppShellProps {
   readonly wsClient?: WSClient;
   readonly wsUrl?: string;
   readonly wsToken?: string;
+  readonly offlineQueue?: OfflineQueue;
+  readonly tokenManager?: TokenManager;
   readonly router?: "browser" | "memory";
   readonly initialEntries?: readonly string[];
   readonly authContext?: AuthContext;
@@ -416,13 +420,15 @@ function AppFrame(
 }
 
 export function WebAppShell(
-  { features, client, wsClient, wsUrl, wsToken, router = "browser", initialEntries, authContext, startupBanner }: WebAppShellProps,
+  { features, client, wsClient, wsUrl, wsToken, offlineQueue, tokenManager, router = "browser", initialEntries, authContext, startupBanner }: WebAppShellProps,
 ): ReactElement {
   const runtimeProps = {
     ...(client == null ? {} : { client }),
     ...(wsClient == null ? {} : { wsClient }),
     ...(wsUrl == null ? {} : { wsUrl }),
     ...(wsToken == null ? {} : { wsToken }),
+    ...(offlineQueue == null ? {} : { offlineQueue }),
+    ...(tokenManager == null ? {} : { tokenManager }),
   };
   const adapter = useMemo(() => createWebPlatformAdapter(), []);
   const [phase, setPhase] = useState<ShellLifecyclePhase>("booting");

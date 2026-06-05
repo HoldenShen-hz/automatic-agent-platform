@@ -40,10 +40,41 @@ import { StructuredLogger } from "../../../shared/observability/structured-logge
 import { createPolicyAwareFetch } from "../../../five-plane-control-plane/iam/network-egress-policy.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
+const MINIMAX_RETRYABLE_STATUS_CODES = [402, 429, 500, 502, 503, 504, 529];
+const MAX_SINGLE_CREDENTIAL_RETRIES = 2;
 
 function normalizeMiniMaxBaseUrl(baseUrl: string): string {
   const trimmed = baseUrl.replace(/\/$/, "");
   return trimmed.endsWith("/v1") ? trimmed : `${trimmed}/v1`;
+}
+
+function resolveRetryDelayMs(retryAfterMs: number | null, attempt: number): number {
+  if (retryAfterMs != null && retryAfterMs >= 0) {
+    return Math.min(retryAfterMs, 10_000);
+  }
+  return Math.min(500 * 2 ** attempt, 5_000);
+}
+
+async function sleepWithAbort(delayMs: number, signal: AbortSignal | undefined): Promise<void> {
+  if (delayMs <= 0) {
+    return;
+  }
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, delayMs);
+    const onAbort = (): void => {
+      clearTimeout(timeout);
+      signal?.removeEventListener("abort", onAbort);
+      reject(signal?.reason ?? new Error("provider.request_aborted"));
+    };
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 export interface MiniMaxMessage {
@@ -244,64 +275,86 @@ export class MiniMaxChatService {
         });
       }
       triedCredentialIds.push(selection.credentialId);
+      let sameCredentialRetryCount = 0;
 
-      const { signal, ...requestBody } = request;
-      const response = await this.fetchImpl(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${selection.apiKey}`,
-        },
-        body: JSON.stringify({ ...requestBody, ...(stream && !("stream" in requestBody) ? { stream: true } : {}) }),
-        ...(signal !== undefined ? { signal } : {}),
-      });
+      while (true) {
+        const { signal, ...requestBody } = request;
+        const response = await this.fetchImpl(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${selection.apiKey}`,
+          },
+          body: JSON.stringify({ ...requestBody, ...(stream && !("stream" in requestBody) ? { stream: true } : {}) }),
+          ...(signal !== undefined ? { signal } : {}),
+        });
 
-      if (response.ok) {
-        this.credentialPool.markSuccess(selection.credentialId);
-        return { response, selection };
-      }
+        if (response.ok) {
+          this.credentialPool.markSuccess(selection.credentialId);
+          return { response, selection };
+        }
 
-      const retryAfterMs = parseRetryAfterMs(response.headers);
-      const resetAt = parseResetAt(response.headers, [
-        "x-ratelimit-reset",
-        "x-reset-at",
-        "reset-at",
-        "reset_at",
-      ]);
-      const errorText = await response.text();
+        const retryAfterMs = parseRetryAfterMs(response.headers);
+        const resetAt = parseResetAt(response.headers, [
+          "x-ratelimit-reset",
+          "x-reset-at",
+          "reset-at",
+          "reset_at",
+        ]);
+        const errorText = await response.text();
+        const isRetryableStatus = shouldRetryWithinPool(response.status, MINIMAX_RETRYABLE_STATUS_CODES);
 
-      this.credentialPool.markFailure({
-        credentialId: selection.credentialId,
-        statusCode: response.status,
-        errorCode: `provider.http_${response.status}`,
-        retryAfterMs,
-        resetAt,
-      });
-      this.credentialPool.releaseCredential(
-        { credentialId: selection.credentialId, leaseId: selection.leaseId },
-        `provider.http_${response.status}`,
-      );
+        if (
+          isRetryableStatus &&
+          await this.credentialPool.canFailoverAfter({
+            statusCode: response.status,
+            retryAfterMs,
+            resetAt,
+            excludeCredentialIds: triedCredentialIds,
+          })
+        ) {
+          this.credentialPool.markFailure({
+            credentialId: selection.credentialId,
+            statusCode: response.status,
+            errorCode: `provider.http_${response.status}`,
+            retryAfterMs,
+            resetAt,
+          });
+          this.credentialPool.releaseCredential(
+            { credentialId: selection.credentialId, leaseId: selection.leaseId },
+            `provider.http_${response.status}`,
+          );
+          break;
+        }
 
-      if (
-        shouldRetryWithinPool(response.status, [402, 429, 500, 502, 503, 504]) &&
-        await this.credentialPool.canFailoverAfter({
+        if (isRetryableStatus && sameCredentialRetryCount < MAX_SINGLE_CREDENTIAL_RETRIES) {
+          const retryDelayMs = resolveRetryDelayMs(retryAfterMs, sameCredentialRetryCount);
+          sameCredentialRetryCount += 1;
+          await sleepWithAbort(retryDelayMs, signal);
+          continue;
+        }
+
+        this.credentialPool.markFailure({
+          credentialId: selection.credentialId,
           statusCode: response.status,
+          errorCode: `provider.http_${response.status}`,
           retryAfterMs,
           resetAt,
-          excludeCredentialIds: triedCredentialIds,
-        })
-      ) {
-        continue;
-      }
+        });
+        this.credentialPool.releaseCredential(
+          { credentialId: selection.credentialId, leaseId: selection.leaseId },
+          `provider.http_${response.status}`,
+        );
 
-      throw new MiniMaxAPIError({
-        statusCode: response.status,
-        statusText: response.statusText,
-        message: `MiniMax API error: ${response.status} ${response.statusText} - ${errorText}`,
-        credentialId: selection.credentialId,
-        retryAfterMs,
-        resetAt,
-      });
+        throw new MiniMaxAPIError({
+          statusCode: response.status,
+          statusText: response.statusText,
+          message: `MiniMax API error: ${response.status} ${response.statusText} - ${errorText}`,
+          credentialId: selection.credentialId,
+          retryAfterMs,
+          resetAt,
+        });
+      }
     }
   }
 

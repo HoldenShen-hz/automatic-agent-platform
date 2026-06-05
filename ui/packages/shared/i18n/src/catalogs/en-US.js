@@ -163,6 +163,7 @@ export const enUsCatalog = {
         "ui.conversation.streaming.connected": "connected",
         "ui.conversation.streaming.idle": "idle",
         "ui.conversation.defaultDraft": "Help me plan the next operation",
+        "ui.conversation.useSuggestedPrompt": "Use Suggested Prompt",
         "ui.conversation.generatedPlan": "Execution plan ready: create the activity, fetch assets, wait for approval, launch, and collect metrics.",
         "ui.conversation.confirmedPlan": "Plan confirmed. Running preflight checks before execution.",
         "ui.conversation.requestClarification.default": "The budget limit and launch timezone are still unclear. Please confirm them.",

@@ -13,7 +13,7 @@
 
 import { AnthropicChatService, type AnthropicTool, type AnthropicChatCompletionResult, type AnthropicChatCompletionRequest } from "./anthropic/anthropic-chat-service.js";
 import { OpenAIChatService, type OpenAIFunction, type OpenAIChatCompletionResult, type OpenAIChatCompletionRequest } from "./openai/openai-chat-service.js";
-import { MiniMaxChatService, type MiniMaxTool, type MiniMaxChatCompletionResult, type MiniMaxChatCompletionRequest } from "./minimax/minimax-chat-service.js";
+import { MiniMaxAPIError, MiniMaxChatService, type MiniMaxTool, type MiniMaxChatCompletionResult, type MiniMaxChatCompletionRequest } from "./minimax/minimax-chat-service.js";
 import { AppError, ValidationError } from "../../contracts/errors.js";
 import { CircuitBreaker } from "./circuit-breaker.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
@@ -23,6 +23,7 @@ import { HashEmbeddingProvider, MiniMaxEmbeddingProvider, OpenAIEmbeddingProvide
 import { DEFAULT_MODEL_METADATA_REGISTRY } from "../../five-plane-control-plane/config-center/model-metadata-registry.js";
 
 const PLATFORM_DEFAULT_MODEL_ID = "minimax-m2.7";
+const MINIMAX_RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504, 520, 529]);
 
 const llmRequestLogger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -31,6 +32,16 @@ function redactRoutingIdentifier(value: string | null | undefined): string | nul
     return null;
   }
   return `redacted:${sha256HexPrefix(value, 12)}`;
+}
+
+function resolveVisibleContent(content: string, reasoningContent: string | null): string {
+  if (content.trim().length > 0) {
+    return content;
+  }
+  if (reasoningContent?.trim().length) {
+    return reasoningContent;
+  }
+  return content;
 }
 
 export interface ChatMessage {
@@ -346,9 +357,11 @@ export class UnifiedChatProvider {
       }
       case "minimax": {
         const minimaxService = service as MiniMaxChatService;
-        const chatResult = breaker
-          ? await breaker.execute(() => minimaxService.createChatCompletion(this.toMiniMaxRequest(runtimeRequest)))
-          : await minimaxService.createChatCompletion(this.toMiniMaxRequest(runtimeRequest));
+        const runMiniMaxChatCompletion = () =>
+          breaker
+            ? breaker.execute(() => minimaxService.createChatCompletion(this.toMiniMaxRequest(runtimeRequest)))
+            : minimaxService.createChatCompletion(this.toMiniMaxRequest(runtimeRequest));
+        const chatResult = await this.executeMiniMaxWithRetry(runMiniMaxChatCompletion, runtimeSignal);
         result = this.normalizeMiniMaxResult(chatResult, provider, normalizedRequest.model, Date.now() - startedAt);
         break;
       }
@@ -677,7 +690,7 @@ export class UnifiedChatProvider {
   private withRequestDefaults(request: ChatCompletionRequest): ChatCompletionRequest {
     return {
       ...request,
-      model: PLATFORM_DEFAULT_MODEL_ID,
+      model: request.model?.trim() ? request.model : PLATFORM_DEFAULT_MODEL_ID,
       traceId: request.traceId?.trim() ? request.traceId : "default",
       tenantId: request.tenantId?.trim() ? request.tenantId : "default-tenant",
       costTag: request.costTag?.trim() ? request.costTag : "default",
@@ -771,7 +784,7 @@ export class UnifiedChatProvider {
     return {
       id: result.id,
       requestId: result.id,
-      content: result.content,
+      content: resolveVisibleContent(result.content, result.reasoningContent),
       refusal: null,
       reasoningContent: result.reasoningContent,
       finishReason: result.finishReason,
@@ -804,6 +817,54 @@ export class UnifiedChatProvider {
       (usage.promptTokens / 1000) * profile.pricing.inputPer1kUsd +
       (usage.completionTokens / 1000) * profile.pricing.outputPer1kUsd
     ).toFixed(6));
+  }
+
+  private async executeMiniMaxWithRetry<TResult>(
+    operation: () => Promise<TResult>,
+    signal: AbortSignal | undefined,
+  ): Promise<TResult> {
+    let attempt = 0;
+    while (true) {
+      this.assertNotAborted(signal);
+      try {
+        return await operation();
+      } catch (error) {
+        if (!(error instanceof MiniMaxAPIError) || !this.isRetryableMiniMaxError(error) || attempt >= 2) {
+          throw error;
+        }
+        await this.sleepWithAbort(Math.min(500 * 2 ** attempt, 3_000), signal);
+        attempt += 1;
+      }
+    }
+  }
+
+  private isRetryableMiniMaxError(error: MiniMaxAPIError): boolean {
+    if (MINIMAX_RETRYABLE_STATUS_CODES.has(error.statusCode)) {
+      return true;
+    }
+    return /overloaded_error|unknown error,\s*520|当前服务集群负载较高/iu.test(error.message);
+  }
+
+  private async sleepWithAbort(delayMs: number, signal: AbortSignal | undefined): Promise<void> {
+    if (delayMs <= 0) {
+      return;
+    }
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        signal?.removeEventListener("abort", onAbort);
+        resolve();
+      }, delayMs);
+      const onAbort = (): void => {
+        clearTimeout(timeout);
+        signal?.removeEventListener("abort", onAbort);
+        reject(signal?.reason ?? new Error("provider.request_aborted"));
+      };
+      if (signal?.aborted) {
+        onAbort();
+        return;
+      }
+      signal?.addEventListener("abort", onAbort, { once: true });
+    });
   }
 
   private buildRuntimeSignal(signal: AbortSignal | undefined, timeoutMs: number | undefined): AbortSignal | undefined {

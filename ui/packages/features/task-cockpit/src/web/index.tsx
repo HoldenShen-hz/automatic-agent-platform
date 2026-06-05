@@ -22,6 +22,9 @@ export function TaskCockpitWebView(): ReactElement {
   const [activeTab, setActiveTab] = useState<DrillTab>("steps");
 
   const selectedTask = vm.selectedTask;
+  const evidenceCount = vm.evidenceViewer.evidenceChain.length > 0
+    ? vm.evidenceViewer.evidenceChain.length
+    : (selectedTask?.evidenceCount ?? 0);
   const detailRows = useMemo(() => {
     if (selectedTask == null) {
       return [];
@@ -39,12 +42,12 @@ export function TaskCockpitWebView(): ReactElement {
       { key: translateMessage("ui.taskCockpit.field.modelCall"), value: selectedTask.modelCallStatus ?? translateMessage("ui.taskCockpit.value.unknown") },
       { key: translateMessage("ui.taskCockpit.field.model"), value: modelLabel },
       { key: translateMessage("ui.taskCockpit.field.output"), value: selectedTask.outputSummary ?? selectedTask.outputUri ?? translateMessage("ui.taskCockpit.value.noRealOutput") },
-      { key: translateMessage("ui.taskCockpit.field.evidence"), value: String(selectedTask.evidenceCount ?? 0) },
+      { key: translateMessage("ui.taskCockpit.field.evidence"), value: String(evidenceCount) },
       { key: translateMessage("ui.taskCockpit.field.cpu"), value: `${selectedTask.resourceUsage?.cpuPercent ?? 0}%` },
       { key: translateMessage("ui.taskCockpit.field.memory"), value: `${selectedTask.resourceUsage?.memoryMb ?? 0} MB` },
       { key: translateMessage("ui.taskCockpit.field.runtime"), value: `${selectedTask.resourceUsage?.runtimeMinutes ?? 0} min` },
     ];
-  }, [selectedTask]);
+  }, [evidenceCount, selectedTask]);
 
   return (
     <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Contracted">
@@ -102,11 +105,31 @@ export function TaskCockpitWebView(): ReactElement {
         </Inline>
         {createError == null ? null : <p role="alert">{createError}</p>}
       </form>
+      {vm.loadError == null ? null : (
+        <div
+          role="alert"
+          style={{
+            border: "1px solid rgba(239, 68, 68, 0.45)",
+            borderRadius: 12,
+            display: "grid",
+            gap: 8,
+            marginBottom: 16,
+            padding: 12,
+          }}
+        >
+          <strong>Task query failed</strong>
+          <span>{vm.loadError}</span>
+          <Inline>
+            <button onClick={() => { void vm.refreshTasks(); }} type="button">Retry task load</button>
+          </Inline>
+        </div>
+      )}
       <ThreePaneLayout
         left={(
           <div>
             <h3>{translateMessage("ui.taskCockpit.listTitle")}</h3>
             <Stack gap={10}>
+              {vm.loading ? <p>Loading tasks...</p> : null}
               {vm.listItems.map((task) => (
                 <button
                   key={task.id}

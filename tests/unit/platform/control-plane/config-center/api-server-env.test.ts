@@ -17,6 +17,7 @@ test("loadApiServerEnv parses auth tenant scope and gateway config", () => {
     AA_API_JWT_SECRET: "StrongSecret1234567890!StrongSecret",
     AA_API_HOST: "127.0.0.1",
     AA_API_PORT: "8080",
+    AA_API_TOKEN_TTL_MS: "86400000",
     AA_GATEWAY_TELEGRAM_BOT_TOKEN: "telegram-token",
     AA_GATEWAY_WEBHOOK_DEFAULT_HEADERS_JSON: JSON.stringify({
       "x-default": "yes",
@@ -37,6 +38,7 @@ test("loadApiServerEnv parses auth tenant scope and gateway config", () => {
   assert.equal(config.dbPath, "/tmp/api.db");
   assert.equal(config.apiKeys[0]?.tenantId, "tenant-alpha");
   assert.equal(config.apiPort, 8080);
+  assert.equal(config.apiTokenTtlMs, 86400000);
   assert.equal(config.gateway.telegram?.botToken, "telegram-token");
   assert.equal(config.gateway.webhook?.defaultHeaders["x-default"], "yes");
   assert.equal(config.webhookSecret, "server-secret");
@@ -139,6 +141,16 @@ test("loadApiServerEnv rejects invalid websocket toggle values", () => {
         AA_API_ENABLE_WEBSOCKET: "maybe",
       }),
     /api\.invalid_enable_websocket/,
+  );
+});
+
+test("loadApiServerEnv rejects invalid API token TTL values", () => {
+  assert.throws(
+    () =>
+      loadApiServerEnv({
+        AA_API_TOKEN_TTL_MS: "0",
+      }),
+    /api\.invalid_api_token_ttl_ms/,
   );
 });
 

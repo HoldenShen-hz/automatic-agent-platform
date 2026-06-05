@@ -20,6 +20,8 @@ export interface ApiServerEnvConfig {
   apiHost?: string;
   /** Port number to listen on (optional) */
   apiPort?: number;
+  /** Access token TTL in milliseconds for API key exchanges */
+  apiTokenTtlMs?: number;
   /** Gateway configuration for external integrations (webhooks, notifications) */
   gateway: GatewayEnvConfig;
   /** Shared secret for verifying incoming webhooks */
@@ -208,6 +210,8 @@ export function loadApiServerEnv(env: NodeJS.ProcessEnv = process.env): ApiServe
   const dbPath = readTrimmedEnv(env, "AA_DB_PATH");
   const apiHost = readTrimmedEnv(env, "AA_API_HOST");
   const apiPort = parsePositivePort(readTrimmedEnv(env, "AA_API_PORT"));
+  const apiTokenTtlMs =
+    parsePositiveInteger(readTrimmedEnv(env, "AA_API_TOKEN_TTL_MS"), "api.invalid_api_token_ttl_ms") ?? undefined;
   const logFilePath = readTrimmedEnv(env, "AA_LOG_FILE_PATH");
   const logFileMaxBytes = parsePositiveInteger(readTrimmedEnv(env, "AA_LOG_FILE_MAX_BYTES"), "api.invalid_log_file_max_bytes");
   const logFileMaxFiles = parsePositiveInteger(readTrimmedEnv(env, "AA_LOG_FILE_MAX_FILES"), "api.invalid_log_file_max_files") ?? 5;
@@ -248,6 +252,7 @@ export function loadApiServerEnv(env: NodeJS.ProcessEnv = process.env): ApiServe
     jwtSecret,
     ...(apiHost ? { apiHost } : {}),
     ...(apiPort !== undefined ? { apiPort } : {}),
+    ...(apiTokenTtlMs !== undefined ? { apiTokenTtlMs } : {}),
     gateway: loadGatewayEnv(env, {
       invalidWebhookHeadersCode: "api.invalid_gateway_webhook_headers_json",
     }),

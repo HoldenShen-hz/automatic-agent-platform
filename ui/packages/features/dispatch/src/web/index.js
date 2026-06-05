@@ -1,11 +1,7 @@
-import { jsx as _jsx } from "react/jsx-runtime";
-import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { FeatureScaffold, KeyValueTable, ListCard, MetricGrid, Stack, ThreePaneLayout } from "@aa/ui-core";
 import { useDispatchVm } from "../hooks";
 export function DispatchWebView() {
     const vm = useDispatchVm();
-    return (_jsx(FeatureScaffold, { title: "Dispatch", summary: "\u8C03\u5EA6\u3001\u6267\u884C\u548C\u64CD\u4F5C\u5165\u53E3\u3002", status: "Planned", children: _jsx(FeatureWorkbenchPanel, { items: vm.items, actions: [
-                { id: "dispatch-now", label: "立即派发", tone: "accent", onTrigger: buildWorkbenchActionHandler("dispatch", "dispatch-now", { deepLinkPath: "/operations/dispatch?mode=dispatch-now" }) },
-                { id: "dispatch-priority", label: "重排优先级", tone: "neutral", onTrigger: buildWorkbenchActionHandler("dispatch", "priority", { deepLinkPath: "/operations/dispatch?view=priority" }) },
-                { id: "dispatch-approval", label: "转人工审批", tone: "danger", onTrigger: buildWorkbenchActionHandler("dispatch", "approval", { deepLinkPath: "/operations/dispatch?mode=approval" }) },
-            ] }) }));
+    return (_jsxs(FeatureScaffold, { title: "Dispatch", summary: "\u8C03\u5EA6\u3001\u6267\u884C\u548C\u64CD\u4F5C\u5165\u53E3\u3002", status: "Implemented/Partial", children: [_jsx(MetricGrid, { metrics: vm.metrics }), _jsx(ThreePaneLayout, { left: _jsxs(Stack, { gap: 10, children: [_jsx("h3", { children: "Tasks" }), vm.loading ? _jsx("p", { children: "Loading dispatch view..." }) : null, vm.loadError != null ? _jsx("p", { children: vm.loadError }) : null, vm.listItems.length === 0 ? _jsx("p", { children: "No tasks are available for dispatch inspection." }) : vm.listItems.map((item) => (_jsxs("button", { onClick: () => vm.selectTask(item.id), style: { textAlign: "left" }, type: "button", children: [_jsx("strong", { children: item.title }), _jsx("div", { children: item.subtitle })] }, item.id)))] }), center: vm.detailRows.length === 0 ? _jsx("p", { children: "No task selected" }) : _jsxs(Stack, { gap: 16, children: [_jsx("h3", { children: "Dispatch detail" }), _jsx(KeyValueTable, { rows: vm.detailRows })] }), right: _jsxs(Stack, { gap: 12, children: [_jsx("h3", { children: "Dispatch summary" }), _jsx(ListCard, { items: vm.summaryItems }), _jsx("h3", { children: "Workflow feed" }), _jsx(ListCard, { items: vm.workflowItems }), _jsx("h3", { children: "Approval feed" }), _jsx(ListCard, { items: vm.approvalItems })] }) })] }));
 }

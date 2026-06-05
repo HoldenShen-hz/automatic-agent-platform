@@ -164,6 +164,7 @@ export const zhCnCatalog = {
         "ui.conversation.streaming.connected": "已连接",
         "ui.conversation.streaming.idle": "空闲",
         "ui.conversation.defaultDraft": "帮我规划下一次操作",
+        "ui.conversation.useSuggestedPrompt": "使用建议提示词",
         "ui.conversation.generatedPlan": "执行计划已生成：创建活动、拉取素材、等待审批、投放并回收指标。",
         "ui.conversation.confirmedPlan": "用户已确认计划，系统开始执行前检查。",
         "ui.conversation.requestClarification.default": "预算上限和投放时区还不清楚，请确认。",

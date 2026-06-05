@@ -368,6 +368,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
         artifactPlaneService,
         domainRegistryService,
         pluginRegistry,
+        taskStore: store,
         cors: {
           allowedOrigins: ["https://console.example.test"],
         },

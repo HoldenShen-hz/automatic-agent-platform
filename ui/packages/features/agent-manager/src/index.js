@@ -8,11 +8,11 @@ const agentManagerFeature = createFeatureModule({
     group: "Extended",
     path: "/extended/agents",
     permission: "domain_admin+",
-    status: "Planned",
+    status: "Implemented/Partial",
     summary: featureCopy.summary,
     render: AgentManagerWebView,
 });
 export default agentManagerFeature;
 export { createAgentManagerMobileCards } from "./mobile";
-export { mapAgentManagerToVm, useAgentManagerVm } from "./hooks";
+export { useAgentManagerVm } from "./hooks";
 export { AgentManagerWebView } from "./web";

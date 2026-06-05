@@ -339,3 +339,49 @@ test("ISSUE #2043: outputJson update works (not dead code)", async () => {
   // Output update IS called
   assert.equal(outputUpdated, true);
 });
+
+test("PATCH /v1/tasks/:id persists owner updates into task input metadata", async () => {
+  let updatedInputJson: string | undefined;
+  let updatedNormalizedInputJson: string | undefined;
+  const mockTaskStore = {
+    task: {
+      getTask: () => ({
+        id: "task-1",
+        title: "Original Title",
+        status: "running",
+        tenantId: null,
+        inputJson: "{\"brief\":\"existing\"}",
+        normalizedInputJson: null,
+      }),
+      updateTaskTitle: () => {},
+      updateTaskInput: (_id: string, inputJson: string, normalizedInputJson: string) => {
+        updatedInputJson = inputJson;
+        updatedNormalizedInputJson = normalizedInputJson;
+      },
+      updateTaskStatus: () => {},
+      updateTaskOutput: () => {},
+    },
+  } as unknown as AuthoritativeTaskStore;
+
+  const deps = {
+    authService: createMockAuthService(),
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+    taskStore: mockTaskStore,
+    intakeAdmissionService: createMockIntakeAdmissionService(),
+  };
+  const routes = createTaskRoutes(deps);
+
+  const ctx = createMockContext(
+    "/v1/tasks/task-1",
+    ["v1", "tasks", "task-1"],
+    {},
+    JSON.stringify({ owner: "platform-owner" }),
+    "PATCH",
+  );
+
+  await callRoute(routes, ctx);
+
+  assert.equal(updatedInputJson, "{\"brief\":\"existing\",\"owner\":\"platform-owner\"}");
+  assert.equal(updatedNormalizedInputJson, "null");
+});

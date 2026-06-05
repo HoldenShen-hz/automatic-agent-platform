@@ -162,6 +162,7 @@ export interface TaskInspectSummary {
   taskId: string;
   title: string;
   divisionId: string | null;
+  owner?: string;
   priority: TaskRecord["priority"];
   taskStatus: TaskRecord["status"];
   workflowId: string | null;

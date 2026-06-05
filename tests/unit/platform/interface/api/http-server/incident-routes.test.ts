@@ -59,7 +59,9 @@ function toFacadeIncident(incident: ReturnType<IncidentCaseService["openIncident
         ? "open"
         : incident.status === "acknowledged" || incident.status === "triaged"
           ? "acknowledged"
-          : incident.status === "resolved" || incident.status === "closed"
+          : incident.status === "closed"
+            ? "closed"
+            : incident.status === "resolved"
             ? "resolved"
             : "mitigating",
     title: incident.title,
@@ -68,6 +70,7 @@ function toFacadeIncident(incident: ReturnType<IncidentCaseService["openIncident
     createdAt: incident.createdAt,
     updatedAt: incident.updatedAt,
     resolvedAt: incident.resolvedAt,
+    snoozedUntil: incident.snoozedUntil,
   };
 }
 
@@ -89,6 +92,8 @@ function createIncidentFacade(service: IncidentCaseService): IncidentFacadeServi
     acknowledge: (incidentId, owner, tenantId) => toFacadeIncident(service.acknowledge(incidentId, owner, tenantId)),
     startMitigation: (incidentId, tenantId) => toFacadeIncident(service.startMitigation(incidentId, tenantId)),
     resolve: (incidentId, tenantId) => toFacadeIncident(service.resolve(incidentId, tenantId)),
+    close: (incidentId, tenantId) => toFacadeIncident(service.close(incidentId, tenantId)),
+    snooze: (incidentId, snoozedUntil, tenantId) => toFacadeIncident(service.snooze(incidentId, snoozedUntil, tenantId)),
   };
 }
 
@@ -129,6 +134,25 @@ test("IncidentCaseService resolves incident", () => {
 
   assert.equal(resolved.status, "resolved");
   assert.ok(resolved.resolvedAt);
+});
+
+test("IncidentCaseService snoozes incident until a concrete deadline", () => {
+  const service = createIncidentService();
+  const incident = service.openIncident({ severity: "high", title: "Test" });
+  const snoozedUntil = "2026-06-05T12:00:00.000Z";
+
+  const snoozed = service.snooze(incident.incidentId, snoozedUntil);
+
+  assert.equal(snoozed.snoozedUntil, snoozedUntil);
+});
+
+test("IncidentCaseService closes active incident", () => {
+  const service = createIncidentService();
+  const incident = service.openIncident({ severity: "high", title: "Test" });
+
+  const closed = service.close(incident.incidentId);
+
+  assert.equal(closed.status, "closed");
 });
 
 test("IncidentCaseService startMitigation requires acknowledge first", () => {
@@ -188,6 +212,36 @@ test("GET /v1/incidents only returns incidents for the caller tenant", async () 
   assert.deepEqual(body.data.incidents.map((incident) => incident.title), ["Tenant A latency"]);
 });
 
+test("GET /v1/incidents maps facade incidents into frontend incident dto shape", async () => {
+  const incidentService = createIncidentService();
+  const opened = incidentService.openIncident({ severity: "high", title: "Mapped incident", linkedEvidenceRefs: ["evidence-1"] });
+  const routes = createIncidentRoutes({
+    authService: createMockAuthService(),
+    incidentService: createIncidentFacade(incidentService),
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/incidents", ["v1", "incidents"]));
+  if (!response) throw new Error("handler returned null");
+  const body = JSON.parse(response.body) as {
+    data: {
+      incidents: Array<{
+        id: string;
+        title: string;
+        summary: string;
+        status: string;
+      owner: string | null;
+      snoozedUntil: string | null;
+      linkedEvidenceRefs: string[];
+      }>;
+    };
+  };
+  assert.equal(body.data.incidents[0]?.id, opened.incidentId);
+  assert.equal(body.data.incidents[0]?.title, "Mapped incident");
+  assert.match(body.data.incidents[0]?.summary ?? "", /open/);
+  assert.equal(body.data.incidents[0]?.snoozedUntil, null);
+  assert.deepEqual(body.data.incidents[0]?.linkedEvidenceRefs, ["evidence-1"]);
+});
+
 test("POST /v1/incidents creates a new incident", async () => {
   const incidentService = createIncidentService();
   const routes = createIncidentRoutes({
@@ -206,4 +260,58 @@ test("POST /v1/incidents creates a new incident", async () => {
   if (!response) throw new Error("handler returned null");
   assert.equal(response.statusCode, 201);
   assert.ok(response.body.includes("Provider outage"));
+});
+
+test("PATCH /v1/incidents/:id accepts snooze deadlines", async () => {
+  const incidentService = createIncidentService();
+  const incident = incidentService.openIncident({ severity: "high", title: "Snooze me" });
+  const routes = createIncidentRoutes({
+    authService: createMockAuthService(["operator"]),
+    incidentService: createIncidentFacade(incidentService),
+  });
+
+  const response = await callRoute(
+    routes,
+    {
+      ...createMockContext(`/v1/incidents/${incident.incidentId}`, ["v1", "incidents", incident.incidentId], JSON.stringify({
+        snoozedUntil: "2026-06-05T12:00:00.000Z",
+      })),
+      request: {
+        method: "PATCH",
+        url: `/v1/incidents/${incident.incidentId}`,
+        headers: {},
+        body: JSON.stringify({ snoozedUntil: "2026-06-05T12:00:00.000Z" }),
+      } as never,
+    },
+  );
+  if (!response) throw new Error("handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.match(response.body, /2026-06-05T12:00:00.000Z/);
+});
+
+test("PATCH /v1/incidents/:id can close an incident from the operator console", async () => {
+  const incidentService = createIncidentService();
+  const incident = incidentService.openIncident({ severity: "high", title: "Dismiss me" });
+  const routes = createIncidentRoutes({
+    authService: createMockAuthService(["operator"]),
+    incidentService: createIncidentFacade(incidentService),
+  });
+
+  const response = await callRoute(
+    routes,
+    {
+      ...createMockContext(`/v1/incidents/${incident.incidentId}`, ["v1", "incidents", incident.incidentId], JSON.stringify({
+        status: "closed",
+      })),
+      request: {
+        method: "PATCH",
+        url: `/v1/incidents/${incident.incidentId}`,
+        headers: {},
+        body: JSON.stringify({ status: "closed" }),
+      } as never,
+    },
+  );
+  if (!response) throw new Error("handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.match(response.body, /closed/);
 });

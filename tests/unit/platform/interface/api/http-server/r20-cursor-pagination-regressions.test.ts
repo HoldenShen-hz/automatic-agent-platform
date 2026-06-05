@@ -63,7 +63,9 @@ function toFacadeIncident(incident: ReturnType<IncidentCaseService["openIncident
         ? "open"
         : incident.status === "acknowledged" || incident.status === "triaged"
           ? "acknowledged"
-          : incident.status === "resolved" || incident.status === "closed"
+          : incident.status === "closed"
+            ? "closed"
+            : incident.status === "resolved"
             ? "resolved"
             : "mitigating",
     title: incident.title,
@@ -72,6 +74,7 @@ function toFacadeIncident(incident: ReturnType<IncidentCaseService["openIncident
     createdAt: incident.createdAt,
     updatedAt: incident.updatedAt,
     resolvedAt: incident.resolvedAt,
+    snoozedUntil: incident.snoozedUntil,
   };
 }
 
@@ -93,6 +96,8 @@ function createIncidentFacade(backingService: IncidentCaseService): IncidentFaca
     acknowledge: (incidentId, owner, tenantId) => toFacadeIncident(backingService.acknowledge(incidentId, owner, tenantId)),
     startMitigation: (incidentId, tenantId) => toFacadeIncident(backingService.startMitigation(incidentId, tenantId)),
     resolve: (incidentId, tenantId) => toFacadeIncident(backingService.resolve(incidentId, tenantId)),
+    close: (incidentId, tenantId) => toFacadeIncident(backingService.close(incidentId, tenantId)),
+    snooze: (incidentId, snoozedUntil, tenantId) => toFacadeIncident(backingService.snooze(incidentId, snoozedUntil, tenantId)),
   };
 }
 

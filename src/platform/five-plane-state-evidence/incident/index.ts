@@ -17,6 +17,7 @@ export interface IncidentCase {
   createdAt: string;
   updatedAt: string;
   resolvedAt: string | null;
+  snoozedUntil: string | null;
 }
 
 export class IncidentCaseService {
@@ -88,6 +89,7 @@ export class IncidentCaseService {
       createdAt: now,
       updatedAt: now,
       resolvedAt: null,
+      snoozedUntil: null,
     };
     this.incidents.set(incident.incidentId, incident);
     this.incidentOrder.set(incident.incidentId, process.hrtime.bigint());
@@ -134,6 +136,17 @@ export class IncidentCaseService {
     return this.update(incidentId, { ...incident, status: "mitigating", updatedAt: nowIso() });
   }
 
+  public snooze(incidentId: string, snoozedUntil: string, tenantId?: string | null): IncidentCase {
+    const incident = this.getRequired(incidentId, tenantId);
+    if (incident.status === "closed") {
+      throw new ValidationError(
+        "incident.closed_cannot_be_snoozed",
+        "Closed incidents cannot be snoozed.",
+      );
+    }
+    return this.update(incidentId, { ...incident, snoozedUntil, updatedAt: nowIso() });
+  }
+
   /**
    * Transitions incident to reviewed status after mitigation.
    * §R14-03: Reviewed state for incident lifecycle.
@@ -155,26 +168,33 @@ export class IncidentCaseService {
    */
   public close(incidentId: string, tenantId?: string | null): IncidentCase {
     const incident = this.getRequired(incidentId, tenantId);
-    if (incident.status !== "reviewed" && incident.status !== "resolved") {
+    if (
+      incident.status !== "open"
+      && incident.status !== "acknowledged"
+      && incident.status !== "triaged"
+      && incident.status !== "mitigating"
+      && incident.status !== "reviewed"
+      && incident.status !== "resolved"
+    ) {
       throw new ValidationError(
-        "incident.must_be_resolved_for_closure",
-        "Incident must be in reviewed or resolved state before it can be closed.",
+        "incident.invalid_state_for_closure",
+        "Incident must be active or resolved before it can be closed.",
       );
     }
     const now = nowIso();
-    return this.update(incidentId, { ...incident, status: "closed", updatedAt: now });
+    return this.update(incidentId, { ...incident, status: "closed", updatedAt: now, snoozedUntil: null });
   }
 
   public resolve(incidentId: string, tenantId?: string | null): IncidentCase {
     const incident = this.getRequired(incidentId, tenantId);
-    if (incident.status !== "reviewed") {
+    if (incident.status !== "reviewed" && incident.status !== "mitigating") {
       throw new ValidationError(
         "incident.must_be_reviewed_for_resolution",
-        "Incident must be in reviewed state before it can be resolved.",
+        "Incident must be in reviewed or mitigating state before it can be resolved.",
       );
     }
     const now = nowIso();
-    return this.update(incidentId, { ...incident, status: "resolved", updatedAt: now, resolvedAt: now });
+    return this.update(incidentId, { ...incident, status: "resolved", updatedAt: now, resolvedAt: now, snoozedUntil: null });
   }
 
   public getIncident(incidentId: string, tenantId?: string | null): IncidentCase | null {
@@ -250,6 +270,9 @@ export class IncidentCaseService {
           continue;
         }
         const incident = structuredClone(item) as IncidentCase;
+        if (incident.snoozedUntil === undefined) {
+          incident.snoozedUntil = null;
+        }
         this.incidents.set(incident.incidentId, incident);
         this.incidentOrder.set(incident.incidentId, process.hrtime.bigint());
       }

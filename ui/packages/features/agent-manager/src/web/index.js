@@ -1,11 +1,9 @@
-import { jsx as _jsx } from "react/jsx-runtime";
-import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { FeatureScaffold, KeyValueTable, ListCard, MetricGrid, Stack, ThreePaneLayout } from "@aa/ui-core";
+import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useAgentManagerVm } from "../hooks";
 export function AgentManagerWebView() {
     const vm = useAgentManagerVm();
-    return (_jsx(FeatureScaffold, { title: "Agent Manager", summary: "Agent \u5B9E\u65F6\u76D1\u63A7\u4E2D\u5FC3\u4E0E\u8BE6\u60C5\u9875", status: "Planned", children: _jsx(FeatureWorkbenchPanel, { metrics: vm.metrics, items: vm.items, actions: [
-                { id: "agent-isolate", label: "隔离异常 Agent", tone: "danger", onTrigger: buildWorkbenchActionHandler("agent-manager", "isolate", { deepLinkPath: "/operations/agents?mode=isolate" }) },
-                { id: "agent-trend", label: "查看负载趋势", tone: "neutral", onTrigger: buildWorkbenchActionHandler("agent-manager", "trend", { deepLinkPath: (item) => item == null ? "/operations/agents" : `/operations/agents?focus=${encodeURIComponent(item.id)}` }) },
-                { id: "agent-summary", label: "复制治理摘要", tone: "neutral", onTrigger: buildWorkbenchActionHandler("agent-manager", "summary", { copySelection: true }) },
-            ] }) }));
+    const featureCopy = translateFeatureCopy("agent-manager");
+    return (_jsxs(FeatureScaffold, { title: featureCopy.title, summary: featureCopy.summary, status: "Implemented/Partial", children: [_jsx(MetricGrid, { metrics: vm.metrics }), _jsx(ThreePaneLayout, { left: (_jsxs(Stack, { gap: 10, children: [_jsx("h3", { children: "Agents" }), vm.loading ? _jsx("p", { children: "Loading agents..." }) : null, vm.listItems.length === 0 ? _jsx("p", { children: "No agents reported by the backend." }) : vm.listItems.map((item) => (_jsxs("button", { onClick: () => vm.selectAgent(item.id), style: { textAlign: "left" }, type: "button", children: [_jsx("strong", { children: item.title }), _jsx("div", { children: item.subtitle })] }, item.id)))] })), center: vm.selectedAgent == null ? _jsx("p", { children: "No agent selected" }) : (_jsxs(Stack, { gap: 16, children: [_jsx("h3", { children: "Agent detail" }), _jsx(KeyValueTable, { rows: vm.detailRows })] })), right: (_jsxs(Stack, { gap: 12, children: [_jsx("h3", { children: "Supervisor summary" }), _jsx(ListCard, { items: vm.summaryItems })] })) })] }));
 }

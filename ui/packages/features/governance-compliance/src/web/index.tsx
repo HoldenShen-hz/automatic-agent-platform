@@ -32,20 +32,26 @@ export function GovernanceComplianceWebView(): ReactElement {
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[
-          { id: "governance-summary", label: "汇总治理状态", tone: "accent", onTrigger: () => { vm.selectPolicy(selectedPolicy?.id ?? ""); } },
-          { id: "governance-field-policy", label: "审阅字段策略", tone: "neutral", onTrigger: () => { void vm.updatePolicy(selectedPolicy?.id ?? "", {}); } },
+          { id: "governance-refresh", label: "刷新治理状态", tone: "accent", onTrigger: () => vm.refresh(), activityDescription: "已从真实后端刷新治理摘要、审计轨迹与异常队列。" },
           { id: "governance-audit", label: "查看审计轨迹", tone: "neutral", onTrigger: vm.filterAuditTrail },
-          { id: "governance-exception", label: "管理异常", tone: "neutral", onTrigger: () => { void vm.submitExceptionRequest("manual_exception_review_requested", selectedPolicy?.id ?? ""); } },
-          { id: "governance-escalate", label: "升级委托审批", tone: "danger", onTrigger: () => { void vm.submitExceptionRequest("governance_escalation_requested", selectedPolicy?.id ?? ""); } },
+          { id: "governance-exception", label: "发起策略例外", tone: "neutral", disabled: selectedPolicy == null, onTrigger: () => { void vm.submitExceptionRequest("manual_exception_review_requested", selectedPolicy?.id ?? ""); } },
+          { id: "governance-escalate", label: "升级委托审批", tone: "danger", disabled: selectedPolicy == null, onTrigger: () => { void vm.submitExceptionRequest("governance_escalation_requested", selectedPolicy?.id ?? ""); } },
         ]}
       />
       <div style={{ display: "grid", gap: 16, marginTop: 24 }}>
         <div>
           <h3>{translateMessage("ui.governanceCompliance.policyEditor")}</h3>
+          {vm.loading ? <p>Loading compliance policies...</p> : null}
           {vm.policies.map((policy) => (
             <div key={policy.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-              <span>{policy.name}</span>
+              <span>{policy.name} · {policy.severity}</span>
               <button onClick={() => vm.selectPolicy(policy.id)} type="button">{translateMessage("ui.governanceCompliance.review")}</button>
+              <button
+                onClick={() => { void vm.updatePolicy(policy.id, { lastReviewSource: "web_console" }); }}
+                type="button"
+              >
+                标记已审阅
+              </button>
             </div>
           ))}
         </div>
@@ -56,8 +62,20 @@ export function GovernanceComplianceWebView(): ReactElement {
             <div key={exception.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
               <span>{exception.reason}</span>
               <span>{exception.status}</span>
-              <button onClick={() => { void vm.approveException(exception.id); }} type="button">{translateMessage("ui.governanceCompliance.approve")}</button>
-              <button onClick={() => { void vm.rejectException(exception.id, "rejected_from_web"); }} type="button">{translateMessage("ui.governanceCompliance.reject")}</button>
+              <button
+                disabled={exception.status !== "pending"}
+                onClick={() => { void vm.approveException(exception.id); }}
+                type="button"
+              >
+                {translateMessage("ui.governanceCompliance.approve")}
+              </button>
+              <button
+                disabled={exception.status !== "pending"}
+                onClick={() => { void vm.rejectException(exception.id, "rejected_from_web"); }}
+                type="button"
+              >
+                {translateMessage("ui.governanceCompliance.reject")}
+              </button>
             </div>
           ))}
           {selectedException == null && <p>{translateMessage("ui.governanceCompliance.noExceptions")}</p>}

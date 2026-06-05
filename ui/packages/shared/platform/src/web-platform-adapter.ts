@@ -44,7 +44,14 @@ export class WebPlatformAdapter extends DefaultPlatformAdapter {
   public override async openDeepLink(url: string): Promise<void> {
     const safeTarget = normalizeDeepLinkTarget(url);
     if (typeof window !== "undefined" && safeTarget != null) {
-      window.location.hash = safeTarget.startsWith("#") ? safeTarget : `#${safeTarget.replace(/^\/+/, "/")}`;
+      const normalized = safeTarget.startsWith("#") ? safeTarget.slice(1) : safeTarget;
+      if (normalized.startsWith("/")) {
+        const nextUrl = new URL(normalized, window.location.origin);
+        window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      } else {
+        window.location.hash = safeTarget.startsWith("#") ? safeTarget : `#${safeTarget.replace(/^\/+/, "/")}`;
+      }
     }
     this.setDebugValue("__deeplink__", safeTarget ?? url);
   }

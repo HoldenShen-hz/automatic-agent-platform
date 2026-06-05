@@ -35,6 +35,7 @@ export interface FeatureWorkbenchAction {
     readonly id: string;
     readonly label: string;
     readonly tone?: "accent" | "danger" | "neutral";
+    readonly disabled?: boolean | ((item: FeatureWorkbenchItem | null) => boolean);
     readonly buildActivity?: (item: FeatureWorkbenchItem | null) => {
         title: string;
         description: string;
@@ -54,6 +55,7 @@ export interface FeatureWorkbenchPanelAction {
     readonly id: string;
     readonly label: string;
     readonly tone?: "accent" | "danger" | "neutral";
+    readonly disabled?: boolean | ((item: FeatureWorkbenchItem | null) => boolean);
     readonly activityDescription?: string;
     readonly onTrigger?: (item: FeatureWorkbenchItem | null) => void | Promise<void>;
 }

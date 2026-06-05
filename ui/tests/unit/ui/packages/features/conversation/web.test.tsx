@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -8,6 +10,26 @@ const mockConfirmPlan = vi.fn();
 const mockExecutePlan = vi.fn();
 const mockRequestClarification = vi.fn();
 const mockSetDraft = vi.fn();
+let mockVm = {
+  messages: [
+    { role: "assistant", content: "```ts\nconst ok = true;\n```" },
+    { role: "user", content: "plain text" },
+  ],
+  attachments: [{ id: "file-1", name: "brief.md", sizeLabel: "2 KB" }],
+  status: "idle",
+  draft: "ship it",
+  planReady: true,
+  executionReady: true,
+  isStreaming: true,
+  attachFiles: mockAttachFiles,
+  setDraft: mockSetDraft,
+  restoreSuggestedDraft: mockSetDraft,
+  sendPrompt: mockSendPrompt,
+  buildPlan: mockBuildPlan,
+  confirmPlan: mockConfirmPlan,
+  executePlan: mockExecutePlan,
+  requestClarification: mockRequestClarification,
+};
 
 vi.mock("@aa/ui-core", async () => {
   const actual = await vi.importActual<typeof import("@aa/ui-core")>("@aa/ui-core");
@@ -28,7 +50,14 @@ vi.mock("@aa/ui-core", async () => {
 });
 
 vi.mock("../../../../../../packages/features/conversation/src/hooks", () => ({
-  useConversationVm: () => ({
+  useConversationVm: () => mockVm,
+}));
+
+import { ConversationWebView } from "../../../../../../packages/features/conversation/src/web";
+
+afterEach(() => {
+  cleanup();
+  mockVm = {
     messages: [
       { role: "assistant", content: "```ts\nconst ok = true;\n```" },
       { role: "user", content: "plain text" },
@@ -41,18 +70,14 @@ vi.mock("../../../../../../packages/features/conversation/src/hooks", () => ({
     isStreaming: true,
     attachFiles: mockAttachFiles,
     setDraft: mockSetDraft,
+    restoreSuggestedDraft: mockSetDraft,
     sendPrompt: mockSendPrompt,
     buildPlan: mockBuildPlan,
     confirmPlan: mockConfirmPlan,
     executePlan: mockExecutePlan,
     requestClarification: mockRequestClarification,
-  }),
-}));
-
-import { ConversationWebView } from "../../../../../../packages/features/conversation/src/web";
-
-afterEach(() => {
-  cleanup();
+  };
+  vi.clearAllMocks();
 });
 
 describe("ConversationWebView", () => {
@@ -86,5 +111,37 @@ describe("ConversationWebView", () => {
     expect(mockConfirmPlan).toHaveBeenCalled();
     expect(mockExecutePlan).toHaveBeenCalled();
     expect(mockRequestClarification).toHaveBeenCalled();
+  });
+
+  it("allows building a plan from the current draft before any message is sent", () => {
+    mockVm = {
+      ...mockVm,
+      messages: [],
+      draft: "Research ways to improve coding with LLMs",
+      planReady: false,
+      executionReady: false,
+    };
+
+    render(<ConversationWebView />);
+
+    expect(screen.getByRole("button", { name: "Send Prompt" }).hasAttribute("disabled")).toBe(false);
+    expect(screen.getByRole("button", { name: "Build Plan" }).hasAttribute("disabled")).toBe(false);
+    expect(screen.getByRole("button", { name: "Execute" }).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("offers a suggested prompt recovery action when the draft is empty", () => {
+    mockVm = {
+      ...mockVm,
+      draft: "",
+      messages: [],
+      planReady: false,
+      executionReady: false,
+    };
+
+    render(<ConversationWebView />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Use Suggested Prompt" }));
+
+    expect(mockSetDraft).toHaveBeenCalled();
   });
 });

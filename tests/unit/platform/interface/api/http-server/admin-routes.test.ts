@@ -9,6 +9,9 @@ import { ConfigRolloutService } from "../../../../../../src/platform/five-plane-
 import { TenantBoundaryRegistryService } from "../../../../../../src/platform/five-plane-control-plane/tenant/index.js";
 import { CostReportService } from "../../../../../../src/platform/five-plane-interface/api/cost-report-service.js";
 import { AdminConfigService } from "../../../../../../src/platform/five-plane-interface/api/admin-config-service.js";
+import { AuthoritativeTaskStore } from "../../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
+import { WebhookIngressService } from "../../../../../../src/platform/five-plane-interface/webhook/index.js";
 import type { MissionControlService } from "../../../../../../src/platform/five-plane-interface/api/mission-control-service.js";
 import type { CoordinatorLoadBalancingService } from "../../../../../../src/platform/five-plane-execution/ha/coordinator-load-balancing-service.js";
 import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
@@ -33,10 +36,15 @@ function createMockMissionControlService(): MissionControlService {
       gatewayTargets: [],
     }),
     getStabilityPanel: () => ({
+      generatedAt: "2026-04-16T00:00:00.000Z",
       health: { status: "ok", queuedTasks: 0, activeExecutions: 0, tier1AckBacklog: 0 },
       pendingApprovals: [],
       findings: [],
       blockedTasks: [],
+      queuedTasks: [],
+      workflows: [],
+      deadLetterCountsByDivision: {},
+      queuedTaskCount: 0,
       workers: [],
     }),
     getAdminTakeoverConsole: (_taskId: string) => ({
@@ -48,6 +56,14 @@ function createMockMissionControlService(): MissionControlService {
       timeline: { entries: [] },
     }),
   } as unknown as MissionControlService;
+}
+
+function createTaskStoreHarness() {
+  const root = mkdtempSync(join(tmpdir(), "admin-routes-store-"));
+  const db = new SqliteDatabase(join(root, "admin-routes.db"));
+  db.migrate();
+  const store = new AuthoritativeTaskStore(db);
+  return { root, db, store };
 }
 
 function createMockLoadBalancingService(): CoordinatorLoadBalancingService {
@@ -130,10 +146,21 @@ test("createAdminRoutes returns all registered admin routes", () => {
     coordinatorLoadBalancingService: createMockLoadBalancingService(),
   };
   const routes = createAdminRoutes(deps);
-  assert.equal(routes.length, 33);
+  assert.equal(routes.length, 46);
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/queues"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/admin/workers/drain" && route.method === "POST"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/admin/queues/retry-cleanup" && route.method === "POST"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/admin/compliance/policies" && route.method === "GET"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/admin/audit-logs" && route.method === "GET"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/admin/compliance/exceptions" && route.method === "GET"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/admin/compliance/exceptions" && route.method === "POST"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/admin/roles" && route.method === "GET"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/admin/feature-flags" && route.method === "GET"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/admin/models" && route.method === "GET"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/admin/domains" && route.method === "GET"));
   assert.ok(routes.some((route) => route.pathname === "/v1/preferences" && route.method === "GET"));
   assert.ok(routes.some((route) => route.pathname === "/v1/preferences" && route.method === "PUT"));
+  assert.ok(routes.some((route) => route.pathname === "/v1/webhooks" && route.method === "GET"));
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/governance/division-inventory" && route.method === "GET"));
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/governance/leadership-claims" && route.method === "GET"));
   assert.ok(routes.some((route) => route.pathname === "/v1/admin/governance/leadership-claims/review-requests" && route.method === "POST"));
@@ -246,6 +273,131 @@ test("GET /v1/admin/queues returns queue summary", async () => {
   assert.ok(response.body.includes("queues"));
 });
 
+test("POST /v1/admin/workers/drain updates busy workers to draining", async () => {
+  const harness = createTaskStoreHarness();
+  try {
+    const now = "2026-06-05T00:00:00.000Z";
+    harness.store.worker.upsertWorkerSnapshot({
+      workerId: "worker-busy",
+      version: 0,
+      status: "busy",
+      placement: "local",
+      isolationLevel: "standard",
+      capabilitiesJson: "[]",
+      runningExecutionsJson: "[]",
+      maxConcurrency: 1,
+      queueAffinity: "default",
+      runtimeInstanceId: "runtime-busy",
+      restartedFromRuntimeInstanceId: null,
+      restartGeneration: 0,
+      cpuPct: 10,
+      memoryMb: 128,
+      toolBacklogCount: 0,
+      currentStepId: null,
+      lastProgressAt: now,
+      lastHeartbeatAt: now,
+      updatedAt: now,
+    });
+    const routes = createAdminRoutes({
+      authService: createMockAuthService(["admin"]),
+      missionControlService: createMockMissionControlService(),
+      coordinatorLoadBalancingService: createMockLoadBalancingService(),
+      taskStore: harness.store,
+    });
+    const response = await callRoute(routes, createMockContext("/v1/admin/workers/drain", ["v1", "admin", "workers", "drain"], {}, "{}"));
+    if (!response) throw new Error("Handler returned null");
+    const body = JSON.parse(response.body) as { data: { drainedWorkerIds: string[]; drainedCount: number } };
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(body.data.drainedWorkerIds, ["worker-busy"]);
+    assert.equal(body.data.drainedCount, 1);
+    assert.equal(harness.store.worker.getWorkerSnapshot("worker-busy")?.status, "draining");
+  } finally {
+    harness.db.close();
+    rmSync(harness.root, { recursive: true, force: true });
+  }
+});
+
+test("POST /v1/admin/queues/retry-cleanup fails queued retry tasks and invalidates pending tickets", async () => {
+  const harness = createTaskStoreHarness();
+  try {
+    const now = "2026-06-05T00:00:00.000Z";
+    harness.store.insertTask({
+      id: "task-retry-1",
+      parentId: null,
+      rootId: "task-retry-1",
+      divisionId: "default",
+      tenantId: null,
+      title: "Retry task",
+      status: "queued",
+      source: "user",
+      priority: "normal",
+      inputJson: "{}",
+      normalizedInputJson: "{}",
+      outputJson: null,
+      estimatedCostUsd: 0,
+      actualCostUsd: 0,
+      errorCode: null,
+      createdAt: now,
+      updatedAt: now,
+      completedAt: null,
+    });
+    harness.store.insertWorkflowState({
+      taskId: "task-retry-1",
+      divisionId: "default",
+      workflowId: "workflow-retry-1",
+      currentStepIndex: 0,
+      status: "queued",
+      outputsJson: "{}",
+      lastErrorCode: "transient",
+      retryCount: 3,
+      resumableFromStep: "step-0",
+      startedAt: now,
+      updatedAt: now,
+    });
+    harness.store.worker.insertExecutionTicket({
+      id: "ticket-retry-1",
+      executionId: "exec-retry-1",
+      taskId: "task-retry-1",
+      tenantId: "",
+      priority: "normal",
+      queueName: "default",
+      dispatchTarget: "any",
+      requiredIsolationLevel: "standard",
+      requiredRepoVersion: null,
+      requiredCapabilitiesJson: "[]",
+      dispatchAfter: null,
+      attempt: 1,
+      status: "pending",
+      assignedWorkerId: null,
+      leaseId: null,
+      claimedAt: null,
+      consumedAt: null,
+      invalidatedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const routes = createAdminRoutes({
+      authService: createMockAuthService(["admin"]),
+      missionControlService: createMockMissionControlService(),
+      coordinatorLoadBalancingService: createMockLoadBalancingService(),
+      taskStore: harness.store,
+    });
+    const response = await callRoute(routes, createMockContext("/v1/admin/queues/retry-cleanup", ["v1", "admin", "queues", "retry-cleanup"], {}, "{}"));
+    if (!response) throw new Error("Handler returned null");
+    const body = JSON.parse(response.body) as { data: { cleanedTaskIds: string[]; invalidatedTicketIds: string[]; cleanedCount: number } };
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(body.data.cleanedTaskIds, ["task-retry-1"]);
+    assert.deepEqual(body.data.invalidatedTicketIds, ["ticket-retry-1"]);
+    assert.equal(body.data.cleanedCount, 1);
+    assert.equal(harness.store.task.getTask("task-retry-1")?.status, "failed");
+    assert.equal(harness.store.workflow.getWorkflowState("task-retry-1")?.retryCount, 0);
+    assert.equal(harness.store.worker.getExecutionTicket("ticket-retry-1")?.status, "cancelled");
+  } finally {
+    harness.db.close();
+    rmSync(harness.root, { recursive: true, force: true });
+  }
+});
+
 test("GET and PUT /v1/preferences round-trip preference state", async () => {
   const deps = {
     authService: createMockAuthService(["operator"]),
@@ -279,6 +431,161 @@ test("GET and PUT /v1/preferences round-trip preference state", async () => {
   assert.equal(putBody.data.locale, "en-US");
   assert.equal(putBody.data.theme, "light");
   assert.deepEqual(putBody.data.defaultDashboardLayout, ["tasks", "queues"]);
+});
+
+test("GET /v1/admin/roles returns real admin-readable roles", async () => {
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["viewer"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/admin/roles", ["v1", "admin", "roles"]));
+  if (!response) throw new Error("Handler returned null");
+  const body = JSON.parse(response.body) as { data: { roles: Array<{ id: string }> } };
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(body.data.roles.map((role) => role.id), ["viewer", "operator", "admin"]);
+});
+
+test("GET /v1/admin/feature-flags reflects AA_FEATURE_FLAGS runtime env", async () => {
+  const originalFeatureFlags = process.env.AA_FEATURE_FLAGS;
+  process.env.AA_FEATURE_FLAGS = "alpha, beta ,alpha";
+  try {
+    const routes = createAdminRoutes({
+      authService: createMockAuthService(["viewer"]),
+      missionControlService: createMockMissionControlService(),
+      coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    });
+
+    const response = await callRoute(routes, createMockContext("/v1/admin/feature-flags", ["v1", "admin", "feature-flags"]));
+    if (!response) throw new Error("Handler returned null");
+    const body = JSON.parse(response.body) as { data: { featureFlags: Array<{ id: string; enabled: boolean }> } };
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(body.data.featureFlags.map((flag) => flag.id), ["alpha", "beta"]);
+    assert.equal(body.data.featureFlags.every((flag) => flag.enabled), true);
+  } finally {
+    if (originalFeatureFlags == null) {
+      delete process.env.AA_FEATURE_FLAGS;
+    } else {
+      process.env.AA_FEATURE_FLAGS = originalFeatureFlags;
+    }
+  }
+});
+
+test("GET /v1/admin/models maps provider profiles into UI model configs", async () => {
+  const root = mkdtempSync(join(tmpdir(), "admin-routes-models-"));
+  writeFile(
+    join(root, "config", "providers", "models.json"),
+    JSON.stringify({
+      profiles: {
+        balanced: {
+          provider: "minimax",
+          modelId: "minimax-m2.7",
+          pricing: {
+            inputPer1kUsd: 0.003,
+            outputPer1kUsd: 0.015,
+          },
+        },
+      },
+    }),
+  );
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["viewer"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    domainRegistryService: {
+      list: () => [{ domainId: "coding" }, { domainId: "marketing" }],
+    } as never,
+    platformRoot: root,
+  });
+
+  try {
+    const response = await callRoute(routes, createMockContext("/v1/admin/models", ["v1", "admin", "models"]));
+    if (!response) throw new Error("Handler returned null");
+    const body = JSON.parse(response.body) as { data: { models: Array<{ id: string; provider: string; model: string; boundDomains: string[] }> } };
+    assert.equal(response.statusCode, 200);
+    assert.equal(body.data.models[0]?.id, "balanced");
+    assert.equal(body.data.models[0]?.provider, "minimax");
+    assert.equal(body.data.models[0]?.model, "minimax-m2.7");
+    assert.deepEqual(body.data.models[0]?.boundDomains, ["coding", "marketing"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("GET /v1/admin/domains maps domain registry data into UI DTOs", async () => {
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["viewer"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    domainRegistryService: {
+      list: () => [{
+        domainId: "coding",
+        name: "Coding",
+        capabilities: { securityLevel: "restricted" },
+        toolBundles: [{ bundleId: "b1" }],
+        workflows: [{ workflowId: "wf-1" }],
+        pluginBindings: [{ bindingId: "pb-1" }],
+      }],
+    } as never,
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/admin/domains", ["v1", "admin", "domains"]));
+  if (!response) throw new Error("Handler returned null");
+  const body = JSON.parse(response.body) as { data: { domains: Array<{ id: string; displayName: string; owner: string; featureVisibilityCount: number }> } };
+  assert.equal(response.statusCode, 200);
+  assert.equal(body.data.domains[0]?.id, "coding");
+  assert.equal(body.data.domains[0]?.displayName, "Coding");
+  assert.equal(body.data.domains[0]?.owner, "restricted");
+  assert.equal(body.data.domains[0]?.featureVisibilityCount, 3);
+});
+
+test("GET /v1/webhooks returns an empty list when ingress service is absent", async () => {
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["viewer"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/webhooks", ["v1", "webhooks"]));
+  if (!response) throw new Error("Handler returned null");
+  const body = JSON.parse(response.body) as { data: { webhooks: unknown[] } };
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(body.data.webhooks, []);
+});
+
+test("GET /v1/webhooks returns webhook summaries when ingress service is configured", async () => {
+  const webhookIngressService = new WebhookIngressService();
+  webhookIngressService.registerEndpoint({
+    endpointId: "ops",
+    source: "https://ops.example.test/inbound",
+    tenantId: null,
+    workspaceId: null,
+    enabled: true,
+    allowedEventTypes: ["push"],
+    algorithm: "none",
+    dispatchTargetRef: "https://ops.example.test/outbound",
+  });
+  webhookIngressService.receive({
+    endpointId: "ops",
+    headers: {},
+    body: JSON.stringify({ eventType: "push", eventId: "evt-1" }),
+  });
+
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["viewer"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    webhookIngressService,
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/webhooks", ["v1", "webhooks"]));
+  if (!response) throw new Error("Handler returned null");
+  const body = JSON.parse(response.body) as { data: { webhooks: Array<{ id: string; targetUrl: string; eventCount: number }> } };
+  assert.equal(response.statusCode, 200);
+  assert.equal(body.data.webhooks[0]?.id, "ops");
+  assert.equal(body.data.webhooks[0]?.targetUrl, "https://ops.example.test/outbound");
+  assert.equal(body.data.webhooks[0]?.eventCount, 1);
 });
 
 test("POST /v1/admin/control-plane/load-balancing/select selects coordinator", async () => {
@@ -590,6 +897,114 @@ test("GET /v1/admin/compliance/program-templates returns compliance templates", 
   assert.equal(response.statusCode, 200);
   assert.equal(body.data.length, 3);
   assert.equal(body.data[0]?.templateId != null, true);
+});
+
+test("GET /v1/admin/compliance/policies returns governance policy summaries", async () => {
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["admin"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/admin/compliance/policies", ["v1", "admin", "compliance", "policies"]));
+  if (!response) throw new Error("Handler returned null");
+  const body = JSON.parse(response.body) as { data: Array<{ id: string; name: string; severity: string }> };
+  assert.equal(response.statusCode, 200);
+  assert.ok(body.data.length >= 6);
+  assert.ok(body.data.some((policy) => policy.id === "sox" && policy.severity === "critical"));
+});
+
+test("PATCH /v1/admin/compliance/policies/:policyId persists review metadata and appends audit log", async () => {
+  const originalPlatformRoot = process.env.AA_PLATFORM_ROOT;
+  const workspace = mkdtempSync(join(tmpdir(), "aa-admin-compliance-policy-"));
+  process.env.AA_PLATFORM_ROOT = workspace;
+
+  try {
+    const routes = createAdminRoutes({
+      authService: createMockAuthService(["admin"]),
+      missionControlService: createMockMissionControlService(),
+      coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    });
+    const updateContext = createMockContext(
+      "/v1/admin/compliance/policies/sox",
+      ["v1", "admin", "compliance", "policies", "sox"],
+      { "content-type": "application/json" },
+      JSON.stringify({ severity: "high", reviewLabel: "web_review" }),
+    );
+    updateContext.request.method = "PATCH";
+    const updateResponse = await callRoute(routes, updateContext);
+    if (!updateResponse) throw new Error("Handler returned null");
+    const updateBody = JSON.parse(updateResponse.body) as { data: { ok: true; body: { id: string; severity: string } } };
+    assert.equal(updateResponse.statusCode, 200);
+    assert.equal(updateBody.data.body.id, "sox");
+    assert.equal(updateBody.data.body.severity, "high");
+
+    const auditResponse = await callRoute(routes, createMockContext("/v1/admin/audit-logs", ["v1", "admin", "audit-logs"]));
+    if (!auditResponse) throw new Error("Handler returned null");
+    const auditBody = JSON.parse(auditResponse.body) as { data: Array<{ action: string; resource: string; outcome: string }> };
+    assert.equal(auditResponse.statusCode, 200);
+    assert.ok(auditBody.data.some((entry) => entry.action === "compliance.policy.updated" && entry.resource === "compliance-policy:sox" && entry.outcome === "updated"));
+  } finally {
+    if (originalPlatformRoot == null) {
+      delete process.env.AA_PLATFORM_ROOT;
+    } else {
+      process.env.AA_PLATFORM_ROOT = originalPlatformRoot;
+    }
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("compliance exception routes persist queue state and approval decisions", async () => {
+  const originalPlatformRoot = process.env.AA_PLATFORM_ROOT;
+  const workspace = mkdtempSync(join(tmpdir(), "aa-admin-compliance-exception-"));
+  process.env.AA_PLATFORM_ROOT = workspace;
+
+  try {
+    const routes = createAdminRoutes({
+      authService: createMockAuthService(["admin"]),
+      missionControlService: createMockMissionControlService(),
+      coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    });
+    const createResponse = await callRoute(
+      routes,
+      createMockContext(
+        "/v1/admin/compliance/exceptions",
+        ["v1", "admin", "compliance", "exceptions"],
+        { "content-type": "application/json" },
+        JSON.stringify({ reason: "manual_exception_review_requested", policyId: "gdpr" }),
+      ),
+    );
+    if (!createResponse) throw new Error("Handler returned null");
+    const createBody = JSON.parse(createResponse.body) as { data: { id: string } };
+    assert.equal(createResponse.statusCode, 201);
+    assert.ok(createBody.data.id.startsWith("exception_"));
+
+    const approveContext = createMockContext(
+      `/v1/admin/compliance/exceptions/${createBody.data.id}/approve`,
+      ["v1", "admin", "compliance", "exceptions", createBody.data.id, "approve"],
+      { "content-type": "application/json" },
+      JSON.stringify({ action: "approve" }),
+    );
+    approveContext.request.method = "POST";
+    const approveResponse = await callRoute(routes, approveContext);
+    if (!approveResponse) throw new Error("Handler returned null");
+    const approveBody = JSON.parse(approveResponse.body) as { data: { ok: true; body: { status: string } } };
+    assert.equal(approveResponse.statusCode, 200);
+    assert.equal(approveBody.data.body.status, "approved");
+
+    const queueResponse = await callRoute(routes, createMockContext("/v1/admin/compliance/exceptions", ["v1", "admin", "compliance", "exceptions"]));
+    if (!queueResponse) throw new Error("Handler returned null");
+    const queueBody = JSON.parse(queueResponse.body) as { data: Array<{ id: string; status: string; policyId: string }> };
+    assert.equal(queueResponse.statusCode, 200);
+    assert.ok(queueBody.data.some((item) => item.id === createBody.data.id && item.status === "approved" && item.policyId === "gdpr"));
+  } finally {
+    if (originalPlatformRoot == null) {
+      delete process.env.AA_PLATFORM_ROOT;
+    } else {
+      process.env.AA_PLATFORM_ROOT = originalPlatformRoot;
+    }
+    rmSync(workspace, { recursive: true, force: true });
+  }
 });
 
 test("GET /v1/admin/governance/leadership-claims returns governance snapshot", async () => {

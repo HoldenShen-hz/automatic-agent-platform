@@ -1,11 +1,7 @@
-import { jsx as _jsx } from "react/jsx-runtime";
-import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { FeatureScaffold, KeyValueTable, ListCard, MetricGrid, Stack, ThreePaneLayout } from "@aa/ui-core";
 import { useTraceExplorerVm } from "../hooks";
 export function TraceExplorerWebView() {
     const vm = useTraceExplorerVm();
-    return (_jsx(FeatureScaffold, { title: "Trace Explorer", summary: "\u6309 trace / receipt / artifact \u8FFD\u8E2A\u8FD0\u884C\u4E8B\u5B9E", status: "Planned", children: _jsx(FeatureWorkbenchPanel, { items: vm.items, actions: [
-                { id: "trace-explorer-open", label: "打开 Trace", tone: "accent", onTrigger: buildWorkbenchActionHandler("trace-explorer", "open", { deepLinkPath: "/observability/trace-explorer?view=trace" }) },
-                { id: "trace-explorer-filter", label: "过滤受限事件", tone: "neutral", onTrigger: buildWorkbenchActionHandler("trace-explorer", "filter", { deepLinkPath: "/observability/trace-explorer?view=restricted" }) },
-                { id: "trace-explorer-export", label: "导出追踪包", tone: "neutral", onTrigger: buildWorkbenchActionHandler("trace-explorer", "export", { copySelection: true }) },
-            ] }) }));
+    return (_jsxs(FeatureScaffold, { title: "Trace Explorer", summary: "\u6309 trace / receipt / artifact \u8FFD\u8E2A\u8FD0\u884C\u4E8B\u5B9E", status: "Implemented/Partial", children: [_jsx(MetricGrid, { metrics: vm.metrics }), _jsx(ThreePaneLayout, { left: _jsxs(Stack, { gap: 10, children: [_jsx("h3", { children: "Tasks" }), vm.loading ? _jsx("p", { children: "Loading trace task summaries..." }) : null, vm.loadError != null ? _jsx("p", { children: vm.loadError }) : null, vm.listItems.length === 0 ? _jsx("p", { children: "No tasks are available for trace exploration." }) : vm.listItems.map((item) => (_jsxs("button", { onClick: () => vm.selectTask(item.id), style: { textAlign: "left" }, type: "button", children: [_jsx("strong", { children: item.title }), _jsx("div", { children: item.subtitle })] }, item.id)))] }), center: vm.detailRows.length === 0 ? _jsx("p", { children: "No task selected" }) : _jsxs(Stack, { gap: 16, children: [_jsx("h3", { children: "Trace detail" }), _jsx(KeyValueTable, { rows: vm.detailRows }), _jsx("h3", { children: "Timeline" }), _jsx(ListCard, { items: vm.timelineItems })] }), right: _jsxs(Stack, { gap: 12, children: [_jsx("h3", { children: "Trace summary" }), _jsx(ListCard, { items: vm.summaryItems }), _jsx("h3", { children: "Restricted signals" }), _jsx(ListCard, { items: vm.restrictedItems })] }) })] }));
 }

@@ -21,17 +21,19 @@ import {
 import { getSharedTranslationService } from "@aa/shared-i18n";
 import type { SystemStatusVM } from "@aa/shared-types";
 import { AuthService } from "@aa/shared-auth";
-import { SyncCoordinator, type OfflineMutation } from "@aa/shared-sync";
+import { SyncCoordinator, type OfflineQueue } from "@aa/shared-sync";
 import { createApprovalsQuery } from "./queries/approval-queries";
 import {
   createAnalyticsQuery,
   createDashboardSnapshotQuery,
   createSystemStatusVm,
+  dashboardQueryKeys,
 } from "./queries/dashboard-queries";
 import {
   createAgentsQuery,
   createIncidentsQuery,
   createMissionsQuery,
+  missionControlQueryKeys,
   createQueuesQuery,
   createWorkersQuery,
 } from "./queries/mission-control-queries";
@@ -64,6 +66,8 @@ export {
   type QueryCacheTier,
 } from "./query-client";
 export * from "./mutations/index";
+export { dashboardQueryKeys } from "./queries/dashboard-queries";
+export { missionControlQueryKeys } from "./queries/mission-control-queries";
 export { taskQueryKeys } from "./queries/task-queries";
 
 const ApiClientContext = createContext<RESTClient | null>(null);
@@ -90,6 +94,7 @@ export function UiRuntimeProvider(
     wsClient,
     wsUrl,
     wsToken,
+    offlineQueue,
     tokenManager,
     authContext,
   }: PropsWithChildren<{
@@ -98,6 +103,7 @@ export function UiRuntimeProvider(
     wsClient?: WSClient;
     wsUrl?: string;
     wsToken?: string;
+    offlineQueue?: OfflineQueue;
     tokenManager?: { getAccessToken?: () => string | null; getSession?: () => { accessToken: string } | null };
     authContext?: {
       userId?: string;
@@ -116,7 +122,7 @@ export function UiRuntimeProvider(
   const syncStore = useMemo(() => createSyncStore(), []);
   const themeStore = useMemo(() => createThemeStore(), []);
   const authService = useMemo(() => new AuthService(), []);
-  const syncCoordinator = useMemo(() => new SyncCoordinator(), []);
+  const syncCoordinator = useMemo(() => new SyncCoordinator(offlineQueue), [offlineQueue]);
 
   useEffect(() => {
     const params = typeof window === "undefined"
@@ -152,40 +158,10 @@ export function UiRuntimeProvider(
       });
     }
 
-    const bootstrapMutations: OfflineMutation[] = [
-      {
-        id: "bootstrap-dashboard-prefetch",
-        endpoint: "/api/v1/dashboard/prefetch",
-        method: "POST",
-        body: { scope: "mission-control" },
-        createdAt: "2026-04-23T00:00:00.000Z",
-        tenantId: identity.tenantId,
-        traceId: "trace-bootstrap-dashboard-prefetch",
-        principal: {
-          principalId: identity.userId,
-          tenantId: identity.tenantId,
-          roles: ["operator"],
-        },
-        status: "pending",
-      },
-      {
-        id: "bootstrap-approvals-prefetch",
-        endpoint: "/api/v1/approvals/prefetch",
-        method: "POST",
-        body: { queue: "primary" },
-        createdAt: "2026-04-23T00:00:01.000Z",
-        tenantId: identity.tenantId,
-        traceId: "trace-bootstrap-approvals-prefetch",
-        principal: {
-          principalId: identity.userId,
-          tenantId: identity.tenantId,
-          roles: ["operator"],
-        },
-        status: "pending",
-      },
-    ];
-    syncCoordinator.queueMutations(bootstrapMutations);
-    syncStore.getState().setPendingMutations(syncCoordinator.pendingCount());
+    const pendingMutations = syncCoordinator.pendingCount();
+    syncStore.getState().setPendingMutations(pendingMutations);
+    realtimeStore.getState().setOfflineQueueSize(pendingMutations);
+    realtimeStore.getState().setSyncStatus(pendingMutations > 0 ? "queued" : "idle");
 
     const router = new WSEventRouter(
       resolvedWsClient,
@@ -198,15 +174,10 @@ export function UiRuntimeProvider(
 
     if (wsUrl != null && accessToken != null && accessToken.length > 0) {
       router.connect(wsUrl, accessToken);
-      router.subscribe("global");
-      router.subscribe("dashboard");
-      router.subscribe("approvals");
-      router.subscribe("incidents");
-      router.subscribe("agents");
     } else {
       resolvedWsClient.useSseFallback();
-      realtimeStore.getState().setOfflineQueueSize(syncCoordinator.pendingCount());
-      realtimeStore.getState().setSyncStatus("queued");
+      realtimeStore.getState().setOfflineQueueSize(pendingMutations);
+      realtimeStore.getState().setSyncStatus(pendingMutations > 0 ? "queued" : "idle");
     }
 
     return () => {

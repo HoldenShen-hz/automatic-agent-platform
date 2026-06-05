@@ -86,6 +86,42 @@ const workflowActionStatusMap = {
   publish: "completed",
 } as const;
 
+function buildStoredTaskInputJson(payload: ReturnType<typeof parseCreateTaskPayload>): string {
+  const owner = payload.owner?.trim();
+  if (owner == null || owner.length === 0) {
+    return payload.inputJson ?? "{}";
+  }
+  if (payload.inputJson == null || payload.inputJson.trim().length === 0) {
+    return JSON.stringify({ owner });
+  }
+  try {
+    const parsed = JSON.parse(payload.inputJson) as unknown;
+    if (parsed != null && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return JSON.stringify({
+        ...(parsed as Record<string, unknown>),
+        owner,
+      });
+    }
+    return JSON.stringify({
+      owner,
+      input: parsed,
+    });
+  } catch {
+    return JSON.stringify({
+      owner,
+      rawInput: payload.inputJson,
+    });
+  }
+}
+
+function mergeTaskInputJsonWithOwner(inputJson: string | undefined, ownerValue: string | undefined): string {
+  return buildStoredTaskInputJson({
+    title: "owner-update",
+    ...(inputJson == null ? {} : { inputJson }),
+    ...(ownerValue == null ? {} : { owner: ownerValue }),
+  });
+}
+
 export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
   // R29-37: Internal default limit - extracted to constant for maintainability
   const DEFAULT_TASK_LIMIT = 25;
@@ -268,6 +304,38 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           principal.tenantId != null ? principal.tenantId : undefined,
         );
         assertTaskTenantAccess(principal, cockpit.inspect.task.tenantId ?? null, "api.workflow_not_found", "Workflow not found.");
+        if (!deps.taskStore) {
+          throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
+        }
+
+        const existingWorkflowState = deps.taskStore.workflow.getWorkflowState(
+          workflowId,
+          principal.tenantId != null ? principal.tenantId : undefined,
+        );
+        const now = nowIso();
+        const nextWorkflowStatus = workflowActionStatusMap[action];
+        const nextTaskStatus = action === "pause"
+          ? "awaiting_decision"
+          : action === "resume" || action === "recover"
+            ? "in_progress"
+            : "done";
+        deps.taskStore.workflow.updateWorkflowState(
+          workflowId,
+          nextWorkflowStatus,
+          existingWorkflowState?.currentStepIndex ?? cockpit.summary.currentStepIndex,
+          existingWorkflowState?.outputsJson ?? "{}",
+          now,
+          nextWorkflowStatus === "completed"
+            ? null
+            : existingWorkflowState?.resumableFromStep ?? cockpit.summary.resumableFromStep ?? "real_model",
+        );
+        deps.taskStore.task.updateTaskStatus(
+          workflowId,
+          nextTaskStatus,
+          now,
+          null,
+          nextTaskStatus === "done" ? now : null,
+        );
 
         return buildJsonResponse(ctx.requestId, 200, {
           ok: true,
@@ -275,6 +343,49 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           action,
           status: workflowActionStatusMap[action],
           workflow: cockpit.summary,
+        });
+      },
+    },
+    {
+      method: "DELETE",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const segments = normalizeRouteSegments(ctx.route.segments);
+        if (segments[0] !== "v1" || segments[1] !== "workflows" || segments.length !== 3) {
+          return null;
+        }
+
+        const principal = requirePrincipal(ctx.request, deps.authService, "operator");
+        const workflowId = validateTaskId(segments[2], "DELETE workflow");
+        const cockpit = deps.missionControlService.getWorkflowCockpit(
+          workflowId,
+          principal.tenantId != null ? principal.tenantId : undefined,
+        );
+        assertTaskTenantAccess(principal, cockpit.inspect.task.tenantId ?? null, "api.workflow_not_found", "Workflow not found.");
+        if (!deps.taskStore) {
+          throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
+        }
+
+        const existingWorkflowState = deps.taskStore.workflow.getWorkflowState(
+          workflowId,
+          principal.tenantId != null ? principal.tenantId : undefined,
+        );
+        const now = nowIso();
+        deps.taskStore.workflow.updateWorkflowState(
+          workflowId,
+          "paused",
+          existingWorkflowState?.currentStepIndex ?? cockpit.summary.currentStepIndex,
+          existingWorkflowState?.outputsJson ?? "{}",
+          now,
+          "cancelled",
+        );
+        deps.taskStore.task.updateTaskStatus(workflowId, "cancelled", now, null, now);
+
+        return buildJsonResponse(ctx.requestId, 200, {
+          ok: true,
+          workflowId,
+          status: "cancelled",
         });
       },
     },
@@ -321,6 +432,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
             throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
           }
           const taskId = newId("task");
+          const storedInputJson = buildStoredTaskInputJson(payload);
           // Use canonical intake pipeline for proper task admission
           const result = deps.intakeAdmissionService.admit({
             tenantId: effectiveTenantId,
@@ -345,7 +457,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
             status: "queued",
             source: payload.source ?? "user",
             priority: payload.priority ?? "normal",
-            inputJson: payload.inputJson ?? "{}",
+            inputJson: storedInputJson,
             normalizedInputJson: stableStringify(result.taskDraft.normalizedIntent ?? null),
             outputJson: null,
             estimatedCostUsd: result.requestEnvelope.budgetIntent.amount,
@@ -402,6 +514,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         // Legacy fallback: direct task store insertion without intake pipeline
         const taskId = newId("task");
         const now = nowIso();
+        const storedInputJson = buildStoredTaskInputJson(payload);
 
         if (!deps.taskStore) {
           throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
@@ -416,7 +529,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           status: "queued",
           source: payload.source ?? "user",
           priority: payload.priority ?? "normal",
-          inputJson: payload.inputJson ?? "{}",
+          inputJson: storedInputJson,
           normalizedInputJson: null,
           outputJson: null,
           estimatedCostUsd: null,
@@ -472,6 +585,14 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         const now = nowIso();
         if (payload.title != null) {
           deps.taskStore.task.updateTaskTitle(taskId, payload.title, now);
+        }
+        if (payload.owner != null) {
+          deps.taskStore.task.updateTaskInput(
+            taskId,
+            mergeTaskInputJsonWithOwner(existing.inputJson, payload.owner),
+            existing.normalizedInputJson ?? "null",
+            now,
+          );
         }
         if (payload.status != null) {
           deps.taskStore.task.updateTaskStatus(taskId, payload.status, now, null, null);

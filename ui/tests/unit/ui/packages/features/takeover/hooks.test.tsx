@@ -59,6 +59,24 @@ describe("useTakeoverVm", () => {
     expect(persisted[0]?.taskId).toBe("task-1");
   });
 
+  it("falls back to the current task step when workflow-run steps are unavailable", async () => {
+    mocks.mockFetchWorkflowRunSteps.mockRejectedValueOnce(new Error("Route not found."));
+    const { result } = renderHook(() => useTakeoverVm());
+
+    await act(async () => {
+      await result.current.claimOwnership("task-1", "platform-sre");
+    });
+
+    expect(result.current.currentSnapshot?.steps).toEqual([
+      {
+        id: "workflow-run-1",
+        title: "workflow-run-1",
+        status: "running",
+        executor: "platform-sre",
+      },
+    ]);
+  });
+
   it("records transfer history and can restore a previous snapshot", async () => {
     const { result } = renderHook(() => useTakeoverVm());
 
@@ -70,7 +88,6 @@ describe("useTakeoverVm", () => {
     expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-1", {
       owner: "backup-sre",
       status: "running",
-      currentStep: "takeover-transfer:handoff",
     });
     expect(result.current.ownershipHistory[0]?.action).toBe("transfer:handoff");
 

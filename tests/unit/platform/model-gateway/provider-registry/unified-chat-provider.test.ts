@@ -8,6 +8,7 @@ import {
   type ChatProviderType,
 } from "../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js";
 import { UnifiedChatProvider as BarrelUnifiedChatProvider } from "../../../../../src/platform/model-gateway/provider-registry/index.js";
+import { MiniMaxAPIError } from "../../../../../src/platform/model-gateway/provider-registry/minimax/minimax-chat-service.js";
 
 test("UnifiedChatProvider detects anthropic model", () => {
   const provider = new UnifiedChatProvider({});
@@ -174,6 +175,118 @@ test("UnifiedChatProvider.complete uses chat completion facade", async () => {
     () => provider.complete("hello"),
     /MiniMax provider is not configured/,
   );
+});
+
+test("UnifiedChatProvider falls back to MiniMax reasoning content when visible content is empty", async () => {
+  const provider = new UnifiedChatProvider({
+    minimax: { apiKey: "test-key" },
+  });
+
+  (
+    provider as unknown as {
+      minimax: {
+        createChatCompletion: () => Promise<{
+          id: string;
+          content: string;
+          reasoningContent: string | null;
+          finishReason: string;
+          usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+          model: string;
+        }>;
+      };
+    }
+  ).minimax = {
+    createChatCompletion: async () => ({
+      id: "resp-minimax-reasoning-only",
+      content: "",
+      reasoningContent: "Visible answer recovered from reasoning channel",
+      finishReason: "stop",
+      usage: {
+        prompt_tokens: 12,
+        completion_tokens: 30,
+        total_tokens: 42,
+      },
+      model: "MiniMax-M2.7",
+    }),
+  };
+
+  const result = await provider.createChatCompletion({
+    model: "minimax-m2.7",
+    messages: [{ role: "user", content: "Give me the answer" }],
+    maxTokens: 128,
+    traceId: "trace-minimax-fallback",
+    tenantId: "tenant-1",
+    costTag: "unit-test",
+  });
+
+  assert.equal(result.content, "Visible answer recovered from reasoning channel");
+  assert.equal(result.reasoningContent, "Visible answer recovered from reasoning channel");
+
+  const completed = await provider.complete("Give me the answer", {
+    model: "minimax-m2.7",
+    traceId: "trace-minimax-complete",
+    tenantId: "tenant-1",
+    costTag: "unit-test",
+  });
+
+  assert.equal(completed, "Visible answer recovered from reasoning channel");
+});
+
+test("UnifiedChatProvider retries retryable MiniMax business errors before failing", async () => {
+  const provider = new UnifiedChatProvider({
+    minimax: { apiKey: "test-key" },
+  });
+  let attemptCount = 0;
+
+  (
+    provider as unknown as {
+      minimax: {
+        createChatCompletion: () => Promise<{
+          id: string;
+          content: string;
+          reasoningContent: string | null;
+          finishReason: string;
+          usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+          model: string;
+        }>;
+      };
+    }
+  ).minimax = {
+    createChatCompletion: async () => {
+      attemptCount += 1;
+      if (attemptCount === 1) {
+        throw new MiniMaxAPIError({
+          statusCode: 200,
+          statusText: "OK",
+          message: "MiniMax API business error: 1000 - unknown error, 520",
+        });
+      }
+      return {
+        id: "resp-minimax-after-business-retry",
+        content: "Recovered after business retry",
+        reasoningContent: null,
+        finishReason: "stop",
+        usage: {
+          prompt_tokens: 12,
+          completion_tokens: 20,
+          total_tokens: 32,
+        },
+        model: "MiniMax-M2.7",
+      };
+    },
+  };
+
+  const result = await provider.createChatCompletion({
+    model: "minimax-m2.7",
+    messages: [{ role: "user", content: "Recover from business error" }],
+    maxTokens: 128,
+    traceId: "trace-minimax-business-retry",
+    tenantId: "tenant-1",
+    costTag: "unit-test",
+  });
+
+  assert.equal(attemptCount, 2);
+  assert.equal(result.content, "Recovered after business retry");
 });
 
 test("UnifiedChatProvider.embed falls back to hash embeddings when no embedding provider is configured", async () => {

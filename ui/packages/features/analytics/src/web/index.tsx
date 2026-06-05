@@ -45,7 +45,7 @@ export function AnalyticsWebView(): ReactElement {
   const numericMetricTotal = vm.metrics.reduce((sum, metric) => sum + Number(metric.value || 0), 0);
 
   return (
-    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Partial">
       <MetricGrid metrics={vm.metrics} />
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 16 }}>
         <label style={{ display: "grid", gap: 4 }}>

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAuthState, useIncidentsQuery, useMutation, useRestClient, useWsClient } from "@aa/shared-state";
+import { useQueryClient } from "@tanstack/react-query";
+import { updateIncident } from "@aa/shared-api-client";
+import { missionControlQueryKeys, useAuthState, useIncidentsQuery, useRestClient, useWsClient } from "@aa/shared-state";
 import { translateMessage } from "@aa/shared-i18n";
 import type { IncidentDTO } from "@aa/shared-types";
 
@@ -48,8 +50,20 @@ interface AlertStreamPayload {
 
 function mergeIncidents(existing: readonly IncidentDTO[], incoming: IncidentDTO): readonly IncidentDTO[] {
   const merged = new Map(existing.map((incident) => [incident.id, incident] as const));
-  merged.set(incoming.id, incoming);
+  merged.set(incoming.id, selectFresherIncident(merged.get(incoming.id) ?? null, incoming));
   return [...merged.values()];
+}
+
+function selectFresherIncident(current: IncidentDTO | null, candidate: IncidentDTO): IncidentDTO {
+  if (current == null) {
+    return candidate;
+  }
+  const currentUpdatedAt = Date.parse(current.updatedAt ?? current.createdAt);
+  const candidateUpdatedAt = Date.parse(candidate.updatedAt ?? candidate.createdAt);
+  if (Number.isFinite(currentUpdatedAt) && Number.isFinite(candidateUpdatedAt) && candidateUpdatedAt < currentUpdatedAt) {
+    return current;
+  }
+  return candidate;
 }
 
 function sortIncidents(incidents: readonly IncidentDTO[]): readonly IncidentDTO[] {
@@ -76,6 +90,7 @@ interface LiveIncidentEntry {
 }
 
 const LIVE_INCIDENT_TTL_MS = 15 * 60 * 1000;
+const ALERT_SNOOZE_MS = 30 * 60 * 1000;
 
 export function buildAlertsVm(
   incidents: readonly IncidentDTO[],
@@ -103,7 +118,9 @@ export function buildAlertsVm(
       description: incident.summary,
       detailRows: [
         { key: translateMessage("ui.alerts.field.severity"), value: incident.severity },
+        { key: "Status", value: incident.status ?? "open" },
         { key: translateMessage("ui.alerts.field.created"), value: incident.createdAt },
+        { key: "Owner", value: incident.owner ?? "unassigned" },
         { key: translateMessage("ui.alerts.field.summary"), value: incident.summary },
       ],
     })),
@@ -123,6 +140,7 @@ export const mapAlertsToVm = buildAlertsVm;
 export function useAlertsVm(): AlertsVm {
   const auth = useAuthState();
   const client = useRestClient();
+  const queryClient = useQueryClient();
   const wsClient = useWsClient();
   const [filters, setFiltersState] = useState<AlertsVm["filters"]>({
     severity: "all",
@@ -130,34 +148,12 @@ export function useAlertsVm(): AlertsVm {
     timeRange: "all",
   });
   const [liveIncidents, setLiveIncidents] = useState<readonly LiveIncidentEntry[]>([]);
-  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
-  const [snoozedUntil, setSnoozedUntil] = useState<ReadonlyMap<string, number>>(new Map());
   const [history, setHistory] = useState<readonly AlertHistoryEntry[]>([]);
   const [streamStatus, setStreamStatus] = useState<AlertsVm["streamStatus"]>("idle");
   const [pendingOperations, setPendingOperations] = useState(0);
   const incidents = useIncidentsQuery().data ?? [];
   const scopedIncidents = (auth.permissions ?? []).includes(ALERTS_REQUIRED_PERMISSION) ? incidents : [];
-
-  const { mutateAsync: acknowledgeMutateAsync } = useMutation({
-    client,
-    method: "POST",
-    path: ({ id }: { id: string }) => `/alerts/${id}/acknowledge`,
-  });
-  const { mutateAsync: dismissMutateAsync } = useMutation({
-    client,
-    method: "POST",
-    path: ({ id }: { id: string }) => `/alerts/${id}/dismiss`,
-  });
-  const { mutateAsync: snoozeMutateAsync } = useMutation({
-    client,
-    method: "POST",
-    path: ({ id }: { id: string }) => `/alerts/${id}/snooze`,
-  });
-  const { mutateAsync: escalateMutateAsync } = useMutation({
-    client,
-    method: "POST",
-    path: ({ id }: { id: string }) => `/alerts/${id}/escalate`,
-  });
+  const operatorId = auth.displayName || auth.userId || "web-operator";
 
   useEffect(() => {
     const unsubscribe = wsClient.subscribe("incidents", (event) => {
@@ -198,35 +194,6 @@ export function useAlertsVm(): AlertsVm {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    if (snoozedUntil.size === 0) {
-      return;
-    }
-    const now = Date.now();
-    let nextExpiry: number | null = null;
-    for (const value of snoozedUntil.values()) {
-      if (value > now && (nextExpiry == null || value < nextExpiry)) {
-        nextExpiry = value;
-      }
-    }
-    if (nextExpiry == null) {
-      return;
-    }
-    const timer = setTimeout(() => {
-      setSnoozedUntil((current) => {
-        const refreshed = new Map(current);
-        const refreshNow = Date.now();
-        for (const [incidentId, expiry] of current.entries()) {
-          if (expiry <= refreshNow) {
-            refreshed.delete(incidentId);
-          }
-        }
-        return refreshed;
-      });
-    }, Math.max(0, nextExpiry - now));
-    return () => clearTimeout(timer);
-  }, [snoozedUntil]);
-
   const mergedIncidents = useMemo(() => {
     const merged = new Map<string, IncidentDTO>();
     for (const incident of scopedIncidents) {
@@ -235,18 +202,21 @@ export function useAlertsVm(): AlertsVm {
     const cutoff = Date.now() - LIVE_INCIDENT_TTL_MS;
     for (const entry of liveIncidents) {
       if (entry.receivedAt >= cutoff) {
-        merged.set(entry.incident.id, entry.incident);
+        merged.set(entry.incident.id, selectFresherIncident(merged.get(entry.incident.id) ?? null, entry.incident));
       }
     }
     const now = Date.now();
     return sortIncidents([...merged.values()]).filter((incident) => {
-      if (dismissed.has(incident.id)) {
+      if (incident.status === "closed") {
         return false;
       }
-      const snoozeExpiry = snoozedUntil.get(incident.id);
-      return snoozeExpiry == null || snoozeExpiry <= now;
+      if (incident.snoozedUntil == null) {
+        return true;
+      }
+      const snoozeExpiry = Date.parse(incident.snoozedUntil);
+      return !Number.isFinite(snoozeExpiry) || snoozeExpiry <= now;
     });
-  }, [dismissed, liveIncidents, scopedIncidents, snoozedUntil]);
+  }, [liveIncidents, scopedIncidents]);
 
   const dedupedIncidents = useMemo(() => {
     const byId = new Map<string, IncidentDTO>();
@@ -271,70 +241,55 @@ export function useAlertsVm(): AlertsVm {
     }
   }, []);
 
+  const refreshIncidents = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: missionControlQueryKeys.incidents });
+    await queryClient.refetchQueries({ queryKey: missionControlQueryKeys.incidents, type: "active" });
+  }, [queryClient]);
+
   const onAcknowledge = useCallback(async (id: string) => {
     const incident = findIncident(id);
     await withPending(async () => {
-      await acknowledgeMutateAsync({ id });
+      await updateIncident(client, id, { status: "acknowledged", owner: operatorId });
+      await refreshIncidents();
       if (incident != null) {
         appendHistory(buildHistoryEntry("Acknowledged", incident));
       }
     });
-  }, [acknowledgeMutateAsync, appendHistory, findIncident, withPending]);
+  }, [appendHistory, client, findIncident, operatorId, refreshIncidents, withPending]);
 
   const onDismiss = useCallback(async (id: string) => {
     const incident = findIncident(id);
-    setDismissed((current) => new Set([...current, id]));
-    try {
-      await withPending(async () => {
-        await dismissMutateAsync({ id });
-        if (incident != null) {
-          appendHistory(buildHistoryEntry("Dismissed", incident));
-        }
-      });
-    } catch (error) {
-      setDismissed((current) => {
-        const next = new Set(current);
-        next.delete(id);
-        return next;
-      });
-      throw error;
-    }
-  }, [appendHistory, dismissMutateAsync, findIncident, withPending]);
+    await withPending(async () => {
+      await updateIncident(client, id, { status: "closed" });
+      await refreshIncidents();
+      if (incident != null) {
+        appendHistory(buildHistoryEntry("Dismissed", incident));
+      }
+    });
+  }, [appendHistory, client, findIncident, refreshIncidents, withPending]);
 
   const onSnooze = useCallback(async (id: string) => {
-    const expiry = Date.now() + 30 * 60 * 1000;
+    const expiry = new Date(Date.now() + ALERT_SNOOZE_MS).toISOString();
     const incident = findIncident(id);
-    setSnoozedUntil((current) => {
-      const next = new Map(current);
-      next.set(id, expiry);
-      return next;
+    await withPending(async () => {
+      await updateIncident(client, id, { snoozedUntil: expiry });
+      await refreshIncidents();
+      if (incident != null) {
+        appendHistory(buildHistoryEntry("Snoozed 30m", incident));
+      }
     });
-    try {
-      await withPending(async () => {
-        await snoozeMutateAsync({ id });
-        if (incident != null) {
-          appendHistory(buildHistoryEntry("Snoozed 30m", incident));
-        }
-      });
-    } catch (error) {
-      setSnoozedUntil((current) => {
-        const next = new Map(current);
-        next.delete(id);
-        return next;
-      });
-      throw error;
-    }
-  }, [appendHistory, findIncident, snoozeMutateAsync, withPending]);
+  }, [appendHistory, client, findIncident, refreshIncidents, withPending]);
 
   const onEscalate = useCallback(async (id: string) => {
     const incident = findIncident(id);
     await withPending(async () => {
-      await escalateMutateAsync({ id });
+      await updateIncident(client, id, { status: "mitigating" });
+      await refreshIncidents();
       if (incident != null) {
-        appendHistory(buildHistoryEntry("Escalated", incident));
+        appendHistory(buildHistoryEntry("Entered mitigation", incident));
       }
     });
-  }, [appendHistory, escalateMutateAsync, findIncident, withPending]);
+  }, [appendHistory, client, findIncident, refreshIncidents, withPending]);
 
   return useMemo(() => buildAlertsVm(
     dedupedIncidents,

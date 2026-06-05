@@ -90,6 +90,12 @@ export const ApiPortSchema = PositivePort.optional();
 export const ApiHostSchema = NonEmptyString.optional();
 
 /**
+ * Schema for AA_API_TOKEN_TTL_MS — API access token TTL in milliseconds.
+ * Optional: defaults to the auth service default when not set.
+ */
+export const ApiTokenTtlMsSchema = PositiveInteger.optional();
+
+/**
  * Schema for AA_LOG_STDOUT — enable structured JSON logging to stdout.
  * Optional: defaults to false.
  */
@@ -345,6 +351,7 @@ export const StartupEnvSchema = z.object({
   AA_CONFIG_ROOT: ConfigRootSchema,
   AA_API_PORT: ApiPortSchema,
   AA_API_HOST: ApiHostSchema,
+  AA_API_TOKEN_TTL_MS: ApiTokenTtlMsSchema,
   AA_LOG_STDOUT: LogStdoutSchema,
   AA_LOG_LEVEL: LogLevelSchema,
   AA_LOG_FILE_PATH: LogFilePathSchema,
@@ -465,6 +472,7 @@ export function validateStartupEnv(env: NodeJS.ProcessEnv = process.env): Startu
     AA_CONFIG_ROOT: env["AA_CONFIG_ROOT"] ?? undefined,
     AA_API_PORT: env["AA_API_PORT"] ?? undefined,
     AA_API_HOST: env["AA_API_HOST"] ?? undefined,
+    AA_API_TOKEN_TTL_MS: env["AA_API_TOKEN_TTL_MS"] ?? undefined,
     AA_LOG_STDOUT: env["AA_LOG_STDOUT"] ?? undefined,
     AA_LOG_LEVEL: env["AA_LOG_LEVEL"] ?? undefined,
     AA_LOG_FILE_PATH: env["AA_LOG_FILE_PATH"] ?? undefined,

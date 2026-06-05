@@ -38,6 +38,7 @@ import { GatewayStorageAdapter } from "../../platform/five-plane-interface/chann
 import { ApprovalService } from "../../platform/five-plane-control-plane/approval-center/approval-service.js";
 import { ApiAuthService } from "../../platform/five-plane-interface/api/api-auth-service.js";
 import { HttpApiServer } from "../../platform/five-plane-interface/api/http-api-server.js";
+import type { IncidentCase as FacadeIncidentCase, IncidentFacadeService } from "../../platform/five-plane-interface/api/facade-interfaces.js";
 import { MissionControlService } from "../../platform/five-plane-interface/api/mission-control-service.js";
 import { RealTaskExecutionService } from "../../platform/five-plane-interface/api/real-task-execution-service.js";
 import { TaskWebSocketStatusRelay } from "../../platform/five-plane-interface/api/task-websocket-status-relay.js";
@@ -64,10 +65,59 @@ import { BillingService } from "../../scale-ecosystem/billing/billing-service.js
 import { ArtifactPublishLedger } from "../../platform/five-plane-state-evidence/artifacts/artifact-publish-ledger.js";
 import { ArtifactPublishService } from "../../platform/five-plane-state-evidence/artifacts/artifact-publish-service.js";
 import { ArtifactPlaneService } from "../../platform/five-plane-state-evidence/artifacts/artifact-plane-service.js";
+import { IncidentCaseService } from "../../platform/five-plane-state-evidence/incident/index.js";
 import { bootstrapConfiguredRegistries } from "../../domains/registry/registry-bootstrap.js";
 import { KnowledgeSnapshotStore } from "../../platform/five-plane-state-evidence/knowledge/archive/knowledge-snapshot-store.js";
 import { KnowledgePlaneService } from "../../platform/five-plane-state-evidence/knowledge/knowledge-plane-service.js";
 import { createSemanticVectorStoreFromEnvironment } from "../../platform/five-plane-state-evidence/knowledge/semantic-vector-store.js";
+import type { IncidentCaseService as RuntimeIncidentCaseService, IncidentCase as RuntimeIncidentCase } from "../../platform/five-plane-state-evidence/incident/index.js";
+
+function toFacadeIncident(incident: RuntimeIncidentCase): FacadeIncidentCase {
+  return {
+    incidentId: incident.incidentId,
+    severity: incident.severity,
+    status:
+      incident.status === "open"
+        ? "open"
+        : incident.status === "acknowledged" || incident.status === "triaged"
+          ? "acknowledged"
+          : incident.status === "closed"
+            ? "closed"
+            : incident.status === "resolved"
+            ? "resolved"
+            : "mitigating",
+    title: incident.title,
+    linkedEvidenceRefs: incident.linkedEvidenceRefs,
+    owner: incident.owner,
+    createdAt: incident.createdAt,
+    updatedAt: incident.updatedAt,
+    resolvedAt: incident.resolvedAt,
+    snoozedUntil: incident.snoozedUntil,
+  };
+}
+
+function createIncidentFacade(service: RuntimeIncidentCaseService): IncidentFacadeService {
+  return {
+    listIncidents: (limit, tenantId) => service.listIncidents(limit, tenantId).map(toFacadeIncident),
+    listIncidentsPaginated: (limit, tenantId, cursor) => {
+      const result = service.listIncidentsPaginated(limit, tenantId, cursor);
+      return {
+        incidents: result.incidents.map(toFacadeIncident),
+        nextToken: result.nextToken,
+      };
+    },
+    getIncident: (incidentId, tenantId) => {
+      const incident = service.getIncident(incidentId, tenantId);
+      return incident == null ? null : toFacadeIncident(incident);
+    },
+    openIncident: (input) => toFacadeIncident(service.openIncident(input)),
+    acknowledge: (incidentId, owner, tenantId) => toFacadeIncident(service.acknowledge(incidentId, owner, tenantId)),
+    startMitigation: (incidentId, tenantId) => toFacadeIncident(service.startMitigation(incidentId, tenantId)),
+    resolve: (incidentId, tenantId) => toFacadeIncident(service.resolve(incidentId, tenantId)),
+    close: (incidentId, tenantId) => toFacadeIncident(service.close(incidentId, tenantId)),
+    snooze: (incidentId, snoozedUntil, tenantId) => toFacadeIncident(service.snooze(incidentId, snoozedUntil, tenantId)),
+  };
+}
 
 /**
  * Main entry point for the API server.
@@ -209,6 +259,7 @@ async function main(): Promise<void> {
       return new ApiAuthService({
         apiKeys: envConfig.apiKeys,
         jwtSecret: envConfig.jwtSecret,
+        ...(envConfig.apiTokenTtlMs != null ? { tokenTtlMs: envConfig.apiTokenTtlMs } : {}),
       });
     })();
 
@@ -233,6 +284,10 @@ async function main(): Promise<void> {
     const missionControl = new MissionControlService(store, health, metrics, inspect, {
       gatewayTargetDirectoryService: gatewayTargets,
     });
+    const incidentCaseService = new IncidentCaseService({
+      persistencePath: join(dataRoot, "runtime", "incidents.json"),
+    });
+    const incidentService = createIncidentFacade(incidentCaseService);
     const realTaskExecutionService = new RealTaskExecutionService(store, {
       reportRoot: join(process.cwd(), "data", "dev-runtime", "reports"),
     });
@@ -242,6 +297,7 @@ async function main(): Promise<void> {
       approvalService: approvals,
       inspectService: inspect,
       missionControlService: missionControl,
+      incidentService,
       gatewayTargetDirectoryService: gatewayTargets,
       ...(authService ? { authService } : {}),
       channelGatewayService: channelGateway,
@@ -257,6 +313,7 @@ async function main(): Promise<void> {
       taskStore: store,
       realTaskExecutionService,
       enableWebSocket: envConfig.enableWebSocket,
+      env,
     });
     const webSocketStatusRelay =
       envConfig.enableWebSocket

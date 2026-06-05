@@ -1,51 +1,84 @@
+// @vitest-environment jsdom
+
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-const mockClient = {};
-const mutationCalls: Array<{ path: string; payload: { id: string } }> = [];
-const createMutation = (path: ({ id }: { id: string }) => string) => {
-  const mutateAsync = vi.fn(async (payload: { id: string }) => {
-    mutationCalls.push({ path: path(payload), payload });
-  });
-  return {
-    status: "idle",
-    mutate: vi.fn((payload: { id: string }) => {
-      mutationCalls.push({ path: path(payload), payload });
-    }),
-    mutateAsync,
-  };
-};
+const mocks = vi.hoisted(() => ({
+  mockClient: {},
+  mockInvalidateQueries: vi.fn(async () => undefined),
+  mockRefetchQueries: vi.fn(async () => undefined),
+  incidentData: [
+    {
+      id: "incident-1",
+      severity: "critical",
+      title: "Primary region outage",
+      summary: "gateway errors",
+      createdAt: "2026-05-07T08:00:00.000Z",
+      status: "open",
+    },
+  ] as Array<Record<string, unknown>>,
+  incidentSubscription: null as ((event: { type: string; payload: { incident?: Record<string, unknown> } }) => void) | null,
+  mockUpdateIncident: vi.fn(async (_client, incidentId: string, patch: Record<string, unknown>) => ({
+    id: incidentId,
+    severity: "critical",
+    title: "Primary region outage",
+    summary: "gateway errors",
+    createdAt: "2026-05-07T08:00:00.000Z",
+    ...patch,
+  })),
+}));
+
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({
+    invalidateQueries: mocks.mockInvalidateQueries,
+    refetchQueries: mocks.mockRefetchQueries,
+  }),
+}));
 
 vi.mock("@aa/shared-state", () => ({
+  missionControlQueryKeys: {
+    incidents: ["incidents"],
+  },
   useAuthState: () => ({
     userId: "ops-user",
     permissions: ["platform_sre"],
   }),
-  useRestClient: () => mockClient,
+  useRestClient: () => mocks.mockClient,
   useIncidentsQuery: () => ({
-    data: [
+    data: mocks.incidentData,
+  }),
+  useWsClient: () => ({
+    subscribe: (_channel: string, callback: (event: { type: string; payload: { incident?: Record<string, unknown> } }) => void) => {
+      mocks.incidentSubscription = callback;
+      return () => {
+        mocks.incidentSubscription = null;
+      };
+    },
+    onStatusChange: () => () => undefined,
+  }),
+}));
+
+vi.mock("@aa/shared-api-client", () => ({
+  updateIncident: mocks.mockUpdateIncident,
+}));
+
+import { mapAlertsToVm, useAlertsVm } from "../../../../../../packages/features/alerts/src/hooks";
+
+describe("useAlertsVm", () => {
+  it("wires acknowledge, snooze, escalate, and dismiss actions to real incident updates", async () => {
+    mocks.incidentData = [
       {
         id: "incident-1",
         severity: "critical",
         title: "Primary region outage",
         summary: "gateway errors",
         createdAt: "2026-05-07T08:00:00.000Z",
-        domainId: "platform",
+        status: "open",
       },
-    ],
-  }),
-  useMutation: ({ path }: { path: ({ id }: { id: string }) => string }) => createMutation(path),
-  useWsClient: () => ({
-    subscribe: () => () => undefined,
-    onStatusChange: () => () => undefined,
-  }),
-}));
-
-import { mapAlertsToVm, useAlertsVm } from "../../../../../../packages/features/alerts/src/hooks";
-
-describe("useAlertsVm", () => {
-  it("wires acknowledge, snooze, escalate, and dismiss actions to incident mutations", async () => {
-    mutationCalls.length = 0;
+    ];
+    mocks.mockUpdateIncident.mockClear();
+    mocks.mockInvalidateQueries.mockClear();
+    mocks.mockRefetchQueries.mockClear();
     const { result } = renderHook(() => useAlertsVm());
 
     await act(async () => {
@@ -55,18 +88,53 @@ describe("useAlertsVm", () => {
       await result.current.onDismiss("incident-1");
     });
 
-    expect(mutationCalls).toEqual([
-      { path: "/alerts/incident-1/acknowledge", payload: { id: "incident-1" } },
-      { path: "/alerts/incident-1/snooze", payload: { id: "incident-1" } },
-      { path: "/alerts/incident-1/escalate", payload: { id: "incident-1" } },
-      { path: "/alerts/incident-1/dismiss", payload: { id: "incident-1" } },
+    expect(mocks.mockUpdateIncident.mock.calls).toEqual([
+      [mocks.mockClient, "incident-1", { status: "acknowledged", owner: "ops-user" }],
+      [mocks.mockClient, "incident-1", { snoozedUntil: expect.any(String) }],
+      [mocks.mockClient, "incident-1", { status: "mitigating" }],
+      [mocks.mockClient, "incident-1", { status: "closed" }],
     ]);
+    expect(mocks.mockInvalidateQueries).toHaveBeenCalledTimes(4);
+    expect(mocks.mockRefetchQueries).toHaveBeenCalledTimes(4);
     expect(result.current.history.map((entry) => entry.title)).toEqual([
       "Dismissed · Primary region outage",
-      "Escalated · Primary region outage",
+      "Entered mitigation · Primary region outage",
       "Snoozed 30m · Primary region outage",
       "Acknowledged · Primary region outage",
     ]);
+  });
+
+  it("prefers fresher query incidents over stale websocket copies when visibility changed", async () => {
+    mocks.incidentData = [
+      {
+        id: "incident-1",
+        severity: "critical",
+        title: "Primary region outage",
+        summary: "gateway errors",
+        createdAt: "2026-05-07T08:00:00.000Z",
+        updatedAt: "2026-05-07T08:10:00.000Z",
+        status: "closed",
+      },
+    ];
+    const { result } = renderHook(() => useAlertsVm());
+
+    await act(async () => {
+      mocks.incidentSubscription?.({
+        type: "incident.updated",
+        payload: {
+          incident: {
+            id: "incident-1",
+            severity: "critical",
+            title: "Primary region outage",
+            summary: "gateway errors",
+            createdAt: "2026-05-07T08:00:00.000Z",
+            updatedAt: "2026-05-07T08:05:00.000Z",
+            status: "open",
+          },
+        },
+      });
+    });
+
     expect(result.current.items).toHaveLength(0);
   });
 

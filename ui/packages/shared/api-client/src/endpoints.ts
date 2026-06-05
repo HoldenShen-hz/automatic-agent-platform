@@ -8,6 +8,7 @@ import type {
   DomainConfigDTO,
   ExplanationDTO,
   FeatureFlagDTO,
+  HealthStatusReportDTO,
   IncidentDTO,
   LeadershipClaimsConsoleDTO,
   KnowledgeItemDTO,
@@ -39,6 +40,34 @@ export interface ListQueryParams {
   readonly pageSize?: number;
   readonly sort?: string;
   readonly filter?: string;
+}
+
+export interface CreateTaskInput {
+  readonly [key: string]: unknown;
+  readonly id?: string;
+  readonly title: string;
+  readonly domainId?: string;
+  readonly divisionId?: string;
+  readonly owner?: string;
+  readonly status?: string;
+  readonly parentId?: string;
+  readonly inputJson?: string;
+  readonly priority?: "low" | "normal" | "high" | "urgent";
+  readonly source?: "user" | "perception" | "system";
+}
+
+export interface CreateTaskResponse {
+  readonly snapshot?: {
+    readonly task?: {
+      readonly id?: string;
+    };
+  };
+}
+
+export interface UpdateIncidentInput {
+  readonly status?: "acknowledged" | "mitigating" | "resolved" | "closed";
+  readonly owner?: string;
+  readonly snoozedUntil?: string | null;
 }
 
 export interface EndpointDefinition<
@@ -85,6 +114,7 @@ type TaskPathParams = { taskId: string };
 type WorkflowPathParams = { workflowId: string };
 type WorkflowRunStepPathParams = { workflowRunId: string };
 type ApprovalPathParams = { approvalId: string };
+type IncidentPathParams = { incidentId: string };
 type LeadershipClaimPathParams = { claimId: string };
 type LeadershipClaimReviewRequestPathParams = { requestId: string };
 type PackVersionPathParams = { packId: string };
@@ -101,6 +131,17 @@ type AuditLogEntry = {
   outcome: string;
   metadata?: Record<string, unknown>;
 };
+type ComplianceExceptionVmDTO = {
+  id: string;
+  reason: string;
+  policyId: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+  requestedBy: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  rationale?: string;
+};
 type ComplianceExceptionResponse = { id: string };
 type ContractVersionResponse = { contractVersion: string; minServerVersion?: string };
 type TaskLikeRecord = Partial<TaskDTO> & {
@@ -114,6 +155,15 @@ type TaskLikeRecord = Partial<TaskDTO> & {
   readonly pendingApprovalCount?: number;
   readonly resolvedApprovalCount?: number;
   readonly activeExecutionId?: string | null;
+};
+type WorkflowLikeRecord = Partial<WorkflowDTO> & {
+  readonly taskId?: string;
+  readonly workflowId?: string;
+  readonly workflowStatus?: string | null;
+  readonly taskStatus?: string | null;
+  readonly divisionId?: string | null;
+  readonly currentStepIndex?: number | null;
+  readonly resumableFromStep?: string | null;
 };
 
 function mapTaskStatus(status: string | undefined): TaskDTO["status"] {
@@ -184,7 +234,83 @@ function normalizeTaskDto(task: TaskLikeRecord): TaskDTO {
   };
 }
 
+function mapWorkflowStatus(status: string | null | undefined): WorkflowDTO["status"] {
+  switch (status) {
+    case "completed":
+    case "done":
+    case "failed":
+    case "cancelled":
+      return "completed";
+    case "paused":
+    case "awaiting_decision":
+    case "blocked":
+      return "paused";
+    case "draft":
+      return "draft";
+    case "running":
+    case "in_progress":
+    case "pending":
+    case "queued":
+    default:
+      return "running";
+  }
+}
+
+function normalizeWorkflowDto(workflow: WorkflowLikeRecord): WorkflowDTO {
+  const currentStage =
+    typeof workflow.currentStage === "string" && workflow.currentStage.length > 0
+      ? workflow.currentStage
+      : typeof workflow.resumableFromStep === "string" && workflow.resumableFromStep.length > 0
+        ? workflow.resumableFromStep
+        : typeof workflow.currentStepIndex === "number"
+          ? `step-${workflow.currentStepIndex}`
+          : workflow.workflowStatus
+            ?? "intake";
+  return {
+    id: workflow.id ?? workflow.taskId ?? workflow.workflowId ?? "workflow-unknown",
+    title: workflow.title ?? workflow.workflowId ?? workflow.taskId ?? "Untitled workflow",
+    status: mapWorkflowStatus(workflow.status ?? workflow.workflowStatus ?? workflow.taskStatus),
+    currentStage,
+    owner: workflow.owner ?? workflow.divisionId ?? "platform",
+    steps: workflow.steps ?? [],
+    ...(workflow.approvalNodes == null ? {} : { approvalNodes: workflow.approvalNodes }),
+    ...(workflow.evidenceRefs == null ? {} : { evidenceRefs: workflow.evidenceRefs }),
+  };
+}
+
+function mapTaskPatchStatus(status: unknown): string | undefined {
+  switch (status) {
+    case "queued":
+      return "queued";
+    case "running":
+      return "in_progress";
+    case "blocked":
+      return "blocked";
+    case "completed":
+      return "done";
+    case "failed":
+      return "failed";
+    case "cancelled":
+      return "cancelled";
+    case "paused":
+      return "paused";
+    case "awaiting_decision":
+    case "prechecking":
+    case "ready":
+    case "dispatching":
+    case "executing":
+    case "resuming":
+    case "recovering":
+    case "timed_out":
+    case "superseded":
+      return status;
+    default:
+      return undefined;
+  }
+}
+
 type EndpointCatalogDefinition = {
+  healthReport: EndpointDefinition<HealthStatusReportDTO>;
   dashboardSnapshot: EndpointDefinition<DashboardSnapshotDTO>;
   tasks: EndpointDefinition<readonly TaskDTO[], never, never, ListQueryParams>;
   tasksCreate: EndpointDefinition<MutationAck<Partial<TaskDTO>>, Partial<TaskDTO>>;
@@ -217,8 +343,17 @@ type EndpointCatalogDefinition = {
   approvalsDefer: EndpointDefinition<MutationAck<{ until: string }>, { until: string }, ApprovalPathParams>;
   approvalsTextInput: EndpointDefinition<MutationAck<{ input: string }>, { input: string }, ApprovalPathParams>;
   incidents: EndpointDefinition<readonly IncidentDTO[], never, never, ListQueryParams>;
+  incidentsUpdate: EndpointDefinition<IncidentDTO, UpdateIncidentInput, IncidentPathParams>;
   workers: EndpointDefinition<readonly WorkerDTO[], never, never, ListQueryParams>;
+  workersDrain: EndpointDefinition<
+    { drainedWorkerIds: readonly string[]; drainedCount: number; totalWorkers: number; workers: readonly WorkerDTO[] },
+    Record<string, never>
+  >;
   queues: EndpointDefinition<readonly QueueDTO[], never, never, ListQueryParams>;
+  queuesRetryCleanup: EndpointDefinition<
+    { cleanedTaskIds: readonly string[]; invalidatedTicketIds: readonly string[]; cleanedCount: number; queues: readonly QueueDTO[]; total: number },
+    Record<string, never>
+  >;
   agents: EndpointDefinition<readonly AgentDTO[], never, never, ListQueryParams>;
   analytics: EndpointDefinition<readonly AnalyticsMetricDTO[], never, never, ListQueryParams>;
   costs: EndpointDefinition<readonly CostReportDTO[], never, never, ListQueryParams>;
@@ -241,6 +376,7 @@ type EndpointCatalogDefinition = {
   compliancePolicies: EndpointDefinition<readonly CompliancePolicySummary[]>;
   compliancePoliciesUpdate: EndpointDefinition<MutationAck<Record<string, unknown>>, Record<string, unknown>, CompliancePolicyPathParams>;
   auditLogs: EndpointDefinition<readonly AuditLogEntry[]>;
+  complianceExceptionsList: EndpointDefinition<readonly ComplianceExceptionVmDTO[]>;
   complianceExceptions: EndpointDefinition<ComplianceExceptionResponse, { reason: string; policyId: string }>;
   complianceExceptionsApprove: EndpointDefinition<MutationAck<{ action: "approve" }>, { action: "approve" }, ComplianceExceptionPathParams>;
   complianceExceptionsReject: EndpointDefinition<MutationAck<{ rationale: string }>, { rationale: string }, ComplianceExceptionPathParams>;
@@ -296,10 +432,11 @@ type EndpointCatalogDefinition = {
 };
 
 export const endpointCatalog = {
+  healthReport: { id: "meta.health", path: "/health", method: "GET", apiLayer: "A", planned: false },
   dashboardSnapshot: { id: "dashboard.snapshot", path: "/v1/dashboard/snapshot", method: "GET", apiLayer: "C", planned: false },
   tasks: { id: "tasks.list", path: "/v1/tasks", method: "GET", apiLayer: "C", planned: false },
   tasksCreate: { id: "tasks.create", path: "/v1/tasks", method: "POST", apiLayer: "C", planned: false },
-  tasksUpdate: { id: "tasks.update", path: "/v1/tasks/:taskId", method: "PUT", apiLayer: "C", planned: false },
+  tasksUpdate: { id: "tasks.update", path: "/v1/tasks/:taskId", method: "PATCH", apiLayer: "C", planned: false },
   tasksDelete: { id: "tasks.delete", path: "/v1/tasks/:taskId", method: "DELETE", apiLayer: "C", planned: false },
   workflows: { id: "workflows.list", path: "/v1/workflows", method: "GET", apiLayer: "C", planned: false },
   workflowsCreate: { id: "workflows.create", path: "/v1/workflows", method: "POST", apiLayer: "C", planned: false },
@@ -320,8 +457,11 @@ export const endpointCatalog = {
   approvalsDefer: { id: "approvals.defer", path: "/v1/approvals/:approvalId/defer", method: "POST", apiLayer: "C", planned: false },
   approvalsTextInput: { id: "approvals.text-input", path: "/v1/approvals/:approvalId/text-input", method: "POST", apiLayer: "C", planned: false },
   incidents: { id: "incidents.list", path: "/v1/incidents", method: "GET", apiLayer: "C", planned: false },
+  incidentsUpdate: { id: "incidents.update", path: "/v1/incidents/:incidentId", method: "PATCH", apiLayer: "C", planned: false },
   workers: { id: "workers.list", path: "/v1/workers", method: "GET", apiLayer: "C", planned: false },
+  workersDrain: { id: "workers.drain", path: "/v1/admin/workers/drain", method: "POST", apiLayer: "C", planned: false },
   queues: { id: "queues.list", path: "/v1/queues", method: "GET", apiLayer: "C", planned: false },
+  queuesRetryCleanup: { id: "queues.retry-cleanup", path: "/v1/admin/queues/retry-cleanup", method: "POST", apiLayer: "C", planned: false },
   agents: { id: "agents.list", path: "/v1/agents", method: "GET", apiLayer: "C", planned: false },
   analytics: { id: "analytics.metrics", path: "/v1/dashboard/metrics", method: "GET", apiLayer: "C", planned: false },
   costs: { id: "costs.report", path: "/v1/cost-reports", method: "GET", apiLayer: "C", planned: false },
@@ -344,6 +484,7 @@ export const endpointCatalog = {
   compliancePolicies: { id: "admin.compliance-policies", path: "/v1/admin/compliance/policies", method: "GET", apiLayer: "C", planned: false },
   compliancePoliciesUpdate: { id: "admin.compliance-policies.update", path: "/v1/admin/compliance/policies/:policyId", method: "PATCH", apiLayer: "C", planned: false },
   auditLogs: { id: "admin.audit-logs", path: "/v1/admin/audit-logs", method: "GET", apiLayer: "C", planned: false },
+  complianceExceptionsList: { id: "admin.compliance-exceptions.list", path: "/v1/admin/compliance/exceptions", method: "GET", apiLayer: "C", planned: false },
   complianceExceptions: { id: "admin.compliance-exceptions", path: "/v1/admin/compliance/exceptions", method: "POST", apiLayer: "C", planned: false },
   complianceExceptionsApprove: { id: "admin.compliance-exceptions.approve", path: "/v1/admin/compliance/exceptions/:exceptionId/approve", method: "POST", apiLayer: "C", planned: false },
   complianceExceptionsReject: { id: "admin.compliance-exceptions.reject", path: "/v1/admin/compliance/exceptions/:exceptionId/reject", method: "POST", apiLayer: "C", planned: false },
@@ -396,8 +537,83 @@ function unwrapCollectionResponse<T>(
   return [];
 }
 
+type RawDashboardSnapshot = {
+  readonly queueDepth?: number | null;
+  readonly activeAgents?: number | null;
+  readonly errorRate?: number | null;
+  readonly avgDurationMs?: number | null;
+  readonly p50LatencyMs?: number | null;
+  readonly p99LatencyMs?: number | null;
+  readonly budgetUtilizationPercent?: number | null;
+  readonly uptimePercent?: number | null;
+  readonly pendingApprovals?: readonly unknown[];
+  readonly health?: {
+    readonly status?: string | null;
+    readonly activeExecutions?: number | null;
+    readonly queuedTasks?: number | null;
+    readonly providerSuccessRate?: number | null;
+    readonly findings?: readonly string[];
+  } | null;
+  readonly metrics?: {
+    readonly taskMetrics?: {
+      readonly successRate?: number | null;
+    } | null;
+    readonly attemptMetrics?: {
+      readonly averageDurationMs?: number | null;
+    } | null;
+    readonly runtimeMetrics?: {
+      readonly activeExecutions?: number | null;
+    } | null;
+  } | null;
+} & Record<string, unknown>;
+
+function normalizeDashboardSnapshot(response: DashboardSnapshotDTO | RawDashboardSnapshot): DashboardSnapshotDTO {
+  const raw = response as RawDashboardSnapshot;
+  if (
+    typeof (response as DashboardSnapshotDTO).overallHealth === "string"
+    && typeof (response as DashboardSnapshotDTO).queueDepth === "number"
+    && typeof (response as DashboardSnapshotDTO).activeExecutions === "number"
+    && typeof (response as DashboardSnapshotDTO).approvalBacklog === "number"
+    && typeof (response as DashboardSnapshotDTO).alertSummary === "string"
+  ) {
+    return response as DashboardSnapshotDTO;
+  }
+
+  const health = raw.health ?? null;
+  const findings = Array.isArray(health?.findings) ? health.findings.filter((item): item is string => typeof item === "string") : [];
+  const metrics = raw.metrics ?? null;
+  const taskSuccessRate = metrics?.taskMetrics?.successRate;
+  const providerSuccessRate = health?.providerSuccessRate;
+  const avgDurationMs = raw.avgDurationMs ?? metrics?.attemptMetrics?.averageDurationMs;
+
+  return {
+    overallHealth: health?.status ?? "unknown",
+    queueDepth: raw.queueDepth ?? health?.queuedTasks ?? 0,
+    activeExecutions: health?.activeExecutions ?? metrics?.runtimeMetrics?.activeExecutions ?? 0,
+    approvalBacklog: Array.isArray(raw.pendingApprovals) ? raw.pendingApprovals.length : 0,
+    alertSummary: findings.join("; "),
+    ...(taskSuccessRate != null
+      ? { successRate: taskSuccessRate * 100 }
+      : providerSuccessRate != null
+        ? { successRate: providerSuccessRate * 100 }
+        : {}),
+    ...(typeof avgDurationMs === "number" ? { avgDurationMs } : {}),
+    ...(raw.activeAgents != null ? { activeAgents: raw.activeAgents } : {}),
+    ...(raw.errorRate != null ? { errorRate: raw.errorRate } : {}),
+    ...(raw.p50LatencyMs !== undefined ? { p50LatencyMs: raw.p50LatencyMs } : {}),
+    ...(raw.p99LatencyMs !== undefined ? { p99LatencyMs: raw.p99LatencyMs } : {}),
+    ...(raw.budgetUtilizationPercent !== undefined ? { budgetUtilizationPercent: raw.budgetUtilizationPercent } : {}),
+    ...(raw.uptimePercent !== undefined ? { uptimePercent: raw.uptimePercent } : {}),
+  };
+}
+
 export async function fetchDashboardSnapshot(client: RESTClient): Promise<DashboardSnapshotDTO> {
-  return client.get<DashboardSnapshotDTO>(endpointCatalog.dashboardSnapshot.path);
+  const response = await client.get<DashboardSnapshotDTO | RawDashboardSnapshot>(endpointCatalog.dashboardSnapshot.path);
+  return normalizeDashboardSnapshot(response);
+}
+
+export async function fetchHealthReport(client: RESTClient): Promise<HealthStatusReportDTO> {
+  return client.get<HealthStatusReportDTO>(endpointCatalog.healthReport.path);
 }
 
 export async function fetchTasks(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly TaskDTO[]> {
@@ -406,12 +622,29 @@ export async function fetchTasks(client: RESTClient, queryParams?: ListQueryPara
   return unwrapCollectionResponse(response, ["tasks"]).map((task) => normalizeTaskDto(task));
 }
 
-export async function createTask(client: RESTClient, body: Partial<TaskDTO>): Promise<{ ok: true; body?: unknown }> {
-  return client.post<{ ok: true; body?: unknown }>(endpointCatalog.tasksCreate.path, body);
+export async function createTask(client: RESTClient, body: CreateTaskInput): Promise<CreateTaskResponse> {
+  const { domainId, divisionId, status: _status, ...rest } = body;
+  return client.post<CreateTaskResponse>(endpointCatalog.tasksCreate.path, {
+    ...rest,
+    ...(divisionId != null ? { divisionId } : domainId != null ? { divisionId: domainId } : {}),
+  });
 }
 
 export async function updateTask(client: RESTClient, taskId: string, body: Partial<TaskDTO>): Promise<{ ok: true; body?: unknown }> {
-  return client.put<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.tasksUpdate.path, { taskId }), body);
+  const patchBody = {
+    ...(typeof body.title === "string" ? { title: body.title } : {}),
+    ...(typeof body.owner === "string" ? { owner: body.owner } : {}),
+    ...(mapTaskPatchStatus((body as Record<string, unknown>).status) == null
+      ? {}
+      : { status: mapTaskPatchStatus((body as Record<string, unknown>).status) }),
+    ...(typeof (body as Record<string, unknown>).priority === "string"
+      ? { priority: (body as Record<string, unknown>).priority }
+      : {}),
+    ...(typeof (body as Record<string, unknown>).outputJson === "string"
+      ? { outputJson: (body as Record<string, unknown>).outputJson }
+      : {}),
+  };
+  return client.patch<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.tasksUpdate.path, { taskId }), patchBody);
 }
 
 export async function deleteTask(client: RESTClient, taskId: string): Promise<{ ok: true; body?: unknown }> {
@@ -420,8 +653,8 @@ export async function deleteTask(client: RESTClient, taskId: string): Promise<{ 
 
 export async function fetchWorkflows(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly WorkflowDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  const response = await client.get<readonly WorkflowDTO[] | { workflows: readonly WorkflowDTO[] }>(`${endpointCatalog.workflows.path}${queryString}`);
-  return unwrapCollectionResponse(response, ["workflows"]);
+  const response = await client.get<readonly WorkflowLikeRecord[] | { workflows: readonly WorkflowLikeRecord[] }>(`${endpointCatalog.workflows.path}${queryString}`);
+  return unwrapCollectionResponse(response, ["workflows"]).map((workflow) => normalizeWorkflowDto(workflow));
 }
 
 export async function createWorkflow(client: RESTClient, body: Partial<WorkflowDTO>): Promise<{ ok: true; body?: unknown }> {
@@ -527,7 +760,18 @@ export async function submitApprovalTextInput(
 
 export async function fetchIncidents(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly IncidentDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  return client.get<readonly IncidentDTO[]>(`${endpointCatalog.incidents.path}${queryString}`);
+  const response = await client.get<readonly IncidentDTO[] | { incidents: readonly IncidentDTO[] }>(
+    `${endpointCatalog.incidents.path}${queryString}`,
+  );
+  return unwrapCollectionResponse(response, ["incidents"]);
+}
+
+export async function updateIncident(
+  client: RESTClient,
+  incidentId: string,
+  patch: UpdateIncidentInput,
+): Promise<IncidentDTO> {
+  return client.patch<IncidentDTO>(resolvePath(endpointCatalog.incidentsUpdate.path, { incidentId }), patch);
 }
 
 export async function fetchWorkers(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly WorkerDTO[]> {
@@ -536,10 +780,22 @@ export async function fetchWorkers(client: RESTClient, queryParams?: ListQueryPa
   return unwrapCollectionResponse(response, ["workers"]);
 }
 
+export async function drainWorkers(
+  client: RESTClient,
+): Promise<{ drainedWorkerIds: readonly string[]; drainedCount: number; totalWorkers: number; workers: readonly WorkerDTO[] }> {
+  return client.post(endpointCatalog.workersDrain.path, {});
+}
+
 export async function fetchQueues(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly QueueDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
   const response = await client.get<readonly QueueDTO[] | { queues: readonly QueueDTO[] }>(`${endpointCatalog.queues.path}${queryString}`);
   return unwrapCollectionResponse(response, ["queues"]);
+}
+
+export async function cleanupRetryQueue(
+  client: RESTClient,
+): Promise<{ cleanedTaskIds: readonly string[]; invalidatedTicketIds: readonly string[]; cleanedCount: number; queues: readonly QueueDTO[]; total: number }> {
+  return client.post(endpointCatalog.queuesRetryCleanup.path, {});
 }
 
 export async function fetchAgents(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly AgentDTO[]> {
@@ -554,7 +810,10 @@ export async function fetchAnalytics(client: RESTClient, queryParams?: ListQuery
 
 export async function fetchCosts(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly CostReportDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  return client.get<readonly CostReportDTO[]>(`${endpointCatalog.costs.path}${queryString}`);
+  const response = await client.get<readonly CostReportDTO[] | { costReports: readonly CostReportDTO[] }>(
+    `${endpointCatalog.costs.path}${queryString}`,
+  );
+  return unwrapCollectionResponse(response, ["costReports"]);
 }
 
 export async function fetchMarketplace(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly MarketplacePackDTO[]> {
@@ -648,7 +907,8 @@ export async function fetchExplanations(client: RESTClient, queryParams?: ListQu
 
 export async function fetchRoles(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly RoleDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  return client.get<readonly RoleDTO[]>(`${endpointCatalog.roles.path}${queryString}`);
+  const response = await client.get<readonly RoleDTO[] | { roles: readonly RoleDTO[] }>(`${endpointCatalog.roles.path}${queryString}`);
+  return unwrapCollectionResponse(response, ["roles"]);
 }
 
 export async function fetchCompliancePolicies(
@@ -679,6 +939,12 @@ export async function fetchAuditLogs(
   return client.get(endpointCatalog.auditLogs.path);
 }
 
+export async function fetchComplianceExceptions(
+  client: RESTClient,
+): Promise<readonly ComplianceExceptionVmDTO[]> {
+  return client.get(endpointCatalog.complianceExceptionsList.path);
+}
+
 export async function submitException(
   client: RESTClient,
   reason: string,
@@ -704,22 +970,34 @@ export async function rejectException(
 
 export async function fetchFeatureFlags(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly FeatureFlagDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  return client.get<readonly FeatureFlagDTO[]>(`${endpointCatalog.featureFlags.path}${queryString}`);
+  const response = await client.get<readonly FeatureFlagDTO[] | { featureFlags: readonly FeatureFlagDTO[] }>(
+    `${endpointCatalog.featureFlags.path}${queryString}`,
+  );
+  return unwrapCollectionResponse(response, ["featureFlags", "flags"]);
 }
 
 export async function fetchModels(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly ModelConfigDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  return client.get<readonly ModelConfigDTO[]>(`${endpointCatalog.models.path}${queryString}`);
+  const response = await client.get<readonly ModelConfigDTO[] | { models: readonly ModelConfigDTO[] }>(
+    `${endpointCatalog.models.path}${queryString}`,
+  );
+  return unwrapCollectionResponse(response, ["models"]);
 }
 
 export async function fetchDomainConfigs(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly DomainConfigDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  return client.get<readonly DomainConfigDTO[]>(`${endpointCatalog.domainConfigs.path}${queryString}`);
+  const response = await client.get<readonly DomainConfigDTO[] | { domains: readonly DomainConfigDTO[] }>(
+    `${endpointCatalog.domainConfigs.path}${queryString}`,
+  );
+  return unwrapCollectionResponse(response, ["domains", "domainConfigs"]);
 }
 
 export async function fetchTenants(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly TenantDTO[]> {
   const queryString = buildQueryString(queryParams ?? {});
-  return client.get<readonly TenantDTO[]>(`${endpointCatalog.tenants.path}${queryString}`);
+  const response = await client.get<readonly TenantDTO[] | { tenants: readonly TenantDTO[] }>(
+    `${endpointCatalog.tenants.path}${queryString}`,
+  );
+  return unwrapCollectionResponse(response, ["tenants"]);
 }
 
 export async function fetchUsers(client: RESTClient, queryParams?: ListQueryParams): Promise<readonly UserDTO[]> {
@@ -740,7 +1018,8 @@ export async function fetchSystemConfig(client: RESTClient): Promise<SystemConfi
 }
 
 export async function fetchWebhooks(client: RESTClient): Promise<readonly WebhookDTO[]> {
-  return client.get<readonly WebhookDTO[]>(endpointCatalog.webhooks.path);
+  const response = await client.get<readonly WebhookDTO[] | { webhooks: readonly WebhookDTO[] }>(endpointCatalog.webhooks.path);
+  return unwrapCollectionResponse(response, ["webhooks"]);
 }
 
 export async function fetchPreferences(client: RESTClient): Promise<UserPreferenceDTO> {

@@ -10,7 +10,7 @@ const governanceComplianceFeature = createFeatureModule({
   group: "Governance",
   path: "/governance/governance-overview",
   permission: "domain_admin+",
-  status: "Planned",
+  status: "Implemented/Partial",
   summary: featureCopy.summary,
   render: GovernanceComplianceWebView,
 });

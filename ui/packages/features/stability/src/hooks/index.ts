@@ -1,4 +1,6 @@
-import { useAgentsQuery, useDashboardSnapshotQuery, useIncidentsQuery, useQueuesQuery, useWorkersQuery } from "@aa/shared-state";
+import { useCallback, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { dashboardQueryKeys, missionControlQueryKeys, useAgentsQuery, useDashboardSnapshotQuery, useIncidentsQuery, useQueuesQuery, useWorkersQuery } from "@aa/shared-state";
 import { translateMessage } from "@aa/shared-i18n";
 import type { AgentDTO, DashboardSnapshotDTO, IncidentDTO, QueueDTO, WorkerDTO } from "@aa/shared-types";
 
@@ -6,6 +8,7 @@ export interface StabilityVm {
   readonly metrics: readonly { label: string; value: string | number }[];
   readonly rows: readonly { key: string; value: string }[];
   readonly items: readonly { title: string; description: string }[];
+  refresh(): Promise<void>;
 }
 
 function formatPercent(value?: number | null): string {
@@ -28,7 +31,7 @@ export function mapStabilityToVm(
   workers: readonly WorkerDTO[],
   queues: readonly QueueDTO[],
   agents: readonly AgentDTO[],
-): StabilityVm {
+): Pick<StabilityVm, "metrics" | "rows" | "items"> {
   const totalDlq = queues.reduce((total, queue) => total + queue.dlq, 0);
   return {
     metrics: [
@@ -68,11 +71,23 @@ export function mapStabilityToVm(
 }
 
 export function useStabilityVm(): StabilityVm {
-  return mapStabilityToVm(
-    useDashboardSnapshotQuery().data ?? null,
-    useIncidentsQuery().data ?? [],
-    useWorkersQuery().data ?? [],
-    useQueuesQuery().data ?? [],
-    useAgentsQuery().data ?? [],
-  );
+  const queryClient = useQueryClient();
+  const snapshot = useDashboardSnapshotQuery().data ?? null;
+  const incidents = useIncidentsQuery().data ?? [];
+  const workers = useWorkersQuery().data ?? [];
+  const queues = useQueuesQuery().data ?? [];
+  const agents = useAgentsQuery().data ?? [];
+  const refresh = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.snapshot }),
+      queryClient.invalidateQueries({ queryKey: missionControlQueryKeys.incidents }),
+      queryClient.invalidateQueries({ queryKey: missionControlQueryKeys.workers }),
+      queryClient.invalidateQueries({ queryKey: missionControlQueryKeys.queues }),
+      queryClient.invalidateQueries({ queryKey: missionControlQueryKeys.agents }),
+    ]);
+  }, [queryClient]);
+  return useMemo(() => ({
+    ...mapStabilityToVm(snapshot, incidents, workers, queues, agents),
+    refresh,
+  }), [agents, incidents, queues, refresh, snapshot, workers]);
 }

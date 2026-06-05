@@ -60,6 +60,19 @@ function createDefaultPersistedState() {
         isStreaming: false,
     };
 }
+function loadInitialConversationState() {
+    const restoredState = readPersistedState();
+    if (restoredState != null) {
+        return {
+            state: restoredState,
+            restored: true,
+        };
+    }
+    return {
+        state: createDefaultPersistedState(),
+        restored: false,
+    };
+}
 function persistState(state) {
     conversationVmQueryClient.setQueryData(conversationVmQueryKey, state);
     if (typeof window === "undefined") {
@@ -126,16 +139,23 @@ function resolveClientSnapshot(client, fallbackStatus) {
 }
 export function useConversationVm(wsClient) {
     const defaultDraft = translateMessage("ui.conversation.defaultDraft");
-    const [messages, setMessages] = useState([]);
-    const [attachments, setAttachments] = useState([]);
-    const [status, setStatus] = useState("idle");
+    const initialConversationStateRef = useRef(null);
+    if (initialConversationStateRef.current == null) {
+        initialConversationStateRef.current = loadInitialConversationState();
+    }
+    const initialState = initialConversationStateRef.current.state;
+    const [messages, setMessages] = useState(initialState.messages);
+    const [attachments, setAttachments] = useState(initialState.attachments);
+    const [status, setStatus] = useState(initialState.status);
     const [draft, setDraft] = useState(defaultDraft);
-    const [planReady, setPlanReady] = useState(false);
-    const [executionReady, setExecutionReady] = useState(false);
-    const [isStreaming, setIsStreaming] = useState(false);
+    const [planReady, setPlanReady] = useState(initialState.planReady);
+    const [executionReady, setExecutionReady] = useState(initialState.executionReady);
+    const [isStreaming, setIsStreaming] = useState(initialState.isStreaming);
+    const bootstrapDraftRef = useRef(false);
     const persistTimeoutRef = useRef(null);
-    const stateRef = useRef(createDefaultPersistedState());
+    const stateRef = useRef(initialState);
     const clientRef = useRef(null);
+    const clientLifecycleActiveRef = useRef(false);
     const unsubscribeEventRef = useRef(null);
     const unsubscribeStatusRef = useRef(null);
     const syncPersistedSnapshot = useCallback((updater) => {
@@ -168,17 +188,14 @@ export function useConversationVm(wsClient) {
         persistState(nextState);
     }, []);
     useEffect(() => {
-        const persisted = readPersistedState();
-        if (persisted != null) {
-            setMessages(persisted.messages);
-            setAttachments(persisted.attachments);
-            setStatus(persisted.status);
-            setPlanReady(persisted.planReady);
-            setExecutionReady(persisted.executionReady);
-            setIsStreaming(persisted.isStreaming);
-            stateRef.current = persisted;
-        }
+        const persisted = initialConversationStateRef.current?.state ?? createDefaultPersistedState();
+        const restored = initialConversationStateRef.current?.restored ?? false;
+        stateRef.current = persisted;
+        clientLifecycleActiveRef.current = true;
         const client = createConversationClient(persisted, (snapshot) => {
+            if (!clientLifecycleActiveRef.current) {
+                return;
+            }
             if (snapshot.messages != null) {
                 setMessages(mapConversationMessages(snapshot.messages));
             }
@@ -196,7 +213,7 @@ export function useConversationVm(wsClient) {
             }
         });
         clientRef.current = client;
-        if (persisted == null) {
+        if (!restored) {
             syncFromClient(client);
         }
         else {
@@ -207,6 +224,7 @@ export function useConversationVm(wsClient) {
                 clearTimeout(persistTimeoutRef.current);
                 persistTimeoutRef.current = null;
             }
+            clientLifecycleActiveRef.current = false;
             persistState(stateRef.current);
             try {
                 client.dispose?.();
@@ -217,6 +235,15 @@ export function useConversationVm(wsClient) {
             clientRef.current = null;
         };
     }, [syncFromClient]);
+    useEffect(() => {
+        if (bootstrapDraftRef.current) {
+            return;
+        }
+        bootstrapDraftRef.current = true;
+        if (draft.trim().length === 0 && !initialConversationStateRef.current?.restored) {
+            setDraft(defaultDraft);
+        }
+    }, [defaultDraft, draft]);
     useEffect(() => {
         const nextState = { messages, attachments, status, planReady, executionReady, isStreaming };
         stateRef.current = nextState;
@@ -390,6 +417,9 @@ export function useConversationVm(wsClient) {
         unsubscribeStatusRef.current = null;
         wsClient?.disconnect();
     }, [wsClient]);
+    const restoreSuggestedDraft = useCallback(() => {
+        setDraft(defaultDraft);
+    }, [defaultDraft]);
     return useMemo(() => ({
         messages,
         attachments,
@@ -399,6 +429,7 @@ export function useConversationVm(wsClient) {
         executionReady,
         isStreaming,
         setDraft,
+        restoreSuggestedDraft,
         attachFiles,
         sendPrompt,
         buildPlan,
@@ -418,6 +449,7 @@ export function useConversationVm(wsClient) {
         isStreaming,
         messages,
         planReady,
+        restoreSuggestedDraft,
         requestClarification,
         sendPrompt,
         status,

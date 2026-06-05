@@ -7,7 +7,7 @@ export function WorkflowBuilderWebView() {
     const vm = useWorkflowBuilderVm();
     const nodes = vm.nodes;
     const edges = vm.edges;
-    return (_jsxs(FeatureScaffold, { title: "Workflow Builder", summary: "\u53EF\u89C6\u5316\u5DE5\u4F5C\u6D41\u6784\u5EFA\u5668", status: "Planned", children: [_jsx("div", { style: {
+    return (_jsxs(FeatureScaffold, { title: "Workflow Builder", summary: "\u53EF\u89C6\u5316\u5DE5\u4F5C\u6D41\u6784\u5EFA\u5668", status: "Implemented/Partial", children: [_jsx("div", { style: {
                     minHeight: 360,
                     height: "clamp(360px, 55vh, 560px)",
                     marginBottom: 16,

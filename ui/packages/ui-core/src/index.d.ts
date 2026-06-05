@@ -1,7 +1,7 @@
 import { type ReactElement } from "react";
 import type { AppRoute, FeatureGroup, ImplementationStatus, PlatformFeatureManifest, PlatformId } from "@aa/shared-types";
 export { createSystemHealthSummary, SystemStatusBar } from "./business";
-export { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbench, FeatureWorkbenchPanel, KeyValueTable, ListCard, StatusPill, } from "./components";
+export { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbench, type FeatureWorkbenchItem, FeatureWorkbenchPanel, KeyValueTable, ListCard, StatusPill, } from "./components";
 export { BarChart, EChartSurface, GaugeChart, HeatmapGrid, MetricGrid, MiniTrendBars, PieChart, ScatterPlot, SparklineBars, TimelineChart, } from "./charts";
 export { createPanelStyle, designTokens } from "./design-tokens";
 export { CodeBlock, DAGVisualization, FileAttachment, Timeline } from "./components/extended";

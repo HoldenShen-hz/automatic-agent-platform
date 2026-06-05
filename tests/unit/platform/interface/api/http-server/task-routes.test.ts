@@ -100,14 +100,14 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
   return null;
 }
 
-test("createTaskRoutes returns 11 routes", () => {
+test("createTaskRoutes returns 12 routes", () => {
   const deps = {
     authService: createMockAuthService(),
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
   };
   const routes = createTaskRoutes(deps);
-  assert.equal(routes.length, 11);
+  assert.equal(routes.length, 12);
 });
 
 test("GET /v1/tasks returns task list", async () => {
@@ -270,12 +270,40 @@ test("GET /v1/workflows/:id returns workflow cockpit", async () => {
 });
 
 test("POST /v1/workflows/:id/pause returns workflow action response", async () => {
+  let workflowStateUpdates = 0;
+  let taskStatusUpdates = 0;
   const deps = {
     authService: {
       requireRole: () => ({ actorId: "actor-1", roles: ["operator"], authMethod: "api_key", tenantId: null }),
     } as unknown as ApiAuthService,
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
+    taskStore: {
+      task: {
+        getTask: () => ({ id: "task-1", tenantId: null }),
+        updateTaskStatus: () => {
+          taskStatusUpdates += 1;
+        },
+      },
+      workflow: {
+        getWorkflowState: () => ({
+          taskId: "task-1",
+          divisionId: "platform",
+          workflowId: "wf-1",
+          currentStepIndex: 0,
+          status: "running",
+          outputsJson: "{}",
+          lastErrorCode: null,
+          retryCount: 0,
+          resumableFromStep: "real_model",
+          startedAt: "2026-04-16T00:00:00.000Z",
+          updatedAt: "2026-04-16T00:00:00.000Z",
+        }),
+        updateWorkflowState: () => {
+          workflowStateUpdates += 1;
+        },
+      },
+    },
   };
   const routes = createTaskRoutes(deps);
   const ctx = {
@@ -290,6 +318,58 @@ test("POST /v1/workflows/:id/pause returns workflow action response", async () =
   const body = JSON.parse(response.body);
   assert.equal(body.data.action, "pause");
   assert.equal(body.data.status, "paused");
+  assert.equal(workflowStateUpdates, 1);
+  assert.equal(taskStatusUpdates, 1);
+});
+
+test("DELETE /v1/workflows/:id cancels workflow state via task store", async () => {
+  let workflowStateUpdates = 0;
+  let taskStatusUpdates = 0;
+  const deps = {
+    authService: {
+      requireRole: () => ({ actorId: "actor-1", roles: ["operator"], authMethod: "api_key", tenantId: null }),
+    } as unknown as ApiAuthService,
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+    taskStore: {
+      task: {
+        getTask: () => ({ id: "task-1", tenantId: null }),
+        updateTaskStatus: () => {
+          taskStatusUpdates += 1;
+        },
+      },
+      workflow: {
+        getWorkflowState: () => ({
+          taskId: "task-1",
+          divisionId: "platform",
+          workflowId: "wf-1",
+          currentStepIndex: 0,
+          status: "running",
+          outputsJson: "{}",
+          lastErrorCode: null,
+          retryCount: 0,
+          resumableFromStep: "real_model",
+          startedAt: "2026-04-16T00:00:00.000Z",
+          updatedAt: "2026-04-16T00:00:00.000Z",
+        }),
+        updateWorkflowState: () => {
+          workflowStateUpdates += 1;
+        },
+      },
+    },
+  };
+  const routes = createTaskRoutes(deps);
+  const ctx = {
+    requestId: "req-123",
+    request: { method: "DELETE", url: "/api/v1/workflows/task-1", headers: {}, body: null } as never,
+    route: { pathname: "/api/v1/workflows/task-1", segments: ["api", "v1", "workflows", "task-1"] },
+    principal: null,
+  } satisfies RouteContext;
+  const response = await callRoute(routes, ctx);
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.equal(workflowStateUpdates, 1);
+  assert.equal(taskStatusUpdates, 1);
 });
 
 test("GET /v1/tasks returns task list", async () => {

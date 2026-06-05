@@ -10,7 +10,7 @@ const inspectFeature = createFeatureModule({
   group: "Operations",
   path: "/operations/inspect",
   permission: "platform_sre",
-  status: "Planned",
+  status: "Implemented/Partial",
   summary: featureCopy.summary,
   render: InspectWebView,
 });

@@ -55,11 +55,13 @@ describe("feature-registry", () => {
   it("contains dispatch feature", () => {
     const dispatch = featureRegistry.find((f) => f.manifest.id === "dispatch");
     expect(dispatch).toBeDefined();
+    expect(dispatch?.manifest.status).toBe("Implemented/Partial");
   });
 
   it("contains inspect feature", () => {
     const inspect = featureRegistry.find((f) => f.manifest.id === "inspect");
     expect(inspect).toBeDefined();
+    expect(inspect?.manifest.status).toBe("Implemented/Partial");
   });
 
   it("contains health feature", () => {
@@ -76,16 +78,19 @@ describe("feature-registry", () => {
     const compliance = featureRegistry.find((f) => f.manifest.id === "compliance");
     expect(compliance).toBeDefined();
     expect(compliance?.manifest.group).toBe("Governance");
+    expect(compliance?.manifest.status).toBe("Implemented/Partial");
   });
 
   it("contains policy feature", () => {
     const policy = featureRegistry.find((f) => f.manifest.id === "policy");
     expect(policy).toBeDefined();
+    expect(policy?.manifest.status).toBe("Implemented/Partial");
   });
 
   it("contains audit feature", () => {
     const audit = featureRegistry.find((f) => f.manifest.id === "audit");
     expect(audit).toBeDefined();
+    expect(audit?.manifest.status).toBe("Implemented/Partial");
   });
 
   it("contains conversation feature", () => {
@@ -121,25 +126,26 @@ describe("feature-registry", () => {
     expect(queues).toBeDefined();
   });
 
-  it("contains workflow-builder feature (planned)", () => {
+  it("contains workflow-builder feature", () => {
     const workflowBuilder = featureRegistry.find(
       (f) => f.manifest.id === "workflow-builder",
     );
     expect(workflowBuilder).toBeDefined();
-    expect(workflowBuilder?.manifest.kind).toBe("planned");
+    expect(workflowBuilder?.manifest.status).toBe("Implemented/Partial");
   });
 
-  it("contains workflow-debugger feature (planned)", () => {
+  it("contains workflow-debugger feature", () => {
     const workflowDebugger = featureRegistry.find(
       (f) => f.manifest.id === "workflow-debugger",
     );
     expect(workflowDebugger).toBeDefined();
-    expect(workflowDebugger?.manifest.kind).toBe("planned");
+    expect(workflowDebugger?.manifest.status).toBe("Implemented/Partial");
   });
 
   it("contains agent-manager feature", () => {
     const agentManager = featureRegistry.find((f) => f.manifest.id === "agent-manager");
     expect(agentManager).toBeDefined();
+    expect(agentManager?.manifest.status).toBe("Implemented/Partial");
   });
 
   it("contains explainability feature", () => {
@@ -147,26 +153,59 @@ describe("feature-registry", () => {
       (f) => f.manifest.id === "explainability",
     );
     expect(explainability).toBeDefined();
+    expect(explainability?.manifest.status).toBe("Implemented/Partial");
   });
 
   it("contains cost-center feature", () => {
     const costCenter = featureRegistry.find((f) => f.manifest.id === "cost-center");
     expect(costCenter).toBeDefined();
+    expect(costCenter?.manifest.status).toBe("Implemented/Partial");
   });
 
   it("contains marketplace feature", () => {
     const marketplace = featureRegistry.find((f) => f.manifest.id === "marketplace");
     expect(marketplace).toBeDefined();
+    expect(marketplace?.manifest.status).toBe("Implemented/Partial");
   });
 
   it("contains analytics feature", () => {
     const analytics = featureRegistry.find((f) => f.manifest.id === "analytics");
     expect(analytics).toBeDefined();
+    expect(analytics?.manifest.status).toBe("Implemented/Partial");
+  });
+
+  it("contains memory-review feature", () => {
+    const memoryReview = featureRegistry.find((f) => f.manifest.id === "memory-review");
+    expect(memoryReview).toBeDefined();
+    expect(memoryReview?.manifest.status).toBe("Implemented/Partial");
   });
 
   it("contains feature-flags feature", () => {
     const featureFlags = featureRegistry.find((f) => f.manifest.id === "feature-flags");
     expect(featureFlags).toBeDefined();
+  });
+
+  it("contains governance-compliance feature", () => {
+    const governanceCompliance = featureRegistry.find((f) => f.manifest.id === "governance-compliance");
+    expect(governanceCompliance).toBeDefined();
+    expect(governanceCompliance?.manifest.status).toBe("Implemented/Partial");
+  });
+
+  it("contains trace-explorer feature", () => {
+    const traceExplorer = featureRegistry.find((f) => f.manifest.id === "trace-explorer");
+    expect(traceExplorer).toBeDefined();
+    expect(traceExplorer?.manifest.status).toBe("Implemented/Partial");
+  });
+
+  it("preserves release console nested leadership-claims route metadata", () => {
+    const releaseConsole = featureRegistry.find((feature) => feature.manifest.id === "release-console");
+    expect(releaseConsole).toBeDefined();
+    expect(releaseConsole?.subPages).toBeDefined();
+    expect(releaseConsole?.subPages).toHaveLength(1);
+    expect(releaseConsole?.subPages?.[0]).toMatchObject({
+      id: "leadership-claims",
+      path: "leadership-claims",
+    });
   });
 });
 

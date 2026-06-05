@@ -248,6 +248,39 @@ test("inspect service query layer merges approval and dispatch decisions with fi
   }
 });
 
+test("inspect service exposes task owner from stored task input metadata", () => {
+  const workspace = createTempWorkspace("aa-inspect-owner-unit-");
+  const dbPath = join(workspace, "inspect-owner-unit.db");
+
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const inspect = new InspectService(store);
+
+    seedTaskAndExecution(db, store, {
+      taskId: "task-owner-summary",
+      executionId: "exec-owner-summary",
+      traceId: "trace-owner-summary",
+    });
+    db.connection.prepare(`UPDATE tasks SET input_json = ?, updated_at = ? WHERE id = ?`).run(
+      "{\"owner\":\"platform-owner\",\"brief\":\"real-ui-task\"}",
+      "2026-04-05T12:00:00.000Z",
+      "task-owner-summary",
+    );
+
+    const summaries = inspect.queryTaskInspectSummaries({ fetchAll: true });
+
+    assert.equal(summaries.length >= 1, true);
+    const summary = summaries.find((item) => item.taskId === "task-owner-summary");
+    assert.equal(summary?.owner, "platform-owner");
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
 test("inspect service enriches remote dispatch decisions with placement and fallback summaries", () => {
   const workspace = createTempWorkspace("aa-inspect-remote-routing-unit-");
   const dbPath = join(workspace, "inspect-remote-routing-unit.db");

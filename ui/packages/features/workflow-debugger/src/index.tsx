@@ -10,7 +10,7 @@ const workflowDebuggerFeature = createFeatureModule({
   group: "Extended",
   path: "/extended/debugger",
   permission: "pack_developer+",
-  status: "Planned",
+  status: "Implemented/Partial",
   summary: featureCopy.summary,
   render: WorkflowDebuggerWebView,
 });

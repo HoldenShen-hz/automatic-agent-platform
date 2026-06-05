@@ -10,7 +10,7 @@ const auditFeature = createFeatureModule({
   group: "Governance",
   path: "/governance/audit",
   permission: "org_admin+",
-  status: "Planned",
+  status: "Implemented/Partial",
   summary: featureCopy.summary,
   render: AuditWebView,
 });

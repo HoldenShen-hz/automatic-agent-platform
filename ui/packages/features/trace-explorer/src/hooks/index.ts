@@ -1,24 +1,161 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRestClient, useTasksQuery } from "@aa/shared-state";
 import { translateMessage } from "@aa/shared-i18n";
+import type { TaskDTO } from "@aa/shared-types";
+
+type TraceTimelineEntry = {
+  readonly id: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly occurredAt: string;
+};
+
+type TraceExplorerResponse = {
+  readonly inspect?: {
+    readonly execution?: {
+      readonly traceId?: string | null;
+    };
+    readonly artifacts?: readonly { id?: string; kind?: string; uri?: string }[];
+  };
+  readonly timeline?: {
+    readonly entries?: readonly TraceTimelineEntry[];
+  };
+};
+
+type TraceListItem = {
+  readonly id: string;
+  readonly title: string;
+  readonly subtitle: string;
+};
+
+type TraceDetailRow = {
+  readonly key: string;
+  readonly value: string;
+};
+
+function buildDetailRows(task: TaskDTO | null, traceView: TraceExplorerResponse | null): readonly TraceDetailRow[] {
+  if (task == null) {
+    return [];
+  }
+  const model = task.modelProvider == null && task.modelName == null
+    ? translateMessage("ui.taskCockpit.value.unknown")
+    : `${task.modelProvider ?? "unknown"} / ${task.modelName ?? "unknown"}`;
+  return [
+    { key: "Task", value: task.title },
+    { key: "Status", value: task.status },
+    { key: "Domain", value: task.domainId },
+    { key: "Trace ID", value: traceView?.inspect?.execution?.traceId ?? "none" },
+    { key: "Timeline Events", value: String(traceView?.timeline?.entries?.length ?? 0) },
+    { key: "Artifacts", value: String(traceView?.inspect?.artifacts?.length ?? 0) },
+    { key: "Model", value: model },
+    { key: "Execution Mode", value: task.executionMode ?? translateMessage("ui.taskCockpit.value.unknown") },
+  ];
+}
 
 export interface TraceExplorerVm {
-  readonly items: readonly { title: string; description: string }[];
+  readonly metrics: readonly { label: string; value: string | number }[];
+  readonly listItems: readonly TraceListItem[];
+  readonly selectedId: string | null;
+  readonly detailRows: readonly TraceDetailRow[];
+  readonly summaryItems: readonly { title: string; description: string }[];
+  readonly timelineItems: readonly { title: string; description: string }[];
+  readonly restrictedItems: readonly { title: string; description: string }[];
+  readonly loading: boolean;
+  readonly loadError: string | null;
+  selectTask(taskId: string): void;
 }
 
 export function useTraceExplorerVm(): TraceExplorerVm {
+  const client = useRestClient();
+  const taskQuery = useTasksQuery({ refetchInterval: 5000 });
+  const tasks = taskQuery.data ?? [];
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [traceView, setTraceView] = useState<TraceExplorerResponse | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (tasks.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    setSelectedId((current) => (
+      current != null && tasks.some((task) => task.id === current)
+        ? current
+        : tasks[0]?.id ?? null
+    ));
+  }, [tasks]);
+
+  const selectedTask = tasks.find((task) => task.id === selectedId) ?? null;
+
+  const loadTraceView = useCallback(async (taskId: string) => {
+    const response = await client.get<TraceExplorerResponse>(`/v1/tasks/${encodeURIComponent(taskId)}`);
+    setTraceView(response);
+    setLoadError(null);
+  }, [client]);
+
+  useEffect(() => {
+    if (selectedId == null) {
+      setTraceView(null);
+      return;
+    }
+    void loadTraceView(selectedId).catch((error: unknown) => {
+      setTraceView(null);
+      setLoadError(error instanceof Error ? error.message : String(error));
+    });
+  }, [loadTraceView, selectedId, selectedTask?.status, selectedTask?.currentStep, selectedTask?.outputSummary]);
+
+  const timelineEntries = traceView?.timeline?.entries ?? [];
+  const restrictedItems = timelineEntries
+    .filter((entry) => /restricted|denied|blocked/i.test(`${entry.title} ${entry.summary}`))
+    .map((entry) => ({
+      title: entry.title,
+      description: `${entry.occurredAt} · ${entry.summary}`,
+    }));
+
   return {
-    items: [
-      {
-        title: translateMessage("ui.traceExplorer.item.timeline.title"),
-        description: translateMessage("ui.traceExplorer.item.timeline.description"),
-      },
-      {
-        title: translateMessage("ui.traceExplorer.item.restricted.title"),
-        description: translateMessage("ui.traceExplorer.item.restricted.description"),
-      },
-      {
-        title: translateMessage("ui.traceExplorer.item.receipt.title"),
-        description: translateMessage("ui.traceExplorer.item.receipt.description"),
-      },
+    metrics: [
+      { label: "Tasks", value: tasks.length },
+      { label: "Timeline Events", value: timelineEntries.length },
+      { label: "Restricted Signals", value: restrictedItems.length },
     ],
+    listItems: tasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      subtitle: `${task.status} · ${task.domainId}`,
+    })),
+    selectedId,
+    detailRows: buildDetailRows(selectedTask, traceView),
+    summaryItems: useMemo(() => [
+      {
+        title: "Trace feed",
+        description: selectedTask == null
+          ? "No trace view is selected."
+          : `${selectedTask.title} timeline is loaded from the real task trace route.`,
+      },
+      {
+        title: "Latest trace",
+        description: timelineEntries[0] == null
+          ? "No timeline events were returned for the selected task."
+          : `${timelineEntries[0].title} @ ${timelineEntries[0].occurredAt}.`,
+      },
+      {
+        title: "Contract boundary",
+        description: "Trace export bundles and restricted-event pivot APIs still need dedicated observability routes.",
+      },
+    ], [selectedTask, timelineEntries]),
+    timelineItems: timelineEntries.length === 0
+      ? [{ title: "No timeline events", description: "The selected task did not return any trace timeline entries." }]
+      : timelineEntries.slice(0, 10).map((entry) => ({
+        title: entry.title,
+        description: `${entry.occurredAt} · ${entry.summary}`,
+      })),
+    restrictedItems: restrictedItems.length === 0
+      ? [{ title: "No restricted signals", description: "The selected task timeline did not report restricted or blocked trace events." }]
+      : restrictedItems,
+    loading: taskQuery.isLoading && tasks.length === 0,
+    loadError,
+    selectTask(taskId: string) {
+      setSelectedId(taskId);
+    },
   };
 }

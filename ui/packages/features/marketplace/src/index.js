@@ -8,11 +8,11 @@ const marketplaceFeature = createFeatureModule({
     group: "Shared",
     path: "/shared/marketplace",
     permission: "authenticated",
-    status: "Planned",
+    status: "Implemented/Partial",
     summary: featureCopy.summary,
     render: MarketplaceWebView,
 });
 export default marketplaceFeature;
 export { createMarketplaceMobileCards } from "./mobile";
-export { mapMarketplaceToVm, useMarketplaceVm } from "./hooks";
+export { useMarketplaceVm } from "./hooks";
 export { MarketplaceWebView } from "./web";

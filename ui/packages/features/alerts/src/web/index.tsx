@@ -1,7 +1,12 @@
 import type { ReactElement } from "react";
-import { FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { FeatureScaffold, FeatureWorkbenchPanel, type FeatureWorkbenchItem } from "@aa/ui-core";
 import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
 import { useAlertsVm } from "../hooks";
+
+function readAlertStatus(item: FeatureWorkbenchItem | null): string | null {
+  const statusRow = item?.detailRows?.find((row) => row.key === "Status");
+  return typeof statusRow?.value === "string" ? statusRow.value : null;
+}
 
 export function AlertsWebView(): ReactElement {
   const vm = useAlertsVm();
@@ -18,6 +23,7 @@ export function AlertsWebView(): ReactElement {
             id: "alerts-ack",
             label: "确认告警",
             tone: "accent",
+            disabled: (item) => readAlertStatus(item) !== "open",
             onTrigger: (item) => {
               if (item != null) {
                 vm.onAcknowledge(item.id);
@@ -25,12 +31,16 @@ export function AlertsWebView(): ReactElement {
             },
           },
           {
-            id: "alerts-dismiss",
-            label: "忽略选中",
+            id: "alerts-mitigate",
+            label: "进入处置",
             tone: "neutral",
+            disabled: (item) => {
+              const status = readAlertStatus(item);
+              return status !== "acknowledged" && status !== "triaged";
+            },
             onTrigger: (item) => {
               if (item != null) {
-                vm.onDismiss(item.id);
+                vm.onEscalate(item.id);
               }
             },
           },
@@ -38,21 +48,25 @@ export function AlertsWebView(): ReactElement {
             id: "alerts-mute",
             label: "静默 30 分钟",
             tone: "neutral",
+            disabled: (item) => readAlertStatus(item) === "closed",
             onTrigger: (item) => {
               if (item != null) {
                 vm.onSnooze(item.id);
               }
             },
+            activityDescription: "已通过真实事件接口写入 snooze deadline。",
           },
           {
-            id: "alerts-escalate",
-            label: "升级为事件",
+            id: "alerts-dismiss",
+            label: "忽略选中",
             tone: "danger",
+            disabled: (item) => readAlertStatus(item) === "closed",
             onTrigger: (item) => {
               if (item != null) {
-                vm.onEscalate(item.id);
+                vm.onDismiss(item.id);
               }
             },
+            activityDescription: "已通过真实事件接口关闭当前事件。",
           },
         ]}
         labels={{

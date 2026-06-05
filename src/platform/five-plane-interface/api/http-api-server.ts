@@ -992,6 +992,9 @@ export class HttpApiServer {
         costReportService: this.costReportService,
         adminConfigService: this.adminConfigService,
         adminRuntimeDirectiveService: this.adminRuntimeDirectiveService,
+        domainRegistryService: this.options.domainRegistryService ?? null,
+        webhookIngressService: this.options.webhookIngressService ?? null,
+        taskStore: this.options.taskStore ?? null,
         platformRoot: this.options.platformRoot ?? this.env["AA_PLATFORM_ROOT"] ?? process.env.AA_PLATFORM_ROOT ?? process.cwd(),
       }),
       ...createConsoleRoutes({

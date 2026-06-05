@@ -1,14 +1,27 @@
 import { createElement, lazy } from "react";
-import { translateFeatureCopy } from "@aa/shared-i18n";
+import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
 import type { FeatureGroup, ImplementationStatus } from "@aa/shared-types";
 import { createFeatureModule, type FeatureModule } from "@aa/ui-core";
+
+interface LazyFeatureModuleExports {
+  readonly default: FeatureModule;
+  readonly [key: string]: unknown;
+}
+
+interface LazyFeatureSubPageDescriptor {
+  readonly id: string;
+  readonly path: string;
+  readonly label: string;
+  readonly exportName: string;
+}
 
 interface LazyFeatureDescriptor {
   readonly id: string;
   readonly group: FeatureGroup;
   readonly path: string;
   readonly status: ImplementationStatus;
-  load(): Promise<{ default: FeatureModule }>;
+  readonly subPages?: readonly LazyFeatureSubPageDescriptor[];
+  load(): Promise<LazyFeatureModuleExports>;
 }
 
 function createLazyFeatureModule(descriptor: LazyFeatureDescriptor): FeatureModule {
@@ -16,8 +29,26 @@ function createLazyFeatureModule(descriptor: LazyFeatureDescriptor): FeatureModu
   const LazyFeatureView = lazy(async () => descriptor.load().then((module) => ({
     default: module.default.Component,
   })));
+  const subPages = descriptor.subPages?.map((subPage) => {
+    const LazySubPageView = lazy(async () => descriptor.load().then((module) => {
+      const exportedView = module[subPage.exportName];
+      if (typeof exportedView !== "function") {
+        throw new Error(`Feature sub-page export "${subPage.exportName}" is unavailable for ${descriptor.id}.`);
+      }
+      return {
+        default: exportedView as () => ReturnType<typeof createElement>,
+      };
+    }));
+    return {
+      id: subPage.id,
+      path: subPage.path,
+      label: subPage.label,
+      Component: () => createElement(LazySubPageView),
+    };
+  });
 
-  return createFeatureModule({
+  return {
+    ...createFeatureModule({
     id: descriptor.id,
     title: featureCopy.title,
     group: descriptor.group,
@@ -26,7 +57,9 @@ function createLazyFeatureModule(descriptor: LazyFeatureDescriptor): FeatureModu
     status: descriptor.status,
     summary: featureCopy.summary,
     render: () => createElement(LazyFeatureView),
-  });
+    }),
+    ...(subPages == null ? {} : { subPages }),
+  };
 }
 
 const featureDescriptors: readonly LazyFeatureDescriptor[] = [
@@ -90,14 +123,14 @@ const featureDescriptors: readonly LazyFeatureDescriptor[] = [
     id: "dispatch",
     group: "Operations",
     path: "/operations/dispatch",
-    status: "Planned",
+    status: "Implemented/Partial",
     load: async () => import("@aa/feature-dispatch"),
   },
   {
     id: "inspect",
     group: "Operations",
     path: "/operations/inspect",
-    status: "Planned",
+    status: "Implemented/Partial",
     load: async () => import("@aa/feature-inspect"),
   },
   {
@@ -118,21 +151,21 @@ const featureDescriptors: readonly LazyFeatureDescriptor[] = [
     id: "compliance",
     group: "Governance",
     path: "/governance/compliance",
-    status: "Planned",
+    status: "Implemented/Partial",
     load: async () => import("@aa/feature-compliance"),
   },
   {
     id: "policy",
     group: "Governance",
     path: "/governance/policy",
-    status: "Planned",
+    status: "Implemented/Partial",
     load: async () => import("@aa/feature-policy"),
   },
   {
     id: "audit",
     group: "Governance",
     path: "/governance/audit",
-    status: "Planned",
+    status: "Implemented/Partial",
     load: async () => import("@aa/feature-audit"),
   },
   {
@@ -181,28 +214,28 @@ const featureDescriptors: readonly LazyFeatureDescriptor[] = [
     id: "workflow-builder",
     group: "Extended",
     path: "/extended/workflow-builder",
-    status: "Planned",
+    status: "Implemented/Partial",
     load: async () => import("@aa/feature-workflow-builder"),
   },
   {
     id: "workflow-debugger",
     group: "Extended",
     path: "/extended/debugger",
-    status: "Planned",
+    status: "Implemented/Partial",
     load: async () => import("@aa/feature-workflow-debugger"),
   },
   {
     id: "agent-manager",
     group: "Extended",
     path: "/extended/agents",
-    status: "Planned",
+    status: "Implemented/Partial",
     load: async () => import("@aa/feature-agent-manager"),
   },
   {
     id: "explainability",
     group: "Shared",
     path: "/shared/explainability",
-    status: "Planned",
+    status: "Implemented/Partial",
     load: async () => import("@aa/feature-explainability"),
   },
   {
@@ -216,35 +249,35 @@ const featureDescriptors: readonly LazyFeatureDescriptor[] = [
     id: "governance-compliance",
     group: "Governance",
     path: "/governance/governance-overview",
-    status: "Planned",
+    status: "Implemented/Partial",
     load: async () => import("@aa/feature-governance-compliance"),
   },
   {
     id: "cost-center",
     group: "Shared",
     path: "/shared/costs",
-    status: "Planned",
+    status: "Implemented/Partial",
     load: async () => import("@aa/feature-cost-center"),
   },
   {
     id: "marketplace",
     group: "Shared",
     path: "/shared/marketplace",
-    status: "Planned",
+    status: "Implemented/Partial",
     load: async () => import("@aa/feature-marketplace"),
   },
   {
     id: "analytics",
     group: "Shared",
     path: "/shared/analytics",
-    status: "Planned",
+    status: "Implemented/Partial",
     load: async () => import("@aa/feature-analytics"),
   },
   {
     id: "memory-review",
     group: "Governance",
     path: "/governance/memory-review",
-    status: "Planned",
+    status: "Implemented/Partial",
     load: async () => import("@aa/feature-memory-review"),
   },
   {
@@ -259,13 +292,21 @@ const featureDescriptors: readonly LazyFeatureDescriptor[] = [
     group: "Operations",
     path: "/operations/release-console",
     status: "Implemented/Internal",
+    subPages: [
+      {
+        id: "leadership-claims",
+        path: "leadership-claims",
+        label: translateMessage("ui.releaseConsole.claims.nav"),
+        exportName: "LeadershipClaimsWebView",
+      },
+    ],
     load: async () => import("@aa/feature-release-console"),
   },
   {
     id: "trace-explorer",
     group: "Observability",
     path: "/observability/trace-explorer",
-    status: "Planned",
+    status: "Implemented/Partial",
     load: async () => import("@aa/feature-trace-explorer"),
   },
 ];

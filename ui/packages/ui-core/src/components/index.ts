@@ -70,6 +70,7 @@ export interface FeatureWorkbenchAction {
   readonly id: string;
   readonly label: string;
   readonly tone?: "accent" | "danger" | "neutral";
+  readonly disabled?: boolean | ((item: FeatureWorkbenchItem | null) => boolean);
   readonly buildActivity?: (item: FeatureWorkbenchItem | null) => { title: string; description: string };
   readonly onTrigger?: (item: FeatureWorkbenchItem | null) => void | Promise<void>;
 }
@@ -85,8 +86,19 @@ export interface FeatureWorkbenchPanelAction {
   readonly id: string;
   readonly label: string;
   readonly tone?: "accent" | "danger" | "neutral";
+  readonly disabled?: boolean | ((item: FeatureWorkbenchItem | null) => boolean);
   readonly activityDescription?: string;
   readonly onTrigger?: (item: FeatureWorkbenchItem | null) => void | Promise<void>;
+}
+
+function resolveActionDisabled(
+  action: Pick<FeatureWorkbenchAction, "disabled" | "onTrigger">,
+  selectedItem: FeatureWorkbenchItem | null,
+): boolean {
+  const disabled = typeof action.disabled === "function"
+    ? action.disabled(selectedItem)
+    : (action.disabled ?? false);
+  return disabled || action.onTrigger == null;
 }
 
 export function buildWorkbenchActionHandler(
@@ -115,10 +127,28 @@ export function buildWorkbenchActionHandler(
         ? options.deepLinkPath(item)
         : options.deepLinkPath ?? null;
       if (target != null && target.trim().length > 0) {
-        window.location.hash = target.startsWith("#") ? target : `#${target.replace(/^\/+/, "/")}`;
+        navigateToWorkbenchTarget(target);
       }
     }
   };
+}
+
+function navigateToWorkbenchTarget(target: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const trimmed = target.trim();
+  if (trimmed.length === 0) {
+    return;
+  }
+  const normalized = trimmed.startsWith("#") ? trimmed.slice(1) : trimmed;
+  if (normalized.startsWith("/")) {
+    const nextUrl = new URL(normalized, window.location.origin);
+    window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    return;
+  }
+  window.location.hash = trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
 }
 
 export interface FeatureWorkbenchLabels {
@@ -184,6 +214,9 @@ export function FeatureWorkbench(
   const selectedItem = filteredItems.find((item) => item.id === selectedId) ?? null;
 
   async function triggerAction(action: FeatureWorkbenchAction): Promise<void> {
+    if (resolveActionDisabled(action, selectedItem)) {
+      return;
+    }
     try {
       await action.onTrigger?.(selectedItem);
       const activity = action.buildActivity?.(selectedItem) ?? {
@@ -249,6 +282,8 @@ export function FeatureWorkbench(
         value: filter,
       }),
       ...actions.map((action) => createElement("button", {
+        "aria-disabled": resolveActionDisabled(action, selectedItem),
+        disabled: resolveActionDisabled(action, selectedItem),
         key: action.id,
         onClick: () => {
           void triggerAction(action);
@@ -258,8 +293,9 @@ export function FeatureWorkbench(
           border: `1px solid ${action.tone === "neutral" ? designTokens.color.border : "transparent"}`,
           borderRadius: designTokens.radius.sm,
           color: action.tone === "neutral" ? designTokens.color.text : designTokens.primitive.color.ink950,
-          cursor: "pointer",
+          cursor: resolveActionDisabled(action, selectedItem) ? "not-allowed" : "pointer",
           fontWeight: designTokens.typography.fontWeight.semibold,
+          opacity: resolveActionDisabled(action, selectedItem) ? 0.45 : 1,
           padding: "8px 12px",
         },
         type: "button",
@@ -398,6 +434,7 @@ export function FeatureWorkbenchPanel(
     id: action.id,
     label: action.label,
     ...(action.tone == null ? {} : { tone: action.tone }),
+    ...(action.disabled == null ? {} : { disabled: action.disabled }),
     ...(action.onTrigger == null ? {} : { onTrigger: action.onTrigger }),
     buildActivity: (item) => ({
       title: item == null ? action.label : `${action.label} · ${item.title}`,

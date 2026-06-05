@@ -12,7 +12,7 @@ export function WorkflowBuilderWebView(): ReactElement {
   const nodes: FlowCanvasProps["nodes"] = vm.nodes;
   const edges: FlowCanvasProps["edges"] = vm.edges;
   return (
-    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Planned">
+    <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Partial">
       <div
         style={{
           minHeight: 360,

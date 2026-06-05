@@ -46,15 +46,20 @@ function GovernanceRow(props: {
 export function ReleaseConsoleWebView(): ReactElement {
   const vm = useReleaseConsoleVm();
   const featureCopy = translateFeatureCopy("release-console");
+
+  async function copySummary(): Promise<void> {
+    const summary = vm.summaryRows.map((row) => `${row.key}: ${row.value}`).join("\n");
+    await globalThis.navigator?.clipboard?.writeText?.(summary);
+  }
+
   return (
     <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[
-          { id: "release-console-validate", label: "运行门禁", tone: "accent", onTrigger: buildWorkbenchActionHandler("release-console", "validate", { deepLinkPath: "/operations/release-console?mode=validate" }) },
-          { id: "release-console-promote", label: "推进灰度", tone: "neutral", onTrigger: buildWorkbenchActionHandler("release-console", "promote", { deepLinkPath: "/operations/release-console?mode=promote" }) },
-          { id: "release-console-rollback", label: "查看回滚计划", tone: "danger", onTrigger: buildWorkbenchActionHandler("release-console", "rollback", { copySelection: true, deepLinkPath: "/operations/release-console?view=rollback" }) },
-          { id: "release-console-leadership-claims", label: "查看声明治理", tone: "neutral", onTrigger: buildWorkbenchActionHandler("release-console", "leadership-claims", { deepLinkPath: "/operations/release-console/leadership-claims" }) },
+          { id: "release-console-refresh", label: "刷新治理快照", tone: "accent", onTrigger: () => vm.refresh(), activityDescription: "已从真实后端刷新发布治理快照。" },
+          { id: "release-console-copy", label: "复制治理摘要", tone: "neutral", disabled: vm.summaryRows.length === 0, onTrigger: () => copySummary(), activityDescription: "已复制当前发布治理摘要。" },
+          { id: "release-console-leadership-claims", label: "查看声明治理", tone: "neutral", onTrigger: buildWorkbenchActionHandler("release-console", "leadership-claims", { deepLinkPath: "/operations/release-console/leadership-claims" }), activityDescription: "已跳转到真实声明治理页面。" },
         ]}
       />
       <div style={{ display: "grid", gap: 16, marginTop: 24 }}>

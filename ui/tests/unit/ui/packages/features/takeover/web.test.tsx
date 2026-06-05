@@ -29,6 +29,24 @@ vi.mock("@aa/ui-core", () => ({
 vi.mock("../../../../../../packages/features/takeover/src/hooks", () => ({
   useTakeoverVm: () => ({
     items: [{ title: "Execution Snapshot", description: "Captured context" }],
+    currentSnapshot: {
+      taskId: "task-1",
+      owner: "web-operator",
+      status: "running",
+      capturedAt: "2026-06-05T00:00:00.000Z",
+      steps: [{ id: "step-1", title: "Collect inputs", status: "completed", executor: "agent-1" }],
+    },
+    ownershipHistory: [
+      {
+        taskId: "task-1",
+        owner: "web-operator",
+        action: "claim",
+        recordedAt: "2026-06-05T00:00:00.000Z",
+      },
+    ],
+    canTakeover: true,
+    canAnnotate: true,
+    canResume: true,
     takeoverCurrentTask: mockTakeoverCurrentTask,
     annotateCurrentSnapshot: mockAnnotateCurrentSnapshot,
     resumeAutomaticExecution: mockResumeAutomaticExecution,
@@ -44,6 +62,12 @@ afterEach(() => {
 describe("TakeoverWebView", () => {
   it("wires takeover actions to executable handlers", () => {
     render(<TakeoverWebView />);
+
+    expect(screen.getByText("Current snapshot")).toBeTruthy();
+    expect(screen.getByText("task-1")).toBeTruthy();
+    expect(screen.getByText("Collect inputs · completed · agent-1")).toBeTruthy();
+    expect(screen.getByText("Ownership history")).toBeTruthy();
+    expect(screen.getByText("2026-06-05T00:00:00.000Z · task-1 · web-operator · claim")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "接管当前任务" }));
     fireEvent.click(screen.getByRole("button", { name: "添加人工批注" }));

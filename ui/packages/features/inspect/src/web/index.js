@@ -1,11 +1,7 @@
-import { jsx as _jsx } from "react/jsx-runtime";
-import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { FeatureScaffold, KeyValueTable, ListCard, MetricGrid, Stack, ThreePaneLayout } from "@aa/ui-core";
 import { useInspectVm } from "../hooks";
 export function InspectWebView() {
     const vm = useInspectVm();
-    return (_jsx(FeatureScaffold, { title: "Inspect", summary: "Inspect \u548C operator snapshot \u89C6\u56FE\u3002", status: "Planned", children: _jsx(FeatureWorkbenchPanel, { items: vm.items, actions: [
-                { id: "inspect-snapshot", label: "抓取快照", tone: "accent", onTrigger: buildWorkbenchActionHandler("inspect", "snapshot", { deepLinkPath: "/operations/inspect?mode=snapshot" }) },
-                { id: "inspect-compare", label: "对比上次执行", tone: "neutral", onTrigger: buildWorkbenchActionHandler("inspect", "compare", { deepLinkPath: "/operations/inspect?view=compare" }) },
-                { id: "inspect-export", label: "导出证据链", tone: "neutral", onTrigger: buildWorkbenchActionHandler("inspect", "export", { copySelection: true }) },
-            ] }) }));
+    return (_jsxs(FeatureScaffold, { title: "Inspect", summary: "Inspect \u548C operator snapshot \u89C6\u56FE\u3002", status: "Implemented/Partial", children: [_jsx(MetricGrid, { metrics: vm.metrics }), _jsx(ThreePaneLayout, { left: _jsxs(Stack, { gap: 10, children: [_jsx("h3", { children: "Tasks" }), vm.loading ? _jsx("p", { children: "Loading task inspect summaries..." }) : null, vm.loadError != null ? _jsx("p", { children: vm.loadError }) : null, vm.listItems.length === 0 ? _jsx("p", { children: "No tasks are available for inspect." }) : vm.listItems.map((item) => (_jsxs("button", { onClick: () => vm.selectTask(item.id), style: { textAlign: "left" }, type: "button", children: [_jsx("strong", { children: item.title }), _jsx("div", { children: item.subtitle })] }, item.id)))] }), center: vm.detailRows.length === 0 ? _jsx("p", { children: "No task selected" }) : _jsxs(Stack, { gap: 16, children: [_jsx("h3", { children: "Inspect detail" }), _jsx(KeyValueTable, { rows: vm.detailRows })] }), right: _jsxs(Stack, { gap: 12, children: [_jsx("h3", { children: "Inspect summary" }), _jsx(ListCard, { items: vm.summaryItems }), _jsx("h3", { children: "Approvals" }), _jsx(ListCard, { items: vm.approvalItems }), _jsx("h3", { children: "Recent events" }), _jsx(ListCard, { items: vm.eventItems })] }) })] }));
 }

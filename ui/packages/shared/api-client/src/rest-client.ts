@@ -108,6 +108,16 @@ type StoredMockTask = TaskDTO & {
 
 const MOCK_TASK_STORAGE_KEY = "aa.ui.mock.tasks.v1";
 
+function measureUtf8Bytes(value: string): number {
+  if (typeof TextEncoder !== "undefined") {
+    return new TextEncoder().encode(value).byteLength;
+  }
+  if (typeof Buffer !== "undefined") {
+    return Buffer.byteLength(value, "utf8");
+  }
+  return value.length;
+}
+
 function cloneMockTasks(tasks: readonly TaskDTO[]): StoredMockTask[] {
   return tasks.map((task) => ({ ...task }));
 }
@@ -240,27 +250,27 @@ function applyMockTaskProgress(task: StoredMockTask, now = Date.now()): StoredMo
 
 function buildMockWorkflowSteps(task: StoredMockTask): readonly WorkflowRunStepDTO[] {
   const runningStatus = task.status === "queued" ? "running" : "completed";
-  const synthesisStatus = task.status === "running" ? "running" : "queued";
+  const synthesisStatus: WorkflowRunStepDTO["status"] = task.status === "running" ? "running" : "pending";
   return [
     {
       id: `${task.id}-intake`,
       title: "Capture operator request",
       status: runningStatus,
       executor: task.owner ?? "platform-sre",
-      startedAt: task.mockCreatedAt,
-      ...(task.status === "queued" ? {} : { completedAt: task.mockCreatedAt }),
+      ...(task.mockCreatedAt == null ? {} : { startedAt: task.mockCreatedAt }),
+      ...(task.status === "queued" || task.mockCreatedAt == null ? {} : { completedAt: task.mockCreatedAt }),
     },
     {
       id: `${task.id}-research`,
       title: "Wait for real model gateway execution",
       status: synthesisStatus,
       executor: "agent-research-runner",
-      startedAt: task.status === "queued" ? undefined : task.mockCreatedAt,
+      ...(task.status === "queued" ? {} : { startedAt: task.mockCreatedAt }),
     },
     {
       id: `${task.id}-deliver`,
       title: "Deliver real model output artifact",
-      status: "queued",
+      status: "pending",
       executor: "agent-summarizer",
     },
   ];
@@ -628,7 +638,7 @@ export class HttpTransport {
     maxBytes: number,
   ): Promise<T | PlatformEnvelope<T> | ContractEnvelope<T>> {
     const body = await response.text();
-    if (Buffer.byteLength(body, "utf8") > maxBytes) {
+    if (measureUtf8Bytes(body) > maxBytes) {
       throw new Error(`rest.response_too_large:${maxBytes}`);
     }
     return JSON.parse(body) as T | PlatformEnvelope<T> | ContractEnvelope<T>;
@@ -733,7 +743,9 @@ export class HttpTransport {
 
     this.recordFailure();
     if (this.shouldFallbackToMock(lastError)) {
-      return this.fallbackTransport.send(request);
+      if (this.fallbackTransport != null) {
+        return this.fallbackTransport.send(request);
+      }
     }
     throw lastError;
   }
