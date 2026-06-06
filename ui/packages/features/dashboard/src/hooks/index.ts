@@ -41,6 +41,15 @@ export interface DashboardVm {
   readonly snapshot: DashboardSnapshotDTO | null;
 }
 
+const ACTIVE_INCIDENT_STATUSES = new Set(["open", "acknowledged", "mitigating"]);
+
+function formatCount(value?: number | null): string {
+  if (value == null) {
+    return "--";
+  }
+  return String(value);
+}
+
 function formatPercent(value?: number | null): string {
   if (value == null) {
     return "--";
@@ -55,7 +64,10 @@ function formatMs(value?: number | null): string {
   return `${Math.round(value)} ms`;
 }
 
-function formatRatio(value: number): string {
+function formatRatio(value?: number | null): string {
+  if (value == null) {
+    return "--";
+  }
   const normalized = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
   return `${(normalized * 100).toFixed(0)}%`;
 }
@@ -70,10 +82,17 @@ function formatMetricValue(metric: AnalyticsMetricDTO | undefined): string {
   return JSON.stringify(metric.value);
 }
 
+function isActiveIncident(incident: IncidentDTO): boolean {
+  return incident.status == null || ACTIVE_INCIDENT_STATUSES.has(incident.status);
+}
+
 function findMetric(
-  metrics: readonly AnalyticsMetricDTO[],
+  metrics: readonly AnalyticsMetricDTO[] | undefined,
   key: "queue-throughput" | "approval-sla" | "workflow-completion",
 ): AnalyticsMetricDTO | undefined {
+  if (metrics == null) {
+    return undefined;
+  }
   const aliases: Record<typeof key, readonly string[]> = {
     "queue-throughput": ["queue-throughput", "queue throughput", "队列吞吐"],
     "approval-sla": ["approval-sla", "approval sla", "审批 sla"],
@@ -92,48 +111,61 @@ function findMetric(
 
 function buildPanelGroups(
   snapshot: DashboardSnapshotDTO,
-  analytics: readonly AnalyticsMetricDTO[],
-  incidents: readonly IncidentDTO[],
-  workers: readonly WorkerDTO[],
-  queues: readonly QueueDTO[],
-  agents: readonly AgentDTO[],
+  analytics: readonly AnalyticsMetricDTO[] | undefined,
+  incidents: readonly IncidentDTO[] | undefined,
+  workers: readonly WorkerDTO[] | undefined,
+  queues: readonly QueueDTO[] | undefined,
+  agents: readonly AgentDTO[] | undefined,
 ): readonly DashboardPanelGroup[] {
-  const queueReady = queues.reduce((total, queue) => total + queue.ready, 0);
-  const queueInFlight = queues.reduce(
+  const activeIncidents = incidents?.filter(isActiveIncident);
+  const queueReady = queues?.reduce((total, queue) => total + queue.ready, 0);
+  const queueInFlight = queues?.reduce(
     (total, queue) => total + queue.inFlight,
     0,
   );
-  const queueRetries = queues.reduce(
+  const queueRetries = queues?.reduce(
     (total, queue) => total + queue.retries,
     0,
   );
-  const totalDlq = queues.reduce((total, queue) => total + queue.dlq, 0);
-  const criticalIncidents = incidents.filter(
+  const totalDlq = queues?.reduce((total, queue) => total + queue.dlq, 0);
+  const incidentCount = activeIncidents?.length;
+  const criticalIncidents = activeIncidents?.filter(
     (incident) => incident.severity === "critical",
   ).length;
-  const degradedAgents = agents.filter(
+  const degradedAgents = agents?.filter(
     (agent) => agent.status === "degraded",
   ).length;
-  const healthyAgents = agents.filter(
+  const healthyAgents = agents?.filter(
     (agent) => agent.status === "healthy",
   ).length;
-  const drainingWorkers = workers.filter(
+  const drainingWorkers = workers?.filter(
     (worker) => worker.status === "draining",
   ).length;
-  const maxWorkerLag = workers.reduce(
-    (maxLag, worker) => worker.status === "offline" ? maxLag : Math.max(maxLag, worker.heartbeatLagMs),
-    0,
-  );
-  const averageAgentLoad =
-    agents.length === 0
+  const maxWorkerLag = workers == null
+    ? null
+    : workers.length === 0
       ? 0
-      : agents.reduce((total, agent) => total + agent.load, 0) / agents.length;
-  const maxAgentLoad = agents.reduce(
-    (maxLoad, agent) => Math.max(maxLoad, agent.load),
-    0,
-  );
+      : workers.reduce((maxLag, worker) => Math.max(maxLag, worker.heartbeatLagMs), 0);
+  const loadBearingAgents = agents?.filter((agent) => agent.status !== "offline");
+  const averageAgentLoad =
+    loadBearingAgents == null
+      ? null
+      : loadBearingAgents.length === 0
+        ? 0
+        : loadBearingAgents.reduce((total, agent) => total + agent.load, 0) / loadBearingAgents.length;
+  const maxAgentLoad =
+    loadBearingAgents == null
+      ? null
+      : loadBearingAgents.reduce(
+          (maxLoad, agent) => Math.max(maxLoad, agent.load),
+          0,
+        );
   const healthyAgentRatio =
-    agents.length === 0 ? 1 : healthyAgents / agents.length;
+    agents == null
+      ? null
+      : agents.length === 0
+        ? 1
+        : (healthyAgents ?? 0) / agents.length;
 
   return [
     {
@@ -217,13 +249,13 @@ function buildPanelGroups(
         {
           id: "queue-ready",
           title: translateMessage("ui.dashboard.panel.queue-ready.title"),
-          value: String(queueReady),
+          value: formatCount(queueReady),
           description: translateMessage("ui.dashboard.panel.queue-ready.description"),
         },
         {
           id: "queue-inflight",
           title: translateMessage("ui.dashboard.panel.queue-inflight.title"),
-          value: String(queueInFlight),
+          value: formatCount(queueInFlight),
           description: translateMessage("ui.dashboard.panel.queue-inflight.description"),
         },
         {
@@ -242,25 +274,25 @@ function buildPanelGroups(
         {
           id: "incident-count",
           title: translateMessage("ui.dashboard.panel.incident-count.title"),
-          value: String(incidents.length),
+          value: formatCount(incidentCount),
           description: translateMessage("ui.dashboard.panel.incident-count.description"),
         },
         {
           id: "critical-incidents",
           title: translateMessage("ui.dashboard.panel.critical-incidents.title"),
-          value: String(criticalIncidents),
+          value: formatCount(criticalIncidents),
           description: translateMessage("ui.dashboard.panel.critical-incidents.description"),
         },
         {
           id: "degraded-agents",
           title: translateMessage("ui.dashboard.panel.degraded-agents.title"),
-          value: String(degradedAgents),
+          value: formatCount(degradedAgents),
           description: translateMessage("ui.dashboard.panel.degraded-agents.description"),
         },
         {
           id: "draining-workers",
           title: translateMessage("ui.dashboard.panel.draining-workers.title"),
-          value: String(drainingWorkers),
+          value: formatCount(drainingWorkers),
           description: translateMessage("ui.dashboard.panel.draining-workers.description"),
         },
         {
@@ -278,7 +310,7 @@ function buildPanelGroups(
         {
           id: "dlq",
           title: translateMessage("ui.dashboard.panel.dlq.title"),
-          value: String(totalDlq),
+          value: formatCount(totalDlq),
           description: translateMessage("ui.dashboard.panel.dlq.description"),
         },
       ],
@@ -321,7 +353,7 @@ function buildPanelGroups(
         {
           id: "queue-retries",
           title: translateMessage("ui.dashboard.panel.queue-retries.title"),
-          value: String(queueRetries),
+          value: formatCount(queueRetries),
           description: translateMessage("ui.dashboard.panel.queue-retries.description"),
         },
         {
@@ -337,11 +369,11 @@ function buildPanelGroups(
 
 export function mapDashboardSnapshotToVm(
   snapshot: DashboardSnapshotDTO | null,
-  analytics: readonly AnalyticsMetricDTO[] = [],
-  incidents: readonly IncidentDTO[] = [],
-  workers: readonly WorkerDTO[] = [],
-  queues: readonly QueueDTO[] = [],
-  agents: readonly AgentDTO[] = [],
+  analytics?: readonly AnalyticsMetricDTO[],
+  incidents?: readonly IncidentDTO[],
+  workers?: readonly WorkerDTO[],
+  queues?: readonly QueueDTO[],
+  agents?: readonly AgentDTO[],
 ): DashboardVm {
   return {
     loading: snapshot == null,
@@ -374,7 +406,13 @@ export function mapDashboardSnapshotToVm(
             clampPercent(snapshot.uptimePercent),
             clampPercent(snapshot.budgetUtilizationPercent),
             clampPercent(snapshot.errorRate != null ? 100 - snapshot.errorRate : undefined),
-            clampPercent(agents.length === 0 ? 100 : (agents.filter((agent) => agent.status === "healthy").length / agents.length) * 100),
+            clampPercent(
+              agents == null
+                ? undefined
+                : agents.length === 0
+                  ? 100
+                  : (agents.filter((agent) => agent.status === "healthy").length / agents.length) * 100,
+            ),
             clampPercent((snapshot.activeExecutions / Math.max(1, snapshot.activeExecutions + snapshot.queueDepth)) * 100),
           ],
     metrics:
@@ -407,25 +445,25 @@ export function mapDashboardSnapshotToVm(
 export function useDashboardVm(): DashboardVm {
   const snapshot = useDashboardSnapshotQuery().data ?? null;
   const detailQueriesEnabled = snapshot != null;
-  const analytics = useAnalyticsQuery({ enabled: detailQueriesEnabled }).data ?? [];
-  const incidents = useIncidentsQuery({ enabled: detailQueriesEnabled }).data ?? [];
-  const workers = useWorkersQuery({ enabled: detailQueriesEnabled }).data ?? [];
-  const queues = useQueuesQuery({ enabled: detailQueriesEnabled }).data ?? [];
-  const agents = useAgentsQuery({ enabled: detailQueriesEnabled }).data ?? [];
+  const analyticsQuery = useAnalyticsQuery({ enabled: detailQueriesEnabled });
+  const incidentsQuery = useIncidentsQuery({ enabled: detailQueriesEnabled });
+  const workersQuery = useWorkersQuery({ enabled: detailQueriesEnabled });
+  const queuesQuery = useQueuesQuery({ enabled: detailQueriesEnabled });
+  const agentsQuery = useAgentsQuery({ enabled: detailQueriesEnabled });
   return useMemo(() => mapDashboardSnapshotToVm(
     snapshot,
-    analytics,
-    incidents,
-    workers,
-    queues,
-    agents,
+    analyticsQuery.data,
+    incidentsQuery.data,
+    workersQuery.data,
+    queuesQuery.data,
+    agentsQuery.data,
   ), [
-    agents,
-    analytics,
-    incidents,
-    queues,
+    agentsQuery.data,
+    analyticsQuery.data,
+    incidentsQuery.data,
+    queuesQuery.data,
     snapshot,
-    workers,
+    workersQuery.data,
   ]);
 }
 

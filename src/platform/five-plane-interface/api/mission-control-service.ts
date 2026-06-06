@@ -13,6 +13,7 @@ import { MetricsService, type RuntimeMetricsSummary } from "../../shared/observa
 import { TaskBoardService } from "../../shared/observability/task-board-service.js";
 import { TaskTimelineService } from "../../shared/observability/task-timeline-service.js";
 import { AuthoritativeTaskStore, type TaskBoardItem } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { TaskSnapshot } from "../../five-plane-state-evidence/truth/sqlite/authoritative-task-store-types.js";
 import type {
   ApprovalRecord,
   BillingAccountRecord,
@@ -140,6 +141,51 @@ export interface MissionControlServiceOptions {
   gatewayTargetDirectoryService?: GatewayTargetDirectoryService | null;
 }
 
+interface TaskOutputMetadata {
+  readonly executionMode?: string;
+  readonly modelCallStatus?: string;
+  readonly modelProvider?: string;
+  readonly modelName?: string;
+  readonly outputSummary?: string | null;
+  readonly outputUri?: string | null;
+}
+
+function parseTaskOutputMetadata(outputJson: string | null): TaskOutputMetadata {
+  if (outputJson == null || outputJson.trim().length === 0) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(outputJson) as Record<string, unknown>;
+    if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    return {
+      ...(typeof parsed.executionMode === "string" ? { executionMode: parsed.executionMode } : {}),
+      ...(typeof parsed.modelCallStatus === "string" ? { modelCallStatus: parsed.modelCallStatus } : {}),
+      ...(typeof parsed.modelProvider === "string" ? { modelProvider: parsed.modelProvider } : {}),
+      ...(typeof parsed.modelName === "string" ? { modelName: parsed.modelName } : {}),
+      ...(typeof parsed.outputSummary === "string" || parsed.outputSummary === null ? { outputSummary: parsed.outputSummary as string | null } : {}),
+      ...(typeof parsed.outputUri === "string" || parsed.outputUri === null ? { outputUri: parsed.outputUri as string | null } : {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
+function enrichTaskSnapshot(snapshot: TaskSnapshot): TaskSnapshot {
+  const outputMetadata = parseTaskOutputMetadata(snapshot.task.outputJson);
+  if (Object.keys(outputMetadata).length === 0) {
+    return snapshot;
+  }
+  return {
+    ...snapshot,
+    task: {
+      ...snapshot.task,
+      ...outputMetadata,
+    },
+  };
+}
+
 export class MissionControlService {
   private readonly taskBoardService: TaskBoardService;
   private readonly timelineService: TaskTimelineService;
@@ -161,6 +207,8 @@ export class MissionControlService {
 
   public getSnapshot(tenantId?: string | null): MissionControlSnapshot {
     this.assertGlobalOnlyView("mission_control.snapshot_not_tenant_scoped", tenantId);
+    const health = this.healthService.getReport();
+    const metrics = this.metricsService.buildSummary();
     const pendingApprovals = this.inspectService
       .queryDecisionInspectSummaries({
         decisionType: "approval",
@@ -172,8 +220,8 @@ export class MissionControlService {
 
     return {
       generatedAt: new Date().toISOString(),
-      health: this.healthService.getReport(),
-      metrics: this.metricsService.buildSummary(),
+      health,
+      metrics,
       taskBoard: this.taskBoardService.list(25),
       pendingApprovals,
       divisions: this.listDivisionCatalog(),
@@ -199,14 +247,14 @@ export class MissionControlService {
             lastSeenAt: entry.lastSeenAt,
           })),
       // Derived metrics
-      activeAgents: this.metricsService.buildSummary().runtimeMetrics.activeExecutions,
-      queueDepth: this.metricsService.buildSummary().runtimeMetrics.queuedTasks,
-      errorRate: this.computeErrorRate(this.metricsService.buildSummary()),
-      avgDurationMs: this.metricsService.buildSummary().stepMetrics.averageDurationMs,
+      activeAgents: this.computeActiveAgents(health),
+      queueDepth: metrics.runtimeMetrics.queuedTasks,
+      errorRate: this.computeErrorRate(metrics),
+      avgDurationMs: metrics.stepMetrics.averageDurationMs,
       p50LatencyMs: this.percentileFromSummary(0.5),
       p99LatencyMs: this.percentileFromSummary(0.99),
-      budgetUtilizationPercent: this.computeBudgetUtilizationPercent(this.metricsService.buildSummary()),
-      uptimePercent: this.computeUptimePercent(this.healthService.getReport()),
+      budgetUtilizationPercent: this.computeBudgetUtilizationPercent(metrics),
+      uptimePercent: this.computeUptimePercent(health),
     };
   }
 
@@ -220,7 +268,7 @@ export class MissionControlService {
    */
   public getTaskCockpit(taskId: string, tenantId?: string | null) {
     return {
-      snapshot: this.store.operations.loadTaskSnapshot(taskId, tenantId),
+      snapshot: enrichTaskSnapshot(this.store.operations.loadTaskSnapshot(taskId, tenantId)),
       inspect: this.inspectService.getTaskInspectView(taskId, tenantId),
       timeline: this.timelineService.buildTaskTimeline(taskId),
     };
@@ -468,6 +516,10 @@ export class MissionControlService {
       return 100;
     }
     return Math.round((uptimeSeconds / baselineSeconds) * 100 * 10_000) / 10_000;
+  }
+
+  private computeActiveAgents(report: HealthStatusReport): number {
+    return Math.max(report.workerHealth.totalWorkers - report.workerHealth.offlineWorkers, 0);
   }
 }
 

@@ -23,7 +23,8 @@ function mapWorkersToVm(workers) {
 function useWorkersVm() {
   const client = useRestClient();
   const queryClient = useQueryClient();
-  const workers = useWorkersQuery().data ?? [];
+  const workersQuery = useWorkersQuery();
+  const workers = workersQuery.data ?? [];
   const refresh = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: missionControlQueryKeys.workers });
     await queryClient.refetchQueries({ queryKey: missionControlQueryKeys.workers, type: "active" });
@@ -34,9 +35,10 @@ function useWorkersVm() {
   }, [client, refresh]);
   return useMemo(() => ({
     ...mapWorkersToVm(workers),
+    loading: workersQuery.isLoading,
     refresh,
     drainBusyWorkers
-  }), [drainBusyWorkers, refresh, workers]);
+  }), [drainBusyWorkers, refresh, workers, workersQuery.isLoading]);
 }
 export {
   mapWorkersToVm,

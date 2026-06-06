@@ -14,6 +14,7 @@ export function IncidentsWebView(): ReactElement {
   const featureCopy = translateFeatureCopy("incidents");
   return (
     <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
+      {vm.loading ? <p>Loading incidents...</p> : null}
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[
@@ -21,7 +22,7 @@ export function IncidentsWebView(): ReactElement {
             id: "incidents-ack",
             label: "认领并确认",
             tone: "accent",
-            disabled: (item) => readIncidentStatus(item) !== "open",
+            disabled: (item) => vm.loading || readIncidentStatus(item) !== "open",
             onTrigger: (item) => item == null ? undefined : vm.acknowledgeIncident(item.id),
             activityDescription: "已通过真实事件接口完成确认。",
           },
@@ -30,6 +31,9 @@ export function IncidentsWebView(): ReactElement {
             label: "进入处置",
             tone: "neutral",
             disabled: (item) => {
+              if (vm.loading) {
+                return true;
+              }
               const status = readIncidentStatus(item);
               return status !== "acknowledged" && status !== "triaged";
             },
@@ -41,6 +45,9 @@ export function IncidentsWebView(): ReactElement {
             label: "关闭事件",
             tone: "danger",
             disabled: (item) => {
+              if (vm.loading) {
+                return true;
+              }
               const status = readIncidentStatus(item);
               return status !== "mitigating" && status !== "reviewed";
             },

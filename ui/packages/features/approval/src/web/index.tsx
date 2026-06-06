@@ -11,6 +11,7 @@ export function ApprovalWebView(): ReactElement {
   const delegateInputId = useId();
   const approvalActionDescriptionId = useId();
   const delegateActionDescriptionId = useId();
+  const emptyQueueMessage = translateMessage("ui.approval.emptyQueue");
 
   useEffect(() => {
     setDelegateTarget(selectedApproval?.escalationTarget ?? "domain-admin");
@@ -23,6 +24,7 @@ export function ApprovalWebView(): ReactElement {
           <div>
             <h3>{translateMessage("ui.approval.queueTitle")} · {vm.queueDepth}</h3>
             <Stack gap={10}>
+              {vm.queueItems.length === 0 ? <p>{emptyQueueMessage}</p> : null}
               {vm.queueItems.map((approval) => (
                 <button
                   key={approval.id}
@@ -46,7 +48,7 @@ export function ApprovalWebView(): ReactElement {
             </Stack>
           </div>
         )}
-        center={selectedApproval == null ? <p>{translateMessage("ui.approval.noSelection")}</p> : (
+        center={vm.queueItems.length === 0 ? <p>{emptyQueueMessage}</p> : selectedApproval == null ? <p>{translateMessage("ui.approval.noSelection")}</p> : (
           <Stack gap={16}>
             <p id={approvalActionDescriptionId} style={{ margin: 0 }}>
               {translateMessage("ui.approval.guidance")}

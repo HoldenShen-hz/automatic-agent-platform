@@ -38,6 +38,32 @@ function toNumericValue(value) {
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
+function isPercentMetric(metric) {
+  const id = metric.id.toLowerCase();
+  const label = metric.label.toLowerCase();
+  const description = metric.description?.toLowerCase() ?? "";
+  return id === "uptime" || id === "error-rate" || label.includes("uptime") || label.includes("error rate") || description.includes("percentage");
+}
+function normalizePercentMetricValue(metric) {
+  const numericValue = toNumericValue(metric.value);
+  if (!isPercentMetric(metric)) {
+    return metric.value;
+  }
+  return numericValue >= 0 && numericValue <= 1 ? numericValue * 100 : numericValue;
+}
+function normalizeAnalyticsMetric(metric) {
+  return {
+    ...metric,
+    value: normalizePercentMetricValue(metric)
+  };
+}
+function formatMetricDisplayValue(metric) {
+  const numericValue = toNumericValue(metric.value);
+  if (isPercentMetric(metric)) {
+    return `${numericValue.toFixed(2)}%`;
+  }
+  return metric.value;
+}
 function ensureAnalyticsExportSize(payload) {
   const bytes = new TextEncoder().encode(payload).byteLength;
   if (bytes > MAX_ANALYTICS_EXPORT_BYTES) {
@@ -70,7 +96,7 @@ function mapAnalyticsToVm(metrics) {
     };
   });
   return {
-    metrics: metrics.map((metric) => ({ label: metric.label, value: metric.value })),
+    metrics: metrics.map((metric) => ({ label: metric.label, value: formatMetricDisplayValue(metric) })),
     trendSummary: metrics.map((metric) => toNumericValue(metric.value)),
     layerSummaries
   };
@@ -87,7 +113,8 @@ function computeBreakdowns(metrics, layer) {
 }
 function useAnalyticsVm() {
   const queryData = useAnalyticsQuery();
-  const metrics = queryData.data ?? [];
+  const metrics = useMemo(() => (queryData.data ?? []).map(normalizeAnalyticsMetric), [queryData.data]);
+  const historicalSeriesAvailable = false;
   const [selectedLayer, setSelectedLayer] = useState("overview");
   const [chartConfig, setChartConfig] = useState({
     chartType: "bar",
@@ -102,13 +129,7 @@ function useAnalyticsVm() {
   const availableLayers = useMemo(() => {
     return ["overview", "tasks", "workflows", "approvals", "cost", "agents"];
   }, []);
-  const timeSeriesData = useMemo(() => {
-    const baseTimestamp = Date.UTC(2026, 4, 8);
-    return metrics.map((metric, index) => ({
-      timestamp: new Date(baseTimestamp - (metrics.length - index - 1) * 24 * 60 * 60 * 1e3).toISOString(),
-      value: toNumericValue(metric.value)
-    }));
-  }, [metrics]);
+  const timeSeriesData = useMemo(() => [], []);
   const kpiBreakdowns = useMemo(() => {
     if (selectedLayer === "overview") {
       const allLayers = ["tasks", "workflows", "approvals", "cost", "agents"];
@@ -117,19 +138,12 @@ function useAnalyticsVm() {
     return computeBreakdowns(metrics, selectedLayer);
   }, [metrics, selectedLayer]);
   const breakdowns = useMemo(() => {
-    const timeGroups = timeSeriesData.map((point) => ({
-      label: point.timestamp.slice(0, 10),
-      value: point.value
-    }));
     const groupedByLayer = availableLayers.filter((layer) => layer !== "overview").map((layer) => ({
       label: LAYER_LABELS[layer],
       value: computeBreakdowns(metrics, layer).reduce((sum, item) => sum + item.value, 0)
     })).filter((group) => group.value > 0);
-    return [
-      { dimension: "time", groups: timeGroups },
-      { dimension: "layer", groups: groupedByLayer }
-    ];
-  }, [availableLayers, metrics, timeSeriesData]);
+    return [{ dimension: "layer", groups: groupedByLayer }];
+  }, [availableLayers, metrics]);
   const setLayer = useCallback((layer) => {
     setSelectedLayer(layer);
     setChartConfig((current) => ({ ...current, layer }));
@@ -164,6 +178,7 @@ function useAnalyticsVm() {
   return {
     ...baseVm,
     timeSeriesData,
+    historicalSeriesAvailable,
     dateRange,
     breakdowns,
     kpiBreakdowns,

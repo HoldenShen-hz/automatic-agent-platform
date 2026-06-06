@@ -8,12 +8,12 @@ export function createComplianceMobileCards() {
       translateMessage("ui.compliance.mobile.standards.description"),
     ),
     createMobileFeatureCard(
-      translateMessage("ui.compliance.mobile.checks.title"),
-      translateMessage("ui.compliance.mobile.checks.description"),
+      translateMessage("ui.compliance.mobile.auditEvents.title"),
+      translateMessage("ui.compliance.mobile.auditEvents.description"),
     ),
     createMobileFeatureCard(
-      translateMessage("ui.compliance.mobile.passing.title"),
-      translateMessage("ui.compliance.mobile.passing.description"),
+      translateMessage("ui.compliance.mobile.exceptionApprovalRate.title"),
+      translateMessage("ui.compliance.mobile.exceptionApprovalRate.description"),
     ),
   ] as const;
 }

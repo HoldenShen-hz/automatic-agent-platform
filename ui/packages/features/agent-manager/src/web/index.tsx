@@ -15,7 +15,7 @@ export function AgentManagerWebView(): ReactElement {
           <Stack gap={10}>
             <h3>Agents</h3>
             {vm.loading ? <p>Loading agents...</p> : null}
-            {vm.listItems.length === 0 ? <p>No agents reported by the backend.</p> : vm.listItems.map((item) => (
+            {vm.loading ? null : vm.listItems.length === 0 ? <p>No agents reported by the backend.</p> : vm.listItems.map((item) => (
               <button key={item.id} onClick={() => vm.selectAgent(item.id)} style={{ textAlign: "left" }} type="button">
                 <strong>{item.title}</strong>
                 <div>{item.subtitle}</div>
@@ -23,7 +23,7 @@ export function AgentManagerWebView(): ReactElement {
             ))}
           </Stack>
         )}
-        center={vm.selectedAgent == null ? <p>No agent selected</p> : (
+        center={vm.loading ? <p>Loading agent detail...</p> : vm.selectedAgent == null ? <p>No agent selected</p> : (
           <Stack gap={16}>
             <h3>Agent detail</h3>
             <KeyValueTable rows={vm.detailRows} />

@@ -98,6 +98,7 @@ test("AsyncWorkflowRepository insertStepOutput inserts step output", async () =>
 
   assert.equal(calls.length, 1);
   assert.match(calls[0]!.sql, /INSERT INTO workflow_step_outputs/);
+  assert.match(calls[0]!.sql, /ON CONFLICT \(task_id, step_id\) DO UPDATE SET/);
 });
 
 test("AsyncWorkflowRepository getWorkflowState returns workflow when found without tenant", async () => {

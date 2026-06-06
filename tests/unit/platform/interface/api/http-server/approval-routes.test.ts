@@ -68,42 +68,82 @@ function createMockApprovalService(): ApprovalService {
   } as unknown as ApprovalService;
 }
 
-function createMockInspectService(): InspectService {
+function createMockInspectService(
+  approvals: Array<{
+    approvalId: string;
+    taskId: string;
+    riskLevel: string;
+    reasonSummary: string;
+    deadline?: string;
+    policySource?: string;
+    recommendedOption?: string;
+    currentLevel?: number;
+    totalLevels?: number;
+    escalationTarget?: string;
+  }> = [
+    {
+      approvalId: "appr-1",
+      taskId: "task-1",
+      riskLevel: "high",
+      reasonSummary: "Production rollout",
+      deadline: "2026-04-16T02:00:00.000Z",
+      policySource: "approval.policy.production",
+      recommendedOption: "approve",
+      currentLevel: 1,
+      totalLevels: 2,
+      escalationTarget: "domain-admin",
+    },
+  ],
+): InspectService {
+  const approvalsById = new Map(approvals.map((approval) => [approval.approvalId, approval]));
   return {
-    queryDecisionInspectSummaries: () => [
-      {
-        decisionId: "appr-1",
-        decisionType: "approval",
-        status: "requested",
-        taskId: "task-1",
-        requestedAt: "2026-04-16T00:00:00.000Z",
-        completedAt: null,
-      },
-    ],
-    getApprovalInspectView: () => ({
-      approval: {
-        id: "appr-1",
-        taskId: "task-1",
-        decisionType: "approval",
-        status: "completed",
-        requestedAt: "2026-04-16T00:00:00.000Z",
-        completedAt: "2026-04-16T01:00:00.000Z",
-        requestJson: JSON.stringify({
-          taskId: "task-1",
-          riskLevel: "high",
-          reason: "Production rollout",
-          context: {
-            deadlineAt: "2026-04-16T02:00:00.000Z",
-            policySource: "approval.policy.production",
-            recommendedOptionId: "approve",
-            currentLevel: 1,
-            totalLevels: 2,
-            escalationTarget: "domain-admin",
-          },
-        }),
-      },
-      timeline: { entries: [] },
-    }),
+    queryDecisionInspectSummaries: () => approvals.map((approval) => ({
+      decisionId: approval.approvalId,
+      decisionType: "approval",
+      status: "requested",
+      taskId: approval.taskId,
+      requestedAt: "2026-04-16T00:00:00.000Z",
+      completedAt: null,
+    })),
+    getApprovalInspectView: (approvalId: string) => {
+      const approval = approvalsById.get(approvalId) ?? (() => {
+        const fallback = approvals[0];
+        if (fallback == null) {
+          throw new Error(`Unknown approvalId: ${approvalId}`);
+        }
+        return {
+          ...fallback,
+          approvalId,
+        };
+      })();
+      if (approval == null) {
+        throw new Error(`Unknown approvalId: ${approvalId}`);
+      }
+      return {
+        approval: {
+          id: approval.approvalId,
+          taskId: approval.taskId,
+          decisionType: "approval",
+          status: "completed",
+          requestedAt: "2026-04-16T00:00:00.000Z",
+          completedAt: "2026-04-16T01:00:00.000Z",
+          requestJson: JSON.stringify({
+            taskId: approval.taskId,
+            riskLevel: approval.riskLevel,
+            reason: approval.reasonSummary,
+            context: {
+              deadlineAt: approval.deadline,
+              policySource: approval.policySource,
+              recommendedOptionId: approval.recommendedOption,
+              currentLevel: approval.currentLevel,
+              totalLevels: approval.totalLevels,
+              escalationTarget: approval.escalationTarget,
+            },
+          }),
+        },
+        timeline: { entries: [] },
+      };
+    },
   } as unknown as InspectService;
 }
 
@@ -256,6 +296,50 @@ test("GET /v1/approvals returns approval list", async () => {
       escalationTarget: "domain-admin",
     },
   ]);
+});
+
+test("GET /v1/approvals prioritizes critical approvals before lower-risk queue items", async () => {
+  const deps = {
+    authService: createMockAuthService(),
+    approvalService: createMockApprovalService(),
+    inspectService: createMockInspectService([
+      {
+        approvalId: "appr-medium",
+        taskId: "task-medium",
+        riskLevel: "medium",
+        reasonSummary: "Medium risk publish",
+        deadline: "2026-04-17T00:00:00.000Z",
+      },
+      {
+        approvalId: "appr-high",
+        taskId: "task-high",
+        riskLevel: "high",
+        reasonSummary: "High risk budget change",
+        deadline: "2026-04-16T04:00:00.000Z",
+      },
+      {
+        approvalId: "appr-critical",
+        taskId: "task-critical",
+        riskLevel: "critical",
+        reasonSummary: "Critical production write",
+        deadline: "2026-04-16T01:00:00.000Z",
+      },
+    ]),
+  };
+  const routes = createApprovalRoutes(deps);
+  const ctx = createMockContext("/v1/approvals", ["v1", "approvals"]);
+  const response = await callRoute(routes, ctx);
+  if (!response) throw new Error("Handler returned null");
+  const payload = JSON.parse(response.body) as {
+    data: {
+      approvals: Array<{ approvalId: string }>;
+    };
+  };
+
+  assert.deepEqual(
+    payload.data.approvals.map((approval) => approval.approvalId),
+    ["appr-critical", "appr-high", "appr-medium"],
+  );
 });
 
 test("POST /v1/approvals/:id/decision applies decision with correct actor", async () => {

@@ -15,7 +15,7 @@ export function MemoryReviewWebView(): ReactElement {
             <h3>Knowledge Items</h3>
             {vm.loading ? <p>Loading memory inventory...</p> : null}
             {vm.loadError != null ? <p>{vm.loadError}</p> : null}
-            {vm.listItems.length === 0 ? <p>No knowledge items returned by the backend.</p> : vm.listItems.map((item) => (
+            {vm.loading ? null : vm.listItems.length === 0 ? <p>No knowledge items returned by the backend.</p> : vm.listItems.map((item) => (
               <button key={item.id} onClick={() => vm.selectItem(item.id)} style={{ textAlign: "left" }} type="button">
                 <strong>{item.title}</strong>
                 <div>{item.subtitle}</div>
@@ -23,7 +23,7 @@ export function MemoryReviewWebView(): ReactElement {
             ))}
           </Stack>
         )}
-        center={vm.detailRows.length === 0 ? <p>No knowledge item selected</p> : (
+        center={vm.loading ? <p>Loading memory detail...</p> : vm.listItems.length === 0 ? <p>No knowledge items returned by the backend.</p> : vm.detailRows.length === 0 ? <p>No knowledge item selected</p> : (
           <Stack gap={16}>
             <h3>Memory detail</h3>
             <KeyValueTable rows={vm.detailRows} />

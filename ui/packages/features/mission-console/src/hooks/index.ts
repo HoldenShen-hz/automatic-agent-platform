@@ -61,10 +61,34 @@ export interface MissionConsoleVm {
   performAction(actionId: MissionConsoleActionId): Promise<void>;
 }
 
+function getMissionPriority(mission: MissionDTO): number {
+  switch (mission.status) {
+    case "frozen":
+      return 0;
+    case "active":
+      return 1;
+    case "paused":
+      return 2;
+    case "draft":
+      return 3;
+    case "completed":
+      return 4;
+    case "archived":
+      return 5;
+    default:
+      return 6;
+  }
+}
+
+function sortMissionsByPriority(missions: readonly MissionDTO[]): readonly MissionDTO[] {
+  return [...missions].sort((left, right) => getMissionPriority(left) - getMissionPriority(right));
+}
+
 export function mapMissionsToConsoleVm(missions: readonly MissionDTO[], selectedMissionId: string | null) {
-  const selectedMission = missions.find((mission) => mission.missionId === selectedMissionId) ?? missions[0] ?? null;
+  const orderedMissions = sortMissionsByPriority(missions);
+  const selectedMission = orderedMissions.find((mission) => mission.missionId === selectedMissionId) ?? orderedMissions[0] ?? null;
   return {
-    missions,
+    missions: orderedMissions,
     selectedMission,
     selectedMissionId: selectedMission?.missionId ?? null,
   };

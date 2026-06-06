@@ -149,7 +149,18 @@ export class WorkflowRepository {
         `INSERT INTO workflow_step_outputs (
           id, task_id, step_id, role_id, status, data_json, summary, artifacts_json,
           token_cost, duration_ms, validation_json, produced_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(task_id, step_id) DO UPDATE SET
+          id = excluded.id,
+          role_id = excluded.role_id,
+          status = excluded.status,
+          data_json = excluded.data_json,
+          summary = excluded.summary,
+          artifacts_json = excluded.artifacts_json,
+          token_cost = excluded.token_cost,
+          duration_ms = excluded.duration_ms,
+          validation_json = excluded.validation_json,
+          produced_at = excluded.produced_at`,
       )
       .run(
         canonical.id,

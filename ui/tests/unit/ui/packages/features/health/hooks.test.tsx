@@ -107,6 +107,23 @@ describe("useHealthVm", () => {
     ]));
   });
 
+  it("does not overstate provider success when there are no recent calls", async () => {
+    mocks.fetchHealthReport.mockClear();
+    mocks.fetchHealthReport.mockResolvedValueOnce({
+      ...mocks.healthReport,
+      providerSuccessRate: 1,
+      providerRecentCalls: 0,
+    });
+
+    const { result } = renderHook(() => useHealthVm());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.rows).toEqual(expect.arrayContaining([
+      { key: "Provider Success", value: "n/a (0 calls)" },
+    ]));
+  });
+
   it("refreshes by refetching backend health data", async () => {
     mocks.fetchHealthReport.mockClear();
     mocks.fetchHealthReport

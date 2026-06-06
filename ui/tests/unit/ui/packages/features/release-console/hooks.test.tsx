@@ -65,6 +65,8 @@ describe("useReleaseConsoleVm", () => {
     expect(mocks.mockFetchLeadershipClaimsConsole).toHaveBeenCalledWith(mocks.mockClient);
     expect(result.current.summaryRows.some((row) => row.value === "6")).toBe(true);
     expect(result.current.summaryRows.some((row) => row.value === "2")).toBe(true);
+    expect(result.current.summaryRows.some((row) => row.value === "1")).toBe(true);
+    expect(result.current.summaryRows).toHaveLength(7);
     expect(result.current.items).toHaveLength(3);
     expect(result.current.mutating).toBe(false);
   });

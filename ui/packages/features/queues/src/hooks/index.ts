@@ -6,6 +6,7 @@ import { translateMessage } from "@aa/shared-i18n";
 import type { QueueDTO } from "@aa/shared-types";
 
 export interface QueuesVm {
+  readonly loading: boolean;
   readonly metrics: readonly { label: string; value: string | number }[];
   readonly retryQueueDepth: number;
   refresh(): Promise<void>;
@@ -28,7 +29,8 @@ export function mapQueuesToVm(queues: readonly QueueDTO[]): Pick<QueuesVm, "metr
 export function useQueuesVm(): QueuesVm {
   const client = useRestClient();
   const queryClient = useQueryClient();
-  const queues = useQueuesQuery().data ?? [];
+  const queuesQuery = useQueuesQuery();
+  const queues = queuesQuery.data ?? [];
   const refresh = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: missionControlQueryKeys.queues });
     await queryClient.refetchQueries({ queryKey: missionControlQueryKeys.queues, type: "active" });
@@ -39,7 +41,8 @@ export function useQueuesVm(): QueuesVm {
   }, [client, refresh]);
   return useMemo(() => ({
     ...mapQueuesToVm(queues),
+    loading: queuesQuery.isLoading,
     refresh,
     cleanupRetryQueue: cleanupRetryQueueAction,
-  }), [cleanupRetryQueueAction, queues, refresh]);
+  }), [cleanupRetryQueueAction, queues, queuesQuery.isLoading, refresh]);
 }

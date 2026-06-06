@@ -1,5 +1,6 @@
 import type { QueueDTO } from "@aa/shared-types";
 export interface QueuesVm {
+    readonly loading: boolean;
     readonly metrics: readonly {
         label: string;
         value: string | number;

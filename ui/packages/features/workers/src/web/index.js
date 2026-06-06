@@ -1,13 +1,13 @@
-import { jsx as _jsx } from "react/jsx-runtime";
+import { jsxs as _jsxs, jsx as _jsx } from "react/jsx-runtime";
 import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
 import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useWorkersVm } from "../hooks";
 export function WorkersWebView() {
     const vm = useWorkersVm();
     const featureCopy = translateFeatureCopy("workers");
-    return (_jsx(FeatureScaffold, { title: featureCopy.title, summary: featureCopy.summary, status: "Implemented/Internal", children: _jsx(FeatureWorkbenchPanel, { metrics: vm.metrics, actions: [
-                { id: "workers-refresh", label: "刷新 Worker 状态", tone: "accent", onTrigger: () => vm.refresh(), activityDescription: "已从真实后端刷新 Worker 状态。" },
-                { id: "workers-copy", label: "复制 Worker 概览", tone: "neutral", onTrigger: buildWorkbenchActionHandler("workers", "copy", { copySelection: true }), activityDescription: "已复制当前 Worker 概览。" },
-                { id: "workers-drain", label: "排空忙碌 Worker", tone: "neutral", disabled: vm.busyWorkerCount === 0, onTrigger: () => vm.drainBusyWorkers(), activityDescription: "已将忙碌 Worker 切换为排空状态。" },
-            ] }) }));
+    return (_jsxs(FeatureScaffold, { title: featureCopy.title, summary: featureCopy.summary, status: "Implemented/Internal", children: [vm.loading ? _jsx("p", { children: "Loading workers..." }) : null, _jsx(FeatureWorkbenchPanel, { metrics: vm.metrics, actions: [
+                    { id: "workers-refresh", label: "刷新 Worker 状态", tone: "accent", disabled: vm.loading, onTrigger: () => vm.refresh(), activityDescription: "已从真实后端刷新 Worker 状态。" },
+                    { id: "workers-copy", label: "复制 Worker 概览", tone: "neutral", disabled: vm.loading, onTrigger: buildWorkbenchActionHandler("workers", "copy", { copySelection: true }), activityDescription: "已复制当前 Worker 概览。" },
+                    { id: "workers-drain", label: "排空忙碌 Worker", tone: "neutral", disabled: vm.loading || vm.busyWorkerCount === 0, onTrigger: () => vm.drainBusyWorkers(), activityDescription: "已将忙碌 Worker 切换为排空状态。" },
+                ] })] }));
 }

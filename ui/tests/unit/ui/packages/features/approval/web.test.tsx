@@ -6,6 +6,31 @@ const mockReject = vi.fn(async () => undefined);
 const mockDelegate = vi.fn(async () => undefined);
 const mockRequestMoreContext = vi.fn(async () => undefined);
 const mockSelectApproval = vi.fn();
+let mockVm = {
+  approvals: [],
+  queueItems: [
+    { id: "approval-1", title: "task-1", subtitle: "critical" },
+  ],
+  selectedId: "approval-1",
+  selectedApproval: {
+    approvalId: "approval-1",
+    taskId: "task-1",
+    riskLevel: "critical",
+    reasonSummary: "Production rollout",
+    deadline: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    policySource: "domain-policy",
+    recommendedOption: "approve",
+    escalationTarget: "risk-lead",
+  },
+  actionHistory: [],
+  queueDepth: 1,
+  pendingAction: false,
+  selectApproval: mockSelectApproval,
+  approve: mockApprove,
+  reject: mockReject,
+  delegate: mockDelegate,
+  requestMoreContext: mockRequestMoreContext,
+};
 
 vi.mock("@aa/ui-core", async () => {
   const actual = await vi.importActual<typeof import("@aa/ui-core")>("@aa/ui-core");
@@ -37,31 +62,7 @@ vi.mock("@aa/ui-core", async () => {
 });
 
 vi.mock("../../../../../../packages/features/approval/src/hooks", () => ({
-  useApprovalCenterVm: () => ({
-    approvals: [],
-    queueItems: [
-      { id: "approval-1", title: "task-1", subtitle: "critical" },
-    ],
-    selectedId: "approval-1",
-    selectedApproval: {
-      approvalId: "approval-1",
-      taskId: "task-1",
-      riskLevel: "critical",
-      reasonSummary: "Production rollout",
-      deadline: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-      policySource: "domain-policy",
-      recommendedOption: "approve",
-      escalationTarget: "risk-lead",
-    },
-    actionHistory: [],
-    queueDepth: 1,
-    pendingAction: false,
-    selectApproval: mockSelectApproval,
-    approve: mockApprove,
-    reject: mockReject,
-    delegate: mockDelegate,
-    requestMoreContext: mockRequestMoreContext,
-  }),
+  useApprovalCenterVm: () => mockVm,
 }));
 
 import { ApprovalWebView } from "../../../../../../packages/features/approval/src/web";
@@ -76,6 +77,31 @@ describe("ApprovalWebView", () => {
     cleanup();
     vi.useRealTimers();
     vi.clearAllMocks();
+    mockVm = {
+      approvals: [],
+      queueItems: [
+        { id: "approval-1", title: "task-1", subtitle: "critical" },
+      ],
+      selectedId: "approval-1",
+      selectedApproval: {
+        approvalId: "approval-1",
+        taskId: "task-1",
+        riskLevel: "critical",
+        reasonSummary: "Production rollout",
+        deadline: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        policySource: "domain-policy",
+        recommendedOption: "approve",
+        escalationTarget: "risk-lead",
+      },
+      actionHistory: [],
+      queueDepth: 1,
+      pendingAction: false,
+      selectApproval: mockSelectApproval,
+      approve: mockApprove,
+      reject: mockReject,
+      delegate: mockDelegate,
+      requestMoreContext: mockRequestMoreContext,
+    };
   });
 
   it("renders deadline, policy source, and recommended option", () => {
@@ -104,5 +130,20 @@ describe("ApprovalWebView", () => {
     expect(mockApprove).toHaveBeenCalled();
     expect(mockReject).toHaveBeenCalled();
     expect(mockRequestMoreContext).toHaveBeenCalled();
+  });
+
+  it("shows backend-empty messaging instead of a selection prompt when no approvals exist", () => {
+    mockVm = {
+      ...mockVm,
+      queueItems: [],
+      selectedId: null,
+      selectedApproval: null,
+      queueDepth: 0,
+    };
+
+    render(<ApprovalWebView />);
+
+    expect(screen.getAllByText("后端当前没有返回待审批项。").length).toBeGreaterThan(0);
+    expect(screen.queryByText("尚未选择审批项")).toBeNull();
   });
 });

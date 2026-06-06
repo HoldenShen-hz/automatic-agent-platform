@@ -15,7 +15,7 @@ export function PolicyWebView(): ReactElement {
             <h3>Policies</h3>
             {vm.loading ? <p>Loading governance policies...</p> : null}
             {vm.loadError != null ? <p>{vm.loadError}</p> : null}
-            {vm.listItems.length === 0 ? <p>No governance policies published by the backend.</p> : vm.listItems.map((item) => (
+            {vm.loading ? null : vm.listItems.length === 0 ? <p>No governance policies published by the backend.</p> : vm.listItems.map((item) => (
               <button key={item.id} onClick={() => vm.selectPolicy(item.id)} style={{ textAlign: "left" }} type="button">
                 <strong>{item.title}</strong>
                 <div>{item.subtitle}</div>
@@ -23,7 +23,7 @@ export function PolicyWebView(): ReactElement {
             ))}
           </Stack>
         )}
-        center={vm.detailRows.length === 0 ? <p>No policy selected</p> : (
+        center={vm.loading ? <p>Loading policy detail...</p> : vm.listItems.length === 0 ? <p>No governance policies published by the backend.</p> : vm.detailRows.length === 0 ? <p>No policy selected</p> : (
           <Stack gap={16}>
             <h3>Policy detail</h3>
             <KeyValueTable rows={vm.detailRows} />

@@ -127,7 +127,7 @@ describe("ui-core component and layout baselines", () => {
     expect(onAction).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps workbench copy actions best-effort when the browser clipboard API rejects", async () => {
+  it("falls back to execCommand when the browser clipboard API rejects", async () => {
     const originalClipboard = navigator.clipboard;
     const writeText = vi.fn().mockRejectedValue(new Error("Document is not focused"));
     Object.defineProperty(navigator, "clipboard", {
@@ -155,6 +155,38 @@ describe("ui-core component and layout baselines", () => {
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: originalClipboard,
+    });
+  });
+
+  it("surfaces copy failures when both clipboard paths fail", async () => {
+    const originalClipboard = navigator.clipboard;
+    const originalExecCommand = document.execCommand;
+    const writeText = vi.fn().mockRejectedValue(new Error("Document is not focused"));
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    Object.defineProperty(document, "execCommand", {
+      configurable: true,
+      value: vi.fn().mockReturnValue(false),
+    });
+
+    const eventListener = vi.fn();
+    window.addEventListener("aa:feature-workbench-action", eventListener as EventListener);
+
+    const action = buildWorkbenchActionHandler("workers", "copy", { copySelection: true });
+    await expect(action({ id: "worker-1", title: "Worker", description: "offline" })).rejects.toThrow("Unable to copy to clipboard");
+
+    expect(eventListener).not.toHaveBeenCalled();
+
+    window.removeEventListener("aa:feature-workbench-action", eventListener as EventListener);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: originalClipboard,
+    });
+    Object.defineProperty(document, "execCommand", {
+      configurable: true,
+      value: originalExecCommand,
     });
   });
 });

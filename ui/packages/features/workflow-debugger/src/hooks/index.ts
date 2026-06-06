@@ -48,6 +48,32 @@ type DebuggerActivityItem = {
 
 type DebuggerPanel = "timeline" | "failure" | "export";
 
+const DEBUGGER_TASK_PRIORITY: Record<string, number> = {
+  failed: 0,
+  running: 1,
+  queued: 2,
+  paused: 3,
+  awaiting_input: 4,
+  done: 5,
+  completed: 5,
+  cancelled: 6,
+  canceled: 6,
+};
+
+function resolveDebuggerTaskPriority(task: TaskDTO): number {
+  return DEBUGGER_TASK_PRIORITY[task.status] ?? 7;
+}
+
+export function prioritizeDebuggerTasks(tasks: readonly TaskDTO[]): readonly TaskDTO[] {
+  return [...tasks].sort((left, right) => {
+    const priorityDiff = resolveDebuggerTaskPriority(left) - resolveDebuggerTaskPriority(right);
+    if (priorityDiff !== 0) {
+      return priorityDiff;
+    }
+    return right.id.localeCompare(left.id);
+  });
+}
+
 function mapTaskToListItem(task: TaskDTO): DebuggerTaskListItem {
   return {
     id: task.id,
@@ -147,7 +173,7 @@ export interface WorkflowDebuggerVm {
 export function useWorkflowDebuggerVm(): WorkflowDebuggerVm {
   const client = useRestClient();
   const taskQuery = useTasksQuery({ refetchInterval: 5000 });
-  const tasks = taskQuery.data ?? [];
+  const tasks = useMemo(() => prioritizeDebuggerTasks(taskQuery.data ?? []), [taskQuery.data]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [debugView, setDebugView] = useState<WorkflowDebuggerResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -235,12 +261,20 @@ export function useWorkflowDebuggerVm(): WorkflowDebuggerVm {
     await withPending(async () => {
       const latest = await loadDebugView(selectedTask.id);
       const payload = buildExportSnapshot(selectedTask, latest);
-      await copyTextToClipboard(payload);
-      setActivePanel("export");
-      appendActivity(
-        "Debug snapshot exported",
-        `${selectedTask.title} snapshot was generated from live task inspect and timeline data.`,
-      );
+      try {
+        await copyTextToClipboard(payload);
+        setActivePanel("export");
+        appendActivity(
+          "Debug snapshot exported",
+          `${selectedTask.title} snapshot was generated from live task inspect and timeline data.`,
+        );
+      } catch (error: unknown) {
+        setActivePanel("export");
+        appendActivity(
+          "Debug snapshot export failed",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
     });
   }, [appendActivity, loadDebugView, selectedTask, withPending]);
 

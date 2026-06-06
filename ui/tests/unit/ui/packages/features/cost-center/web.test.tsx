@@ -4,6 +4,34 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mockSelectReport = vi.fn();
+const baseVm = {
+  metrics: [
+    { label: "Reports", value: 1 },
+    { label: "Spend", value: "$120.00" },
+    { label: "Budget", value: "$200.00" },
+  ],
+  listItems: [
+    { id: "cost-1", title: "frontend · $120.00", subtitle: "Budget $200.00" },
+  ],
+  selectedId: "cost-1",
+  selectedReport: {
+    id: "cost-1",
+    scope: "frontend",
+    amountUsd: 120,
+    budgetUsd: 200,
+  },
+  detailRows: [
+    { key: "Scope", value: "frontend" },
+    { key: "Variance", value: "$-80.00" },
+  ],
+  summaryItems: [
+    { title: "Budget feed", description: "frontend is currently reporting against the shared backend cost feed." },
+    { title: "Contract boundary", description: "Budget refresh, drilldown mutation, and export workflow still require promoted cost-control API endpoints." },
+  ],
+  loading: false,
+  selectReport: mockSelectReport,
+};
+let mockVm = baseVm;
 
 vi.mock("@aa/ui-core", () => ({
   FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -27,39 +55,14 @@ vi.mock("@aa/ui-core", () => ({
 }));
 
 vi.mock("../../../../../../packages/features/cost-center/src/hooks", () => ({
-  useCostCenterVm: () => ({
-    metrics: [
-      { label: "Reports", value: 1 },
-      { label: "Spend", value: "$120.00" },
-      { label: "Budget", value: "$200.00" },
-    ],
-    listItems: [
-      { id: "cost-1", title: "frontend · $120.00", subtitle: "Budget $200.00" },
-    ],
-    selectedId: "cost-1",
-    selectedReport: {
-      id: "cost-1",
-      scope: "frontend",
-      amountUsd: 120,
-      budgetUsd: 200,
-    },
-    detailRows: [
-      { key: "Scope", value: "frontend" },
-      { key: "Variance", value: "$-80.00" },
-    ],
-    summaryItems: [
-      { title: "Budget feed", description: "frontend is currently reporting against the shared backend cost feed." },
-      { title: "Contract boundary", description: "Budget refresh, drilldown mutation, and export workflow still require promoted cost-control API endpoints." },
-    ],
-    loading: false,
-    selectReport: mockSelectReport,
-  }),
+  useCostCenterVm: () => mockVm,
 }));
 
 import { CostCenterWebView } from "../../../../../../packages/features/cost-center/src/web";
 
 afterEach(() => {
   cleanup();
+  mockVm = baseVm;
   vi.clearAllMocks();
 });
 
@@ -75,5 +78,29 @@ describe("CostCenterWebView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /frontend/ }));
     expect(mockSelectReport).toHaveBeenCalledWith("cost-1");
+  });
+
+  it("uses a backend-empty message instead of a misleading selection placeholder when no reports exist", () => {
+    mockVm = {
+        metrics: [
+          { label: "Reports", value: 0 },
+          { label: "Spend", value: "$0.00" },
+          { label: "Budget", value: "$0.00" },
+        ],
+        listItems: [],
+        selectedId: null,
+        selectedReport: null,
+        detailRows: [],
+        summaryItems: [
+          { title: "Budget feed", description: "The backend has not published any cost reports yet." },
+        ],
+        loading: false,
+        selectReport: mockSelectReport,
+    };
+
+    render(<CostCenterWebView />);
+
+    expect(screen.queryAllByText("No cost reports published by the backend.")).toHaveLength(2);
+    expect(screen.queryByText("No report selected")).toBeNull();
   });
 });

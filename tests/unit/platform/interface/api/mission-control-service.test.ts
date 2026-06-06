@@ -42,6 +42,31 @@ test("mission control snapshot aggregates task, approval, pmf, billing, and perc
   }
 });
 
+test("mission control snapshot activeAgents excludes offline workers even when executions remain active", () => {
+  const workspace = createTempWorkspace("aa-mission-control-active-agents-");
+
+  try {
+    const context = createSeededApiContext(workspace);
+    const existingWorker = context.store.worker.getWorkerSnapshot(context.seededWorkerId);
+    assert.ok(existingWorker);
+
+    context.store.worker.upsertWorkerSnapshot({
+      ...existingWorker,
+      version: existingWorker.version,
+      status: "offline",
+      updatedAt: new Date().toISOString(),
+    });
+
+    const snapshot = context.missionControlService.getSnapshot();
+    assert.equal(snapshot.health.workerHealth.offlineWorkers, 1);
+    assert.equal(snapshot.activeAgents, 0);
+
+    context.db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
 test("mission control global views fail-close when a tenant scope is requested", () => {
   const workspace = createTempWorkspace("aa-mission-control-tenant-");
 
@@ -101,6 +126,48 @@ test("mission control getWorkflowCockpit classifies missing workflow as workflow
         && error.code === "workflow.not_found"
         && error.category === "workflow",
     );
+
+    context.db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("mission control task cockpit expands real-model metadata from task output json", () => {
+  const workspace = createTempWorkspace("aa-mission-control-task-output-");
+
+  try {
+    const context = createSeededApiContext(workspace);
+    const updatedAt = new Date().toISOString();
+    context.store.task.updateTaskOutput(
+      context.seededTaskId,
+      JSON.stringify({
+        executionMode: "real_model",
+        modelCallStatus: "succeeded",
+        modelProvider: "minimax",
+        modelName: "minimax-m2.7",
+        outputSummary: "real output summary",
+        outputUri: "/tmp/report.md",
+      }),
+      updatedAt,
+    );
+
+    const cockpit = context.missionControlService.getTaskCockpit(context.seededTaskId);
+    const snapshotTask = cockpit.snapshot.task as typeof cockpit.snapshot.task & {
+      executionMode?: string;
+      modelCallStatus?: string;
+      modelProvider?: string;
+      modelName?: string;
+      outputSummary?: string | null;
+      outputUri?: string | null;
+    };
+
+    assert.equal(snapshotTask.executionMode, "real_model");
+    assert.equal(snapshotTask.modelCallStatus, "succeeded");
+    assert.equal(snapshotTask.modelProvider, "minimax");
+    assert.equal(snapshotTask.modelName, "minimax-m2.7");
+    assert.equal(snapshotTask.outputSummary, "real output summary");
+    assert.equal(snapshotTask.outputUri, "/tmp/report.md");
 
     context.db.close();
   } finally {

@@ -108,12 +108,16 @@ vi.mock("@aa/shared-nl-client", () => ({
   },
 }));
 
-import { useConversationVm } from "../../../../../../packages/features/conversation/src/hooks";
+import {
+  conversationVmQueryClient,
+  useConversationVm,
+} from "../../../../../../packages/features/conversation/src/hooks";
 
 describe("useConversationVm action guards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.sessionStorage.clear();
+    conversationVmQueryClient.clear();
     mocks.client.get.mockResolvedValue({
       snapshot: {
         task: {
@@ -217,5 +221,59 @@ describe("useConversationVm action guards", () => {
       expect(result.current.planReady).toBe(false);
     });
     expect(mocks.client.get).toHaveBeenCalledWith("/v1/tasks/task_done_001");
+  });
+
+  it("resumes a persisted running real task after remount and appends the completed output", async () => {
+    window.sessionStorage.setItem("aa.conversation.vm", JSON.stringify({
+      messages: [
+        {
+          id: "msg-user",
+          role: "user",
+          content: "Help me plan the next operation",
+          timestamp: "2026-06-05T00:00:00.000Z",
+        },
+        {
+          id: "msg-submitted",
+          role: "system",
+          content: "real task submitted: task_resume_001",
+          timestamp: "2026-06-05T00:00:01.000Z",
+        },
+      ],
+      attachments: [],
+      status: "running",
+      planReady: true,
+      executionReady: false,
+      isStreaming: true,
+      activeTaskId: "task_resume_001",
+      updatedAt: new Date().toISOString(),
+    }));
+    mocks.client.get.mockReset();
+    mocks.client.get.mockResolvedValueOnce({
+      snapshot: {
+        task: {
+          status: "done",
+          outputJson: JSON.stringify({
+            outputSummary: "resumed real task finished",
+          }),
+        },
+      },
+    });
+    const wsClient = {
+      publish: mocks.publish,
+      subscribe: vi.fn(() => () => undefined),
+      onStatusChange: vi.fn(() => () => undefined),
+      disconnect: vi.fn(),
+    };
+
+    const { result } = renderHook(() => useConversationVm(wsClient));
+
+    await waitFor(() => {
+      expect(result.current.isExecuting).toBe(false);
+      expect(result.current.status).toBe("connected");
+      expect(result.current.messages.at(-1)?.content).toBe("resumed real task finished");
+      expect(result.current.planReady).toBe(false);
+    });
+    expect(mocks.createTask).not.toHaveBeenCalled();
+    expect(mocks.client.get).toHaveBeenCalledWith("/v1/tasks/task_resume_001");
   });
 });

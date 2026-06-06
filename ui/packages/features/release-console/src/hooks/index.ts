@@ -61,9 +61,11 @@ export function useReleaseConsoleVm(): ReleaseConsoleVm {
     : [
       { key: translateMessage("ui.releaseConsole.summary.families"), value: String(leadershipClaims.summary.familyCount) },
       { key: translateMessage("ui.releaseConsole.summary.approvedClaims"), value: String(leadershipClaims.summary.approvedClaimCount) },
+      { key: translateMessage("ui.releaseConsole.summary.revokedClaims"), value: String(leadershipClaims.summary.revokedClaimCount) },
+      { key: translateMessage("ui.releaseConsole.summary.expiredClaims"), value: String(leadershipClaims.summary.expiredClaimCount) },
       { key: translateMessage("ui.releaseConsole.summary.pendingReviews"), value: String(leadershipClaims.summary.pendingReviewRequestCount) },
       { key: translateMessage("ui.releaseConsole.summary.blockedHits"), value: String(leadershipClaims.summary.blockedScannerHitCount) },
-      { key: "Upcoming expiry", value: String(leadershipClaims.summary.upcomingExpiryCount) },
+      { key: translateMessage("ui.releaseConsole.summary.upcomingExpiry"), value: String(leadershipClaims.summary.upcomingExpiryCount) },
     ], [leadershipClaims]);
 
   return {

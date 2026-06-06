@@ -10,12 +10,25 @@ import { mobileGlobals } from "../helpers/mobile-bridge";
 
 describe("shared platform adapter", () => {
   it("creates web adapter with clipboard and deeplink support", async () => {
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async () => undefined,
+      },
+    });
+
     const adapter = createWebPlatformAdapter();
     await adapter.copyToClipboard("copied");
     await adapter.openDeepLink("aa://tasks/123");
 
     expect(adapter.getDebugState().clipboard).toBe("copied");
     expect(adapter.getDebugState().deepLink).toBe("aa://tasks/123");
+
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: originalClipboard,
+    });
   });
 
   it("creates desktop adapter with screen security enabled by default", async () => {

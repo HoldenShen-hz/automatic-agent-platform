@@ -26,6 +26,17 @@ function sanitizeMessage(value) {
   return String(value).replace(/\s+/g, " ").trim();
 }
 
+function containsTransientLoadingMarker(text) {
+  return (
+    text.includes("Loading dashboard snapshot") ||
+    text.includes("Loading stability summary") ||
+    text.includes("Loading...") ||
+    text.includes("WSconnecting") ||
+    text.includes("需要启用 JavaScript") ||
+    text.includes("正在加载 Automatic Agent Platform Web Shell")
+  );
+}
+
 function isBenignConsoleError(message) {
   return message.includes("The Content Security Policy directive 'frame-ancestors' is ignored when delivered via a <meta> element.");
 }
@@ -58,6 +69,38 @@ async function collectVisibleHeadings(page) {
       return text;
     })
     .filter((text) => text != null));
+}
+
+async function readBodyText(page) {
+  return sanitizeMessage(await page.locator("body").evaluate((node) => (node instanceof HTMLElement ? node.innerText : "")).catch(() => ""));
+}
+
+async function waitForRouteContentToSettle(page) {
+  const startedAt = Date.now();
+  let previousText = "";
+  let stableIterations = 0;
+
+  while (Date.now() - startedAt < 8_000) {
+    const currentText = await readBodyText(page);
+    const settled =
+      currentText.length > 0 &&
+      currentText === previousText &&
+      !containsTransientLoadingMarker(currentText);
+
+    if (settled) {
+      stableIterations += 1;
+      if (stableIterations >= 2) {
+        return currentText;
+      }
+    } else {
+      stableIterations = 0;
+    }
+
+    previousText = currentText;
+    await page.waitForTimeout(350);
+  }
+
+  return readBodyText(page);
 }
 
 async function run() {
@@ -131,12 +174,11 @@ async function run() {
           },
           { timeout: 15_000 },
         );
-        await page.waitForTimeout(800);
       } catch (error) {
         navigationError = sanitizeMessage(error instanceof Error ? error.message : String(error));
       }
 
-      const bodyText = sanitizeMessage(await page.locator("body").textContent().catch(() => ""));
+      const bodyText = await waitForRouteContentToSettle(page);
       const headings = await collectVisibleHeadings(page).catch(() => []);
 
       routeResults.push({

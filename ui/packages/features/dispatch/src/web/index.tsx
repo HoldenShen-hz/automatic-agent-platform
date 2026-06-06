@@ -15,7 +15,7 @@ export function DispatchWebView(): ReactElement {
             <h3>Tasks</h3>
             {vm.loading ? <p>Loading dispatch view...</p> : null}
             {vm.loadError != null ? <p>{vm.loadError}</p> : null}
-            {vm.listItems.length === 0 ? <p>No tasks are available for dispatch inspection.</p> : vm.listItems.map((item) => (
+            {vm.loading ? null : vm.listItems.length === 0 ? <p>No tasks are available for dispatch inspection.</p> : vm.listItems.map((item) => (
               <button key={item.id} onClick={() => vm.selectTask(item.id)} style={{ textAlign: "left" }} type="button">
                 <strong>{item.title}</strong>
                 <div>{item.subtitle}</div>
@@ -23,7 +23,7 @@ export function DispatchWebView(): ReactElement {
             ))}
           </Stack>
         )}
-        center={vm.detailRows.length === 0 ? <p>No task selected</p> : (
+        center={vm.loading ? <p>Loading dispatch detail...</p> : vm.detailRows.length === 0 ? <p>No task selected</p> : (
           <Stack gap={16}>
             <h3>Dispatch detail</h3>
             <KeyValueTable rows={vm.detailRows} />

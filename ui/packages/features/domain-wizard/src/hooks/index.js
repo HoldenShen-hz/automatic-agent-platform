@@ -173,12 +173,19 @@ export function useDomainWizardVm() {
         const nextSelectedId = template.id ?? domainIdOrName;
         setSelectedDomainIdState(nextSelectedId);
         setAllowedDrillDepth(template.defaultDrillDepth);
-        persist({
-            selectedDomainId: nextSelectedId,
-            allowedDrillDepth: template.defaultDrillDepth,
-        });
-    }, [domains, persist]);
-    const previewRows = useMemo(() => [
+    persist({
+        selectedDomainId: nextSelectedId,
+        allowedDrillDepth: template.defaultDrillDepth,
+    });
+}, [domains, persist]);
+useEffect(() => {
+    const hasSelectedDomain = selectedDomainId != null && domains.some((domain) => domain.id === selectedDomainId);
+    if (domains.length !== 1 || hasSelectedDomain) {
+        return;
+    }
+    applyDomainTemplate(domains[0].id);
+}, [applyDomainTemplate, domains, selectedDomainId]);
+const previewRows = useMemo(() => [
         { key: translateMessage("ui.domainWizard.preview.domain"), value: domains.find((domain) => domain.id === selectedDomainId)?.displayName ?? selectedDomainId ?? translateMessage("ui.domainWizard.value.unspecified") },
         { key: translateMessage("ui.domainWizard.preview.riskLevel"), value: riskLevel },
         { key: translateMessage("ui.domainWizard.preview.dataClassification"), value: dataClassification },

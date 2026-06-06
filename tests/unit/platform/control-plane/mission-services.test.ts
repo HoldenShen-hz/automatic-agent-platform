@@ -103,6 +103,58 @@ test("MissionLifecycleService enforces CAS status transitions", () => {
   assert.equal(paused.status, "paused");
 });
 
+test("MissionLifecycleService clears freezeReason after leaving frozen state", () => {
+  const { lifecycle, mission } = createActiveMission();
+
+  const frozen = lifecycle.transition({
+    missionId: mission.missionId,
+    expectedVersion: mission.version,
+    ifMatch: mission.etag,
+    targetStatus: "frozen",
+    actorId: principal.principalId,
+    traceId: "trace_freeze",
+    correlationId: "corr_freeze",
+  });
+  assert.equal(frozen.status, "frozen");
+  assert.equal(frozen.freezeReason, "mission.freeze_requested");
+
+  const paused = lifecycle.transition({
+    missionId: frozen.missionId,
+    expectedVersion: frozen.version,
+    ifMatch: frozen.etag,
+    targetStatus: "paused",
+    actorId: principal.principalId,
+    traceId: "trace_unfreeze",
+    correlationId: "corr_unfreeze",
+  });
+  assert.equal(paused.status, "paused");
+  assert.equal(paused.freezeReason, null);
+
+  const resumed = lifecycle.transition({
+    missionId: paused.missionId,
+    expectedVersion: paused.version,
+    ifMatch: paused.etag,
+    targetStatus: "active",
+    actorId: principal.principalId,
+    traceId: "trace_resume",
+    correlationId: "corr_resume",
+  });
+  assert.equal(resumed.status, "active");
+  assert.equal(resumed.freezeReason, null);
+
+  const completed = lifecycle.transition({
+    missionId: resumed.missionId,
+    expectedVersion: resumed.version,
+    ifMatch: resumed.etag,
+    targetStatus: "completed",
+    actorId: principal.principalId,
+    traceId: "trace_complete",
+    correlationId: "corr_complete",
+  });
+  assert.equal(completed.status, "completed");
+  assert.equal(completed.freezeReason, null);
+});
+
 test("Mission P1/P2 support services enforce observability, learning, and region baselines", () => {
   const observability = new MissionObservabilityPolicy();
   assert.deepEqual(observability.sanitizeMetricLabels({ missionId: "mis_001", tenant: "tenant_001", mission_id: "mis_002" }), {

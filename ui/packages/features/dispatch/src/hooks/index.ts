@@ -44,7 +44,7 @@ function buildDetailRows(task: TaskDTO | null, inspectView: DispatchInspectRespo
 function mapWorkflowToSummary(workflow: WorkflowDTO): { title: string; description: string } {
   return {
     title: `${workflow.title} · ${workflow.status}`,
-    description: `${workflow.currentStage} · ${workflow.owner}`,
+    description: `${workflow.currentStage} · ${workflow.domainId ?? workflow.owner}`,
   };
 }
 

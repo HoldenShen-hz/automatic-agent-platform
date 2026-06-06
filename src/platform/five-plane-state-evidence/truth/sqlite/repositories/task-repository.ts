@@ -160,7 +160,7 @@ export class TaskRepository {
     execute(
       this.conn,
       `UPDATE tasks
-       SET status = ?, updated_at = ?, error_code = ?, completed_at = COALESCE(?, completed_at)
+       SET status = ?, updated_at = ?, error_code = ?, completed_at = ?
        WHERE id = ?`,
       status,
       updatedAt,
@@ -181,7 +181,7 @@ export class TaskRepository {
     return execute(
       this.conn,
       `UPDATE tasks
-       SET status = ?, updated_at = ?, error_code = ?, completed_at = COALESCE(?, completed_at)
+       SET status = ?, updated_at = ?, error_code = ?, completed_at = ?
        WHERE id = ? AND status = ?`,
       status,
       updatedAt,

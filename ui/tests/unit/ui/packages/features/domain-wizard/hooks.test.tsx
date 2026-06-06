@@ -57,6 +57,9 @@ describe("useDomainWizardVm", () => {
   it("exposes multi-step navigation and capability/risk controls", () => {
     const { result } = renderHook(() => useDomainWizardVm());
 
+    expect(result.current.selectedDomainId).toBe("marketing");
+    expect(result.current.previewRows[0]?.value).toBe("Marketing");
+
     expect(result.current.steps.map((step) => step.id)).toEqual([
       "domain-select",
       "risk-profile",
@@ -79,7 +82,6 @@ describe("useDomainWizardVm", () => {
     const { result } = renderHook(() => useDomainWizardVm());
 
     act(() => {
-      result.current.setSelectedDomainId("marketing");
       result.current.setCurrentStep("review");
     });
 

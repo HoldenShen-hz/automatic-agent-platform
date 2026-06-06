@@ -208,6 +208,7 @@ export function FeatureWorkbench(
     actions,
     emptyState,
     labels,
+    layoutMode = "default",
   }: {
     metrics?: readonly { label: string; value: string | number }[];
     rows?: readonly { key: string; value: ReactNode }[];
@@ -215,6 +216,7 @@ export function FeatureWorkbench(
     actions: readonly FeatureWorkbenchAction[];
     emptyState?: string;
     labels?: Partial<FeatureWorkbenchLabels>;
+    layoutMode?: "default" | "metrics_only";
   },
 ): ReactElement {
   const resolvedLabels = {
@@ -335,83 +337,98 @@ export function FeatureWorkbench(
         type: "button",
       }, action.label)),
     ),
-    createElement(ThreePaneLayout, {
-      left: filteredItems.length === 0
-        ? createElement("p", { style: { color: designTokens.color.subtle } }, resolvedLabels.emptyState)
-        : createElement(
-          "div",
-          {
-            role: "listbox",
-            "aria-label": "Workbench items",
-            "aria-activedescendant": selectedId == null ? undefined : `feature-workbench-option-${selectedId}`,
-            onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
-              if (event.key === "ArrowDown") {
-                event.preventDefault();
-                moveSelection(1);
-              }
-              if (event.key === "ArrowUp") {
-                event.preventDefault();
-                moveSelection(-1);
-              }
-              if (event.key === "Home") {
-                event.preventDefault();
-                setSelectedId(filteredItems[0]?.id ?? null);
-              }
-              if (event.key === "End") {
-                event.preventDefault();
-                setSelectedId(filteredItems.at(-1)?.id ?? null);
-              }
+    layoutMode === "metrics_only"
+      ? (
+        showActivityLog
+          ? createElement(
+            "div",
+            { style: { display: "grid", gap: 12 } },
+            createElement("div", { role: "log", "aria-live": "polite", "aria-relevant": "additions removals text", style: createPanelStyle(designTokens.color.border) },
+              createElement("h3", { style: { marginTop: 0, color: designTokens.color.text } }, resolvedLabels.activityLogTitle),
+              activities.length === 0
+                ? createElement("p", { style: { color: designTokens.color.subtle, marginBottom: 0 } }, resolvedLabels.activityLogEmpty)
+                : createElement(ListCard, { items: activities }),
+            ),
+          )
+          : null
+      )
+      : createElement(ThreePaneLayout, {
+        left: filteredItems.length === 0
+          ? createElement("p", { style: { color: designTokens.color.subtle } }, resolvedLabels.emptyState)
+          : createElement(
+            "div",
+            {
+              role: "listbox",
+              "aria-label": "Workbench items",
+              "aria-activedescendant": selectedId == null ? undefined : `feature-workbench-option-${selectedId}`,
+              onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  moveSelection(1);
+                }
+                if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  moveSelection(-1);
+                }
+                if (event.key === "Home") {
+                  event.preventDefault();
+                  setSelectedId(filteredItems[0]?.id ?? null);
+                }
+                if (event.key === "End") {
+                  event.preventDefault();
+                  setSelectedId(filteredItems.at(-1)?.id ?? null);
+                }
+              },
+              style: { display: "grid", gap: 10 },
+              tabIndex: 0,
             },
-            style: { display: "grid", gap: 10 },
-            tabIndex: 0,
-          },
-          ...filteredItems.map((item) => createElement("div", {
-            key: item.id,
-            id: `feature-workbench-option-${item.id}`,
-            onClick: () => {
-              setSelectedId(item.id);
+            ...filteredItems.map((item) => createElement("div", {
+              key: item.id,
+              id: `feature-workbench-option-${item.id}`,
+              onClick: () => {
+                setSelectedId(item.id);
+              },
+              role: "option",
+              "aria-selected": item.id === selectedId,
+              style: {
+                ...createPanelStyle(item.id === selectedId ? designTokens.color.accent : designTokens.color.border),
+                background: item.id === selectedId ? designTokens.semantic.color.surfaceSelected : designTokens.color.surface,
+                boxShadow: item.id === selectedId ? designTokens.shadows.focusRing : "none",
+                color: designTokens.color.text,
+                cursor: "pointer",
+                textAlign: "left",
+              },
             },
-            role: "option",
-            "aria-selected": item.id === selectedId,
-            style: {
-              ...createPanelStyle(item.id === selectedId ? designTokens.color.accent : designTokens.color.border),
-              background: item.id === selectedId ? designTokens.semantic.color.surfaceSelected : designTokens.color.surface,
-              boxShadow: item.id === selectedId ? designTokens.shadows.focusRing : "none",
-              color: designTokens.color.text,
-              cursor: "pointer",
-              textAlign: "left",
-            },
-          },
-          createElement("strong", undefined, item.title),
-          createElement("div", { style: { color: designTokens.color.subtle, marginTop: 8 } }, item.description))),
-        ),
-      center: selectedItem == null
-        ? createElement("p", { style: { color: designTokens.color.subtle } }, resolvedLabels.emptyState)
-        : createElement(
-          "div",
-          { role: "region", "aria-label": `${selectedItem.title} details`, style: { display: "grid", gap: 12 } },
-          createElement("div", { style: createPanelStyle(designTokens.color.info) },
-            createElement("h3", { style: { margin: 0, color: designTokens.color.text } }, selectedItem.title),
-            createElement("p", { style: { color: designTokens.color.subtle, marginBottom: 0 } }, selectedItem.description),
+            createElement("strong", undefined, item.title),
+            createElement("div", { style: { color: designTokens.color.subtle, marginTop: 8 } }, item.description))),
           ),
-          rows != null && rows.length > 0 ? createElement(KeyValueTable, { rows }) : null,
-          selectedItem.detailRows != null && selectedItem.detailRows.length > 0
-            ? createElement(KeyValueTable, { rows: selectedItem.detailRows })
-            : null,
-        ),
-      right: showActivityLog
-        ? createElement(
-          "div",
-          { style: { display: "grid", gap: 12 } },
-          createElement("div", { role: "log", "aria-live": "polite", "aria-relevant": "additions removals text", style: createPanelStyle(designTokens.color.border) },
-            createElement("h3", { style: { marginTop: 0, color: designTokens.color.text } }, resolvedLabels.activityLogTitle),
-            activities.length === 0
-              ? createElement("p", { style: { color: designTokens.color.subtle, marginBottom: 0 } }, resolvedLabels.activityLogEmpty)
-              : createElement(ListCard, { items: activities }),
+        center: selectedItem == null
+          ? createElement("p", { style: { color: designTokens.color.subtle } }, resolvedLabels.emptyState)
+          : createElement(
+            "div",
+            { role: "region", "aria-label": `${selectedItem.title} details`, style: { display: "grid", gap: 12 } },
+            createElement("div", { style: createPanelStyle(designTokens.color.info) },
+              createElement("h3", { style: { margin: 0, color: designTokens.color.text } }, selectedItem.title),
+              createElement("p", { style: { color: designTokens.color.subtle, marginBottom: 0 } }, selectedItem.description),
+            ),
+            rows != null && rows.length > 0 ? createElement(KeyValueTable, { rows }) : null,
+            selectedItem.detailRows != null && selectedItem.detailRows.length > 0
+              ? createElement(KeyValueTable, { rows: selectedItem.detailRows })
+              : null,
           ),
-        )
-        : null,
-    }),
+        right: showActivityLog
+          ? createElement(
+            "div",
+            { style: { display: "grid", gap: 12 } },
+            createElement("div", { role: "log", "aria-live": "polite", "aria-relevant": "additions removals text", style: createPanelStyle(designTokens.color.border) },
+              createElement("h3", { style: { marginTop: 0, color: designTokens.color.text } }, resolvedLabels.activityLogTitle),
+              activities.length === 0
+                ? createElement("p", { style: { color: designTokens.color.subtle, marginBottom: 0 } }, resolvedLabels.activityLogEmpty)
+                : createElement(ListCard, { items: activities }),
+            ),
+          )
+          : null,
+      }),
   );
 }
 
@@ -432,39 +449,43 @@ export function FeatureWorkbenchPanel(
     labels?: Partial<FeatureWorkbenchLabels>;
   },
 ): ReactElement {
+  const rowsOnlyMode = items.length === 0 && rows != null && rows.length > 0;
+  const metricsOnlyMode = items.length === 0 && !rowsOnlyMode && metrics != null && metrics.length > 0;
   const normalizedItems = useMemo<readonly FeatureWorkbenchItem[]>(() => {
     if (items.length > 0) {
       return items.map((item, index) => ({
         id: item.id ?? `${item.title}-${index}`,
         title: item.title,
         description: item.description,
-        detailRows: item.detailRows ?? [
-          { key: "Item", value: item.title },
-          { key: "Summary", value: item.description },
-        ],
+        detailRows: item.detailRows ?? (rows != null && rows.length > 0
+          ? []
+          : [
+            { key: "Item", value: item.title },
+            { key: "Summary", value: item.description },
+          ]),
       }));
     }
 
-    if (rows != null && rows.length > 0) {
-      return rows.map((row, index) => ({
-        id: `row-${index}`,
-        title: row.key,
-        description: typeof row.value === "string" ? row.value : `查看 ${row.key} 的当前状态与上下文。`,
-        detailRows: [row],
-      }));
+    if (rowsOnlyMode) {
+      return [{
+        id: "rows-overview",
+        title: "Overview",
+        description: `Review ${rows.length} current fields and their latest values.`,
+        detailRows: rows,
+      }];
     }
 
-    if (metrics != null && metrics.length > 0) {
-      return metrics.map((metric, index) => ({
-        id: `metric-${index}`,
-        title: metric.label,
-        description: `当前值 ${String(metric.value)}`,
-        detailRows: [{ key: metric.label, value: String(metric.value) }],
-      }));
+    if (metricsOnlyMode) {
+      return [{
+        id: "metrics-overview",
+        title: "Overview",
+        description: `Review ${metrics.length} live metrics and their latest values.`,
+        detailRows: metrics.map((metric) => ({ key: metric.label, value: String(metric.value) })),
+      }];
     }
 
     return [];
-  }, [items, metrics, rows]);
+  }, [items, metrics, metricsOnlyMode, rows, rowsOnlyMode]);
 
   const normalizedActions = useMemo<readonly FeatureWorkbenchAction[]>(() => actions.map((action) => ({
     id: action.id,
@@ -483,7 +504,8 @@ export function FeatureWorkbenchPanel(
     items: normalizedItems,
     actions: normalizedActions,
     ...(metrics == null ? {} : { metrics }),
-    ...(rows == null ? {} : { rows }),
+    ...(metricsOnlyMode ? { layoutMode: "metrics_only" as const } : {}),
+    ...(!rowsOnlyMode && rows != null ? { rows } : {}),
     ...(emptyState == null ? {} : { emptyState }),
     ...(labels == null ? {} : { labels }),
   });

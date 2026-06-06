@@ -43,7 +43,7 @@ export function WorkflowCockpitWebView(): ReactElement {
             <KeyValueTable
               rows={[
                 { key: translateMessage("ui.workflowCockpit.field.workflow"), value: selectedWorkflow.title },
-                { key: translateMessage("ui.workflowCockpit.field.owner"), value: selectedWorkflow.owner },
+                { key: translateMessage("ui.workflowCockpit.field.domain"), value: selectedWorkflow.domainId ?? selectedWorkflow.owner },
                 { key: translateMessage("ui.workflowCockpit.field.status"), value: selectedWorkflow.status },
                 { key: translateMessage("ui.workflowCockpit.field.stage"), value: selectedWorkflow.currentStage },
                 { key: translateMessage("ui.workflowCockpit.field.steps"), value: String(selectedWorkflow.steps.length) },

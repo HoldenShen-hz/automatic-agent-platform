@@ -1,5 +1,6 @@
 import type { AgentDTO, DashboardSnapshotDTO, IncidentDTO, QueueDTO, WorkerDTO } from "@aa/shared-types";
 export interface StabilityVm {
+    readonly loading: boolean;
     readonly metrics: readonly {
         label: string;
         value: string | number;
@@ -13,5 +14,5 @@ export interface StabilityVm {
         description: string;
     }[];
 }
-export declare function mapStabilityToVm(snapshot: DashboardSnapshotDTO | null, incidents: readonly IncidentDTO[], workers: readonly WorkerDTO[], queues: readonly QueueDTO[], agents: readonly AgentDTO[]): StabilityVm;
+export declare function mapStabilityToVm(snapshot: DashboardSnapshotDTO | null, incidents?: readonly IncidentDTO[], workers?: readonly WorkerDTO[], queues?: readonly QueueDTO[], agents?: readonly AgentDTO[]): StabilityVm;
 export declare function useStabilityVm(): StabilityVm;

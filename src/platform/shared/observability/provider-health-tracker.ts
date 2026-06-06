@@ -39,6 +39,8 @@ export interface ProviderHealthTrackerOptions {
   failedThreshold?: number;
 }
 
+let globalProviderHealthTracker: ProviderHealthTracker | null = null;
+
 export class ProviderHealthTracker {
   private readonly attempts: ProviderAttemptRecord[] = [];
   private readonly retentionLimit: number;
@@ -92,4 +94,13 @@ export class ProviderHealthTracker {
       latestFailureCodes: failedAttempts.flatMap((attempt) => (attempt.errorCode ? [attempt.errorCode] : [])).slice(-5),
     };
   }
+}
+
+export function getGlobalProviderHealthTracker(): ProviderHealthTracker {
+  globalProviderHealthTracker ??= new ProviderHealthTracker();
+  return globalProviderHealthTracker;
+}
+
+export function resetGlobalProviderHealthTracker(): void {
+  globalProviderHealthTracker = new ProviderHealthTracker();
 }

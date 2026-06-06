@@ -10,6 +10,7 @@ function buildWorkflow(overrides: Partial<WorkflowDTO> = {}): WorkflowDTO {
     status: "running",
     currentStage: "Execute",
     owner: "ops@example.com",
+    domainId: "platform",
     steps: [
       {
         id: "observe",
@@ -54,6 +55,7 @@ describe("workflow builder seed", () => {
     expect(builder.canvas.nodes[0]?.label).toBe("Observe · Collect alerts");
     expect(builder.canvas.edges).toEqual([{ fromNodeId: "observe", toNodeId: "plan" }]);
     expect(builder.componentPalette[0]?.components[0]?.name).toContain("Observe");
+    expect(builder.componentPalette[0]?.components[0]?.domainId).toBe("platform");
     expect(builder.componentPalette[0]?.components[0]?.configSchema).toEqual({});
   });
 });

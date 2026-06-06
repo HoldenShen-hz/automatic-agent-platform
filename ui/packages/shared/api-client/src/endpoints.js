@@ -101,7 +101,8 @@ function normalizeWorkflowDto(workflow) {
         title: workflow.title ?? workflow.workflowId ?? workflow.taskId ?? "Untitled workflow",
         status: mapWorkflowStatus(workflow.status ?? workflow.workflowStatus ?? workflow.taskStatus),
         currentStage,
-        owner: workflow.owner ?? workflow.divisionId ?? "platform",
+        owner: workflow.owner ?? "unknown",
+        domainId: workflow.domainId ?? workflow.divisionId ?? "platform",
         steps: workflow.steps ?? [],
         ...(workflow.approvalNodes == null ? {} : { approvalNodes: workflow.approvalNodes }),
         ...(workflow.evidenceRefs == null ? {} : { evidenceRefs: workflow.evidenceRefs }),
@@ -251,6 +252,12 @@ function unwrapCollectionResponse(response, keys) {
     }
     return [];
 }
+function normalizeRatePercent(value) {
+    if (value == null || !Number.isFinite(value)) {
+        return void 0;
+    }
+    return value >= 0 && value <= 1 ? value * 100 : value;
+}
 function normalizeDashboardSnapshot(response) {
     const raw = response;
     if (typeof response.overallHealth === "string"
@@ -258,7 +265,12 @@ function normalizeDashboardSnapshot(response) {
         && typeof response.activeExecutions === "number"
         && typeof response.approvalBacklog === "number"
         && typeof response.alertSummary === "string") {
-        return response;
+        const normalized = response;
+        return {
+            ...normalized,
+            ...(normalizeRatePercent(normalized.successRate) == null ? {} : { successRate: normalizeRatePercent(normalized.successRate) }),
+            ...(normalizeRatePercent(normalized.errorRate) == null ? {} : { errorRate: normalizeRatePercent(normalized.errorRate) }),
+        };
     }
     const health = raw.health ?? null;
     const findings = Array.isArray(health?.findings) ? health.findings.filter((item) => typeof item === "string") : [];
@@ -273,13 +285,13 @@ function normalizeDashboardSnapshot(response) {
         approvalBacklog: Array.isArray(raw.pendingApprovals) ? raw.pendingApprovals.length : 0,
         alertSummary: findings.join("; "),
         ...(taskSuccessRate != null
-            ? { successRate: taskSuccessRate * 100 }
+            ? { successRate: normalizeRatePercent(taskSuccessRate) }
             : providerSuccessRate != null
-                ? { successRate: providerSuccessRate * 100 }
+                ? { successRate: normalizeRatePercent(providerSuccessRate) }
                 : {}),
         ...(typeof avgDurationMs === "number" ? { avgDurationMs } : {}),
         ...(raw.activeAgents != null ? { activeAgents: raw.activeAgents } : {}),
-        ...(raw.errorRate != null ? { errorRate: raw.errorRate } : {}),
+        ...(normalizeRatePercent(raw.errorRate) == null ? {} : { errorRate: normalizeRatePercent(raw.errorRate) }),
         ...(raw.p50LatencyMs !== undefined ? { p50LatencyMs: raw.p50LatencyMs } : {}),
         ...(raw.p99LatencyMs !== undefined ? { p99LatencyMs: raw.p99LatencyMs } : {}),
         ...(raw.budgetUtilizationPercent !== undefined ? { budgetUtilizationPercent: raw.budgetUtilizationPercent } : {}),

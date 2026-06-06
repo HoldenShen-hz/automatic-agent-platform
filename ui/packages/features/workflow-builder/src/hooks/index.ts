@@ -128,7 +128,7 @@ export function buildWorkflowBuilderSeed(workflows: readonly WorkflowDTO[]): Wor
           componentId: node.componentId,
           name: node.label,
           icon: "workflow",
-          domainId: sourceWorkflow?.id ?? "platform",
+          domainId: sourceWorkflow?.domainId ?? "platform",
           riskLevel: "medium",
           configSchema: {},
           previewDescription: node.label,

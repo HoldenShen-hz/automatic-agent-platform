@@ -74,15 +74,17 @@ export function useExplainabilityVm(): ExplainabilityVm {
     summaryItems: useMemo(() => [
       {
         title: "Live explanation feed",
-        description: selectedExplanation == null
-          ? "Select an explanation to inspect the latest backend summary."
-          : selectedExplanation.summary,
+        description: explanations.length === 0
+          ? "No explanations are available from the backend."
+          : selectedExplanation == null
+            ? "Select an explanation to inspect the latest backend summary."
+            : selectedExplanation.summary,
       },
       {
         title: "Contract boundary",
         description: "Causal-chain expansion and evidence pinning still require a dedicated explainability mutation contract.",
       },
-    ], [selectedExplanation]),
+    ], [explanations.length, selectedExplanation]),
     loading: explanationsQuery.isLoading,
     selectExplanation(explanationId: string) {
       setSelectedId(explanationId);

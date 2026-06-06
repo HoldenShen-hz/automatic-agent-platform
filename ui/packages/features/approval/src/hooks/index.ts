@@ -9,6 +9,45 @@ import {
 } from "@aa/shared-api-client";
 import { translateMessage } from "@aa/shared-i18n";
 
+const APPROVAL_RISK_PRIORITY: Record<string, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
+
+function readApprovalRiskPriority(riskLevel: ApprovalDTO["riskLevel"] | string | null | undefined): number {
+  if (riskLevel == null) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return APPROVAL_RISK_PRIORITY[riskLevel] ?? Number.POSITIVE_INFINITY;
+}
+
+function compareApprovalPriority(left: ApprovalDTO, right: ApprovalDTO): number {
+  const riskPriorityDelta = readApprovalRiskPriority(left.riskLevel) - readApprovalRiskPriority(right.riskLevel);
+  if (riskPriorityDelta !== 0) {
+    return riskPriorityDelta;
+  }
+
+  const leftDeadline = left.deadline == null ? Number.POSITIVE_INFINITY : Date.parse(left.deadline);
+  const rightDeadline = right.deadline == null ? Number.POSITIVE_INFINITY : Date.parse(right.deadline);
+  if (leftDeadline !== rightDeadline) {
+    return leftDeadline - rightDeadline;
+  }
+
+  const leftLevel = left.currentLevel ?? 0;
+  const rightLevel = right.currentLevel ?? 0;
+  if (leftLevel !== rightLevel) {
+    return rightLevel - leftLevel;
+  }
+
+  return left.approvalId.localeCompare(right.approvalId);
+}
+
+export function sortApprovalsByPriority(approvals: readonly ApprovalDTO[]): readonly ApprovalDTO[] {
+  return [...approvals].sort(compareApprovalPriority);
+}
+
 export interface ApprovalCenterVm {
   readonly approvals: readonly ApprovalDTO[];
   readonly queueItems: readonly { id: string; title: string; subtitle: string }[];
@@ -59,7 +98,7 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
     currentLevel: approval.currentLevel ?? null,
     totalLevels: approval.totalLevels ?? null,
   })));
-  const syncedQueryApprovals = useMemo(() => queryApprovals, [approvalFeedVersion]);
+  const syncedQueryApprovals = useMemo(() => sortApprovalsByPriority(queryApprovals), [approvalFeedVersion]);
   const [approvals, setApprovals] = useState<readonly ApprovalDTO[]>(syncedQueryApprovals);
   const [selectedId, setSelectedId] = useState<string | null>(syncedQueryApprovals[0]?.approvalId ?? null);
   const [actionHistory, setActionHistory] = useState<readonly { title: string; description: string }[]>([]);

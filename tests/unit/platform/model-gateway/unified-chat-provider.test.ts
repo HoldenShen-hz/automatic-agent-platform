@@ -20,6 +20,11 @@ import {
   type ChatTool,
   type UnifiedProviderConfig,
 } from "../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js";
+import { MiniMaxAPIError } from "../../../../src/platform/model-gateway/provider-registry/minimax/minimax-chat-service.js";
+import {
+  getGlobalProviderHealthTracker,
+  resetGlobalProviderHealthTracker,
+} from "../../../../src/platform/shared/observability/provider-health-tracker.js";
 
 // ============================================================================
 // Helper Functions
@@ -81,7 +86,7 @@ test("UnifiedChatProvider normalizes unknown model requests to minimax requireme
         costTag: "test",
       });
     },
-    /MiniMax provider is not configured/,
+    /Unknown model provider/,
   );
 });
 
@@ -219,6 +224,33 @@ test("UnifiedChatProvider abort signal check happens before provider call", asyn
     () => provider.createChatCompletion(request),
     /aborted/,
   );
+});
+
+test("UnifiedChatProvider records failed requests into the shared provider health tracker", async () => {
+  resetGlobalProviderHealthTracker();
+  const provider = new UnifiedChatProvider({ minimax: { apiKey: "test" } });
+  (provider as unknown as { minimax: { createChatCompletion: () => Promise<never> } }).minimax = {
+    createChatCompletion: async () => {
+      throw new MiniMaxAPIError({
+        message: "MiniMax API error: 503",
+        statusCode: 503,
+        statusText: "Service Unavailable",
+      });
+    },
+  };
+
+  await assert.rejects(
+    () => provider.createChatCompletion(createRequest("minimax-m2.7")),
+    /503/,
+  );
+
+  const summary = getGlobalProviderHealthTracker().getSummary();
+  assert.equal(summary.totalCalls, 1);
+  assert.equal(summary.failedCalls, 1);
+  assert.equal(summary.status, "failed");
+  assert.deepEqual(summary.latestFailureCodes, ["provider.minimax.503"]);
+
+  resetGlobalProviderHealthTracker();
 });
 
 // ============================================================================

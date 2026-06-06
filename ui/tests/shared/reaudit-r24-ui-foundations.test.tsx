@@ -114,4 +114,62 @@ describe("R24 UI foundations", () => {
     expect(screen.queryByRole("log")).toBeNull();
     expect(screen.queryByText("Activity log")).toBeNull();
   });
+
+  it("avoids duplicating row-only workbench data across list and detail panes", () => {
+    render(
+      <FeatureWorkbenchPanel
+        rows={[
+          { key: "Data Source", value: "backend /health" },
+          { key: "Overall Status", value: "overloaded" },
+        ]}
+        actions={[
+          { id: "refresh", label: "Refresh", tone: "accent" },
+        ]}
+      />,
+    );
+
+    expect(screen.getAllByText("Overview").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("backend /health")).toHaveLength(1);
+    expect(screen.getAllByText("overloaded")).toHaveLength(1);
+  });
+
+  it("does not inject fallback item-summary rows when explicit shared rows are provided", () => {
+    render(
+      <FeatureWorkbenchPanel
+        rows={[
+          { key: "Mode", value: "policy-a / policy-b" },
+        ]}
+        items={[
+          { id: "compliance-feed", title: "Compliance feed", description: "Live registry summary" },
+        ]}
+        actions={[
+          { id: "refresh", label: "Refresh", tone: "accent" },
+        ]}
+      />,
+    );
+
+    expect(screen.getAllByText("Mode")).toHaveLength(1);
+    expect(screen.queryByText("Item")).toBeNull();
+    expect(screen.queryByText("Summary")).toBeNull();
+  });
+
+  it("collapses metrics-only workbenches into a summary-only surface without duplicate list/detail panes", () => {
+    render(
+      <FeatureWorkbenchPanel
+        metrics={[
+          { label: "Active Workers", value: 0 },
+          { label: "Offline", value: 1 },
+        ]}
+        actions={[
+          { id: "refresh", label: "Refresh", tone: "accent" },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Active Workers")).toBeInTheDocument();
+    expect(screen.getByText("Offline")).toBeInTheDocument();
+    expect(screen.queryByRole("listbox", { name: "Workbench items" })).toBeNull();
+    expect(screen.queryByText("当前值 0")).toBeNull();
+    expect(screen.queryByText("Review 2 live metrics and their latest values.")).toBeNull();
+  });
 });

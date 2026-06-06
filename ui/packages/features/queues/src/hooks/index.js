@@ -17,7 +17,8 @@ export function mapQueuesToVm(queues) {
 export function useQueuesVm() {
     const client = useRestClient();
     const queryClient = useQueryClient();
-    const queues = useQueuesQuery().data ?? [];
+    const queuesQuery = useQueuesQuery();
+    const queues = queuesQuery.data ?? [];
     const refresh = useCallback(async () => {
         await queryClient.invalidateQueries({ queryKey: missionControlQueryKeys.queues });
         await queryClient.refetchQueries({ queryKey: missionControlQueryKeys.queues, type: "active" });
@@ -28,7 +29,8 @@ export function useQueuesVm() {
     }, [client, refresh]);
     return useMemo(() => ({
         ...mapQueuesToVm(queues),
+        loading: queuesQuery.isLoading,
         refresh,
         cleanupRetryQueue: cleanupRetryQueueAction,
-    }), [cleanupRetryQueueAction, queues, refresh]);
+    }), [cleanupRetryQueueAction, queues, queuesQuery.isLoading, refresh]);
 }

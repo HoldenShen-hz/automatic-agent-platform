@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ProviderHealthTracker } from "../../../../../src/platform/shared/observability/provider-health-tracker.js";
+import {
+  ProviderHealthTracker,
+  getGlobalProviderHealthTracker,
+  resetGlobalProviderHealthTracker,
+} from "../../../../../src/platform/shared/observability/provider-health-tracker.js";
 
 test("provider health tracker summarizes recent success rate and fallback count", () => {
   const tracker = new ProviderHealthTracker();
@@ -204,6 +208,26 @@ test("provider health tracker respects custom retentionLimit", () => {
 
   const summary = tracker.getSummary(60 * 60_000, "2026-04-03T11:00:00.000Z");
   assert.equal(summary.totalCalls, 3);
+});
+
+test("provider health tracker exposes resettable global singleton", () => {
+  resetGlobalProviderHealthTracker();
+  const tracker = getGlobalProviderHealthTracker();
+  tracker.recordAttempt({
+    provider: "mock-primary",
+    model: "demo-1",
+    succeeded: false,
+    latencyMs: 50,
+    errorCode: "provider.timeout",
+    recordedAt: "2026-04-03T10:00:00.000Z",
+  });
+
+  assert.equal(getGlobalProviderHealthTracker().getSummary(10 * 60_000, "2026-04-03T10:05:00.000Z").totalCalls, 1);
+
+  resetGlobalProviderHealthTracker();
+  const summary = getGlobalProviderHealthTracker().getSummary(10 * 60_000, "2026-04-03T10:05:00.000Z");
+  assert.equal(summary.totalCalls, 0);
+  assert.equal(summary.failedCalls, 0);
 });
 
 test("provider health tracker uses custom degradedThreshold", () => {

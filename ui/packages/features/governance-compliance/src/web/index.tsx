@@ -30,7 +30,7 @@ export function GovernanceComplianceWebView(): ReactElement {
   return (
     <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Partial">
       <FeatureWorkbenchPanel
-        items={vm.items}
+        items={vm.items.map((item) => ({ ...item, detailRows: [] }))}
         actions={[
           { id: "governance-refresh", label: "刷新治理状态", tone: "accent", onTrigger: () => vm.refresh(), activityDescription: "已从真实后端刷新治理摘要、审计轨迹与异常队列。" },
           { id: "governance-audit", label: "查看审计轨迹", tone: "neutral", onTrigger: vm.filterAuditTrail },
@@ -62,20 +62,22 @@ export function GovernanceComplianceWebView(): ReactElement {
             <div key={exception.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
               <span>{exception.reason}</span>
               <span>{exception.status}</span>
-              <button
-                disabled={exception.status !== "pending"}
-                onClick={() => { void vm.approveException(exception.id); }}
-                type="button"
-              >
-                {translateMessage("ui.governanceCompliance.approve")}
-              </button>
-              <button
-                disabled={exception.status !== "pending"}
-                onClick={() => { void vm.rejectException(exception.id, "rejected_from_web"); }}
-                type="button"
-              >
-                {translateMessage("ui.governanceCompliance.reject")}
-              </button>
+              {exception.status === "pending" ? (
+                <>
+                  <button
+                    onClick={() => { void vm.approveException(exception.id); }}
+                    type="button"
+                  >
+                    {translateMessage("ui.governanceCompliance.approve")}
+                  </button>
+                  <button
+                    onClick={() => { void vm.rejectException(exception.id, "rejected_from_web"); }}
+                    type="button"
+                  >
+                    {translateMessage("ui.governanceCompliance.reject")}
+                  </button>
+                </>
+              ) : null}
             </div>
           ))}
           {selectedException == null && <p>{translateMessage("ui.governanceCompliance.noExceptions")}</p>}

@@ -5,15 +5,39 @@ import { missionControlQueryKeys, useAuthState, useIncidentsQuery, useRestClient
 import type { IncidentDTO } from "@aa/shared-types";
 
 export interface IncidentsVm {
+  readonly loading: boolean;
   readonly items: readonly { id: string; title: string; description: string; detailRows: readonly { key: string; value: string }[] }[];
   acknowledgeIncident(incidentId: string): Promise<void>;
   startMitigation(incidentId: string): Promise<void>;
   resolveIncident(incidentId: string): Promise<void>;
 }
 
+const INCIDENT_STATUS_PRIORITY: Record<string, number> = {
+  open: 0,
+  acknowledged: 1,
+  triaged: 2,
+  mitigating: 3,
+  reviewed: 4,
+  resolved: 5,
+  closed: 6,
+};
+
+function sortIncidentsForOps(incidents: readonly IncidentDTO[]): readonly IncidentDTO[] {
+  return [...incidents].sort((left, right) => {
+    const priorityDelta = (INCIDENT_STATUS_PRIORITY[left.status ?? "open"] ?? 99)
+      - (INCIDENT_STATUS_PRIORITY[right.status ?? "open"] ?? 99);
+    if (priorityDelta !== 0) {
+      return priorityDelta;
+    }
+    return Date.parse(right.createdAt) - Date.parse(left.createdAt);
+  });
+}
+
 export function mapIncidentsToVm(incidents: readonly IncidentDTO[]): IncidentsVm {
+  const sortedIncidents = sortIncidentsForOps(incidents);
   return {
-    items: incidents.map((incident) => ({
+    loading: false,
+    items: sortedIncidents.map((incident) => ({
       id: incident.id,
       title: `${incident.severity} · ${incident.title}`,
       description: incident.summary,
@@ -34,7 +58,8 @@ export function useIncidentsVm(): IncidentsVm {
   const client = useRestClient();
   const queryClient = useQueryClient();
   const auth = useAuthState();
-  const incidents = useIncidentsQuery().data ?? [];
+  const incidentsQuery = useIncidentsQuery();
+  const incidents = incidentsQuery.data ?? [];
   const owner = auth.displayName || auth.userId || "web-operator";
 
   const refreshIncidents = useCallback(async () => {
@@ -58,8 +83,9 @@ export function useIncidentsVm(): IncidentsVm {
 
   return useMemo(() => ({
     ...mapIncidentsToVm(incidents),
+    loading: incidentsQuery.isLoading,
     acknowledgeIncident,
     startMitigation,
     resolveIncident,
-  }), [acknowledgeIncident, incidents, resolveIncident, startMitigation]);
+  }), [acknowledgeIncident, incidents, incidentsQuery.isLoading, resolveIncident, startMitigation]);
 }

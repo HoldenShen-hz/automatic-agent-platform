@@ -2,6 +2,12 @@ import { startTransition, useEffect, useMemo, useState } from "react";
 import { fetchHealthReport } from "@aa/shared-api-client";
 import { useRestClient, useSystemStatus } from "@aa/shared-state";
 import { createSystemHealthSummary } from "@aa/ui-core";
+function formatProviderSuccess(rate, recentCalls) {
+    if (recentCalls <= 0) {
+        return `n/a (${recentCalls} calls)`;
+    }
+    return `${Math.round(rate * 100)}% (${recentCalls} calls)`;
+}
 export function useHealthVm() {
     const client = useRestClient();
     const status = useSystemStatus();
@@ -39,7 +45,7 @@ export function useHealthVm() {
                 { key: "Overall Status", value: report.status },
                 { key: "DB Writable", value: report.dbWritable ? "yes" : "no" },
                 { key: "Provider Health", value: report.providerHealth },
-                { key: "Provider Success", value: `${Math.round(report.providerSuccessRate * 100)}% (${report.providerRecentCalls} calls)` },
+                { key: "Provider Success", value: formatProviderSuccess(report.providerSuccessRate, report.providerRecentCalls) },
                 { key: "Active Executions", value: String(report.activeExecutions) },
                 { key: "Queued Tasks", value: String(report.queuedTasks) },
                 { key: "Degradation Mode", value: report.degradationMode },

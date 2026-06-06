@@ -464,8 +464,14 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           workflowId,
           principal.tenantId != null ? principal.tenantId : undefined,
         );
+        const realTaskExecutionService = deps.realTaskExecutionService ?? null;
         const now = nowIso();
         const nextWorkflowStatus = workflowActionStatusMap[action];
+        const workflowDefinitionId = existingWorkflowState?.workflowId ?? cockpit.summary.workflowId;
+        const shouldRedispatchRealTask =
+          realTaskExecutionService != null
+          && workflowDefinitionId === "real_task_execution"
+          && (action === "resume" || action === "recover");
         const nextTaskStatus = action === "pause"
           ? "awaiting_decision"
           : action === "resume" || action === "recover"
@@ -479,7 +485,9 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           now,
           nextWorkflowStatus === "completed"
             ? null
-            : existingWorkflowState?.resumableFromStep ?? cockpit.summary.resumableFromStep ?? "real_model",
+            : action === "recover" || shouldRedispatchRealTask
+              ? "real_model"
+              : existingWorkflowState?.resumableFromStep ?? cockpit.summary.resumableFromStep ?? "real_model",
         );
         deps.taskStore.task.updateTaskStatus(
           workflowId,
@@ -488,6 +496,17 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           null,
           nextTaskStatus === "done" ? now : null,
         );
+        if (shouldRedispatchRealTask) {
+          const task = deps.taskStore.task.getTask(workflowId);
+          if (task != null) {
+            realTaskExecutionService.executeTask({
+              taskId: workflowId,
+              title: task.title,
+              divisionId: task.divisionId ?? null,
+              requestedBy: principal.actorId,
+            });
+          }
+        }
 
         return buildJsonResponse(ctx.requestId, 200, {
           ok: true,

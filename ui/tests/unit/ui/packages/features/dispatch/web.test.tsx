@@ -46,7 +46,7 @@ vi.mock("../../../../../../packages/features/dispatch/src/hooks", () => ({
       { title: "Contract boundary", description: "Manual dispatch, priority reordering, and operator escalation still need dedicated dispatch mutation APIs." },
     ],
     workflowItems: [
-      { title: "Main workflow · running", description: "stage-2 · runtime" },
+      { title: "Main workflow · running", description: "stage-2 · platform" },
     ],
     approvalItems: [
       { title: "No approvals", description: "The selected task has no dispatch-related approval records." },

@@ -7,6 +7,33 @@ const mockSelectTask = vi.fn();
 const mockReplayTimeline = vi.fn(async () => undefined);
 const mockFocusFailure = vi.fn(async () => undefined);
 const mockExportDebugSnapshot = vi.fn(async () => undefined);
+const baseVm = {
+  loading: false,
+  selectedId: "task-1",
+  selectedTask: {
+    id: "task-1",
+    title: "Replay failed coding task",
+    status: "failed",
+    domainId: "coding",
+    currentStep: "real_model",
+  },
+  tasks: [],
+  listItems: [{ id: "task-1", title: "Replay failed coding task", subtitle: "failed · coding" }],
+  detailRows: [{ key: "Status", value: "failed" }],
+  metrics: [{ label: "Tasks", value: 1 }],
+  activityItems: [{ title: "Debug snapshot exported", description: "Live task inspect snapshot captured." }],
+  activePanel: "timeline",
+  timelineItems: [{ title: "workflow:step_started", description: "2026-06-05T00:01:00.000Z · Real model execution started" }],
+  failureItems: [{ title: "MiniMax overload", description: "minimax · 2026-06-05T00:02:00.000Z" }],
+  exportSnapshot: "{\"task\":{}}",
+  loadError: null,
+  pendingOperations: 0,
+  selectTask: mockSelectTask,
+  replayTimeline: mockReplayTimeline,
+  focusFailure: mockFocusFailure,
+  exportDebugSnapshot: mockExportDebugSnapshot,
+} as const;
+let mockVm = baseVm;
 
 vi.mock("@aa/ui-core", () => ({
   FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -31,38 +58,14 @@ vi.mock("@aa/ui-core", () => ({
 }));
 
 vi.mock("../../../../../../packages/features/workflow-debugger/src/hooks", () => ({
-  useWorkflowDebuggerVm: () => ({
-    loading: false,
-    selectedId: "task-1",
-    selectedTask: {
-      id: "task-1",
-      title: "Replay failed coding task",
-      status: "failed",
-      domainId: "coding",
-      currentStep: "real_model",
-    },
-    tasks: [],
-    listItems: [{ id: "task-1", title: "Replay failed coding task", subtitle: "failed · coding" }],
-    detailRows: [{ key: "Status", value: "failed" }],
-    metrics: [{ label: "Tasks", value: 1 }],
-    activityItems: [{ title: "Debug snapshot exported", description: "Live task inspect snapshot captured." }],
-    activePanel: "timeline",
-    timelineItems: [{ title: "workflow:step_started", description: "2026-06-05T00:01:00.000Z · Real model execution started" }],
-    failureItems: [{ title: "MiniMax overload", description: "minimax · 2026-06-05T00:02:00.000Z" }],
-    exportSnapshot: "{\"task\":{}}",
-    loadError: null,
-    pendingOperations: 0,
-    selectTask: mockSelectTask,
-    replayTimeline: mockReplayTimeline,
-    focusFailure: mockFocusFailure,
-    exportDebugSnapshot: mockExportDebugSnapshot,
-  }),
+  useWorkflowDebuggerVm: () => mockVm,
 }));
 
 import { WorkflowDebuggerWebView } from "../../../../../../packages/features/workflow-debugger/src/web";
 
 afterEach(() => {
   cleanup();
+  mockVm = baseVm;
   vi.clearAllMocks();
 });
 
@@ -83,5 +86,25 @@ describe("WorkflowDebuggerWebView", () => {
     expect(mockReplayTimeline).toHaveBeenCalled();
     expect(mockFocusFailure).toHaveBeenCalled();
     expect(mockExportDebugSnapshot).toHaveBeenCalled();
+  });
+
+  it("shows backend-empty detail messaging instead of a selection prompt when no tasks exist", () => {
+    mockVm = {
+      ...baseVm,
+      selectedId: null,
+      selectedTask: null,
+      listItems: [],
+      metrics: [],
+      detailRows: [],
+      activityItems: [],
+      timelineItems: [],
+      failureItems: [],
+      exportSnapshot: "",
+    };
+
+    render(<WorkflowDebuggerWebView />);
+
+    expect(screen.getByText("No debugger tasks available from the backend.")).toBeInTheDocument();
+    expect(screen.queryByText("No task selected")).toBeNull();
   });
 });

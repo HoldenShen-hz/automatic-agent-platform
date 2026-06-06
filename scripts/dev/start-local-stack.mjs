@@ -34,6 +34,13 @@ const LOCAL_DEV_JWT_SECRET = "AA-local-dev-jwt-2026-06-04-4n7Qp9Lc2Vx8MzK5Rt1Hy6
 const LOCAL_DEV_AUDIT_INTEGRITY_HMAC_KEY =
   process.env.AA_AUDIT_INTEGRITY_HMAC_KEY
   ?? "AA-local-dev-audit-integrity-key-2026-06-05-7Lm2Qp4Nx8Rt1Hy6Ks9Uv3Wd";
+const LOCAL_DEV_FEATURE_FLAGS =
+  process.env.AA_FEATURE_FLAGS
+  ?? [
+    "release.gray.design_partners",
+    "release.gray.rollback_switch",
+    "release.gray.research_ops",
+  ].join(",");
 
 mkdirSync(pidDir, { recursive: true });
 mkdirSync(logDir, { recursive: true });
@@ -278,6 +285,7 @@ async function ensureApi() {
 
   const env = {
     AA_DB_PATH: join(repoRoot, "data", "sqlite", "automatic-agent-dev.db"),
+    AA_FEATURE_FLAGS: LOCAL_DEV_FEATURE_FLAGS,
     AA_API_HOST: "127.0.0.1",
     AA_API_PORT: String(apiPort),
     AA_API_ENABLE_WEBSOCKET: "true",

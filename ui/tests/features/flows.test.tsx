@@ -68,10 +68,7 @@ describe("feature flows", () => {
   it("advances the domain wizard only after required fields are complete", async () => {
     renderWithRuntime(<DomainWizardWebView />);
 
-    expect(await screen.findByText("Select a domain before continuing.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
-    fireEvent.click(await screen.findByRole("button", { name: /Marketing/i }));
-    expect(screen.getByText("Domain: marketing")).toBeInTheDocument();
+    expect(await screen.findByText("Domain: Marketing")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
 

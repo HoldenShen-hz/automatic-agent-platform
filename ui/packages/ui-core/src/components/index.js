@@ -131,7 +131,8 @@ function FeatureWorkbench({
   items,
   actions,
   emptyState,
-  labels
+  labels,
+  layoutMode = "default"
 }) {
   const resolvedLabels = {
     ...defaultWorkbenchLabels,
@@ -240,7 +241,16 @@ function FeatureWorkbench({
         type: "button"
       }, action.label))
     ),
-    createElement(ThreePaneLayout, {
+    layoutMode === "metrics_only" ? showActivityLog ? createElement(
+      "div",
+      { style: { display: "grid", gap: 12 } },
+      createElement(
+        "div",
+        { role: "log", "aria-live": "polite", "aria-relevant": "additions removals text", style: createPanelStyle(designTokens.color.border) },
+        createElement("h3", { style: { marginTop: 0, color: designTokens.color.text } }, resolvedLabels.activityLogTitle),
+        activities.length === 0 ? createElement("p", { style: { color: designTokens.color.subtle, marginBottom: 0 } }, resolvedLabels.activityLogEmpty) : createElement(ListCard, { items: activities })
+      )
+    ) : null : createElement(ThreePaneLayout, {
       left: filteredItems.length === 0 ? createElement("p", { style: { color: designTokens.color.subtle } }, resolvedLabels.emptyState) : createElement(
         "div",
         {
@@ -324,36 +334,38 @@ function FeatureWorkbenchPanel({
   emptyState,
   labels
 }) {
+  const rowsOnlyMode = items.length === 0 && rows != null && rows.length > 0;
+  const metricsOnlyMode = items.length === 0 && !rowsOnlyMode && metrics != null && metrics.length > 0;
   const normalizedItems = useMemo(() => {
     if (items.length > 0) {
       return items.map((item, index) => ({
         id: item.id ?? `${item.title}-${index}`,
         title: item.title,
         description: item.description,
-        detailRows: item.detailRows ?? [
+        detailRows: item.detailRows ?? (rows != null && rows.length > 0 ? [] : [
           { key: "Item", value: item.title },
           { key: "Summary", value: item.description }
-        ]
+        ])
       }));
     }
-    if (rows != null && rows.length > 0) {
-      return rows.map((row, index) => ({
-        id: `row-${index}`,
-        title: row.key,
-        description: typeof row.value === "string" ? row.value : `\u67E5\u770B ${row.key} \u7684\u5F53\u524D\u72B6\u6001\u4E0E\u4E0A\u4E0B\u6587\u3002`,
-        detailRows: [row]
-      }));
+    if (rowsOnlyMode) {
+      return [{
+        id: "rows-overview",
+        title: "Overview",
+        description: `Review ${rows.length} current fields and their latest values.`,
+        detailRows: rows
+      }];
     }
-    if (metrics != null && metrics.length > 0) {
-      return metrics.map((metric, index) => ({
-        id: `metric-${index}`,
-        title: metric.label,
-        description: `\u5F53\u524D\u503C ${String(metric.value)}`,
-        detailRows: [{ key: metric.label, value: String(metric.value) }]
-      }));
+    if (metricsOnlyMode) {
+      return [{
+        id: "metrics-overview",
+        title: "Overview",
+        description: `Review ${metrics.length} live metrics and their latest values.`,
+        detailRows: metrics.map((metric) => ({ key: metric.label, value: String(metric.value) }))
+      }];
     }
     return [];
-  }, [items, metrics, rows]);
+  }, [items, metrics, metricsOnlyMode, rows, rowsOnlyMode]);
   const normalizedActions = useMemo(() => actions.map((action) => ({
     id: action.id,
     label: action.label,
@@ -369,7 +381,8 @@ function FeatureWorkbenchPanel({
     items: normalizedItems,
     actions: normalizedActions,
     ...metrics == null ? {} : { metrics },
-    ...rows == null ? {} : { rows },
+    ...metricsOnlyMode ? { layoutMode: "metrics_only" } : {},
+    ...!rowsOnlyMode && rows != null ? { rows } : {},
     ...emptyState == null ? {} : { emptyState },
     ...labels == null ? {} : { labels }
   });

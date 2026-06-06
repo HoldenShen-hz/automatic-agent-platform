@@ -15,7 +15,7 @@ export function CostCenterWebView(): ReactElement {
           <Stack gap={10}>
             <h3>Cost reports</h3>
             {vm.loading ? <p>Loading cost reports...</p> : null}
-            {vm.listItems.length === 0 ? <p>No cost reports published by the backend.</p> : vm.listItems.map((item) => (
+            {vm.loading ? null : vm.listItems.length === 0 ? <p>No cost reports published by the backend.</p> : vm.listItems.map((item) => (
               <button key={item.id} onClick={() => vm.selectReport(item.id)} style={{ textAlign: "left" }} type="button">
                 <strong>{item.title}</strong>
                 <div>{item.subtitle}</div>
@@ -23,7 +23,7 @@ export function CostCenterWebView(): ReactElement {
             ))}
           </Stack>
         )}
-        center={vm.selectedReport == null ? <p>No report selected</p> : (
+        center={vm.loading ? <p>Loading cost detail...</p> : vm.listItems.length === 0 ? <p>No cost reports published by the backend.</p> : vm.selectedReport == null ? <p>No report selected</p> : (
           <Stack gap={16}>
             <h3>Cost detail</h3>
             <KeyValueTable rows={vm.detailRows} />

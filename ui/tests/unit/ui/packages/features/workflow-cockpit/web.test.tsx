@@ -39,6 +39,7 @@ vi.mock("../../../../../../packages/features/workflow-cockpit/src/hooks", () => 
       status: "paused",
       currentStage: "waiting_hitl",
       owner: "growth-ops",
+      domainId: "growth-ops",
       steps: [{ id: "s1", title: "Execute launch", phase: "Execute", status: "running" }],
       approvalNodes: [{ nodeId: "ap-1", title: "Risk Review", status: "pending", assignee: "domain-admin" }],
       evidenceRefs: [{ refId: "ev-1", type: "artifact", uri: "artifact://launch", description: "Launch plan" }],
@@ -70,6 +71,7 @@ describe("WorkflowCockpitWebView", () => {
     render(<WorkflowCockpitWebView />);
 
     expect(screen.queryByText("DAG waiting_hitl 1")).not.toBeNull();
+    expect(screen.queryByText(/领域: growth-ops/)).not.toBeNull();
     expect(screen.queryByText(/审批节点: 1/)).not.toBeNull();
     expect(screen.queryByText(/证据引用: 1/)).not.toBeNull();
     expect(screen.queryByText(/Risk Review pending · domain-admin/)).not.toBeNull();

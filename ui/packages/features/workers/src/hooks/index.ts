@@ -6,6 +6,7 @@ import { translateMessage } from "@aa/shared-i18n";
 import type { WorkerDTO } from "@aa/shared-types";
 
 export interface WorkersVm {
+  readonly loading: boolean;
   readonly metrics: readonly { label: string; value: string | number }[];
   readonly busyWorkerCount: number;
   refresh(): Promise<void>;
@@ -33,7 +34,8 @@ export function mapWorkersToVm(workers: readonly WorkerDTO[]): Pick<WorkersVm, "
 export function useWorkersVm(): WorkersVm {
   const client = useRestClient();
   const queryClient = useQueryClient();
-  const workers = useWorkersQuery().data ?? [];
+  const workersQuery = useWorkersQuery();
+  const workers = workersQuery.data ?? [];
   const refresh = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: missionControlQueryKeys.workers });
     await queryClient.refetchQueries({ queryKey: missionControlQueryKeys.workers, type: "active" });
@@ -44,7 +46,8 @@ export function useWorkersVm(): WorkersVm {
   }, [client, refresh]);
   return useMemo(() => ({
     ...mapWorkersToVm(workers),
+    loading: workersQuery.isLoading,
     refresh,
     drainBusyWorkers,
-  }), [drainBusyWorkers, refresh, workers]);
+  }), [drainBusyWorkers, refresh, workers, workersQuery.isLoading]);
 }

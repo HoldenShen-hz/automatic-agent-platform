@@ -31,7 +31,7 @@ export function WorkflowDebuggerWebView(): ReactElement {
             ))}
           </Stack>
         )}
-        center={vm.selectedTask == null ? <p>No task selected</p> : (
+        center={vm.loading ? <p>Loading debugger detail...</p> : vm.listItems.length === 0 ? <p>No debugger tasks available from the backend.</p> : vm.selectedTask == null ? <p>No task selected</p> : (
           <Stack gap={16}>
             <h3>Live debugger view</h3>
             <KeyValueTable rows={vm.detailRows} />

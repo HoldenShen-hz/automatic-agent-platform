@@ -15,8 +15,9 @@ import { AnthropicChatService, type AnthropicTool, type AnthropicChatCompletionR
 import { OpenAIChatService, type OpenAIFunction, type OpenAIChatCompletionResult, type OpenAIChatCompletionRequest } from "./openai/openai-chat-service.js";
 import { MiniMaxAPIError, MiniMaxChatService, type MiniMaxTool, type MiniMaxChatCompletionResult, type MiniMaxChatCompletionRequest } from "./minimax/minimax-chat-service.js";
 import { AppError, ValidationError } from "../../contracts/errors.js";
-import { CircuitBreaker } from "./circuit-breaker.js";
+import { CircuitBreaker, CircuitBreakerOpenError } from "./circuit-breaker.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { ProviderHealthTracker, getGlobalProviderHealthTracker } from "../../shared/observability/provider-health-tracker.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 import { sha256HexPrefix } from "../../shared/cache/utils/sha256.js";
 import { HashEmbeddingProvider, MiniMaxEmbeddingProvider, OpenAIEmbeddingProvider, type EmbeddingProvider } from "../../five-plane-state-evidence/knowledge/indexing/embedding-provider.js";
@@ -126,6 +127,7 @@ export interface CompletionOptions {
 export type ChatProviderType = "anthropic" | "openai" | "minimax";
 
 export interface UnifiedProviderConfig {
+  providerTracker?: ProviderHealthTracker | null;
   anthropic?: {
     apiKey?: string;
     baseUrl?: string;
@@ -201,6 +203,7 @@ function detectProviderFromModel(modelId: string): ChatProviderType | null {
 
 export class UnifiedChatProvider {
   private readonly config: UnifiedProviderConfig;
+  private readonly providerTracker: ProviderHealthTracker | null;
   private readonly anthropic: AnthropicChatService | null;
   private readonly openai: OpenAIChatService | null;
   private readonly minimax: MiniMaxChatService | null;
@@ -209,6 +212,7 @@ export class UnifiedChatProvider {
 
   public constructor(config: UnifiedProviderConfig) {
     this.config = config;
+    this.providerTracker = config.providerTracker ?? getGlobalProviderHealthTracker();
     if (config.anthropic?.apiKey) {
       const anthropicConfig: { apiKey: string; baseUrl?: string } = { apiKey: config.anthropic.apiKey };
       if (config.anthropic.baseUrl !== undefined) {
@@ -338,34 +342,40 @@ export class UnifiedChatProvider {
     });
 
     let result: ChatCompletionResult;
-    switch (provider) {
-      case "anthropic": {
-        const anthropicService = service as AnthropicChatService;
-        const chatResult = breaker
-          ? await breaker.execute(() => anthropicService.createChatCompletion(this.toAnthropicRequest(runtimeRequest)))
-          : await anthropicService.createChatCompletion(this.toAnthropicRequest(runtimeRequest));
-        result = this.normalizeAnthropicResult(chatResult, provider, normalizedRequest.model, Date.now() - startedAt);
-        break;
+    try {
+      switch (provider) {
+        case "anthropic": {
+          const anthropicService = service as AnthropicChatService;
+          const chatResult = breaker
+            ? await breaker.execute(() => anthropicService.createChatCompletion(this.toAnthropicRequest(runtimeRequest)))
+            : await anthropicService.createChatCompletion(this.toAnthropicRequest(runtimeRequest));
+          result = this.normalizeAnthropicResult(chatResult, provider, normalizedRequest.model, Date.now() - startedAt);
+          break;
+        }
+        case "openai": {
+          const openaiService = service as OpenAIChatService;
+          const chatResult = breaker
+            ? await breaker.execute(() => openaiService.createChatCompletion(this.toOpenAIRequest(runtimeRequest)))
+            : await openaiService.createChatCompletion(this.toOpenAIRequest(runtimeRequest));
+          result = this.normalizeOpenAIResult(chatResult, provider, normalizedRequest.model, Date.now() - startedAt);
+          break;
+        }
+        case "minimax": {
+          const minimaxService = service as MiniMaxChatService;
+          const runMiniMaxChatCompletion = () =>
+            breaker
+              ? breaker.execute(() => minimaxService.createChatCompletion(this.toMiniMaxRequest(runtimeRequest)))
+              : minimaxService.createChatCompletion(this.toMiniMaxRequest(runtimeRequest));
+          const chatResult = await this.executeMiniMaxWithRetry(runMiniMaxChatCompletion, runtimeSignal);
+          result = this.normalizeMiniMaxResult(chatResult, provider, normalizedRequest.model, Date.now() - startedAt);
+          break;
+        }
       }
-      case "openai": {
-        const openaiService = service as OpenAIChatService;
-        const chatResult = breaker
-          ? await breaker.execute(() => openaiService.createChatCompletion(this.toOpenAIRequest(runtimeRequest)))
-          : await openaiService.createChatCompletion(this.toOpenAIRequest(runtimeRequest));
-        result = this.normalizeOpenAIResult(chatResult, provider, normalizedRequest.model, Date.now() - startedAt);
-        break;
-      }
-      case "minimax": {
-        const minimaxService = service as MiniMaxChatService;
-        const runMiniMaxChatCompletion = () =>
-          breaker
-            ? breaker.execute(() => minimaxService.createChatCompletion(this.toMiniMaxRequest(runtimeRequest)))
-            : minimaxService.createChatCompletion(this.toMiniMaxRequest(runtimeRequest));
-        const chatResult = await this.executeMiniMaxWithRetry(runMiniMaxChatCompletion, runtimeSignal);
-        result = this.normalizeMiniMaxResult(chatResult, provider, normalizedRequest.model, Date.now() - startedAt);
-        break;
-      }
+    } catch (error) {
+      this.recordProviderAttempt(provider, normalizedRequest.model, startedAt, false, error);
+      throw error;
     }
+    this.recordProviderAttempt(provider, result.model, startedAt, true);
 
     const totalSeconds = (Date.now() - startedAt) / 1000;
     // R16-21 fix: non-streaming completions do not expose true TTFT.
@@ -419,114 +429,122 @@ export class UnifiedChatProvider {
       );
     };
 
-    switch (provider) {
-      case "anthropic": {
-        const anthropicService = service as AnthropicChatService;
-        const runStreaming = () => anthropicService.createStreamingChatCompletion(
-          this.toAnthropicRequest(runtimeRequest),
-          (chunk, isFinal) => {
-            this.assertNotAborted(runtimeSignal);
-            firstChunkLatencyMs ??= Date.now() - startedAt;
-            const normalized = this.normalizeAnthropicResult(chunk, provider, normalizedRequest.model, 0);
+    try {
+      switch (provider) {
+        case "anthropic": {
+          const anthropicService = service as AnthropicChatService;
+          const runStreaming = () => anthropicService.createStreamingChatCompletion(
+            this.toAnthropicRequest(runtimeRequest),
+            (chunk, isFinal) => {
+              this.assertNotAborted(runtimeSignal);
+              firstChunkLatencyMs ??= Date.now() - startedAt;
+              const normalized = this.normalizeAnthropicResult(chunk, provider, normalizedRequest.model, 0);
 
-            // R2-2: Validate partial response if callback provided
-            if (options?.onPartialChunk) {
-              const validation = options.onPartialChunk(normalized);
-              if (!validation.allowed) {
-                throw new Error("streaming.partial_response_validation_failed");
+              // R2-2: Validate partial response if callback provided
+              if (options?.onPartialChunk) {
+                const validation = options.onPartialChunk(normalized);
+                if (!validation.allowed) {
+                  throw new Error("streaming.partial_response_validation_failed");
+                }
+                // R2-2: Incremental budget deduction for streaming
+                if (options?.enableIncrementalBudgetDeduction && validation.deductAmount != null) {
+                  totalTokensSeen += normalized.usage.completionTokens ?? 0;
+                }
               }
-              // R2-2: Incremental budget deduction for streaming
-              if (options?.enableIncrementalBudgetDeduction && validation.deductAmount != null) {
-                totalTokensSeen += normalized.usage.completionTokens ?? 0;
-              }
-            }
 
-            request.validatePartialChunk?.(normalized, isFinal);
-            onChunk(normalized, isFinal);
-            if (isFinal) {
-              recordStreamingLatency(normalized.model);
-            }
-          },
-        );
-        if (breaker != null) {
-          await breaker.execute(runStreaming);
-        } else {
-          await runStreaming();
+              request.validatePartialChunk?.(normalized, isFinal);
+              onChunk(normalized, isFinal);
+              if (isFinal) {
+                recordStreamingLatency(normalized.model);
+              }
+            },
+          );
+          if (breaker != null) {
+            await breaker.execute(runStreaming);
+          } else {
+            await runStreaming();
+          }
+          recordStreamingLatency(normalizedRequest.model);
+          this.recordProviderAttempt(provider, normalizedRequest.model, startedAt, true);
+          return;
         }
-        recordStreamingLatency(normalizedRequest.model);
-        return;
-      }
-      case "openai": {
-        const openaiService = service as OpenAIChatService;
-        const runStreaming = () => openaiService.createStreamingChatCompletion(
-          this.toOpenAIRequest(runtimeRequest),
-          (chunk, isFinal) => {
-            this.assertNotAborted(runtimeSignal);
-            firstChunkLatencyMs ??= Date.now() - startedAt;
-            const normalized = this.normalizeOpenAIResult(chunk, provider, normalizedRequest.model, 0);
+        case "openai": {
+          const openaiService = service as OpenAIChatService;
+          const runStreaming = () => openaiService.createStreamingChatCompletion(
+            this.toOpenAIRequest(runtimeRequest),
+            (chunk, isFinal) => {
+              this.assertNotAborted(runtimeSignal);
+              firstChunkLatencyMs ??= Date.now() - startedAt;
+              const normalized = this.normalizeOpenAIResult(chunk, provider, normalizedRequest.model, 0);
 
-            // R2-2: Validate partial response if callback provided
-            if (options?.onPartialChunk) {
-              const validation = options.onPartialChunk(normalized);
-              if (!validation.allowed) {
-                throw new Error("streaming.partial_response_validation_failed");
+              // R2-2: Validate partial response if callback provided
+              if (options?.onPartialChunk) {
+                const validation = options.onPartialChunk(normalized);
+                if (!validation.allowed) {
+                  throw new Error("streaming.partial_response_validation_failed");
+                }
+                if (options?.enableIncrementalBudgetDeduction && validation.deductAmount != null) {
+                  totalTokensSeen += normalized.usage.completionTokens ?? 0;
+                }
               }
-              if (options?.enableIncrementalBudgetDeduction && validation.deductAmount != null) {
-                totalTokensSeen += normalized.usage.completionTokens ?? 0;
-              }
-            }
 
-            request.validatePartialChunk?.(normalized, isFinal);
-            onChunk(normalized, isFinal);
-            if (isFinal) {
-              recordStreamingLatency(normalized.model);
-            }
-          },
-        );
-        if (breaker != null) {
-          await breaker.execute(runStreaming);
-        } else {
-          await runStreaming();
+              request.validatePartialChunk?.(normalized, isFinal);
+              onChunk(normalized, isFinal);
+              if (isFinal) {
+                recordStreamingLatency(normalized.model);
+              }
+            },
+          );
+          if (breaker != null) {
+            await breaker.execute(runStreaming);
+          } else {
+            await runStreaming();
+          }
+          recordStreamingLatency(normalizedRequest.model);
+          this.recordProviderAttempt(provider, normalizedRequest.model, startedAt, true);
+          return;
         }
-        recordStreamingLatency(normalizedRequest.model);
-        return;
-      }
-      case "minimax": {
-        const minimaxService = service as MiniMaxChatService;
-        const runStreaming = () => minimaxService.createStreamingChatCompletion(
-          this.toMiniMaxRequest(runtimeRequest),
-          (chunk) => {
-            this.assertNotAborted(runtimeSignal);
-            firstChunkLatencyMs ??= Date.now() - startedAt;
-            const normalized = this.normalizeMiniMaxResult(chunk, provider, normalizedRequest.model, 0);
-            const isFinal = normalized.finishReason.length > 0;
+        case "minimax": {
+          const minimaxService = service as MiniMaxChatService;
+          const runStreaming = () => minimaxService.createStreamingChatCompletion(
+            this.toMiniMaxRequest(runtimeRequest),
+            (chunk) => {
+              this.assertNotAborted(runtimeSignal);
+              firstChunkLatencyMs ??= Date.now() - startedAt;
+              const normalized = this.normalizeMiniMaxResult(chunk, provider, normalizedRequest.model, 0);
+              const isFinal = normalized.finishReason.length > 0;
 
-            // R2-2: Validate partial response if callback provided
-            if (options?.onPartialChunk) {
-              const validation = options.onPartialChunk(normalized);
-              if (!validation.allowed) {
-                throw new Error("streaming.partial_response_validation_failed");
+              // R2-2: Validate partial response if callback provided
+              if (options?.onPartialChunk) {
+                const validation = options.onPartialChunk(normalized);
+                if (!validation.allowed) {
+                  throw new Error("streaming.partial_response_validation_failed");
+                }
+                if (options?.enableIncrementalBudgetDeduction && validation.deductAmount != null) {
+                  totalTokensSeen += normalized.usage.completionTokens ?? 0;
+                }
               }
-              if (options?.enableIncrementalBudgetDeduction && validation.deductAmount != null) {
-                totalTokensSeen += normalized.usage.completionTokens ?? 0;
-              }
-            }
 
-            request.validatePartialChunk?.(normalized, isFinal);
-            onChunk(normalized, isFinal);
-            if (isFinal) {
-              recordStreamingLatency(normalized.model);
-            }
-          },
-        );
-        if (breaker != null) {
-          await breaker.execute(runStreaming);
-        } else {
-          await runStreaming();
+              request.validatePartialChunk?.(normalized, isFinal);
+              onChunk(normalized, isFinal);
+              if (isFinal) {
+                recordStreamingLatency(normalized.model);
+              }
+            },
+          );
+          if (breaker != null) {
+            await breaker.execute(runStreaming);
+          } else {
+            await runStreaming();
+          }
+          recordStreamingLatency(normalizedRequest.model);
+          this.recordProviderAttempt(provider, normalizedRequest.model, startedAt, true);
+          return;
         }
-        recordStreamingLatency(normalizedRequest.model);
-        return;
       }
+    } catch (error) {
+      this.recordProviderAttempt(provider, normalizedRequest.model, startedAt, false, error);
+      throw error;
     }
   }
 
@@ -865,6 +883,42 @@ export class UnifiedChatProvider {
       }
       signal?.addEventListener("abort", onAbort, { once: true });
     });
+  }
+
+  private recordProviderAttempt(
+    provider: ChatProviderType,
+    model: string,
+    startedAt: number,
+    succeeded: boolean,
+    error?: unknown,
+  ): void {
+    this.providerTracker?.recordAttempt({
+      provider,
+      model,
+      succeeded,
+      latencyMs: Math.max(0, Date.now() - startedAt),
+      recordedAt: new Date().toISOString(),
+      ...(succeeded ? {} : { errorCode: this.getProviderErrorCode(error) }),
+    });
+  }
+
+  private getProviderErrorCode(error: unknown): string {
+    if (error instanceof CircuitBreakerOpenError) {
+      return "provider.circuit_breaker_open";
+    }
+    if (error instanceof MiniMaxAPIError) {
+      return `provider.minimax.${error.statusCode}`;
+    }
+    if (error instanceof AppError) {
+      return error.code;
+    }
+    if (error instanceof ValidationError) {
+      return error.code;
+    }
+    if (error instanceof Error) {
+      return error.name.length > 0 ? error.name : "provider.unknown_error";
+    }
+    return "provider.unknown_error";
   }
 
   private buildRuntimeSignal(signal: AbortSignal | undefined, timeoutMs: number | undefined): AbortSignal | undefined {

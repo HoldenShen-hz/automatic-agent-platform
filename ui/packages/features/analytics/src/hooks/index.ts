@@ -34,6 +34,7 @@ export interface AnalyticsVm {
   readonly metrics: readonly { label: string; value: string | number }[];
   readonly trendSummary: readonly number[];
   readonly timeSeriesData: readonly AnalyticsTimeSeriesPoint[];
+  readonly historicalSeriesAvailable: boolean;
   readonly dateRange: {
     startDate: string;
     endDate: string;
@@ -99,6 +100,40 @@ function toNumericValue(value: string | number): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function isPercentMetric(metric: AnalyticsMetricDTO): boolean {
+  const id = metric.id.toLowerCase();
+  const label = metric.label.toLowerCase();
+  const description = metric.description?.toLowerCase() ?? "";
+  return id === "uptime"
+    || id === "error-rate"
+    || label.includes("uptime")
+    || label.includes("error rate")
+    || description.includes("percentage");
+}
+
+function normalizePercentMetricValue(metric: AnalyticsMetricDTO): string | number {
+  const numericValue = toNumericValue(metric.value);
+  if (!isPercentMetric(metric)) {
+    return metric.value;
+  }
+  return numericValue >= 0 && numericValue <= 1 ? numericValue * 100 : numericValue;
+}
+
+function normalizeAnalyticsMetric(metric: AnalyticsMetricDTO): AnalyticsMetricDTO {
+  return {
+    ...metric,
+    value: normalizePercentMetricValue(metric),
+  };
+}
+
+function formatMetricDisplayValue(metric: AnalyticsMetricDTO): string | number {
+  const numericValue = toNumericValue(metric.value);
+  if (isPercentMetric(metric)) {
+    return `${numericValue.toFixed(2)}%`;
+  }
+  return metric.value;
+}
+
 function ensureAnalyticsExportSize(payload: string): string {
   const bytes = new TextEncoder().encode(payload).byteLength;
   if (bytes > MAX_ANALYTICS_EXPORT_BYTES) {
@@ -145,7 +180,7 @@ export function mapAnalyticsToVm(
   });
 
   return {
-    metrics: metrics.map((metric) => ({ label: metric.label, value: metric.value })),
+    metrics: metrics.map((metric) => ({ label: metric.label, value: formatMetricDisplayValue(metric) })),
     trendSummary: metrics.map((metric) => toNumericValue(metric.value)),
     layerSummaries,
   };
@@ -167,7 +202,11 @@ function computeBreakdowns(metrics: readonly AnalyticsMetricDTO[], layer: KpiLay
 
 export function useAnalyticsVm(): AnalyticsVm {
   const queryData = useAnalyticsQuery();
-  const metrics = queryData.data ?? [];
+  const metrics = useMemo(
+    () => (queryData.data ?? []).map(normalizeAnalyticsMetric),
+    [queryData.data],
+  );
+  const historicalSeriesAvailable = false;
 
   const [selectedLayer, setSelectedLayer] = useState<KpiLayer>("overview");
   const [chartConfig, setChartConfig] = useState<AnalyticsChartConfig>({
@@ -185,13 +224,7 @@ export function useAnalyticsVm(): AnalyticsVm {
     return ["overview", "tasks", "workflows", "approvals", "cost", "agents"];
   }, []);
 
-  const timeSeriesData = useMemo(() => {
-    const baseTimestamp = Date.UTC(2026, 4, 8);
-    return metrics.map((metric, index) => ({
-      timestamp: new Date(baseTimestamp - (metrics.length - index - 1) * 24 * 60 * 60 * 1000).toISOString(),
-      value: toNumericValue(metric.value),
-    }));
-  }, [metrics]);
+  const timeSeriesData = useMemo((): readonly AnalyticsTimeSeriesPoint[] => [], []);
 
   const kpiBreakdowns = useMemo(() => {
     if (selectedLayer === "overview") {
@@ -202,10 +235,6 @@ export function useAnalyticsVm(): AnalyticsVm {
   }, [metrics, selectedLayer]);
 
   const breakdowns = useMemo((): readonly AnalyticsBreakdown[] => {
-    const timeGroups = timeSeriesData.map((point) => ({
-      label: point.timestamp.slice(0, 10),
-      value: point.value,
-    }));
     const groupedByLayer = availableLayers
       .filter((layer) => layer !== "overview")
       .map((layer) => ({
@@ -214,11 +243,8 @@ export function useAnalyticsVm(): AnalyticsVm {
       }))
       .filter((group) => group.value > 0);
 
-    return [
-      { dimension: "time", groups: timeGroups },
-      { dimension: "layer", groups: groupedByLayer },
-    ];
-  }, [availableLayers, metrics, timeSeriesData]);
+    return [{ dimension: "layer", groups: groupedByLayer }];
+  }, [availableLayers, metrics]);
 
   const setLayer = useCallback((layer: KpiLayer) => {
     setSelectedLayer(layer);
@@ -261,6 +287,7 @@ export function useAnalyticsVm(): AnalyticsVm {
   return {
     ...baseVm,
     timeSeriesData,
+    historicalSeriesAvailable,
     dateRange,
     breakdowns,
     kpiBreakdowns,

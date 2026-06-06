@@ -16,6 +16,7 @@ export function AlertsWebView(): ReactElement {
       <p style={{ marginTop: 0 }}>
         {translateMessage("ui.alerts.stream")}: {vm.streamStatus} · {translateMessage("ui.alerts.pendingActions")}: {vm.pendingOperations}
       </p>
+      {vm.loading ? <p>Loading live incidents...</p> : null}
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[
@@ -23,7 +24,7 @@ export function AlertsWebView(): ReactElement {
             id: "alerts-ack",
             label: "确认告警",
             tone: "accent",
-            disabled: (item) => readAlertStatus(item) !== "open",
+            disabled: (item) => vm.loading || readAlertStatus(item) !== "open",
             onTrigger: (item) => {
               if (item != null) {
                 vm.onAcknowledge(item.id);
@@ -35,6 +36,9 @@ export function AlertsWebView(): ReactElement {
             label: "进入处置",
             tone: "neutral",
             disabled: (item) => {
+              if (vm.loading) {
+                return true;
+              }
               const status = readAlertStatus(item);
               return status !== "acknowledged" && status !== "triaged";
             },
@@ -48,7 +52,7 @@ export function AlertsWebView(): ReactElement {
             id: "alerts-mute",
             label: "静默 30 分钟",
             tone: "neutral",
-            disabled: (item) => readAlertStatus(item) === "closed",
+            disabled: (item) => vm.loading || readAlertStatus(item) === "closed",
             onTrigger: (item) => {
               if (item != null) {
                 vm.onSnooze(item.id);
@@ -60,7 +64,7 @@ export function AlertsWebView(): ReactElement {
             id: "alerts-dismiss",
             label: "忽略选中",
             tone: "danger",
-            disabled: (item) => readAlertStatus(item) === "closed",
+            disabled: (item) => vm.loading || readAlertStatus(item) === "closed",
             onTrigger: (item) => {
               if (item != null) {
                 vm.onDismiss(item.id);

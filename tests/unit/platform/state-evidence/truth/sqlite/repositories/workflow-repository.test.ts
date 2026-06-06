@@ -145,6 +145,78 @@ test("WorkflowRepository insertStepOutput inserts a step output record", () => {
   }
 });
 
+test("WorkflowRepository insertStepOutput upserts repeated task-step outputs", () => {
+  const workspace = createTempWorkspace("aa-workflow-repo-upsert-");
+  const dbPath = join(workspace, "workflow-upsert.db");
+
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const repo = new WorkflowRepository(db.connection);
+    const firstAt = "2026-04-14T10:00:00.000Z";
+    const secondAt = "2026-04-14T10:05:00.000Z";
+
+    createTestTask(db, "task-step-upsert-1", null, firstAt);
+
+    repo.insertStepOutput({
+      id: "step-output-1",
+      taskId: "task-step-upsert-1",
+      nodeRunId: "node-run-1",
+      stepId: "step-1",
+      roleId: "agent",
+      status: "failed",
+      dataJson: "{\"error\":\"first\"}",
+      summary: "first",
+      artifactsJson: "[]",
+      tokenCost: 10,
+      durationMs: 100,
+      validationJson: null,
+      producedAt: firstAt,
+    });
+    repo.insertStepOutput({
+      id: "step-output-2",
+      taskId: "task-step-upsert-1",
+      nodeRunId: "node-run-2",
+      stepId: "step-1",
+      roleId: "agent",
+      status: "succeeded",
+      dataJson: "{\"result\":\"second\"}",
+      summary: "second",
+      artifactsJson: "[]",
+      tokenCost: 20,
+      durationMs: 200,
+      validationJson: "{\"replayed\":true}",
+      producedAt: secondAt,
+    });
+
+    const row = db.connection.prepare(
+      `SELECT id, status, data_json AS dataJson, summary, token_cost AS tokenCost, duration_ms AS durationMs, validation_json AS validationJson, produced_at AS producedAt
+       FROM workflow_step_outputs
+       WHERE task_id = ? AND step_id = ?`,
+    ).get("task-step-upsert-1", "step-1") as {
+      id: string;
+      status: string;
+      dataJson: string;
+      summary: string;
+      tokenCost: number;
+      durationMs: number;
+      validationJson: string;
+      producedAt: string;
+    };
+
+    assert.equal(row.id, "step-output-2");
+    assert.equal(row.status, "succeeded");
+    assert.equal(row.dataJson, "{\"result\":\"second\"}");
+    assert.equal(row.summary, "second");
+    assert.equal(row.tokenCost, 20);
+    assert.equal(row.durationMs, 200);
+    assert.equal(row.validationJson, "{\"replayed\":true}");
+    assert.equal(row.producedAt, secondAt);
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
 test("WorkflowRepository listWorkflowStates returns all workflows", () => {
   const workspace = createTempWorkspace("aa-workflow-repo-");
   const dbPath = join(workspace, "workflow.db");

@@ -21,6 +21,7 @@ let workflowData: readonly WorkflowDTO[] = [
     status: "running",
     currentStage: "execute",
     owner: "platform",
+    domainId: "platform",
     steps: [],
   },
 ];
@@ -68,6 +69,7 @@ describe("useWorkflowCockpitVm", () => {
         status: "running",
         currentStage: "execute",
         owner: "platform",
+        domainId: "platform",
         steps: [],
       },
     ] as const;
@@ -316,6 +318,85 @@ describe("useWorkflowCockpitVm", () => {
     });
   });
 
+  it("auto-selects the highest-priority workflow instead of leaving the detail pane empty", async () => {
+    workflowData = [
+      {
+        id: "workflow-completed",
+        title: "Completed workflow",
+        status: "completed",
+        currentStage: "step-1",
+        owner: "platform",
+        domainId: "platform",
+        steps: [],
+      },
+      {
+        id: "workflow-failed",
+        title: "Failed workflow",
+        status: "failed",
+        currentStage: "real_model",
+        owner: "platform",
+        domainId: "platform",
+        steps: [],
+      },
+    ] as const;
+    taskData = [
+      {
+        id: "workflow-completed",
+        title: "Completed workflow",
+        status: "completed",
+        domainId: "platform",
+        currentStep: "step-1",
+      },
+      {
+        id: "workflow-failed",
+        title: "Failed workflow",
+        status: "failed",
+        domainId: "platform",
+        currentStep: "real_model",
+      },
+    ] as const;
+    mocks.mockUseTasksQuery.mockReturnValue({ data: taskData });
+    mocks.mockClient.get.mockResolvedValue({
+      summary: {
+        taskId: "workflow-failed",
+        workflowId: "real_task_execution",
+        workflowStatus: "failed",
+        currentStepIndex: 0,
+        divisionId: "platform",
+        taskStatus: "failed",
+      },
+      inspect: {
+        task: {
+          id: "workflow-failed",
+          title: "Failed workflow",
+          divisionId: "platform",
+          status: "failed",
+        },
+        workflowState: {
+          workflowId: "real_task_execution",
+          status: "failed",
+          currentStepIndex: 0,
+          resumableFromStep: "real_model",
+        },
+        approvals: [],
+        stepOutputs: [],
+        artifacts: [],
+      },
+    });
+
+    const { result } = renderHook(() => useWorkflowCockpitVm());
+
+    await waitFor(() => {
+      expect(result.current.selectedId).toBe("workflow-failed");
+    });
+
+    expect(result.current.listItems.map((item) => item.id)).toEqual([
+      "workflow-failed",
+      "workflow-completed",
+    ]);
+    expect(mocks.mockClient.get).toHaveBeenCalledWith("/v1/workflows/workflow-failed");
+  });
+
   it("loads workflow detail from the real workflow cockpit endpoint", async () => {
     const { result } = renderHook(() => useWorkflowCockpitVm());
 
@@ -328,7 +409,8 @@ describe("useWorkflowCockpitVm", () => {
       expect(result.current.selectedWorkflow).toEqual(expect.objectContaining({
         id: "workflow-1",
         title: "Campaign Launch",
-        owner: "growth-ops",
+        owner: "platform",
+        domainId: "growth-ops",
       }));
       expect(result.current.selectedWorkflow?.steps[0]).toEqual(expect.objectContaining({
         id: "step-1",
@@ -358,6 +440,7 @@ describe("useWorkflowCockpitVm", () => {
         status: "failed",
         currentStage: "step-0",
         owner: "default",
+        domainId: "default",
         steps: [],
       },
     ] as const;

@@ -3,19 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   mockClient: { get: vi.fn(), patch: vi.fn(), post: vi.fn() },
-  mockFetchCompliancePolicies: vi.fn(async () => [
-    { id: "policy-1", name: "Prod Change Control", severity: "high" },
-  ]),
-  mockUpdateCompliancePolicy: vi.fn(async () => ({ ok: true })),
-  mockFetchAuditLogs: vi.fn(async () => [
-    { id: "audit-1", timestamp: "2026-05-06T00:00:00.000Z", actor: "platform-sre", action: "policy.update", resource: "policy-1", outcome: "success", metadata: {} },
-  ]),
-  mockSubmitException: vi
-    .fn()
-    .mockResolvedValueOnce({ id: "exc-1" })
-    .mockResolvedValueOnce({ id: "exc-2" }),
-  mockApproveException: vi.fn(async () => ({ ok: true })),
-  mockRejectException: vi.fn(async () => ({ ok: true })),
+  mockFetchCompliancePolicies: vi.fn(),
+  mockUpdateCompliancePolicy: vi.fn(),
+  mockFetchAuditLogs: vi.fn(),
+  mockFetchComplianceExceptions: vi.fn(),
+  mockSubmitException: vi.fn(),
+  mockApproveException: vi.fn(),
+  mockRejectException: vi.fn(),
 }));
 
 vi.mock("@aa/shared-state", () => ({
@@ -26,6 +20,7 @@ vi.mock("@aa/shared-api-client", () => ({
   fetchCompliancePolicies: mocks.mockFetchCompliancePolicies,
   updateCompliancePolicy: mocks.mockUpdateCompliancePolicy,
   fetchAuditLogs: mocks.mockFetchAuditLogs,
+  fetchComplianceExceptions: mocks.mockFetchComplianceExceptions,
   submitException: mocks.mockSubmitException,
   approveException: mocks.mockApproveException,
   rejectException: mocks.mockRejectException,
@@ -36,6 +31,24 @@ import { useGovernanceComplianceVm } from "../../../../../../packages/features/g
 describe("useGovernanceComplianceVm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.mockFetchCompliancePolicies.mockResolvedValue([
+      { id: "policy-1", name: "Prod Change Control", severity: "high" },
+    ]);
+    mocks.mockUpdateCompliancePolicy.mockResolvedValue({ ok: true });
+    mocks.mockFetchAuditLogs.mockResolvedValue([
+      { id: "audit-1", timestamp: "2026-05-06T00:00:00.000Z", actor: "platform-sre", action: "policy.update", resource: "policy-1", outcome: "success", metadata: {} },
+    ]);
+    mocks.mockFetchComplianceExceptions
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: "exc-1", reason: "temporary bypass", policyId: "policy-1", status: "pending" }])
+      .mockResolvedValueOnce([{ id: "exc-1", reason: "temporary bypass", policyId: "policy-1", status: "approved" }])
+      .mockResolvedValueOnce([{ id: "exc-2", reason: "second bypass", policyId: "policy-1", status: "pending" }])
+      .mockResolvedValueOnce([{ id: "exc-2", reason: "second bypass", policyId: "policy-1", status: "rejected" }]);
+    mocks.mockSubmitException
+      .mockResolvedValueOnce({ id: "exc-1" })
+      .mockResolvedValueOnce({ id: "exc-2" });
+    mocks.mockApproveException.mockResolvedValue({ ok: true });
+    mocks.mockRejectException.mockResolvedValue({ ok: true });
   });
 
   it("loads policies and audit trail, then routes exception approvals through the API client", async () => {

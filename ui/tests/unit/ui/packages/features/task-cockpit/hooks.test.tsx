@@ -34,13 +34,29 @@ let taskData: Array<{
 }> = [
   {
     id: "task-1",
-    title: "Spring campaign",
-    status: "blocked",
-    domainId: "marketing",
+    title: "Historical completed task",
+    status: "completed",
+    domainId: "platform",
     currentStep: "workflow-run-1",
-    owner: "growth-ops",
+    owner: "platform-sre",
     evidenceCount: 2,
     timelineDepth: 5,
+    executionMode: "real_model",
+    modelCallStatus: "succeeded",
+    modelProvider: "minimax",
+    modelName: "minimax-m2.7",
+    outputSummary: "Completed output",
+    outputUri: "/tmp/completed.md",
+  },
+  {
+    id: "task-2",
+    title: "Actionable blocked task",
+    status: "blocked",
+    domainId: "marketing",
+    currentStep: "workflow-run-2",
+    owner: "growth-ops",
+    evidenceCount: 1,
+    timelineDepth: 3,
     executionMode: "mock_dev",
     modelCallStatus: "not_called",
     modelProvider: "minimax",
@@ -88,13 +104,29 @@ describe("useTaskCockpitVm", () => {
     taskData = [
       {
         id: "task-1",
-        title: "Spring campaign",
-        status: "blocked",
-        domainId: "marketing",
+        title: "Historical completed task",
+        status: "completed",
+        domainId: "platform",
         currentStep: "workflow-run-1",
-        owner: "growth-ops",
+        owner: "platform-sre",
         evidenceCount: 2,
         timelineDepth: 5,
+        executionMode: "real_model",
+        modelCallStatus: "succeeded",
+        modelProvider: "minimax",
+        modelName: "minimax-m2.7",
+        outputSummary: "Completed output",
+        outputUri: "/tmp/completed.md",
+      },
+      {
+        id: "task-2",
+        title: "Actionable blocked task",
+        status: "blocked",
+        domainId: "marketing",
+        currentStep: "workflow-run-2",
+        owner: "growth-ops",
+        evidenceCount: 1,
+        timelineDepth: 3,
         executionMode: "mock_dev",
         modelCallStatus: "not_called",
         modelProvider: "minimax",
@@ -149,36 +181,39 @@ describe("useTaskCockpitVm", () => {
     });
   });
 
-  it("keeps selection empty until the operator explicitly picks a task and enables polling", () => {
+  it("auto-selects the highest-priority actionable task instead of leaving the detail pane empty", async () => {
     const { result } = renderTaskCockpitHook();
 
     expect(mocks.mockUseTasksQuery).toHaveBeenCalledWith({ refetchInterval: 5000 });
-    expect(result.current.selectedId).toBeNull();
-    expect(result.current.selectedTask).toBeNull();
+    await waitFor(() => {
+      expect(result.current.selectedId).toBe("task-2");
+      expect(result.current.selectedTask?.title).toBe("Actionable blocked task");
+      expect(result.current.listItems.map((item) => item.id)).toEqual(["task-2", "task-1"]);
+    });
   });
 
   it("calls backend mutations for claim, pause, cancel, retry, resume, and escalate", async () => {
     const { result } = renderTaskCockpitHook();
 
     act(() => {
-      result.current.selectTask("task-1");
+      result.current.selectTask("task-2");
     });
 
     await act(async () => {
       await result.current.claimTask("platform-sre");
       await result.current.pauseTask();
       await result.current.cancelTask();
-    await result.current.retryTask();
-    await result.current.resumeTask("supervised");
-    await result.current.escalateTask("domain-admin");
-  });
+      await result.current.retryTask();
+      await result.current.resumeTask("supervised");
+      await result.current.escalateTask("domain-admin");
+    });
 
-    expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-1", { owner: "platform-sre", status: "running" });
-    expect(mocks.mockPauseWorkflow).toHaveBeenCalledWith(mocks.mockClient, "task-1");
-    expect(mocks.mockCancelWorkflow).toHaveBeenCalledWith(mocks.mockClient, "task-1");
-    expect(mocks.mockRecoverWorkflow).toHaveBeenCalledWith(mocks.mockClient, "task-1");
-    expect(mocks.mockResumeWorkflow).toHaveBeenCalledWith(mocks.mockClient, "task-1", "supervised");
-    expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-1", { status: "blocked" });
+    expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-2", { owner: "platform-sre", status: "running" });
+    expect(mocks.mockPauseWorkflow).toHaveBeenCalledWith(mocks.mockClient, "task-2");
+    expect(mocks.mockCancelWorkflow).toHaveBeenCalledWith(mocks.mockClient, "task-2");
+    expect(mocks.mockRecoverWorkflow).toHaveBeenCalledWith(mocks.mockClient, "task-2");
+    expect(mocks.mockResumeWorkflow).toHaveBeenCalledWith(mocks.mockClient, "task-2", "supervised");
+    expect(mocks.mockUpdateTask).toHaveBeenCalledWith(mocks.mockClient, "task-2", { status: "blocked" });
 
     await waitFor(() => {
       expect(result.current.timelineItems[0]?.title).toContain("Escalated");
@@ -189,11 +224,11 @@ describe("useTaskCockpitVm", () => {
     const { result } = renderTaskCockpitHook();
 
     act(() => {
-      result.current.selectTask("task-1");
+      result.current.selectTask("task-2");
     });
 
     await waitFor(() => {
-      expect(mocks.mockClient.get).toHaveBeenCalledWith("/v1/tasks/task-1");
+      expect(mocks.mockClient.get).toHaveBeenCalledWith("/v1/tasks/task-2");
       expect(result.current.stepViewer.steps).toEqual([
         expect.objectContaining({
           id: "node-1",
@@ -202,7 +237,7 @@ describe("useTaskCockpitVm", () => {
           executor: "agent-1",
         }),
         expect.objectContaining({
-          id: "workflow-run-1",
+          id: "workflow-run-2",
           title: "review",
           status: "running",
           executor: "agent-1",
@@ -226,14 +261,14 @@ describe("useTaskCockpitVm", () => {
   it("disables ownership and workflow controls for terminal completed tasks", async () => {
     taskData = [
       {
-        ...taskData[0]!,
+        ...taskData[1]!,
         status: "completed",
       },
     ];
     const { result } = renderTaskCockpitHook();
 
     act(() => {
-      result.current.selectTask("task-1");
+      result.current.selectTask("task-2");
     });
 
     await waitFor(() => {
@@ -282,7 +317,6 @@ describe("useTaskCockpitVm", () => {
     );
     expect(result.current.selectedId).toBe("task-created-1");
     expect(result.current.selectedTask?.title).toBe("Analyze platform alerts and draft a remediation plan");
-    expect(result.current.listItems[0]?.title).toBe("Analyze platform alerts and draft a remediation plan");
   });
 
   it("rejects empty task input before calling the backend", async () => {
@@ -299,7 +333,7 @@ describe("useTaskCockpitVm", () => {
     const { result } = renderTaskCockpitHook();
 
     act(() => {
-      result.current.selectTask("task-1");
+      result.current.selectTask("task-2");
     });
 
     expect(result.current.evidenceViewer.evidenceChain).toEqual([]);
@@ -310,7 +344,7 @@ describe("useTaskCockpitVm", () => {
     const { result } = renderTaskCockpitHook();
 
     act(() => {
-      result.current.selectTask("task-1");
+      result.current.selectTask("task-2");
     });
 
     await act(async () => {
@@ -326,7 +360,7 @@ describe("useTaskCockpitVm", () => {
     const { result, rerender } = renderTaskCockpitHook();
 
     act(() => {
-      result.current.selectTask("task-1");
+      result.current.selectTask("task-2");
     });
 
     await act(async () => {
@@ -336,20 +370,26 @@ describe("useTaskCockpitVm", () => {
     expect(result.current.selectedTask?.owner).toBe("platform-sre");
     expect(result.current.selectedTask?.status).toBe("running");
 
-    taskData = [{
-      ...taskData[0]!,
-      owner: "growth-ops",
-      status: "blocked",
-    }];
+    taskData = [
+      taskData[0]!,
+      {
+        ...taskData[1]!,
+        owner: "growth-ops",
+        status: "blocked",
+      },
+    ];
     rerender();
     expect(result.current.selectedTask?.owner).toBe("platform-sre");
     expect(result.current.selectedTask?.status).toBe("running");
 
-    taskData = [{
-      ...taskData[0]!,
-      owner: "platform-sre",
-      status: "running",
-    }];
+    taskData = [
+      taskData[0]!,
+      {
+        ...taskData[1]!,
+        owner: "platform-sre",
+        status: "running",
+      },
+    ];
     rerender();
     expect(result.current.selectedTask?.owner).toBe("platform-sre");
     expect(result.current.selectedTask?.status).toBe("running");
@@ -359,14 +399,14 @@ describe("useTaskCockpitVm", () => {
     const { result } = renderTaskCockpitHook();
 
     act(() => {
-      result.current.selectTask("task-1");
+      result.current.selectTask("task-2");
     });
 
     await act(async () => {
       await result.current.retryTask();
     });
 
-    expect(result.current.selectedTask?.currentStep).toBe("workflow-run-1");
-    expect(mocks.mockRecoverWorkflow).toHaveBeenCalledWith(mocks.mockClient, "task-1");
+    expect(result.current.selectedTask?.currentStep).toBe("workflow-run-2");
+    expect(mocks.mockRecoverWorkflow).toHaveBeenCalledWith(mocks.mockClient, "task-2");
   });
 });

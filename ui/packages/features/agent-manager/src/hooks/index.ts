@@ -25,11 +25,18 @@ export interface AgentManagerVm {
   selectAgent(agentId: string): void;
 }
 
+function formatAgentLoad(agent: AgentDTO): string {
+  if (agent.status === "offline") {
+    return "n/a";
+  }
+  return `${(agent.load * 100).toFixed(0)}%`;
+}
+
 function mapAgentToListItem(agent: AgentDTO): AgentListItem {
   return {
     id: agent.id,
     title: `${agent.name} · ${agent.status}`,
-    subtitle: `${agent.domainId} / load ${(agent.load * 100).toFixed(0)}%`,
+    subtitle: `${agent.domainId} / load ${formatAgentLoad(agent)}`,
   };
 }
 
@@ -41,7 +48,7 @@ function buildDetailRows(agent: AgentDTO | null): readonly AgentDetailRow[] {
     { key: "Agent", value: agent.name },
     { key: "Status", value: agent.status },
     { key: "Domain", value: agent.domainId },
-    { key: "Load", value: `${(agent.load * 100).toFixed(0)}%` },
+    { key: "Load", value: formatAgentLoad(agent) },
     { key: "ID", value: agent.id },
   ];
 }

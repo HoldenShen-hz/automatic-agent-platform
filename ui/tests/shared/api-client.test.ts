@@ -61,13 +61,53 @@ describe("shared api-client", () => {
     expect(agents.length).toBeGreaterThan(0);
   });
 
+  it("normalizes ratio-style dashboard rates into percentages", async () => {
+    const client = new DefaultRESTClient(async <T,>(request: RestClientRequest) => {
+      if (request.path === endpointCatalog.dashboardSnapshot.path) {
+        return {
+          status: 200,
+          data: {
+            overallHealth: "overloaded",
+            queueDepth: 11,
+            activeExecutions: 1,
+            approvalBacklog: 0,
+            alertSummary: "stale_workers_detected",
+            successRate: 0.8913,
+            errorRate: 0.0833,
+            uptimePercent: 11.58,
+          } as T,
+        };
+      }
+      return { status: 200, data: [] as T };
+    });
+
+    const dashboard = await fetchDashboardSnapshot(client);
+
+    expect(dashboard.successRate).toBeCloseTo(89.13, 2);
+    expect(dashboard.errorRate).toBeCloseTo(8.33, 2);
+    expect(dashboard.uptimePercent).toBe(11.58);
+  });
+
   it("unwraps src-style collection envelopes for list endpoints", async () => {
     const client = new DefaultRESTClient(async <T,>(request: RestClientRequest) => {
       if (request.path.includes("/tasks")) {
         return { status: 200, data: { tasks: [{ id: "task-1", title: "Task", status: "queued", currentStep: "intake", domainId: "platform" }] } as T };
       }
       if (request.path.includes("/workflows")) {
-        return { status: 200, data: { workflows: [{ id: "wf-1", title: "Workflow", status: "running", currentStage: "execute", owner: "ops", steps: [] }] } as T };
+        return {
+          status: 200,
+          data: {
+            workflows: [{
+              taskId: "task-1",
+              workflowId: "real_task_execution",
+              workflowStatus: "running",
+              divisionId: "platform",
+              owner: "ops",
+              currentStepIndex: 0,
+              steps: [],
+            }],
+          } as T,
+        };
       }
       if (request.path.includes("/approvals")) {
         return { status: 200, data: { approvals: [{ approvalId: "approval-1", taskId: "task-1", riskLevel: "medium", reasonSummary: "review" }] } as T };
@@ -79,9 +119,47 @@ describe("shared api-client", () => {
     });
 
     await expect(fetchTasks(client)).resolves.toHaveLength(1);
-    await expect(fetchWorkflows(client)).resolves.toHaveLength(1);
+    await expect(fetchWorkflows(client)).resolves.toEqual([
+      expect.objectContaining({
+        id: "task-1",
+        title: "real_task_execution",
+        status: "running",
+        currentStage: "step-0",
+        owner: "ops",
+        domainId: "platform",
+      }),
+    ]);
     await expect(fetchApprovals(client)).resolves.toHaveLength(1);
     await expect(fetchWorkers(client)).resolves.toHaveLength(1);
+  });
+
+  it("keeps workflow owner explicit instead of backfilling division as owner", async () => {
+    const client = new DefaultRESTClient(async <T,>(request: RestClientRequest) => {
+      if (request.path.includes("/workflows")) {
+        return {
+          status: 200,
+          data: {
+            workflows: [{
+              taskId: "task-real-1",
+              workflowId: "real_task_execution",
+              workflowStatus: "failed",
+              divisionId: "platform",
+              currentStepIndex: 0,
+              steps: [],
+            }],
+          } as T,
+        };
+      }
+      return { status: 200, data: { tasks: [] } as T };
+    });
+
+    await expect(fetchWorkflows(client)).resolves.toEqual([
+      expect.objectContaining({
+        id: "task-real-1",
+        owner: "unknown",
+        domainId: "platform",
+      }),
+    ]);
   });
 
   it("maps awaiting-decision task records to paused task DTOs", async () => {

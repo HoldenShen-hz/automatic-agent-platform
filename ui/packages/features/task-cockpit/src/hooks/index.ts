@@ -245,6 +245,53 @@ function areTasksEquivalent(left: readonly TaskDTO[], right: readonly TaskDTO[])
   });
 }
 
+const TASK_STATUS_PRIORITY: Record<string, number> = {
+  failed: 0,
+  blocked: 1,
+  awaiting_decision: 1,
+  in_progress: 2,
+  running: 2,
+  pending: 3,
+  queued: 3,
+  paused: 4,
+  completed: 5,
+  done: 5,
+  cancelled: 6,
+  superseded: 6,
+};
+
+function readTaskStatusPriority(status: TaskDTO["status"] | string | undefined): number {
+  if (status == null) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return TASK_STATUS_PRIORITY[status] ?? Number.POSITIVE_INFINITY;
+}
+
+function compareTaskOperationalPriority(left: TaskDTO, right: TaskDTO): number {
+  const statusPriorityDelta = readTaskStatusPriority(left.status) - readTaskStatusPriority(right.status);
+  if (statusPriorityDelta !== 0) {
+    return statusPriorityDelta;
+  }
+
+  const leftRealModelPriority = left.executionMode === "real_model" ? 0 : 1;
+  const rightRealModelPriority = right.executionMode === "real_model" ? 0 : 1;
+  if (leftRealModelPriority !== rightRealModelPriority) {
+    return leftRealModelPriority - rightRealModelPriority;
+  }
+
+  const leftHasOutput = left.outputSummary != null || left.outputUri != null;
+  const rightHasOutput = right.outputSummary != null || right.outputUri != null;
+  if (leftHasOutput !== rightHasOutput) {
+    return leftHasOutput ? 1 : -1;
+  }
+
+  return left.id.localeCompare(right.id);
+}
+
+function sortTasksByOperationalPriority(tasks: readonly TaskDTO[]): readonly TaskDTO[] {
+  return [...tasks].sort(compareTaskOperationalPriority);
+}
+
 export function mapTasksToVm(tasks: readonly TaskDTO[]): readonly { id: string; title: string; subtitle: string }[] {
   return tasks.map((task) => ({
     id: task.id,
@@ -308,7 +355,10 @@ export function useTaskCockpitVm(): TaskCockpitVm {
     }
   }, [optimisticTasks, taskQuery.data]);
 
-  const visibleTasks = optimisticTasks ?? (tasks.length > 0 ? tasks : loadedTasks);
+  const visibleTasks = useMemo(
+    () => sortTasksByOperationalPriority(optimisticTasks ?? (tasks.length > 0 ? tasks : loadedTasks)),
+    [loadedTasks, optimisticTasks, tasks],
+  );
   const selectedTask = (visibleTasks.find((task) => task.id === selectedId) as TaskCockpitVm["selectedTask"] | undefined) ?? null;
 
   const evidenceChain = useMemo<readonly EvidenceItem[]>(() => {
@@ -432,6 +482,34 @@ export function useTaskCockpitVm(): TaskCockpitVm {
       setWorkflowControlReason("Task drill-down is unavailable.");
     });
   }, [fetchTaskDrillDown]);
+
+  useEffect(() => {
+    if (visibleTasks.length === 0) {
+      if (selectedId != null) {
+        setSelectedId(null);
+      }
+      return;
+    }
+
+    if (selectedId != null && visibleTasks.some((task) => task.id === selectedId)) {
+      return;
+    }
+
+    const nextSelectedId = visibleTasks[0]?.id ?? null;
+    if (nextSelectedId == null) {
+      return;
+    }
+    setSelectedId(nextSelectedId);
+    setOperationError(null);
+    void fetchTaskDrillDown(nextSelectedId).catch(() => {
+      setDrillDownSteps([]);
+      setSelectedStepId(null);
+      setServerEvidenceChain([]);
+      setServerTimelineItems([]);
+      setWorkflowControlsAvailable(false);
+      setWorkflowControlReason("Task drill-down is unavailable.");
+    });
+  }, [fetchTaskDrillDown, selectedId, visibleTasks]);
 
   useEffect(() => {
     if (selectedId == null) {

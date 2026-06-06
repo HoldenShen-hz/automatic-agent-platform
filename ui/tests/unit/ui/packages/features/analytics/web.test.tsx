@@ -1,8 +1,11 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const mockSetDateRange = vi.fn();
-const mockExportData = vi.fn();
+const analyticsWebVmMock = vi.hoisted(() => ({
+  exportData: vi.fn(),
+  setLayer: vi.fn(),
+  useAnalyticsVm: vi.fn(),
+}));
 
 vi.mock("@aa/shared-state", () => ({
   useThemeState: () => ({ resolvedThemeName: "dark" }),
@@ -45,48 +48,72 @@ vi.mock("@aa/ui-core", () => ({
 }));
 
 vi.mock("../../../../../../packages/features/analytics/src/hooks", () => ({
-  useAnalyticsVm: () => ({
-    metrics: [{ label: "tasks_total", value: 12 }],
-    trendSummary: [1, 2, 3],
-    timeSeriesData: [{ timestamp: "2026-05-08T00:00:00Z", value: 12 }],
-    dateRange: { startDate: "2026-05-01", endDate: "2026-05-08" },
-    setDateRange: mockSetDateRange,
-    exportData: mockExportData,
-    breakdowns: [
-      { dimension: "time", groups: [{ label: "2026-05-08", value: 12 }] },
-      { dimension: "layer", groups: [{ label: "tasks", value: 7 }, { label: "agents", value: 5 }] },
-    ],
-  }),
+  useAnalyticsVm: analyticsWebVmMock.useAnalyticsVm,
 }));
 
 import { AnalyticsWebView } from "../../../../../../packages/features/analytics/src/web";
 
+function createAnalyticsVmOverride(overrides: Record<string, unknown> = {}) {
+  return {
+    metrics: [{ label: "tasks_total", value: 12 }],
+    trendSummary: [1, 2, 3],
+    timeSeriesData: [],
+    historicalSeriesAvailable: false,
+    dateRange: { startDate: "2026-05-01", endDate: "2026-05-08" },
+    setDateRange: vi.fn(),
+    exportData: analyticsWebVmMock.exportData,
+    breakdowns: [{ dimension: "layer", groups: [{ label: "tasks", value: 7 }, { label: "agents", value: 5 }] }],
+    availableLayers: ["overview", "tasks", "agents"],
+    setLayer: analyticsWebVmMock.setLayer,
+    getFilteredMetrics: () => [
+      { id: "queue-depth", label: "Queue depth", value: 11, trend: "up", layer: "tasks" },
+      { id: "uptime", label: "Uptime", value: 7.95, trend: "down", layer: "overview", description: "Platform uptime percentage." },
+    ],
+    ...overrides,
+  };
+}
+
 afterEach(() => {
   cleanup();
+  analyticsWebVmMock.exportData.mockReset();
+  analyticsWebVmMock.setLayer.mockReset();
+  analyticsWebVmMock.useAnalyticsVm.mockReset();
 });
 
 describe("AnalyticsWebView", () => {
-  it("renders export controls and drill-down charts", () => {
+  it("renders truthful snapshot-only analytics surfaces", () => {
+    analyticsWebVmMock.useAnalyticsVm.mockReturnValue(createAnalyticsVmOverride());
     render(<AnalyticsWebView />);
 
-    expect(screen.queryByText("分析趋势")).not.toBeNull();
-    expect(screen.queryAllByText("2026-05-08:12").length).toBeGreaterThan(0);
+    expect(screen.queryAllByText("当前后端发布的是 KPI 当前快照，不是历史 analytics 序列；在专门的历史分析 API 落地前，历史图表保持禁用。").length).toBeGreaterThan(0);
+    expect(screen.queryByText("当前后端只发布快照指标，历史时间范围筛选暂不可用。")).not.toBeNull();
+    expect(screen.queryAllByText("Queue depth:11").length).toBeGreaterThan(0);
+    expect(screen.queryAllByText("Uptime:7.95").length).toBeGreaterThan(0);
     expect(screen.getByText("契约边界")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "层级" }));
     expect(screen.queryAllByText("tasks:7").length).toBeGreaterThan(0);
     expect(screen.queryAllByText("agents:5").length).toBeGreaterThan(0);
   });
 
-  it("wires date-range and export actions", () => {
+  it("wires layer selection and export actions", () => {
+    analyticsWebVmMock.useAnalyticsVm.mockReturnValue(createAnalyticsVmOverride());
     render(<AnalyticsWebView />);
 
-    fireEvent.change(screen.getByDisplayValue("2026-05-01"), { target: { value: "2026-05-02" } });
+    fireEvent.click(screen.getByRole("button", { name: "任务" }));
     fireEvent.click(screen.getByRole("button", { name: "导出 CSV" }));
     fireEvent.click(screen.getByRole("button", { name: "导出 JSON" }));
 
-    expect(mockSetDateRange).toHaveBeenCalledWith("2026-05-02", "2026-05-08");
-    expect(mockExportData).toHaveBeenCalledWith("csv");
-    expect(mockExportData).toHaveBeenCalledWith("json");
+    expect(analyticsWebVmMock.setLayer).toHaveBeenCalledWith("tasks");
+    expect(analyticsWebVmMock.exportData).toHaveBeenCalledWith("csv");
+    expect(analyticsWebVmMock.exportData).toHaveBeenCalledWith("json");
+  });
+
+  it("renders an explicit empty-layer notice when the selected layer has no live metrics", () => {
+    analyticsWebVmMock.useAnalyticsVm.mockReturnValue(createAnalyticsVmOverride({
+      getFilteredMetrics: () => [],
+    }));
+
+    render(<AnalyticsWebView />);
+
+    expect(screen.getAllByText("No live metrics are available for the selected layer.").length).toBeGreaterThan(0);
   });
 });

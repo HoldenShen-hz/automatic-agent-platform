@@ -273,6 +273,35 @@ test("TaskRepository updateTaskStatus sets error and completedAt on failure", ()
   }
 });
 
+test("TaskRepository updateTaskStatus clears completedAt when retrying a terminal task", () => {
+  const workspace = createTempWorkspace("aa-sqlite-task-repo-");
+  const dbPath = join(workspace, "task-repo.db");
+
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const repo = new TaskRepository(db.connection);
+
+    const now = "2026-04-27T10:00:00.000Z";
+    const failedAt = "2026-04-27T11:30:00.000Z";
+    createTestTask(repo, "sqlite-retry-reset-task", now, {
+      status: "failed",
+      errorCode: "task.timeout",
+      updatedAt: failedAt,
+      completedAt: failedAt,
+    });
+
+    repo.updateTaskStatus("sqlite-retry-reset-task", "in_progress", "2026-04-27T12:00:00.000Z", null, null);
+
+    const result = repo.getTask("sqlite-retry-reset-task");
+    assert.equal(result?.status, "in_progress");
+    assert.equal(result?.errorCode, null);
+    assert.equal(result?.completedAt, null);
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
 test("TaskRepository updateTaskStatusCas only updates when expected status matches", () => {
   const workspace = createTempWorkspace("aa-sqlite-task-repo-");
   const dbPath = join(workspace, "task-repo.db");

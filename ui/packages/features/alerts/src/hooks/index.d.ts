@@ -13,6 +13,7 @@ export interface AlertListItem {
     }[];
 }
 export interface AlertsVm {
+    readonly loading: boolean;
     readonly items: readonly AlertListItem[];
     readonly incidents: readonly IncidentDTO[];
     readonly filters: {

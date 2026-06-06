@@ -3,12 +3,6 @@ import { FeatureScaffold, KeyValueTable, ListCard } from "@aa/ui-core";
 import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useDivisionInventoryVm } from "../hooks";
 
-function colorForRisk(risk: string): string {
-  if (risk === "critical") return "#9f1239";
-  if (risk === "high") return "#b45309";
-  return "#166534";
-}
-
 export function DivisionInventoryWebView(): ReactElement {
   const copy = translateFeatureCopy("division-inventory");
   const vm = useDivisionInventoryVm();
@@ -55,12 +49,15 @@ export function DivisionInventoryWebView(): ReactElement {
           items={vm.filteredRecords.map((record) => ({
             title: `${record.divisionId} · ${record.status}`,
             description: [
-              `${record.familyId ?? "unknown"} / ${record.riskLevel} / ${colorForRisk(record.riskLevel)}`,
+              `${record.familyId ?? "unknown"} / ${record.riskLevel}`,
               `Coverage: ${record.hasCoverageCard ? "yes" : "no"} / Eval: ${record.hasEval ? "yes" : "no"} / Red-team: ${record.hasRedTeam ? "yes" : "no"}`,
               `Blockers: ${record.blockers.join(", ") || "none"}`,
             ].join("\n"),
           }))}
         />
+        {!vm.loading && vm.filteredRecords.length === 0 ? (
+          <p>No divisions match the current filters.</p>
+        ) : null}
       </div>
     </FeatureScaffold>
   );

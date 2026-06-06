@@ -243,6 +243,7 @@ export interface WorkflowDTO {
   readonly status: "draft" | "running" | "paused" | "completed" | "failed" | "cancelled";
   readonly currentStage: string;
   readonly owner: string;
+  readonly domainId?: string;
   readonly steps: readonly WorkflowStepDTO[];
   readonly approvalNodes?: readonly WorkflowApprovalNodeDTO[];
   readonly evidenceRefs?: readonly WorkflowEvidenceRefDTO[];

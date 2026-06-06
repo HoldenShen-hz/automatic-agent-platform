@@ -169,45 +169,49 @@ export function TaskCockpitWebView(): ReactElement {
                 {vm.workflowControlReason}
               </p>
             )}
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                void vm.claimTask(sanitizeInput(operator, "platform-sre"));
-              }}
-            >
-              <Inline>
-              <input
-                aria-label={translateMessage("ui.taskCockpit.operatorInput")}
-                name="operator-id"
-                onChange={(event) => setOperator(event.target.value)}
-                placeholder={translateMessage("ui.taskCockpit.operatorPlaceholder")}
-                value={operator}
-              />
-              <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} type="submit">{translateMessage("ui.taskCockpit.takeOver")}</button>
-              <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} onClick={() => { void vm.pauseTask(); }} type="button">{translateMessage("ui.taskCockpit.pause")}</button>
-              <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} onClick={() => { void vm.cancelTask(); }} type="button">{translateMessage("ui.taskCockpit.cancel")}</button>
-              <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} onClick={() => { void vm.retryTask(); }} type="button">{translateMessage("ui.taskCockpit.retry")}</button>
-              <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} onClick={() => { void vm.resumeTask("normal"); }} type="button">{translateMessage("ui.taskCockpit.resume")}</button>
-              <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} onClick={() => { void vm.resumeTask("supervised"); }} type="button">{translateMessage("ui.taskCockpit.supervisedResume")}</button>
-              </Inline>
-            </form>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                void vm.escalateTask(sanitizeInput(target, "domain-admin"));
-              }}
-            >
-              <Inline>
-              <input
-                aria-label={translateMessage("ui.taskCockpit.targetInput")}
-                name="target-id"
-                onChange={(event) => setTarget(event.target.value)}
-                placeholder={translateMessage("ui.taskCockpit.targetPlaceholder")}
-                value={target}
-              />
-              <button disabled={!vm.workflowControlsAvailable || vm.pendingOperations > 0} type="submit">{translateMessage("ui.taskCockpit.escalate")}</button>
-              </Inline>
-            </form>
+            {!vm.workflowControlsAvailable ? null : (
+              <>
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void vm.claimTask(sanitizeInput(operator, "platform-sre"));
+                  }}
+                >
+                  <Inline>
+                  <input
+                    aria-label={translateMessage("ui.taskCockpit.operatorInput")}
+                    name="operator-id"
+                    onChange={(event) => setOperator(event.target.value)}
+                    placeholder={translateMessage("ui.taskCockpit.operatorPlaceholder")}
+                    value={operator}
+                  />
+                  <button disabled={vm.pendingOperations > 0} type="submit">{translateMessage("ui.taskCockpit.takeOver")}</button>
+                  <button disabled={vm.pendingOperations > 0} onClick={() => { void vm.pauseTask(); }} type="button">{translateMessage("ui.taskCockpit.pause")}</button>
+                  <button disabled={vm.pendingOperations > 0} onClick={() => { void vm.cancelTask(); }} type="button">{translateMessage("ui.taskCockpit.cancel")}</button>
+                  <button disabled={vm.pendingOperations > 0} onClick={() => { void vm.retryTask(); }} type="button">{translateMessage("ui.taskCockpit.retry")}</button>
+                  <button disabled={vm.pendingOperations > 0} onClick={() => { void vm.resumeTask("normal"); }} type="button">{translateMessage("ui.taskCockpit.resume")}</button>
+                  <button disabled={vm.pendingOperations > 0} onClick={() => { void vm.resumeTask("supervised"); }} type="button">{translateMessage("ui.taskCockpit.supervisedResume")}</button>
+                  </Inline>
+                </form>
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void vm.escalateTask(sanitizeInput(target, "domain-admin"));
+                  }}
+                >
+                  <Inline>
+                  <input
+                    aria-label={translateMessage("ui.taskCockpit.targetInput")}
+                    name="target-id"
+                    onChange={(event) => setTarget(event.target.value)}
+                    placeholder={translateMessage("ui.taskCockpit.targetPlaceholder")}
+                    value={target}
+                  />
+                  <button disabled={vm.pendingOperations > 0} type="submit">{translateMessage("ui.taskCockpit.escalate")}</button>
+                  </Inline>
+                </form>
+              </>
+            )}
           </Stack>
         )}
         right={selectedTask == null ? <p>{translateMessage("ui.taskCockpit.noTimeline")}</p> : (

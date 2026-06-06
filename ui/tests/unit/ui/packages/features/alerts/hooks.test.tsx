@@ -138,6 +138,31 @@ describe("useAlertsVm", () => {
     expect(result.current.items).toHaveLength(0);
   });
 
+  it("keeps resolved incidents out of the actionable alerts surface", () => {
+    mocks.incidentData = [
+      {
+        id: "incident-open",
+        severity: "high",
+        title: "Queue lag",
+        summary: "lag detected",
+        createdAt: "2026-05-08T08:00:00.000Z",
+        status: "open",
+      },
+      {
+        id: "incident-resolved",
+        severity: "critical",
+        title: "Recovered outage",
+        summary: "historic incident",
+        createdAt: "2026-05-08T07:00:00.000Z",
+        status: "resolved",
+      },
+    ];
+
+    const { result } = renderHook(() => useAlertsVm());
+
+    expect(result.current.items.map((item) => item.id)).toEqual(["incident-open"]);
+  });
+
   it("sorts incidents by severity and applies severity filters in the mapped vm", () => {
     const incidents = [
       {

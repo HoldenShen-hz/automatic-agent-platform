@@ -15,7 +15,7 @@ export function ExplainabilityWebView(): ReactElement {
           <Stack gap={10}>
             <h3>Explanations</h3>
             {vm.loading ? <p>Loading explanations...</p> : null}
-            {vm.listItems.length === 0 ? <p>No explanation summaries available.</p> : vm.listItems.map((item) => (
+            {vm.loading ? null : vm.listItems.length === 0 ? <p>No explanation summaries available.</p> : vm.listItems.map((item) => (
               <button key={item.id} onClick={() => vm.selectExplanation(item.id)} style={{ textAlign: "left" }} type="button">
                 <strong>{item.title}</strong>
                 <div>{item.subtitle}</div>
@@ -23,7 +23,7 @@ export function ExplainabilityWebView(): ReactElement {
             ))}
           </Stack>
         )}
-        center={vm.selectedExplanation == null ? <p>No explanation selected</p> : (
+        center={vm.loading ? <p>Loading explanation detail...</p> : vm.listItems.length === 0 ? <p>No explanation summaries available.</p> : vm.selectedExplanation == null ? <p>No explanation selected</p> : (
           <Stack gap={16}>
             <h3>Explanation detail</h3>
             <KeyValueTable rows={vm.detailRows} />

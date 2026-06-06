@@ -66,6 +66,13 @@ interface ApprovalListItemDto {
   escalationTarget?: string;
 }
 
+const APPROVAL_RISK_PRIORITY: Record<ApprovalListItemDto["riskLevel"], number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
+
 function readOptionalString(record: Record<string, unknown>, key: string): string | undefined {
   const value = record[key];
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
@@ -161,6 +168,27 @@ function toApprovalListItem(record: unknown): ApprovalListItemDto | null {
   return item;
 }
 
+function compareApprovalListItems(left: ApprovalListItemDto, right: ApprovalListItemDto): number {
+  const riskPriorityDelta = APPROVAL_RISK_PRIORITY[left.riskLevel] - APPROVAL_RISK_PRIORITY[right.riskLevel];
+  if (riskPriorityDelta !== 0) {
+    return riskPriorityDelta;
+  }
+
+  const leftDeadline = left.deadline == null ? Number.POSITIVE_INFINITY : Date.parse(left.deadline);
+  const rightDeadline = right.deadline == null ? Number.POSITIVE_INFINITY : Date.parse(right.deadline);
+  if (leftDeadline !== rightDeadline) {
+    return leftDeadline - rightDeadline;
+  }
+
+  const leftLevel = left.currentLevel ?? 0;
+  const rightLevel = right.currentLevel ?? 0;
+  if (leftLevel !== rightLevel) {
+    return rightLevel - leftLevel;
+  }
+
+  return left.approvalId.localeCompare(right.approvalId);
+}
+
 function listApprovalDtos(
   deps: ApprovalRouteDeps,
   request: ApiRequestLike,
@@ -171,13 +199,15 @@ function listApprovalDtos(
   return deps.inspectService
     .queryDecisionInspectSummaries({
       decisionType: "approval",
-      limit,
+      limit: 200,
       ...(principal.tenantId != null ? { tenantId: principal.tenantId } : {}),
       ...(status ? { status } : {}),
     })
     .map((summary) => deps.inspectService.getApprovalInspectView(summary.decisionId))
     .map((view) => toApprovalListItem((view as { approval?: unknown }).approval))
-    .filter((item): item is ApprovalListItemDto => item != null);
+    .filter((item): item is ApprovalListItemDto => item != null)
+    .sort(compareApprovalListItems)
+    .slice(0, limit);
 }
 
 function validateApprovalId(approvalId: string | undefined): string {

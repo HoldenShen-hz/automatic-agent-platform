@@ -26,8 +26,8 @@ vi.mock("../../../../../../packages/features/compliance/src/hooks", () => ({
   useComplianceVm: () => ({
     metrics: [
       { label: "标准项", value: 6 },
-      { label: "待处理检查", value: 28 },
-      { label: "通过率", value: "100%" },
+      { label: "审计事件", value: 28 },
+      { label: "例外批准率", value: "91%" },
     ],
     rows: [
       { key: "模式", value: "Sarbanes-Oxley / HIPAA / PCI DSS" },

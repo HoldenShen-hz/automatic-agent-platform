@@ -190,12 +190,12 @@ describe("TaskCockpitWebView", () => {
     render(<TaskCockpitWebView />);
 
     expect(screen.getByRole("note")).toHaveTextContent(/live workflow control record/);
-    expect(screen.getAllByRole("button", { name: "接管" })[0]).toBeDisabled();
-    expect(screen.getByRole("button", { name: "暂停" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "取消" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "重试" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "恢复" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "受监督恢复" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "升级" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "接管" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "暂停" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "取消" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "重试" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "恢复" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "受监督恢复" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "升级" })).toBeNull();
   });
 });

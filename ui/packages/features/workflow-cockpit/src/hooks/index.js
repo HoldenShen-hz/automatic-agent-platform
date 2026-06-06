@@ -55,8 +55,29 @@ function enrichWorkflowSummary(workflow, tasksById) {
     return {
         ...workflow,
         title: linkedTask?.title ?? workflow.title,
-        owner: linkedTask?.domainId ?? workflow.owner,
+        domainId: linkedTask?.domainId ?? workflow.domainId ?? workflow.owner,
     };
+}
+function getWorkflowPriority(workflow) {
+    switch (workflow.status) {
+        case "failed":
+            return 0;
+        case "running":
+            return 1;
+        case "paused":
+            return 2;
+        case "draft":
+            return 3;
+        case "completed":
+            return 4;
+        case "cancelled":
+            return 5;
+        default:
+            return 6;
+    }
+}
+function sortWorkflowsByPriority(workflows) {
+    return [...workflows].sort((left, right) => getWorkflowPriority(left) - getWorkflowPriority(right));
 }
 function mapWorkflowDetail(workflowId, cockpit, fallbackWorkflow, fallbackTask) {
     const task = cockpit.inspect?.task;
@@ -75,7 +96,12 @@ function mapWorkflowDetail(workflowId, cockpit, fallbackWorkflow, fallbackTask) 
             ?? fallbackWorkflow?.status
             ?? "running",
         currentStage,
-        owner: task?.divisionId ?? fallbackTask?.domainId ?? fallbackWorkflow?.owner ?? cockpit.summary?.divisionId ?? "platform",
+        owner: fallbackWorkflow?.owner ?? "unknown",
+        domainId: task?.divisionId
+            ?? fallbackTask?.domainId
+            ?? fallbackWorkflow?.domainId
+            ?? cockpit.summary?.divisionId
+            ?? "platform",
         steps: stepOutputs.map((step, index) => ({
             id: step.id ?? step.stepId ?? `${workflowId}-step-${index + 1}`,
             title: step.summary ?? step.stepId ?? `step-${index + 1}`,
@@ -166,13 +192,13 @@ export function useWorkflowCockpitVm() {
     const [pendingOperations, setPendingOperations] = useState(0);
     const [serverWorkflow, setServerWorkflow] = useState(null);
     const tasksById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
-    const resolvedWorkflows = useMemo(() => workflows.map((workflow) => enrichWorkflowSummary(workflow, tasksById)), [tasksById, workflows]);
+    const resolvedWorkflows = useMemo(() => sortWorkflowsByPriority(workflows.map((workflow) => enrichWorkflowSummary(workflow, tasksById))), [tasksById, workflows]);
     useEffect(() => {
         setSelectedId((current) => {
             if (current != null && resolvedWorkflows.some((workflow) => workflow.id === current)) {
                 return current;
             }
-            return null;
+            return resolvedWorkflows[0]?.id ?? null;
         });
     }, [resolvedWorkflows]);
     useEffect(() => {

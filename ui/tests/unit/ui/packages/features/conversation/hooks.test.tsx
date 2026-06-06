@@ -98,7 +98,7 @@ describe("useConversationVm", () => {
     getSharedTranslationService().setLocale("en-US");
   });
 
-  it("hydrates persisted conversation state on the first render", () => {
+  it("hydrates recent completed conversation state on the first render", () => {
     window.sessionStorage.setItem("aa.conversation.vm", JSON.stringify({
       messages: [
         {
@@ -119,16 +119,21 @@ describe("useConversationVm", () => {
       planReady: true,
       executionReady: true,
       isStreaming: false,
+      activeTaskId: null,
       updatedAt: new Date().toISOString(),
     }));
 
     const { result } = renderHook(() => useConversationVm());
 
-    expect(result.current.messages).toHaveLength(0);
-    expect(result.current.attachments).toHaveLength(0);
-    expect(result.current.status).toBe("idle");
-    expect(result.current.planReady).toBe(false);
-    expect(result.current.executionReady).toBe(false);
+    expect(result.current.messages).toHaveLength(1);
+    expect(result.current.messages[0]).toMatchObject({
+      content: "Recovered from storage",
+      role: "assistant",
+    });
+    expect(result.current.attachments).toHaveLength(1);
+    expect(result.current.status).toBe("connected");
+    expect(result.current.planReady).toBe(true);
+    expect(result.current.executionReady).toBe(true);
   });
 
   it("restores only active in-flight conversation state", () => {
@@ -146,6 +151,7 @@ describe("useConversationVm", () => {
       planReady: true,
       executionReady: true,
       isStreaming: true,
+      activeTaskId: "task-running-001",
       updatedAt: new Date().toISOString(),
     }));
 
@@ -161,6 +167,27 @@ describe("useConversationVm", () => {
     expect(result.current.executionReady).toBe(true);
   });
 
+  it("ignores empty connected conversation snapshots with no recoverable history", () => {
+    window.sessionStorage.setItem("aa.conversation.vm", JSON.stringify({
+      messages: [],
+      attachments: [],
+      status: "connected",
+      planReady: false,
+      executionReady: false,
+      isStreaming: false,
+      activeTaskId: null,
+      updatedAt: new Date().toISOString(),
+    }));
+
+    const { result } = renderHook(() => useConversationVm());
+
+    expect(result.current.messages).toHaveLength(0);
+    expect(result.current.attachments).toHaveLength(0);
+    expect(result.current.status).toBe("idle");
+    expect(result.current.planReady).toBe(false);
+    expect(result.current.executionReady).toBe(false);
+  });
+
   it("sends prompts directly and restores persisted history across remounts", async () => {
     const { result, unmount } = renderHook(() => useConversationVm());
 
@@ -168,11 +195,22 @@ describe("useConversationVm", () => {
       result.current.setDraft("Ship the release");
     });
     act(() => {
-      result.current.sendPrompt();
-      result.current.executePlan();
+      void result.current.sendPrompt();
+    });
+
+    await waitFor(() => {
+      expect(result.current.messages.length).toBe(1);
     });
 
     expect(conversationState.sendSpy).toHaveBeenCalledWith("Ship the release");
+    expect(result.current.status).toBe("disconnected");
+    expect(result.current.planReady).toBe(false);
+    expect(result.current.executionReady).toBe(false);
+
+    act(() => {
+      result.current.executePlan();
+    });
+
     expect(conversationState.requestClarificationSpy).toHaveBeenCalled();
 
     await waitFor(() => {
@@ -189,5 +227,46 @@ describe("useConversationVm", () => {
       status: "waiting_clarification",
       isStreaming: false,
     });
+  });
+
+  it("ignores locally echoed conversation control events", async () => {
+    const handlers = new Map<string, (event: { channel: string; type: string; payload: unknown }) => void>();
+    const wsClient = {
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      subscribe: vi.fn((channel: string, handler: (event: { channel: string; type: string; payload: unknown }) => void) => {
+        handlers.set(channel, handler);
+        return () => {
+          handlers.delete(channel);
+        };
+      }),
+      onStatusChange: vi.fn((handler: (status: "connected" | "disconnected") => void) => {
+        handler("connected");
+        return () => undefined;
+      }),
+      publish: vi.fn((event: { channel: string; type: string; payload: unknown }) => {
+        handlers.get(event.channel)?.(event);
+      }),
+      useSseFallback: vi.fn(),
+    };
+
+    const { result } = renderHook(() => useConversationVm(wsClient));
+
+    act(() => {
+      result.current.setDraft("Echo-safe prompt");
+    });
+    await act(async () => {
+      await result.current.sendPrompt();
+    });
+
+    await waitFor(() => {
+      expect(result.current.messages).toHaveLength(1);
+    });
+
+    expect(result.current.messages[0]).toMatchObject({
+      role: "user",
+      content: "Echo-safe prompt",
+    });
+    expect(result.current.status).toBe("connected");
   });
 });

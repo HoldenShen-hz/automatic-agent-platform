@@ -5,6 +5,6 @@ export function createWorkflowCockpitMobileCards(workflows: readonly WorkflowDTO
   return workflows.slice(0, 3).map((workflow) => createMobileFeatureCard(
     workflow.title,
     `${workflow.status} · ${workflow.currentStage}`,
-    workflow.owner,
+    workflow.domainId ?? workflow.owner,
   ));
 }

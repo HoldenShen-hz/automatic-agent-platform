@@ -63,6 +63,7 @@ describe("useSettingsVm", () => {
     await waitFor(() => {
       expect(result.current.saveState).toBe("saved");
       expect(result.current.activityItems[0]?.title).toBe("配置已保存");
+      expect(result.current.activityItems[0]?.description).toBe("偏好已更新为 zh-CN / light。其他设置清单仍通过各自的后端路由刷新。");
     });
     expect(mocks.mockUpdatePreferences).toHaveBeenCalledWith(
       mocks.mockClient,

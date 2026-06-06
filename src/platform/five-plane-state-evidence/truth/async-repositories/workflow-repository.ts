@@ -29,7 +29,18 @@ export class AsyncWorkflowRepository {
       `INSERT INTO workflow_step_outputs (
         id, task_id, step_id, role_id, status, data_json, summary, artifacts_json,
         token_cost, duration_ms, validation_json, produced_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      ON CONFLICT (task_id, step_id) DO UPDATE SET
+        id = EXCLUDED.id,
+        role_id = EXCLUDED.role_id,
+        status = EXCLUDED.status,
+        data_json = EXCLUDED.data_json,
+        summary = EXCLUDED.summary,
+        artifacts_json = EXCLUDED.artifacts_json,
+        token_cost = EXCLUDED.token_cost,
+        duration_ms = EXCLUDED.duration_ms,
+        validation_json = EXCLUDED.validation_json,
+        produced_at = EXCLUDED.produced_at`,
       stepOutput.id, stepOutput.taskId, stepOutput.stepId, stepOutput.roleId,
       stepOutput.status, stepOutput.dataJson, stepOutput.summary, stepOutput.artifactsJson,
       stepOutput.tokenCost, stepOutput.durationMs, stepOutput.validationJson, stepOutput.producedAt,

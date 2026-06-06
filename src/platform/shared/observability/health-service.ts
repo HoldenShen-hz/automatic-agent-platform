@@ -43,7 +43,7 @@ import {
   mapHealthDegradationModeToUnifiedRuntimeMode,
   type UnifiedRuntimeMode,
 } from "../../contracts/types/unified-runtime-mode.js";
-import { ProviderHealthTracker } from "./provider-health-tracker.js";
+import { ProviderHealthTracker, getGlobalProviderHealthTracker } from "./provider-health-tracker.js";
 import { StructuredLogger } from "./structured-logger.js";
 
 let healthLogger: StructuredLogger | null = null;
@@ -184,7 +184,7 @@ export class HealthService {
     options: HealthServiceOptions = {},
   ) {
     this.options = {
-      providerTracker: options.providerTracker ?? null,
+      providerTracker: options.providerTracker ?? getGlobalProviderHealthTracker(),
       providerWindowMs: options.providerWindowMs ?? 5 * 60_000,
       memoryHighWatermarkMb: options.memoryHighWatermarkMb ?? 512,
       eventLoopLagThresholdMs: options.eventLoopLagThresholdMs ?? 200,
@@ -277,12 +277,12 @@ export class HealthService {
           status,
           degradationMode,
         },
-        uptimeSeconds: Math.floor((Date.now() - this.startedAt) / 1000),
+        uptimeSeconds: Math.floor((nowMs - this.startedAt) / 1000),
       };
     }
 
     const providerSummary =
-      this.options.providerTracker?.getSummary(this.options.providerWindowMs) ?? {
+      this.options.providerTracker?.getSummary(this.options.providerWindowMs, new Date(nowMs).toISOString()) ?? {
         status: "healthy" as const,
         successRate: 1,
         totalCalls: 0,
@@ -295,7 +295,7 @@ export class HealthService {
       : "read_only_operations_only";
     return {
       status,
-      uptimeSeconds: Math.floor((Date.now() - this.startedAt) / 1000),
+      uptimeSeconds: Math.floor((nowMs - this.startedAt) / 1000),
       dbWritable,
       providerHealth: providerSummary.status,
       providerSuccessRate: providerSummary.successRate,
@@ -505,7 +505,7 @@ export class HealthService {
     );
     const memoryRssMb = Math.round((process.memoryUsage().rss / 1024 / 1024) * 100) / 100;
     const providerSummary =
-      this.options.providerTracker?.getSummary(this.options.providerWindowMs) ?? {
+      this.options.providerTracker?.getSummary(this.options.providerWindowMs, new Date(nowMs).toISOString()) ?? {
         status: "healthy" as const,
         successRate: 1,
         totalCalls: 0,

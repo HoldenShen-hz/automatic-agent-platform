@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   mockClient: { get: vi.fn() },
   mockUseTasksQuery: vi.fn(),
+  mockCopyTextToClipboard: vi.fn(),
 }));
 
 vi.mock("@aa/shared-state", () => ({
@@ -13,11 +14,41 @@ vi.mock("@aa/shared-state", () => ({
   useTasksQuery: mocks.mockUseTasksQuery,
 }));
 
+vi.mock("@aa/shared-platform", () => ({
+  copyTextToClipboard: mocks.mockCopyTextToClipboard,
+}));
+
 import { useWorkflowDebuggerVm } from "../../../../../../packages/features/workflow-debugger/src/hooks";
+import { prioritizeDebuggerTasks } from "../../../../../../packages/features/workflow-debugger/src/hooks";
+
+describe("prioritizeDebuggerTasks", () => {
+  it("prioritizes failed and running tasks ahead of completed history for default debugger focus", () => {
+    const tasks = prioritizeDebuggerTasks([
+      { id: "task-done", title: "done", status: "done", domainId: "platform", currentStep: "step-0" },
+      { id: "task-running", title: "running", status: "running", domainId: "platform", currentStep: "step-0" },
+      { id: "task-failed", title: "failed", status: "failed", domainId: "platform", currentStep: "step-0" },
+      { id: "task-queued", title: "queued", status: "queued", domainId: "platform", currentStep: "step-0" },
+    ] as Array<{
+      id: string;
+      title: string;
+      status: string;
+      domainId: string;
+      currentStep: string;
+    }>);
+
+    expect(tasks.map((task) => task.id)).toEqual([
+      "task-failed",
+      "task-running",
+      "task-queued",
+      "task-done",
+    ]);
+  });
+});
 
 describe("useWorkflowDebuggerVm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.mockCopyTextToClipboard.mockResolvedValue(undefined);
     mocks.mockUseTasksQuery.mockReturnValue({
       data: [
         {
@@ -98,5 +129,63 @@ describe("useWorkflowDebuggerVm", () => {
     expect(result.current.activePanel).toBe("export");
     expect(result.current.exportSnapshot).toContain("\"task\"");
     expect(result.current.activityItems[0]?.title).toBe("Debug snapshot exported");
+  });
+
+  it("surfaces clipboard failures without reporting export success", async () => {
+    mocks.mockCopyTextToClipboard.mockRejectedValue(new Error("Unable to copy to clipboard in the current browser context."));
+
+    const { result } = renderHook(() => useWorkflowDebuggerVm());
+
+    await waitFor(() => {
+      expect(result.current.selectedId).toBe("task-1");
+    });
+
+    await act(async () => {
+      await result.current.exportDebugSnapshot();
+    });
+
+    expect(result.current.activePanel).toBe("export");
+    expect(result.current.activityItems[0]).toEqual({
+      title: "Debug snapshot export failed",
+      description: "Unable to copy to clipboard in the current browser context.",
+    });
+  });
+
+  it("defaults to the highest-priority failed task when newer completed tasks exist", async () => {
+    mocks.mockUseTasksQuery.mockReturnValue({
+      data: [
+        {
+          id: "task-completed",
+          title: "Completed task",
+          status: "done",
+          domainId: "platform",
+          currentStep: "real_model",
+          executionMode: "real_model",
+          modelProvider: "minimax",
+          modelName: "minimax-m2.7",
+          outputSummary: "completed",
+        },
+        {
+          id: "task-failed-priority",
+          title: "Failed task",
+          status: "failed",
+          domainId: "platform",
+          currentStep: "real_model",
+          executionMode: "real_model",
+          modelProvider: "minimax",
+          modelName: "minimax-m2.7",
+          outputSummary: "failed",
+        },
+      ],
+      isLoading: false,
+      error: null,
+    });
+
+    const { result } = renderHook(() => useWorkflowDebuggerVm());
+
+    await waitFor(() => {
+      expect(result.current.selectedId).toBe("task-failed-priority");
+      expect(mocks.mockClient.get).toHaveBeenCalledWith("/v1/tasks/task-failed-priority");
+    });
   });
 });

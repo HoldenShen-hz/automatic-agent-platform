@@ -12,6 +12,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { HealthService } from "../../../../../src/platform/shared/observability/health-service.js";
+import {
+  getGlobalProviderHealthTracker,
+  resetGlobalProviderHealthTracker,
+} from "../../../../../src/platform/shared/observability/provider-health-tracker.js";
 import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
@@ -84,6 +88,31 @@ test("HealthService - checkHealth is alias for getReport", () => {
   assert.equal(report.providerHealth, report2.providerHealth);
   assert.equal(report.tier1AckBacklog, report2.tier1AckBacklog);
   assert.deepEqual(report.findings, report2.findings);
+});
+
+test("HealthService - default provider tracker reads shared runtime provider health", () => {
+  resetGlobalProviderHealthTracker();
+  getGlobalProviderHealthTracker().recordAttempt({
+    provider: "minimax",
+    model: "minimax-m2.7",
+    succeeded: false,
+    latencyMs: 320,
+    errorCode: "provider.circuit_breaker_open",
+    recordedAt: "2026-05-01T00:00:00.000Z",
+  });
+
+  const mockDb = createMockDb();
+  const mockStore = createMockStore();
+  const service = new HealthService(mockDb, mockStore, {
+    nowMsSupplier: () => Date.parse("2026-05-01T00:04:00.000Z"),
+  });
+
+  const report = service.getReport();
+  assert.equal(report.providerHealth, "failed");
+  assert.equal(report.providerRecentCalls, 1);
+  assert.equal(report.providerSuccessRate, 0);
+
+  resetGlobalProviderHealthTracker();
 });
 
 test("HealthService - status transitions to overloaded when tier1AckBacklog exceeds threshold", () => {

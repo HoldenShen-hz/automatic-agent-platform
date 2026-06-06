@@ -15,7 +15,7 @@ export function InspectWebView(): ReactElement {
             <h3>Tasks</h3>
             {vm.loading ? <p>Loading task inspect summaries...</p> : null}
             {vm.loadError != null ? <p>{vm.loadError}</p> : null}
-            {vm.listItems.length === 0 ? <p>No tasks are available for inspect.</p> : vm.listItems.map((item) => (
+            {vm.loading ? null : vm.listItems.length === 0 ? <p>No tasks are available for inspect.</p> : vm.listItems.map((item) => (
               <button key={item.id} onClick={() => vm.selectTask(item.id)} style={{ textAlign: "left" }} type="button">
                 <strong>{item.title}</strong>
                 <div>{item.subtitle}</div>
@@ -23,7 +23,7 @@ export function InspectWebView(): ReactElement {
             ))}
           </Stack>
         )}
-        center={vm.detailRows.length === 0 ? <p>No task selected</p> : (
+        center={vm.loading ? <p>Loading inspect detail...</p> : vm.detailRows.length === 0 ? <p>No task selected</p> : (
           <Stack gap={16}>
             <h3>Inspect detail</h3>
             <KeyValueTable rows={vm.detailRows} />

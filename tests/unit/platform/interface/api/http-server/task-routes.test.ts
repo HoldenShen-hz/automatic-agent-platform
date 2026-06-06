@@ -322,6 +322,76 @@ test("POST /v1/workflows/:id/pause returns workflow action response", async () =
   assert.equal(taskStatusUpdates, 1);
 });
 
+test("POST /v1/workflows/:id/recover redispatches real task execution workflows", async () => {
+  const executeCalls: Array<{ taskId: string; title: string; divisionId?: string | null; requestedBy?: string }> = [];
+  const deps = {
+    authService: {
+      requireRole: () => ({ actorId: "actor-1", roles: ["operator"], authMethod: "api_key", tenantId: null }),
+    } as unknown as ApiAuthService,
+    inspectService: createMockInspectService(),
+    missionControlService: {
+      ...createMockMissionControlService(),
+      getWorkflowCockpit: () => ({
+        summary: {
+          taskId: "task-1",
+          workflowId: "real_task_execution",
+          workflowStatus: "failed",
+          currentStepIndex: 0,
+          pendingApprovalCount: 0,
+          retryCount: 0,
+          resumableFromStep: "cancelled",
+        },
+        inspect: { task: { id: "task-1", title: "Recover real task", divisionId: "platform", tenantId: null }, steps: [], executions: [], approvals: [], artifacts: [], dispatchDecisions: [], stepResults: [], runtimeRecovery: { candidates: [] }, workflowState: null },
+        timeline: { entries: [] },
+      }),
+    } as unknown as MissionControlService,
+    taskStore: {
+      task: {
+        getTask: () => ({ id: "task-1", title: "Recover real task", divisionId: "platform", tenantId: null }),
+        updateTaskStatus: () => {},
+      },
+      workflow: {
+        getWorkflowState: () => ({
+          taskId: "task-1",
+          divisionId: "platform",
+          workflowId: "real_task_execution",
+          currentStepIndex: 0,
+          status: "failed",
+          outputsJson: "{}",
+          lastErrorCode: "real_task_execution_failed",
+          retryCount: 0,
+          resumableFromStep: "cancelled",
+          startedAt: "2026-04-16T00:00:00.000Z",
+          updatedAt: "2026-04-16T00:00:00.000Z",
+        }),
+        updateWorkflowState: () => {},
+      },
+    },
+    realTaskExecutionService: {
+      executeTask(input: { taskId: string; title: string; divisionId?: string | null; requestedBy?: string }) {
+        executeCalls.push(input);
+      },
+    },
+  };
+  const routes = createTaskRoutes(deps);
+  const ctx = {
+    requestId: "req-123",
+    request: { method: "POST", url: "/api/v1/workflows/task-1/recover", headers: {}, body: null } as never,
+    route: { pathname: "/api/v1/workflows/task-1/recover", segments: ["api", "v1", "workflows", "task-1", "recover"] },
+    principal: null,
+  } satisfies RouteContext;
+  const response = await callRoute(routes, ctx);
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.equal(executeCalls.length, 1);
+  assert.deepEqual(executeCalls[0], {
+    taskId: "task-1",
+    title: "Recover real task",
+    divisionId: "platform",
+    requestedBy: "actor-1",
+  });
+});
+
 test("DELETE /v1/workflows/:id cancels workflow state via task store", async () => {
   let workflowStateUpdates = 0;
   let taskStatusUpdates = 0;

@@ -171,65 +171,67 @@ function TaskCockpitWebView() {
           /* @__PURE__ */ jsx("h3", { children: translateMessage("ui.taskCockpit.detailTitle") }),
           /* @__PURE__ */ jsx(KeyValueTable, { rows: detailRows }),
           vm.workflowControlsAvailable || vm.workflowControlReason == null ? null : /* @__PURE__ */ jsx("p", { role: "note", style: { margin: 0 }, children: vm.workflowControlReason }),
-          /* @__PURE__ */ jsx(
-            "form",
-            {
-              onSubmit: (event) => {
-                event.preventDefault();
-                void vm.claimTask(sanitizeInput(operator, "platform-sre"));
-              },
-              children: /* @__PURE__ */ jsxs(Inline, { children: [
-                /* @__PURE__ */ jsx(
-                  "input",
-                  {
-                    "aria-label": translateMessage("ui.taskCockpit.operatorInput"),
-                    name: "operator-id",
-                    onChange: (event) => setOperator(event.target.value),
-                    placeholder: translateMessage("ui.taskCockpit.operatorPlaceholder"),
-                    value: operator
-                  }
-                ),
-                /* @__PURE__ */ jsx("button", { disabled: !vm.workflowControlsAvailable || vm.pendingOperations > 0, type: "submit", children: translateMessage("ui.taskCockpit.takeOver") }),
-                /* @__PURE__ */ jsx("button", { disabled: !vm.workflowControlsAvailable || vm.pendingOperations > 0, onClick: () => {
-                  void vm.pauseTask();
-                }, type: "button", children: translateMessage("ui.taskCockpit.pause") }),
-                /* @__PURE__ */ jsx("button", { disabled: !vm.workflowControlsAvailable || vm.pendingOperations > 0, onClick: () => {
-                  void vm.cancelTask();
-                }, type: "button", children: translateMessage("ui.taskCockpit.cancel") }),
-                /* @__PURE__ */ jsx("button", { disabled: !vm.workflowControlsAvailable || vm.pendingOperations > 0, onClick: () => {
-                  void vm.retryTask();
-                }, type: "button", children: translateMessage("ui.taskCockpit.retry") }),
-                /* @__PURE__ */ jsx("button", { disabled: !vm.workflowControlsAvailable || vm.pendingOperations > 0, onClick: () => {
-                  void vm.resumeTask("normal");
-                }, type: "button", children: translateMessage("ui.taskCockpit.resume") }),
-                /* @__PURE__ */ jsx("button", { disabled: !vm.workflowControlsAvailable || vm.pendingOperations > 0, onClick: () => {
-                  void vm.resumeTask("supervised");
-                }, type: "button", children: translateMessage("ui.taskCockpit.supervisedResume") })
-              ] })
-            }
-          ),
-          /* @__PURE__ */ jsx(
-            "form",
-            {
-              onSubmit: (event) => {
-                event.preventDefault();
-                void vm.escalateTask(sanitizeInput(target, "domain-admin"));
-              },
-              children: /* @__PURE__ */ jsxs(Inline, { children: [
-                /* @__PURE__ */ jsx(
-                  "input",
-                  {
-                    "aria-label": translateMessage("ui.taskCockpit.targetInput"),
-                    name: "target-id",
-                    onChange: (event) => setTarget(event.target.value),
-                    placeholder: translateMessage("ui.taskCockpit.targetPlaceholder"),
-                    value: target
-                  }
-                ),
-                /* @__PURE__ */ jsx("button", { disabled: !vm.workflowControlsAvailable || vm.pendingOperations > 0, type: "submit", children: translateMessage("ui.taskCockpit.escalate") })
-              ] })
-            }
-          )
+          !vm.workflowControlsAvailable ? null : /* @__PURE__ */ jsxs("div", { children: [
+            /* @__PURE__ */ jsx(
+              "form",
+              {
+                onSubmit: (event) => {
+                  event.preventDefault();
+                  void vm.claimTask(sanitizeInput(operator, "platform-sre"));
+                },
+                children: /* @__PURE__ */ jsxs(Inline, { children: [
+                  /* @__PURE__ */ jsx(
+                    "input",
+                    {
+                      "aria-label": translateMessage("ui.taskCockpit.operatorInput"),
+                      name: "operator-id",
+                      onChange: (event) => setOperator(event.target.value),
+                      placeholder: translateMessage("ui.taskCockpit.operatorPlaceholder"),
+                      value: operator
+                    }
+                  ),
+                  /* @__PURE__ */ jsx("button", { disabled: vm.pendingOperations > 0, type: "submit", children: translateMessage("ui.taskCockpit.takeOver") }),
+                  /* @__PURE__ */ jsx("button", { disabled: vm.pendingOperations > 0, onClick: () => {
+                    void vm.pauseTask();
+                  }, type: "button", children: translateMessage("ui.taskCockpit.pause") }),
+                  /* @__PURE__ */ jsx("button", { disabled: vm.pendingOperations > 0, onClick: () => {
+                    void vm.cancelTask();
+                  }, type: "button", children: translateMessage("ui.taskCockpit.cancel") }),
+                  /* @__PURE__ */ jsx("button", { disabled: vm.pendingOperations > 0, onClick: () => {
+                    void vm.retryTask();
+                  }, type: "button", children: translateMessage("ui.taskCockpit.retry") }),
+                  /* @__PURE__ */ jsx("button", { disabled: vm.pendingOperations > 0, onClick: () => {
+                    void vm.resumeTask("normal");
+                  }, type: "button", children: translateMessage("ui.taskCockpit.resume") }),
+                  /* @__PURE__ */ jsx("button", { disabled: vm.pendingOperations > 0, onClick: () => {
+                    void vm.resumeTask("supervised");
+                  }, type: "button", children: translateMessage("ui.taskCockpit.supervisedResume") })
+                ] })
+              }
+            ),
+            /* @__PURE__ */ jsx(
+              "form",
+              {
+                onSubmit: (event) => {
+                  event.preventDefault();
+                  void vm.escalateTask(sanitizeInput(target, "domain-admin"));
+                },
+                children: /* @__PURE__ */ jsxs(Inline, { children: [
+                  /* @__PURE__ */ jsx(
+                    "input",
+                    {
+                      "aria-label": translateMessage("ui.taskCockpit.targetInput"),
+                      name: "target-id",
+                      onChange: (event) => setTarget(event.target.value),
+                      placeholder: translateMessage("ui.taskCockpit.targetPlaceholder"),
+                      value: target
+                    }
+                  ),
+                  /* @__PURE__ */ jsx("button", { disabled: vm.pendingOperations > 0, type: "submit", children: translateMessage("ui.taskCockpit.escalate") })
+                ] })
+              }
+            )
+          ] })
         ] }),
         right: selectedTask == null ? /* @__PURE__ */ jsx("p", { children: translateMessage("ui.taskCockpit.noTimeline") }) : /* @__PURE__ */ jsxs(Stack, { children: [
           /* @__PURE__ */ jsx("h3", { children: translateMessage("ui.taskCockpit.drillTitle") }),

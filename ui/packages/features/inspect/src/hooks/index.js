@@ -1,6 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRestClient, useTasksQuery } from "@aa/shared-state";
 import { translateMessage } from "@aa/shared-i18n";
+function getInspectTaskPriority(task) {
+    switch (task.status) {
+        case "failed":
+            return 0;
+        case "running":
+            return 1;
+        case "paused":
+            return 2;
+        case "queued":
+            return 3;
+        default:
+            return 4;
+    }
+}
+function sortInspectTasks(tasks) {
+    return [...tasks].sort((left, right) => getInspectTaskPriority(left) - getInspectTaskPriority(right));
+}
 function buildDetailRows(task, inspectView) {
     if (task == null) {
         return [];
@@ -8,35 +25,49 @@ function buildDetailRows(task, inspectView) {
     const model = task.modelProvider == null && task.modelName == null
         ? translateMessage("ui.taskCockpit.value.unknown")
         : `${task.modelProvider ?? "unknown"} / ${task.modelName ?? "unknown"}`;
+    const traceId = resolveInspectTraceId(inspectView);
+    const executionStatus = inspectView?.execution?.status ?? task.modelCallStatus ?? "unknown";
     return [
         { key: "Task", value: task.title },
         { key: "Status", value: task.status },
         { key: "Domain", value: task.domainId },
         { key: "Current Step", value: task.currentStep },
         { key: "Workflow Status", value: inspectView?.workflowState?.status ?? "unknown" },
-        { key: "Execution Trace", value: inspectView?.execution?.traceId ?? "none" },
-        { key: "Execution Status", value: inspectView?.execution?.status ?? "unknown" },
+        { key: "Execution Trace", value: traceId },
+        { key: "Execution Status", value: executionStatus },
         { key: "Model", value: model },
         { key: "Execution Mode", value: task.executionMode ?? translateMessage("ui.taskCockpit.value.unknown") },
     ];
+}
+function resolveInspectTraceId(inspectView) {
+    const executionTraceId = inspectView?.execution?.traceId;
+    if (typeof executionTraceId === "string" && executionTraceId.trim().length > 0) {
+        return executionTraceId;
+    }
+    const eventTraceId = inspectView?.recentEvents?.find((event) => typeof event.traceId === "string" && event.traceId.trim().length > 0)?.traceId;
+    if (typeof eventTraceId === "string" && eventTraceId.trim().length > 0) {
+        return eventTraceId;
+    }
+    return "none";
 }
 export function useInspectVm() {
     const client = useRestClient();
     const taskQuery = useTasksQuery({ refetchInterval: 5000 });
     const tasks = taskQuery.data ?? [];
+    const orderedTasks = useMemo(() => sortInspectTasks(tasks), [tasks]);
     const [selectedId, setSelectedId] = useState(null);
     const [inspectView, setInspectView] = useState(null);
     const [loadError, setLoadError] = useState(null);
     useEffect(() => {
-        if (tasks.length === 0) {
+        if (orderedTasks.length === 0) {
             setSelectedId(null);
             return;
         }
-        setSelectedId((current) => (current != null && tasks.some((task) => task.id === current)
+        setSelectedId((current) => (current != null && orderedTasks.some((task) => task.id === current)
             ? current
-            : tasks[0]?.id ?? null));
-    }, [tasks]);
-    const selectedTask = tasks.find((task) => task.id === selectedId) ?? null;
+            : orderedTasks[0]?.id ?? null));
+    }, [orderedTasks]);
+    const selectedTask = orderedTasks.find((task) => task.id === selectedId) ?? null;
     const loadInspectView = useCallback(async (taskId) => {
         const response = await client.get(`/v1/tasks/${encodeURIComponent(taskId)}/inspect`);
         setInspectView(response);
@@ -56,11 +87,11 @@ export function useInspectVm() {
     const recentEvents = inspectView?.recentEvents ?? [];
     return {
         metrics: [
-            { label: "Tasks", value: tasks.length },
+            { label: "Tasks", value: orderedTasks.length },
             { label: "Pending Approvals", value: approvals.filter((approval) => approval.status === "requested" || approval.status === "pending").length },
             { label: "Recent Events", value: recentEvents.length },
         ],
-        listItems: tasks.map((task) => ({
+        listItems: orderedTasks.map((task) => ({
             id: task.id,
             title: task.title,
             subtitle: `${task.status} · ${task.domainId}`,

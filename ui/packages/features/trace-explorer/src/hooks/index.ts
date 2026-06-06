@@ -8,6 +8,7 @@ type TraceTimelineEntry = {
   readonly title: string;
   readonly summary: string;
   readonly occurredAt: string;
+  readonly traceId?: string | null;
 };
 
 type TraceExplorerResponse = {
@@ -33,6 +34,25 @@ type TraceDetailRow = {
   readonly value: string;
 };
 
+function getTraceTaskPriority(task: TaskDTO): number {
+  switch (task.status) {
+    case "failed":
+      return 0;
+    case "running":
+      return 1;
+    case "paused":
+      return 2;
+    case "queued":
+      return 3;
+    default:
+      return 4;
+  }
+}
+
+function sortTraceTasks(tasks: readonly TaskDTO[]): readonly TaskDTO[] {
+  return [...tasks].sort((left, right) => getTraceTaskPriority(left) - getTraceTaskPriority(right));
+}
+
 function buildDetailRows(task: TaskDTO | null, traceView: TraceExplorerResponse | null): readonly TraceDetailRow[] {
   if (task == null) {
     return [];
@@ -40,16 +60,31 @@ function buildDetailRows(task: TaskDTO | null, traceView: TraceExplorerResponse 
   const model = task.modelProvider == null && task.modelName == null
     ? translateMessage("ui.taskCockpit.value.unknown")
     : `${task.modelProvider ?? "unknown"} / ${task.modelName ?? "unknown"}`;
+  const traceId = resolveTraceId(traceView);
   return [
     { key: "Task", value: task.title },
     { key: "Status", value: task.status },
     { key: "Domain", value: task.domainId },
-    { key: "Trace ID", value: traceView?.inspect?.execution?.traceId ?? "none" },
+    { key: "Trace ID", value: traceId },
     { key: "Timeline Events", value: String(traceView?.timeline?.entries?.length ?? 0) },
     { key: "Artifacts", value: String(traceView?.inspect?.artifacts?.length ?? 0) },
     { key: "Model", value: model },
     { key: "Execution Mode", value: task.executionMode ?? translateMessage("ui.taskCockpit.value.unknown") },
   ];
+}
+
+function resolveTraceId(traceView: TraceExplorerResponse | null): string {
+  const executionTraceId = traceView?.inspect?.execution?.traceId;
+  if (typeof executionTraceId === "string" && executionTraceId.trim().length > 0) {
+    return executionTraceId;
+  }
+  const timelineTraceId = traceView?.timeline?.entries?.find(
+    (entry) => typeof entry.traceId === "string" && entry.traceId.trim().length > 0,
+  )?.traceId;
+  if (typeof timelineTraceId === "string" && timelineTraceId.trim().length > 0) {
+    return timelineTraceId;
+  }
+  return "none";
 }
 
 export interface TraceExplorerVm {
@@ -69,23 +104,24 @@ export function useTraceExplorerVm(): TraceExplorerVm {
   const client = useRestClient();
   const taskQuery = useTasksQuery({ refetchInterval: 5000 });
   const tasks = taskQuery.data ?? [];
+  const orderedTasks = useMemo(() => sortTraceTasks(tasks), [tasks]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [traceView, setTraceView] = useState<TraceExplorerResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (tasks.length === 0) {
+    if (orderedTasks.length === 0) {
       setSelectedId(null);
       return;
     }
     setSelectedId((current) => (
-      current != null && tasks.some((task) => task.id === current)
+      current != null && orderedTasks.some((task) => task.id === current)
         ? current
-        : tasks[0]?.id ?? null
+        : orderedTasks[0]?.id ?? null
     ));
-  }, [tasks]);
+  }, [orderedTasks]);
 
-  const selectedTask = tasks.find((task) => task.id === selectedId) ?? null;
+  const selectedTask = orderedTasks.find((task) => task.id === selectedId) ?? null;
 
   const loadTraceView = useCallback(async (taskId: string) => {
     const response = await client.get<TraceExplorerResponse>(`/v1/tasks/${encodeURIComponent(taskId)}`);
@@ -105,6 +141,7 @@ export function useTraceExplorerVm(): TraceExplorerVm {
   }, [loadTraceView, selectedId, selectedTask?.status, selectedTask?.currentStep, selectedTask?.outputSummary]);
 
   const timelineEntries = traceView?.timeline?.entries ?? [];
+  const latestTimelineEntry = timelineEntries.at(-1) ?? null;
   const restrictedItems = timelineEntries
     .filter((entry) => /restricted|denied|blocked/i.test(`${entry.title} ${entry.summary}`))
     .map((entry) => ({
@@ -114,11 +151,11 @@ export function useTraceExplorerVm(): TraceExplorerVm {
 
   return {
     metrics: [
-      { label: "Tasks", value: tasks.length },
+      { label: "Tasks", value: orderedTasks.length },
       { label: "Timeline Events", value: timelineEntries.length },
       { label: "Restricted Signals", value: restrictedItems.length },
     ],
-    listItems: tasks.map((task) => ({
+    listItems: orderedTasks.map((task) => ({
       id: task.id,
       title: task.title,
       subtitle: `${task.status} · ${task.domainId}`,
@@ -134,15 +171,15 @@ export function useTraceExplorerVm(): TraceExplorerVm {
       },
       {
         title: "Latest trace",
-        description: timelineEntries[0] == null
+        description: latestTimelineEntry == null
           ? "No timeline events were returned for the selected task."
-          : `${timelineEntries[0].title} @ ${timelineEntries[0].occurredAt}.`,
+          : `${latestTimelineEntry.title} @ ${latestTimelineEntry.occurredAt}.`,
       },
       {
         title: "Contract boundary",
         description: "Trace export bundles and restricted-event pivot APIs still need dedicated observability routes.",
       },
-    ], [selectedTask, timelineEntries]),
+    ], [latestTimelineEntry, selectedTask]),
     timelineItems: timelineEntries.length === 0
       ? [{ title: "No timeline events", description: "The selected task did not return any trace timeline entries." }]
       : timelineEntries.slice(0, 10).map((entry) => ({

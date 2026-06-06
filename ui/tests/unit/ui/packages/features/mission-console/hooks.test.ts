@@ -44,6 +44,16 @@ describe("Mission Console VM seams", () => {
     expect(vm.selectedMissionId).toBe("mis_002");
   });
 
+  it("prioritizes active and paused missions ahead of draft history by default", () => {
+    const vm = mapMissionsToConsoleVm(missions, null);
+
+    expect(vm.selectedMission?.missionId).toBe("mis_001");
+    expect(vm.missions.map((mission) => mission.missionId)).toEqual([
+      "mis_001",
+      "mis_002",
+    ]);
+  });
+
   it("builds mobile cards from selected Mission evidence state", () => {
     const cards = createMissionConsoleMobileCards({
       loading: false,

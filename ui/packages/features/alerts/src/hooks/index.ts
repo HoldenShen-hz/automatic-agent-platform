@@ -20,6 +20,7 @@ export interface AlertListItem {
 }
 
 export interface AlertsVm {
+  readonly loading: boolean;
   readonly items: readonly AlertListItem[];
   readonly incidents: readonly IncidentDTO[];
   readonly filters: {
@@ -77,6 +78,10 @@ function sortIncidents(incidents: readonly IncidentDTO[]): readonly IncidentDTO[
   });
 }
 
+function isActionableAlert(incident: IncidentDTO): boolean {
+  return incident.status !== "closed" && incident.status !== "resolved";
+}
+
 function buildHistoryEntry(action: string, incident: IncidentDTO): AlertHistoryEntry {
   return {
     title: `${action} · ${incident.title}`,
@@ -111,6 +116,7 @@ export function buildAlertsVm(
   // R14-33: Incidents sorted by severity (critical→low) then by creation time (newest first)
   // R14-34: acknowledge/dismiss/escalate are the three core actions per §4.7
   return {
+    loading: false,
     incidents: sorted,
     items: sorted.map((incident) => ({
       id: incident.id,
@@ -151,7 +157,8 @@ export function useAlertsVm(): AlertsVm {
   const [history, setHistory] = useState<readonly AlertHistoryEntry[]>([]);
   const [streamStatus, setStreamStatus] = useState<AlertsVm["streamStatus"]>("idle");
   const [pendingOperations, setPendingOperations] = useState(0);
-  const incidents = useIncidentsQuery().data ?? [];
+  const incidentsQuery = useIncidentsQuery();
+  const incidents = incidentsQuery.data ?? [];
   const scopedIncidents = (auth.permissions ?? []).includes(ALERTS_REQUIRED_PERMISSION) ? incidents : [];
   const operatorId = auth.displayName || auth.userId || "web-operator";
 
@@ -207,7 +214,7 @@ export function useAlertsVm(): AlertsVm {
     }
     const now = Date.now();
     return sortIncidents([...merged.values()]).filter((incident) => {
-      if (incident.status === "closed") {
+      if (!isActionableAlert(incident)) {
         return false;
       }
       if (incident.snoozedUntil == null) {
@@ -291,25 +298,29 @@ export function useAlertsVm(): AlertsVm {
     });
   }, [appendHistory, client, findIncident, refreshIncidents, withPending]);
 
-  return useMemo(() => buildAlertsVm(
-    dedupedIncidents,
-    filters,
-    history,
-    streamStatus,
-    pendingOperations,
-    {
-      setFilters(next) {
-        setFiltersState((current) => ({ ...current, ...next }));
+  return useMemo(() => ({
+    ...buildAlertsVm(
+      dedupedIncidents,
+      filters,
+      history,
+      streamStatus,
+      pendingOperations,
+      {
+        setFilters(next) {
+          setFiltersState((current) => ({ ...current, ...next }));
+        },
+        onAcknowledge,
+        onDismiss,
+        onEscalate,
+        onSnooze,
       },
-      onAcknowledge,
-      onDismiss,
-      onEscalate,
-      onSnooze,
-    },
-  ), [
+    ),
+    loading: incidentsQuery.isLoading,
+  }), [
     dedupedIncidents,
     filters,
     history,
+    incidentsQuery.isLoading,
     onAcknowledge,
     onDismiss,
     onEscalate,

@@ -15,7 +15,7 @@ export function MarketplaceWebView(): ReactElement {
           <Stack gap={10}>
             <h3>Packs</h3>
             {vm.loading ? <p>Loading marketplace catalog...</p> : null}
-            {vm.listItems.length === 0 ? <p>No marketplace packs published by the backend.</p> : vm.listItems.map((item) => (
+            {vm.loading ? null : vm.listItems.length === 0 ? <p>No marketplace packs published by the backend.</p> : vm.listItems.map((item) => (
               <button key={item.id} onClick={() => vm.selectPack(item.id)} style={{ textAlign: "left" }} type="button">
                 <strong>{item.title}</strong>
                 <div>{item.subtitle}</div>
@@ -23,7 +23,7 @@ export function MarketplaceWebView(): ReactElement {
             ))}
           </Stack>
         )}
-        center={vm.selectedPack == null ? <p>No pack selected</p> : (
+        center={vm.loading ? <p>Loading pack detail...</p> : vm.listItems.length === 0 ? <p>No marketplace packs published by the backend.</p> : vm.selectedPack == null ? <p>No pack selected</p> : (
           <Stack gap={16}>
             <h3>Pack detail</h3>
             <KeyValueTable rows={vm.detailRows} />

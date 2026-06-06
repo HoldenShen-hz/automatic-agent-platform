@@ -31,10 +31,10 @@ afterEach(() => {
 });
 
 describe("GovernanceComplianceWebView exception actions", () => {
-  it("disables approve and reject controls for non-pending exceptions", () => {
+  it("hides approve and reject controls for non-pending exceptions", () => {
     render(<GovernanceComplianceWebView />);
 
-    expect(screen.getByRole("button", { name: "Approve" }).hasAttribute("disabled")).toBe(true);
-    expect(screen.getByRole("button", { name: "Reject" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();
   });
 });

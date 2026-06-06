@@ -15,7 +15,7 @@ export function AuditWebView(): ReactElement {
             <h3>Audit entries</h3>
             {vm.loading ? <p>Loading audit log stream...</p> : null}
             {vm.loadError != null ? <p>{vm.loadError}</p> : null}
-            {vm.listItems.length === 0 ? <p>No audit entries returned by the backend.</p> : vm.listItems.map((item) => (
+            {vm.loading ? null : vm.listItems.length === 0 ? <p>No audit entries returned by the backend.</p> : vm.listItems.map((item) => (
               <button key={item.id} onClick={() => vm.selectEntry(item.id)} style={{ textAlign: "left" }} type="button">
                 <strong>{item.title}</strong>
                 <div>{item.subtitle}</div>
@@ -23,7 +23,7 @@ export function AuditWebView(): ReactElement {
             ))}
           </Stack>
         )}
-        center={vm.detailRows.length === 0 ? <p>No audit entry selected</p> : (
+        center={vm.loading ? <p>Loading audit detail...</p> : vm.detailRows.length === 0 ? <p>No audit entry selected</p> : (
           <Stack gap={16}>
             <h3>Audit detail</h3>
             <KeyValueTable rows={vm.detailRows} />

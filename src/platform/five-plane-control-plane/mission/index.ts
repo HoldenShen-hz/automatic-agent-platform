@@ -104,7 +104,7 @@ export class MissionLifecycleService {
     const updated: MissionRecord = {
       ...current,
       status: command.targetStatus,
-      freezeReason: command.targetStatus === "frozen" ? command.reason ?? "mission.freeze_requested" : current.freezeReason,
+      freezeReason: command.targetStatus === "frozen" ? command.reason ?? "mission.freeze_requested" : null,
       updatedAt: timestamp,
       updatedBy: command.actorId,
       archivedAt: command.targetStatus === "archived" ? timestamp : current.archivedAt,

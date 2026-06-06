@@ -32,6 +32,7 @@ export interface AnalyticsVm {
     }[];
     readonly trendSummary: readonly number[];
     readonly timeSeriesData: readonly AnalyticsTimeSeriesPoint[];
+    readonly historicalSeriesAvailable: boolean;
     readonly dateRange: {
         startDate: string;
         endDate: string;

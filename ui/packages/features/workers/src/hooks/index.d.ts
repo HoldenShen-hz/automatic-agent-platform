@@ -1,5 +1,6 @@
 import type { WorkerDTO } from "@aa/shared-types";
 export interface WorkersVm {
+    readonly loading: boolean;
     readonly metrics: readonly {
         label: string;
         value: string | number;

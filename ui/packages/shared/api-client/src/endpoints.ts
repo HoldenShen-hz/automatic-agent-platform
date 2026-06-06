@@ -367,7 +367,8 @@ function normalizeWorkflowDto(workflow: WorkflowLikeRecord): WorkflowDTO {
     title: workflow.title ?? workflow.workflowId ?? workflow.taskId ?? "Untitled workflow",
     status: mapWorkflowStatus(workflow.status ?? workflow.workflowStatus ?? workflow.taskStatus),
     currentStage,
-    owner: workflow.owner ?? workflow.divisionId ?? "platform",
+    owner: workflow.owner ?? "unknown",
+    domainId: workflow.domainId ?? workflow.divisionId ?? "platform",
     steps: workflow.steps ?? [],
     ...(workflow.approvalNodes == null ? {} : { approvalNodes: workflow.approvalNodes }),
     ...(workflow.evidenceRefs == null ? {} : { evidenceRefs: workflow.evidenceRefs }),
@@ -665,6 +666,13 @@ function unwrapCollectionResponse<T>(
   return [];
 }
 
+function normalizeRatePercent(value: number | null | undefined): number | undefined {
+  if (value == null || !Number.isFinite(value)) {
+    return undefined;
+  }
+  return value >= 0 && value <= 1 ? value * 100 : value;
+}
+
 type RawDashboardSnapshot = {
   readonly queueDepth?: number | null;
   readonly activeAgents?: number | null;
@@ -704,7 +712,12 @@ function normalizeDashboardSnapshot(response: DashboardSnapshotDTO | RawDashboar
     && typeof (response as DashboardSnapshotDTO).approvalBacklog === "number"
     && typeof (response as DashboardSnapshotDTO).alertSummary === "string"
   ) {
-    return response as DashboardSnapshotDTO;
+    const normalized = response as DashboardSnapshotDTO;
+    return {
+      ...normalized,
+      ...(normalizeRatePercent(normalized.successRate) == null ? {} : { successRate: normalizeRatePercent(normalized.successRate) }),
+      ...(normalizeRatePercent(normalized.errorRate) == null ? {} : { errorRate: normalizeRatePercent(normalized.errorRate) }),
+    };
   }
 
   const health = raw.health ?? null;
@@ -721,13 +734,13 @@ function normalizeDashboardSnapshot(response: DashboardSnapshotDTO | RawDashboar
     approvalBacklog: Array.isArray(raw.pendingApprovals) ? raw.pendingApprovals.length : 0,
     alertSummary: findings.join("; "),
     ...(taskSuccessRate != null
-      ? { successRate: taskSuccessRate * 100 }
+      ? { successRate: normalizeRatePercent(taskSuccessRate) }
       : providerSuccessRate != null
-        ? { successRate: providerSuccessRate * 100 }
+        ? { successRate: normalizeRatePercent(providerSuccessRate) }
         : {}),
     ...(typeof avgDurationMs === "number" ? { avgDurationMs } : {}),
     ...(raw.activeAgents != null ? { activeAgents: raw.activeAgents } : {}),
-    ...(raw.errorRate != null ? { errorRate: raw.errorRate } : {}),
+    ...(normalizeRatePercent(raw.errorRate) == null ? {} : { errorRate: normalizeRatePercent(raw.errorRate) }),
     ...(raw.p50LatencyMs !== undefined ? { p50LatencyMs: raw.p50LatencyMs } : {}),
     ...(raw.p99LatencyMs !== undefined ? { p99LatencyMs: raw.p99LatencyMs } : {}),
     ...(raw.budgetUtilizationPercent !== undefined ? { budgetUtilizationPercent: raw.budgetUtilizationPercent } : {}),

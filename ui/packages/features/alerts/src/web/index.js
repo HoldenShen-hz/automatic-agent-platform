@@ -9,12 +9,12 @@ function readAlertStatus(item) {
 export function AlertsWebView() {
     const vm = useAlertsVm();
     const featureCopy = translateFeatureCopy("alerts");
-    return (_jsxs(FeatureScaffold, { title: featureCopy.title, summary: featureCopy.summary, status: "Implemented/Internal", children: [_jsxs("p", { style: { marginTop: 0 }, children: [translateMessage("ui.alerts.stream"), ": ", vm.streamStatus, " \u00B7 ", translateMessage("ui.alerts.pendingActions"), ": ", vm.pendingOperations] }), _jsx(FeatureWorkbenchPanel, { items: vm.items, actions: [
+    return (_jsxs(FeatureScaffold, { title: featureCopy.title, summary: featureCopy.summary, status: "Implemented/Internal", children: [_jsxs("p", { style: { marginTop: 0 }, children: [translateMessage("ui.alerts.stream"), ": ", vm.streamStatus, " \u00B7 ", translateMessage("ui.alerts.pendingActions"), ": ", vm.pendingOperations] }), vm.loading ? _jsx("p", { children: "Loading live incidents..." }) : null, _jsx(FeatureWorkbenchPanel, { items: vm.items, actions: [
                     {
                         id: "alerts-ack",
                         label: "确认告警",
                         tone: "accent",
-                        disabled: (item) => readAlertStatus(item) !== "open",
+                        disabled: (item) => vm.loading || readAlertStatus(item) !== "open",
                         onTrigger: (item) => {
                             if (item != null) {
                                 vm.onAcknowledge(item.id);
@@ -26,6 +26,9 @@ export function AlertsWebView() {
                         label: "进入处置",
                         tone: "neutral",
                         disabled: (item) => {
+                            if (vm.loading) {
+                                return true;
+                            }
                             const status = readAlertStatus(item);
                             return status !== "acknowledged" && status !== "triaged";
                         },
@@ -39,7 +42,7 @@ export function AlertsWebView() {
                     id: "alerts-mute",
                     label: "静默 30 分钟",
                     tone: "neutral",
-                    disabled: (item) => readAlertStatus(item) === "closed",
+                    disabled: (item) => vm.loading || readAlertStatus(item) === "closed",
                     onTrigger: (item) => {
                         if (item != null) {
                             vm.onSnooze(item.id);
@@ -51,7 +54,7 @@ export function AlertsWebView() {
                     id: "alerts-dismiss",
                     label: "忽略选中",
                     tone: "danger",
-                    disabled: (item) => readAlertStatus(item) === "closed",
+                    disabled: (item) => vm.loading || readAlertStatus(item) === "closed",
                     onTrigger: (item) => {
                         if (item != null) {
                             vm.onDismiss(item.id);

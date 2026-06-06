@@ -79,7 +79,7 @@ export function ReleaseConsoleWebView(): ReactElement {
   return (
     <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
       <FeatureWorkbenchPanel
-        items={vm.items}
+        items={vm.items.map((item) => ({ ...item, detailRows: [] }))}
         actions={[
           { id: "release-console-refresh", label: "刷新治理快照", tone: "accent", onTrigger: () => vm.refresh(), activityDescription: "已从真实后端刷新发布治理快照。" },
           { id: "release-console-copy", label: "复制治理摘要", tone: "neutral", disabled: vm.summaryRows.length === 0, onTrigger: () => copySummary(), activityDescription: "已复制当前发布治理摘要。" },

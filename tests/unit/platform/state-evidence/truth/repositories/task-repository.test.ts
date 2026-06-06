@@ -259,6 +259,50 @@ test("TaskRepository updateTaskStatus changes task status", () => {
   }
 });
 
+test("TaskRepository updateTaskStatus clears completedAt when leaving a terminal state", () => {
+  const workspace = createTempWorkspace("aa-task-repo-");
+  const dbPath = join(workspace, "task-repo.db");
+
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const repo = new TaskRepository(db.connection);
+
+    const now = "2026-04-14T10:00:00.000Z";
+    const failedAt = "2026-04-14T10:30:00.000Z";
+    repo.insertTask({
+      id: "task-clear-completed-at",
+      parentId: null,
+      rootId: "task-clear-completed-at",
+      divisionId: "general-ops",
+      tenantId: null,
+      title: "Retry state reset test",
+      status: "failed",
+      source: "user",
+      priority: "normal",
+      inputJson: "{}",
+      normalizedInputJson: null,
+      outputJson: null,
+      estimatedCostUsd: null,
+      actualCostUsd: 0,
+      errorCode: "task.timeout",
+      createdAt: now,
+      updatedAt: failedAt,
+      completedAt: failedAt,
+    });
+
+    repo.updateTaskStatus("task-clear-completed-at", "in_progress", "2026-04-14T10:45:00.000Z", null, null);
+
+    const result = repo.getTask("task-clear-completed-at");
+    assert.ok(result);
+    assert.equal(result.status, "in_progress");
+    assert.equal(result.errorCode, null);
+    assert.equal(result.completedAt, null);
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
 test("TaskRepository updateTaskStatusCas only updates when expected status matches", () => {
   const workspace = createTempWorkspace("aa-task-repo-");
   const dbPath = join(workspace, "task-repo.db");

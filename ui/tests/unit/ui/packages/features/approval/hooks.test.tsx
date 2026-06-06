@@ -16,14 +16,18 @@ vi.mock("@aa/shared-state", () => ({
       {
         approvalId: "approval-1",
         taskId: "task-1",
-        riskLevel: "high",
-        reasonSummary: "Production rollout",
+        riskLevel: "medium",
+        reasonSummary: "Shadow deploy",
+        deadline: "2026-05-28T09:00:00.000Z",
+        currentLevel: 1,
       },
       {
         approvalId: "approval-2",
         taskId: "task-2",
-        riskLevel: "medium",
-        reasonSummary: "Shadow deploy",
+        riskLevel: "critical",
+        reasonSummary: "Production rollout",
+        deadline: "2026-05-28T08:00:00.000Z",
+        currentLevel: 2,
       },
     ],
   }),
@@ -46,15 +50,16 @@ describe("useApprovalCenterVm", () => {
   it("calls approveApproval and removes the approved item from local state", async () => {
     const { result } = renderHook(() => useApprovalCenterVm());
 
-    expect(result.current.queueItems[0]?.subtitle).toBe("high · Production rollout");
+    expect(result.current.queueItems.map((item) => item.id)).toEqual(["approval-2", "approval-1"]);
+    expect(result.current.selectedId).toBe("approval-2");
 
     await act(async () => {
       await result.current.approve();
     });
 
-    expect(mocks.mockApproveApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-1");
+    expect(mocks.mockApproveApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-2");
     await waitFor(() => {
-      expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-2"]);
+      expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-1"]);
     });
   });
 
@@ -65,9 +70,9 @@ describe("useApprovalCenterVm", () => {
       await result.current.reject();
     });
 
-    expect(mocks.mockRejectApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-1");
+    expect(mocks.mockRejectApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-2");
     await waitFor(() => {
-      expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-2"]);
+      expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-1"]);
     });
   });
 
@@ -78,7 +83,7 @@ describe("useApprovalCenterVm", () => {
       await result.current.requestMoreContext();
     });
 
-    expect(mocks.mockRequestMoreContextApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-1");
+    expect(mocks.mockRequestMoreContextApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-2");
     await waitFor(() => {
       expect(result.current.actionHistory[0]?.title).toContain("已请求上下文");
     });
@@ -91,10 +96,10 @@ describe("useApprovalCenterVm", () => {
       await result.current.delegate("domain-admin");
     });
 
-    expect(mocks.mockDelegateApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-1", "domain-admin");
+    expect(mocks.mockDelegateApproval).toHaveBeenCalledWith(mocks.mockClient, "approval-2", "domain-admin");
     await waitFor(() => {
-      expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-1", "approval-2"]);
-      expect(result.current.selectedId).toBe("approval-1");
+      expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-2", "approval-1"]);
+      expect(result.current.selectedId).toBe("approval-2");
       expect(result.current.actionHistory[0]?.title).toContain("已委派");
     });
   });
@@ -107,7 +112,7 @@ describe("useApprovalCenterVm", () => {
       await expect(result.current.approve()).rejects.toThrow(/approval-write-failed/);
     });
 
-    expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-1", "approval-2"]);
-    expect(result.current.selectedId).toBe("approval-1");
+    expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-2", "approval-1"]);
+    expect(result.current.selectedId).toBe("approval-2");
   });
 });
